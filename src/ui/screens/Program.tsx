@@ -1,4 +1,5 @@
 import { StaffWorkPanel, staffWorkStatus } from '../StaffWorkPanel.js';
+import { projectCandidates } from '../../engine/staffProjects.js';
 import { RECRUITING_WEEKS } from '../../engine/recruiting.js';
 // Program.tsx
 // The program hub.
@@ -24,7 +25,7 @@ import { FINISH_LABEL, type Finish } from '../../engine/postseason.js';
 import { honoursByPlayer, type Inductee } from '../../engine/hall.js';
 import { RECORDS, type RecordKey } from '../../engine/records.js';
 import { philosophyOf } from '../../engine/strategy.js';
-import { REGION_OF_STATE, CONFERENCES, ALL_STATES } from '../../data/schools.js';
+import { REGION_OF_STATE, STATES_BY_REGION, CONFERENCES, ALL_STATES } from '../../data/schools.js';
 import { playerId, type PlayerId } from '../../engine/types.js';
 import { CoachPortrait } from '../CoachPortrait.js';
 import { useOpenTeam } from './TeamCard.js';
@@ -47,7 +48,7 @@ import { Overlay } from '../Overlay.js';
 import { StaffCandidateDialog, StaffImpact, StaffRatings } from '../StaffCandidateDialog.js';
 import { pct } from '../format.js';
 import { SeasonTrend } from './History.js';
-import { FacilityArt, LevelTrack } from '../ProgramBits.js';
+import { FacilityArt, LevelTrack, marksHeldBy } from '../ProgramBits.js';
 
 /** The record for one program, as the season carries it. */
 type Owner = SeasonState['teams'][number];
@@ -256,10 +257,12 @@ export function Program() {
       <SectionHeading title="The program's legacy" />
       <div className="program-career-grid">
         <button className="program-career-row tap" type="button" onClick={() => openArchive('seasons')}>
-          <span><strong>History</strong><small>{annals.length} season{annals.length === 1 ? '' : 's'} · {titles} national title{titles === 1 ? '' : 's'}</small></span><ChevronRightIcon aria-hidden="true" />
+          <span><strong>History</strong><small>{annals.length === 0 ? 'Every finished season'
+            : `${annals.length} season${annals.length === 1 ? '' : 's'} · ${titles} national title${titles === 1 ? '' : 's'}`}</small></span><ChevronRightIcon aria-hidden="true" />
         </button>
         <button className="program-career-row tap" type="button" onClick={() => openArchive('alumni')}>
-          <span><strong>Alumni</strong><small>{alumniCount} former player{alumniCount === 1 ? '' : 's'}</small></span><ChevronRightIcon aria-hidden="true" />
+          <span><strong>Alumni</strong><small>{alumniCount === 0 ? 'Where your men went'
+            : `${alumniCount} former player${alumniCount === 1 ? '' : 's'}`}</small></span><ChevronRightIcon aria-hidden="true" />
         </button>
       </div>
       <button className="program-career-row tap" type="button" onClick={() => setSheet('hall')}>
@@ -452,8 +455,6 @@ function MoneySheet({ team }: { team: Owner }) {
       lastWorked: Math.max(economy.pipelines?.[state]?.lastSignedYear ?? 0, economy.pipelines?.[state]?.lastWorkedYear ?? 0),
     }))
     .sort((a, b) => b.strength - a.strength || a.state.localeCompare(b.state));
-  const matchingPipelines = pipelines.filter((p) => !pipelineState || p.state === pipelineState);
-  const visiblePipelines = showAllPipelines || pipelineState ? matchingPipelines : matchingPipelines.slice(0, 8);
   const nextFacility = BUILDINGS
     .map((b) => {
       const level = facilityLevel(economy, b.key);
@@ -534,18 +535,31 @@ function MoneySheet({ team }: { team: Owner }) {
               const man = economy.staff[seat];
               const plan = staffPlan(economy, seat);
               const status = staffWorkStatus(economy, seat, weeksAvailable);
+              /*
+                The man the project is about, resolved through the same
+                `projectCandidates` pool the work panel searches — resolve it
+                off the raw roster instead and this card names a player the
+                panel calls gone.
+              */
+              const target = plan.project?.playerId
+                ? projectCandidates(team.team, seat, plan.project.kind)
+                  .find((p) => String(p.id) === plan.project?.playerId)?.name ?? 'Player left the roster'
+                : undefined;
+              const ending = man?.until !== undefined && man.until <= year;
               return <button className={`staff-roster-card tap${!man ? ' is-vacant' : ''}`} type="button" key={seat}
                 data-guide={seat === 'hitting' ? 'seat-hitting' : undefined} aria-haspopup="dialog"
                 onClick={() => openCoach(seat)}>
                 <span className="staff-roster-identity"><span className="staff-role-mark" aria-hidden="true">{seat === 'recruiting' ? <GlobeIcon /> : <PersonIcon />}</span>
-                  <span><small>{SEAT_LABEL[seat]}</small><strong>{man?.name ?? 'Hire a coach'}</strong></span>
+                  <span><small>{SEAT_LABEL[seat]}{man ? ` · ${shapeOf(man)}` : ''}</small><strong>{man?.name ?? 'Hire a coach'}</strong></span>
                   {man ? <b>{man.rating}<small>OVR</small></b> : <ChevronRightIcon />}
                 </span>
                 {man ? <>
                   <StaffRatings coach={man} />
                   <span className="staff-roster-work"><span><small>FOCUS</small><b>{DIRECTIVE_LABEL[plan.directive]}</b></span><span><small>{status.label}</small><b>{status.detail}</b></span></span>
+                  {target && <span className="staff-card-target">{target}</span>}
+                  {plan.project?.state && <span className="staff-card-target">{plan.project.state} · Recruiting territory</span>}
                   {plan.project && <span className="staff-mini-progress" aria-hidden="true"><i style={{ width: `${status.progress}%` }} /></span>}
-                  <span className="staff-roster-footer"><small>{man.until !== undefined && man.until <= year ? 'Contract ending' : `${dollars(man.wage)}/year`}</small><b>Manage coach <ChevronRightIcon /></b></span>
+                  <span className="staff-roster-footer"><small className={ending ? 'staff-contract-alert' : undefined}>{ending ? 'Contract ending' : `${dollars(man.wage)}/year`}</small><b>Manage coach <ChevronRightIcon /></b></span>
                 </> : <span className="staff-vacant-detail">{seat === 'hitting' ? 'Develop hitters' : seat === 'pitching' ? 'Develop pitchers' : 'Grow recruiting pipelines'}<b>View candidates <ChevronRightIcon /></b></span>}
               </button>;
             })}
@@ -573,6 +587,17 @@ function MoneySheet({ team }: { team: Owner }) {
                   ]} />
                   {profileView === 'work' && <StaffWorkPanel key={man.id} team={team} seat={staffSeat} initialState={projectState}
                     onFacility={(facility) => { setFacilityFocus(facility); setView('facilities'); }} />}
+                  {/* The results are the output of the work panel, so they sit
+                      beside the control that starts the next one rather than
+                      filed behind a contract. */}
+                  {profileView === 'work' && (economy.projectHistory ?? []).filter((r) => r.seat === staffSeat).slice(0, 3).length > 0 && <details className="staff-profile-section staff-results"><summary>Recent results in this role</summary>
+                    {(economy.projectHistory ?? []).filter((r) => r.seat === staffSeat).slice(0, 3).map((result, i) => <section className="staff-result-card" key={`${result.year}:${result.week}:${i}`}>
+                      <small>{result.year} · WEEK {result.week}</small><strong>{PROJECT_LABEL[result.kind]}{result.state ? ` · ${result.state}` : ''}</strong>
+                      <p>{result.took === false ? 'No gain this time' : result.focused ? 'Focus bonus earned' : 'Completed'}</p>
+                      {result.changes.map((c, j) => <div key={j}><span>{c.name} · {c.attribute}</span><b>{c.before} → {c.after}</b></div>)}
+                      {!result.changes.length && result.took !== false && <p>No eligible player remained.</p>}
+                    </section>)}
+                  </details>}
                   {profileView === 'profile' && <>
                     <section className="staff-profile-section"><h3>Coaching skills</h3><StaffRatings coach={man} /><StaffImpact coach={man} skills={coachSkills} /></section>
                     <section className="staff-profile-section"><h3>Contract</h3>
@@ -585,14 +610,6 @@ function MoneySheet({ team }: { team: Owner }) {
                           onConfirm={() => { setShowReplacements(false); fireAssistant(staffSeat); }} />
                       </div>}
                     </section>
-                    {(economy.projectHistory ?? []).filter((r) => r.seat === staffSeat).slice(0, 3).length > 0 && <details className="staff-profile-section staff-results"><summary>Recent results in this role</summary>
-                      {(economy.projectHistory ?? []).filter((r) => r.seat === staffSeat).slice(0, 3).map((result, i) => <section className="staff-result-card" key={`${result.year}:${result.week}:${i}`}>
-                        <small>{result.year} · WEEK {result.week}</small><strong>{PROJECT_LABEL[result.kind]}{result.state ? ` · ${result.state}` : ''}</strong>
-                        <p>{result.took === false ? 'No gain this time' : result.focused ? 'Focus bonus earned' : 'Completed'}</p>
-                        {result.changes.map((c, j) => <div key={j}><span>{c.name} · {c.attribute}</span><b>{c.before} → {c.after}</b></div>)}
-                        {!result.changes.length && result.took !== false && <p>No eligible player remained.</p>}
-                      </section>)}
-                    </details>}
                   </>}
                 </>}
                 {(!man || (profileView === 'profile' && showReplacements)) && (
@@ -762,57 +779,132 @@ function MoneySheet({ team }: { team: Owner }) {
 
       {view === 'network' && (() => {
         const live = pipelines.filter((p) => p.strength >= PIPELINE_MIN).length;
+        const signed = Object.values(economy.pipelines ?? {}).reduce((n, p) => n + (p.signings ?? 0), 0);
+        const selectedState = pipelineState || team.def.state;
+        const selected = pipelines.find((p) => p.state === selectedState);
+        const selectedStrength = pipelineStrength(economy, selectedState, team.def.state);
+        const coordinator = economy.staff.recruiting;
+        const project = staffPlan(economy, 'recruiting').project;
+        const status = staffWorkStatus(economy, 'recruiting', weeksAvailable);
         return (
-        <>
-          <section className="network-command-grid">
-            <article className="network-panel">
-              <header><span><small>RECRUITING NETWORK</small><strong>{pipelines.length === 0 ? 'No established markets' : `${live} pipeline${live === 1 ? '' : 's'} · ${pipelines.length} known market${pipelines.length === 1 ? '' : 's'}`}</strong></span></header>
-              {economy.staff.recruiting ? (() => {
-                const rp = staffPlan(economy, 'recruiting');
-                const status = staffWorkStatus(economy, 'recruiting', weeksAvailable);
-                return <div className="network-assignment">
-                  <span><small>{status.label}</small><strong>{rp.project ? `${PROJECT_LABEL[rp.project.kind]} · ${rp.project.state ?? ''}` : 'Plan your next pipeline'}</strong></span>
-                  {!rp.project && <select aria-label="Assignment state" disabled={!runsStaff} value={projectState} onChange={(e) => setProjectState(e.currentTarget.value)}>{ALL_STATES.map((st) => <option key={st} value={st}>{st}</option>)}</select>}
-                  <button className="secondary-command tap" type="button" onClick={() => { setView('staff'); openCoach('recruiting'); }}>{rp.project ? 'View coordinator’s work' : 'Plan project'}</button>
-                </div>;
-              })() : <button type="button" className="secondary-command tap" onClick={() => { setView('staff'); openCoach('recruiting'); }}>Hire a recruiting coordinator</button>}
-              <label className="network-state-filter">Show state
-                <select value={pipelineState} onChange={(e) => setPipelineState(e.currentTarget.value)}>
-                  <option value="">All known states</option>
-                  {[...pipelineStates].sort().map((state) => <option key={state} value={state}>{state}</option>)}
-                </select>
-              </label>
-              <div className="network-legend" aria-label="How strength reads"><span>35 · PIPELINE</span><span>60 · REACH</span><span>−4 A YEAR IDLE</span></div>
-              {pipelines.length === 0 ? (
-                <p>No relationships yet. Sign from a state, or put the coordinator on one.</p>
-              ) : (
-                <div className="pipeline-card-grid">
-                  {visiblePipelines.map((pipe) => (
-                    <article className="pipeline-card" key={pipe.state}>
-                      <span><small>{pipe.source}</small><strong>{pipe.state}</strong></span>
-                      <b>{pipelineLabel(pipe.strength)}</b>
-                      <i><em style={{ width: `${pipe.strength}%` }} /></i>
-                      <small>{pipe.strength}/100{pipe.signings > 0 ? ` · ${pipe.signings} signed` : ''}</small>
-                      <small>{pipe.strength >= PIPELINE_MIN ? 'Pipeline active' : 'Familiarity only · build to 35'}</small>
-                      {pipe.lastWorked > 0 && <small>Last signing or project: {pipe.lastWorked}</small>}
-                    </article>
-                  ))}
-                </div>
-              )}
-              {matchingPipelines.length === 0 && <p>No relationship recorded for this state.</p>}
-              {!pipelineState && pipelines.length > 8 && <button className="secondary-command tap" type="button" onClick={() => setShowAllPipelines((v) => !v)}>{showAllPipelines ? 'Show first 8 markets' : `Show all ${pipelines.length} markets`}</button>}
-            </article>
-
-            <article className="network-panel scouting-desk-panel">
-              <header><span><small>SCOUTING DESK</small><strong>{books === 0 ? 'No live reports' : `${books} live report${books === 1 ? '' : 's'}`}</strong></span><b>{dollars(SCOUT_COST)} each</b></header>
-              <div className="scouting-value-grid">
-                <span><small>1</small><strong>Buy the report</strong><em>From a program profile.</em></span>
-                <span><small>2</small><strong>Read the matchup</strong><em>Habits and tendencies · {SCOUT_DAYS} days.</em></span>
-                <span><small>3</small><strong>Build counters</strong><em>The playbook applies automatically.</em></span>
-              </div>
-            </article>
+        <div className="recruiting-footprint">
+          <section className="network-lead">
+            <small>HOME TERRITORY · {team.def.state}</small>
+            <strong>{live} active pipeline{live === 1 ? '' : 's'}</strong>
+            <em>{pipelines.length} known state{pipelines.length === 1 ? '' : 's'} · {signed} pipeline signing{signed === 1 ? '' : 's'}</em>
           </section>
-        </>
+
+          {/* Geography, which is what a footprint is. The regions are the
+              game's own — Region is the conference — so the map is not a new
+              taxonomy, it is the one recruiting already runs on. */}
+          <div className="network-map-head">
+            <h4>Your recruiting footprint</h4>
+            <button
+              type="button" className="network-map-toggle tap"
+              onClick={() => setShowAllPipelines((v) => { if (v) setPipelineState(''); return !v; })}
+            >{showAllPipelines ? 'Known states' : 'Explore regions'}</button>
+          </div>
+          <div className="network-region-grid" aria-label="Recruiting regions">
+            {Object.entries(STATES_BY_REGION).map(([region, states]) => {
+              const shown = showAllPipelines
+                ? states
+                : states.filter((state) => pipelineStates.has(state) || state === selectedState);
+              if (shown.length === 0) return null;
+              return (
+                <section className="network-region" key={region}>
+                  <h5>{region}</h5>
+                  <div>
+                    {shown.map((state) => {
+                      const strength = pipelineStrength(economy, state, team.def.state);
+                      const known = pipelineStates.has(state);
+                      // Three fills, not one: the tile recovers the four-tier
+                      // label the cards used to print on every market.
+                      const tier = strength >= 60 ? ' reach' : strength >= PIPELINE_MIN ? ' established' : '';
+                      return (
+                        <button
+                          type="button" key={state}
+                          className={`network-state tap${tier}${state === selectedState ? ' selected' : ''}`}
+                          aria-pressed={state === selectedState}
+                          aria-label={`${state}, ${strength} of 100, ${pipelineLabel(strength)}`}
+                          onClick={() => { setPipelineState(state); setProjectState(state); }}
+                        >
+                          <b>{state}</b>
+                          <small>{known || strength > 0 ? strength : ''}</small>
+                          {state === team.def.state && <HomeIcon aria-hidden="true" />}
+                          {state !== team.def.state && state === coordinator?.pipelineState && <PersonIcon aria-hidden="true" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+          <div className="network-legend" aria-label="How strength reads"><span>35 · PIPELINE</span><span>60 · REACH</span><span>−4 A YEAR IDLE</span></div>
+
+          {/* One state at a time, in full: where it sits against both
+              thresholds, what it has produced, and the one thing to do about it. */}
+          <section className="network-state-detail" aria-label={`${selectedState} relationship`}>
+            <header>
+              <span><small>{REGION_OF_STATE[selectedState] ?? ''}{selected?.source ? ` · ${selected.source}` : ' · UNEXPLORED'}</small><strong>{selectedState}</strong></span>
+              <span><b>{selectedStrength}<small>/100</small></b><i className={selectedStrength >= PIPELINE_MIN ? 'on' : ''}>{pipelineLabel(selectedStrength)}</i></span>
+            </header>
+            <div
+              className="network-strength-meter" role="progressbar"
+              aria-label={`${selectedState} recruiting strength`}
+              aria-valuemin={0} aria-valuemax={100} aria-valuenow={selectedStrength}
+            >
+              <i style={{ width: `${selectedStrength}%` }} />
+              <b style={{ left: `${PIPELINE_MIN}%` }} />
+              <b style={{ left: '60%' }} />
+            </div>
+            <div className="network-strength-scale"><span>UNFAMILIAR</span><span>{PIPELINE_MIN} · PIPELINE</span><span>60 · REACH</span></div>
+            <div className="network-state-facts">
+              <span><strong>{selected?.signings ?? 0}</strong><small>SIGNED FROM HERE</small></span>
+              <span><strong>{selected?.lastWorked ? selected.lastWorked : '—'}</strong><small>LAST SIGNING / PROJECT</small></span>
+            </div>
+            {/* One CTA on the screen, and it carries the state you were looking
+                at into the coordinator's project setup. */}
+            <button
+              className="secondary-command tap" type="button"
+              onClick={() => { setProjectState(selectedState); setView('staff'); openCoach('recruiting'); }}
+            >{!coordinator ? 'Hire a recruiting coordinator'
+              : project ? 'View coordinator’s work' : `Plan work in ${selectedState}`}</button>
+          </section>
+
+          {/* The coordinator, and how far along he is — which used to require
+              leaving for the staff room to find out. */}
+          <section className="network-coordinator">
+            <div>
+              <span className="staff-role-mark" aria-hidden="true"><GlobeIcon /></span>
+              <span><small>RECRUITING COORDINATOR</small><strong>{coordinator?.name ?? 'Open position'}</strong><small>{coordinator ? status.label : 'Build relationships beyond home'}</small></span>
+            </div>
+            {coordinator && project && <>
+              <b>{PROJECT_LABEL[project.kind]}{project.state ? ` · ${project.state}` : ''}</b>
+              <span className="staff-mini-progress" aria-hidden="true"><i style={{ width: `${status.progress}%` }} /></span>
+              <em>{project.weeksLeft} week{project.weeksLeft === 1 ? '' : 's'} remaining</em>
+            </>}
+            {coordinator && !project && (
+              <label className="staff-state-select">
+                <span><b>Next assignment</b><small>{pipelineStrength(economy, projectState, team.def.state)}/100 strength</small></span>
+                <select
+                  aria-label="Assignment state" disabled={!runsStaff} value={projectState}
+                  onChange={(e) => { setProjectState(e.currentTarget.value); setPipelineState(e.currentTarget.value); }}
+                >{ALL_STATES.map((st) => <option key={st} value={st}>{st}</option>)}</select>
+              </label>
+            )}
+          </section>
+
+          {/* The desk keeps its live count and its price out where a spend can
+              be weighed; only the how-it-works prose folds away. */}
+          <section className="network-scouting">
+            <header><span><small>SCOUTING DESK</small><strong>{books === 0 ? 'No live reports' : `${books} live report${books === 1 ? '' : 's'}`}</strong></span><b>{dollars(SCOUT_COST)} each · {SCOUT_DAYS} days</b></header>
+            <details className="network-explainer">
+              <summary>HOW A REPORT WORKS</summary>
+              <p>A report reveals an opponent's habits and tendencies, and the playbook applies the counters automatically. Buy one from a program's own profile.</p>
+            </details>
+          </section>
+        </div>
         );
       })()}
     </>
@@ -1616,20 +1708,6 @@ function HallSheet() {
  *
  * Team and coaching rows are skipped: they are not his.
  */
-function marksHeldBy(season: SeasonState, id: PlayerId): string[] {
-  const out: string[] = [];
-  for (const [key, mark] of Object.entries(season.records ?? {})) {
-    if (mark.id !== id) continue;
-    const spec = RECORDS[key as RecordKey];
-    const prefix = spec.group === 'game' ? 'GAME'
-      : spec.group === 'season' ? 'SEASON'
-      : spec.group === 'career' ? 'CAREER'
-      : null;
-    if (prefix === null) continue;
-    out.push(`${prefix} ${spec.label}`);
-  }
-  return out;
-}
 
 /** One man, in: a seal, his name, his years, his line, and what he still holds. */
 function Plaque(

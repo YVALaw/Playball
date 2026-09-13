@@ -48,7 +48,8 @@ import { Avatar, teamColour } from '../Avatar.js';
 import { SewingPinIcon } from '@radix-ui/react-icons';
 import { captainOf } from '../../engine/captains.js';
 import { handles } from '../../state/depth.js';
-import { proCareer, type AlumnusNote, type Moment } from '../../engine/legacy.js';
+import { proCareer, COACHING_LEVEL, type AlumnusNote, type Moment } from '../../engine/legacy.js';
+import { collegeSummary, marksHeldBy } from '../ProgramBits.js';
 import {
   CaptainC, DataTable, FieldNote, Metric, ModuleIntro, SectionHeading, Segmented,
 } from '../components/Kit.js';
@@ -175,6 +176,11 @@ const LIVE_SHEETS: Sheet[] = ['overview', 'ratings', 'stats', 'legacy'];
  * record book.
  */
 const ALUMNI_SHEETS: Sheet[] = ['overview', 'legacy'];
+// A departed man's second tab is his season-by-season college line. LEGACY is
+// the live card's word for a different thing and said nothing about this one.
+const ALUMNI_SHEET_LABEL: Record<Sheet, string> = {
+  ...SHEET_LABEL, overview: 'CAREER', legacy: 'COLLEGE SEASONS',
+};
 
 // ---------------------------------------------------------------------------
 
@@ -504,6 +510,8 @@ function Alumnus(
     onSheet: (s: Sheet) => void;
   },
 ) {
+  const season = useDynasty((s) => s.season);
+  const year = useDynasty((s) => s.year);
   const last = career[career.length - 1];
   // A departure notice survives one offseason, so a man who left four years ago
   // has none — and the record book would name him "Former player" on a screen
@@ -514,11 +522,14 @@ function Alumnus(
   const name = gone?.name ?? note?.name ?? (career.length > 0 ? careerName(id, career) : 'Former player');
   const abbr = gone?.teamAbbr ?? note?.teamAbbr ?? last?.team ?? '';
   const classYear = gone?.classYear ?? note?.classYear ?? last?.classYear ?? '—';
-  const drafted = (gone?.reason ?? note?.reason) === 'drafted';
+  const reason = gone?.reason ?? note?.reason;
+  const drafted = reason === 'drafted';
+  const round = gone?.round ?? note?.round;
+  const overall = gone?.overall ?? note?.overall;
   // A walk-on did not graduate and was not drafted — his one season was up.
   // Saying "Graduated" over a freshman who was on the roster for a year is the
   // kind of small lie that makes a player distrust every other line on a card.
-  const walkedOn = (gone?.reason ?? note?.reason) === 'walk-on';
+  const walkedOn = reason === 'walk-on';
 
   // The record book knows what he was without knowing what position he played:
   // a career line carries at bats or innings, so the shape of his years is the
@@ -526,50 +537,144 @@ function Alumnus(
   const wasPitcher = career.some((y) => (y.outs ?? 0) > 0) || !career.some((y) => (y.ab ?? 0) > 0);
   const active = ALUMNI_SHEETS.includes(sheet) ? sheet : 'overview';
 
+  /*
+    What he did here, totalled. The archive has carried these rows since the
+    book started keeping years and the card has never once added them up — you
+    had to open the seasons tab and do the arithmetic yourself.
+
+    School rows only: a transfer's other college is his record, not ours.
+  */
+  const schoolYears = abbr ? career.filter((y) => y.team === abbr) : career;
+  const summary = collegeSummary(schoolYears);
+  const role = summary.hitting && summary.pitching ? 'Two-way player'
+    : summary.pitching ? 'Pitcher' : summary.hitting ? 'Hitter' : '';
+  const span = summary.first ? `${summary.first}–${summary.last}` : '';
+
+  // Three facts the save has always held and the card has never shown.
+  const hall = season?.hall?.find((m) => String(m.id) === id);
+  const marks = season ? marksHeldBy(season, id) : [];
+  const pro = note ? proCareer(id, note, year) : [];
+  const showYears = pro.filter((r) => r.level === 'THE SHOW').length;
+  const current = pro[pro.length - 1];
+  const [half, setHalf] = useState<'bat' | 'arm'>(wasPitcher ? 'arm' : 'bat');
+  const twoWay = summary.hitting && summary.pitching;
+
   return (
-    <main className="profile-workspace">
-      {/* No hero. There is no rating left to draw a face against and no team
-          colour to draw it in — the departure notice is what is left of him,
-          so the card opens with that rather than with an empty portrait. */}
-      <ModuleIntro
-        kicker={`FORMER PLAYER${abbr ? ` · ${abbr}` : ''}`}
-        title={name}
-        text="What the game keeps of him now is the record book."
-      />
+    <main className="profile-workspace alumnus-profile">
+      {/* Still no portrait: there is no rating left to draw a face against and
+          no team colour to draw it in. But the chips carry what the eight-row
+          panel used to spell out, and they carry it above the fold. */}
+      <section className={`alumnus-head${hall ? ' is-legend' : ''}`}>
+        <small>{abbr ? `${abbr} · ` : ''}PROGRAM ALUMNUS</small>
+        <h2>{name}</h2>
+        <p>{[role, span].filter(Boolean).join(' · ') || 'College career archive'}</p>
+        <span className="alumnus-chips">
+          {hall && <i>Hall of Fame · {hall.year}</i>}
+          {marks.length > 0 && <i>National record holder</i>}
+          <i className="quiet">{(gone || note)
+            ? (drafted ? `Drafted${round !== undefined ? ` · Round ${round}` : ''}`
+              : walkedOn ? 'Walk-on, year up' : 'Graduated')
+            : 'Departed'}</i>
+        </span>
+      </section>
       <Segmented
         label="Player card section"
         value={active}
         onChange={onSheet}
-        options={ALUMNI_SHEETS.map((k) => ({ value: k, label: SHEET_LABEL[k] }))}
+        options={ALUMNI_SHEETS.map((k) => ({ value: k, label: ALUMNI_SHEET_LABEL[k] }))}
       />
       {active === 'overview' && (
-        <Panel>
-          <Stat k="STATUS" v={(gone || note)
-            ? (drafted ? 'Drafted' : walkedOn ? 'Walk-on, year up' : 'Graduated')
-            : 'Departed'} />
-          <Stat k="LAST CLASS" v={classYear in CLASS_NAME
-            ? CLASS_NAME[classYear as ClassYear] : classYear} />
-          {/* The record book keeps no age, so this is only knowable while
-              the departure notice survives — one offseason. */}
-          {gone?.age !== undefined && <Stat k="AGE WHEN HE LEFT" v={String(gone.age)} />}
-          {abbr && <Stat k="PROGRAM" v={abbr} />}
-          {drafted && (gone?.round ?? note?.round) !== undefined && (
-            <Stat k="DRAFT ROUND" v={`Round ${gone?.round ?? note?.round}`} />
+        <>
+          <SectionHeading
+            kicker={abbr ? `AT ${abbr}` : 'COLLEGE CAREER'}
+            title={`${career.length} recorded season${career.length === 1 ? '' : 's'}`}
+          />
+          {summary.hitting && (
+            <div className="hall-summary">
+              <span><small>AVERAGE</small><strong>{summary.average}</strong></span>
+              <span><small>HOME RUNS</small><strong>{summary.hr}</strong></span>
+              <span><small>RBI</small><strong>{summary.rbi}</strong></span>
+            </div>
           )}
-          {(gone?.overall ?? note?.overall) !== undefined && (
-            <Stat k="OVERALL WHEN HE LEFT" v={String(gone?.overall ?? note?.overall)} />
+          {summary.pitching && (
+            <div className="hall-summary">
+              <span><small>ERA</small><strong>{summary.era}</strong></span>
+              <span><small>STRIKEOUTS</small><strong>{summary.k}</strong></span>
+              <span><small>INNINGS</small><strong>{summary.innings}</strong></span>
+            </div>
           )}
-          <Stat k="SEASONS ON RECORD" v={String(career.length)} last />
-        </Panel>
+          {!summary.hitting && !summary.pitching && (
+            <p className="alumnus-note">The book was not keeping statistics while he was here.</p>
+          )}
+
+          {/* Lead with the result. The year-by-year rows are the detail. */}
+          <section className="alumnus-next">
+            <small>BEYOND CAMPUS</small>
+            <strong>{showYears > 0 ? `${showYears} season${showYears === 1 ? '' : 's'} in The Show`
+              : current?.level === COACHING_LEVEL ? 'Coaching now'
+                : current?.level ?? (drafted ? 'His professional career begins next season' : 'His playing career ended in June')}</strong>
+          </section>
+          {pro.length > 0 && (
+            <details className="alumnus-fold">
+              <summary>Life after college · year by year</summary>
+              <ProYears id={id} />
+            </details>
+          )}
+
+          {(hall || marks.length > 0) && <SectionHeading kicker="HONORS" title="What he left behind" />}
+          {hall && (
+            <div className="alumnus-plaque">
+              <span className="hall-plaque-seal" aria-hidden="true">{hall.pitcher ? 'P' : 'H'}</span>
+              <span className="hall-plaque-body">
+                <strong>Program Hall of Fame · {hall.year}</strong>
+                <small>{hall.first}–{hall.last}{hall.teams ? ` · ${hall.teams}` : ''}</small>
+                <em>{hall.line}</em>
+              </span>
+            </div>
+          )}
+          {marks.length > 0 && (
+            <div className="alumnus-marks">
+              <small>STILL HOLDS</small>
+              {marks.map((mark) => <i key={mark}>{mark}</i>)}
+            </div>
+          )}
+          <AwardCase id={id} />
+
+          <SignatureMoments id={id} />
+
+          <details className="alumnus-fold">
+            <summary>Player background</summary>
+            <div className="program-record-line"><span>LAST CLASS</span><strong>{classYear in CLASS_NAME
+              ? CLASS_NAME[classYear as ClassYear] : classYear}</strong></div>
+            {overall !== undefined && (
+              <div className="program-record-line"><span>OVERALL WHEN HE LEFT</span><strong>{overall}</strong></div>
+            )}
+            {/* The record book keeps no age, so this is only knowable while
+                the departure notice survives — one offseason. */}
+            {gone?.age !== undefined && (
+              <div className="program-record-line"><span>AGE WHEN HE LEFT</span><strong>{gone.age}</strong></div>
+            )}
+          </details>
+        </>
       )}
-      {active === 'overview' && <ProYears id={id} />}
-      {active === 'overview' && <SignatureMoments id={id} />}
       {/* The alumnus keeps the same timeline his card had, because the years
           are the only thing left of him. `Career` is passed his archive
           directly: he is on nobody's roster, so there is no live row and no
-          owner to look one up against. */}
+          owner to look one up against. A two-way man keeps both halves — the
+          old single boolean printed one of his two careers and dropped the
+          other on the floor. */}
       {active === 'legacy' && (
-        <AlumnusYears years={career} isPitcher={wasPitcher} />
+        <>
+          {twoWay && (
+            <Segmented<'bat' | 'arm'>
+              label="Career half"
+              value={half}
+              onChange={setHalf}
+              options={[{ value: 'bat', label: 'BATTING' }, { value: 'arm', label: 'PITCHING' }]}
+            />
+          )}
+          <AlumnusYears years={career} isPitcher={twoWay ? half === 'arm' : wasPitcher} />
+        </>
       )}
     </main>
   );

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { CheckIcon, ChevronRightIcon, LockClosedIcon } from '@radix-ui/react-icons';
+import { CheckIcon, ChevronRightIcon, GlobeIcon, LockClosedIcon } from '@radix-ui/react-icons';
+import { Avatar } from './Avatar.js';
 import { ALL_STATES } from '../data/schools.js';
 import {
   BUILDINGS, DIRECTIVE_LABEL, PROJECT_LABEL, PIPELINE_MIN, dollars, facilityLevel,
@@ -111,23 +112,61 @@ export function StaffWorkPanel({ team, seat, initialState, onFacility }: {
 
     <section className="staff-work-section">
       <header className="staff-section-title"><span><small>TIME-LIMITED</small><h3>{project ? 'Current project' : 'Assign a project'}</h3></span><span className="staff-status-tag">{project ? status.label : `${weeksAvailable}w available`}</span></header>
-      {project ? <>
+      {project ? (() => {
+        /*
+          A project is about a man, or about a state — so the subject leads and
+          the kind of work is the eyebrow under it.
+        */
+        const subject = project.state ?? (project.playerId
+          ? activeTarget?.name ?? 'Player left the roster'
+          : `${project.targetIds?.length ?? project.targetCount ?? 0} players`);
+        const kindLine = project.state ? `${PROJECT_LABEL[project.kind]} · recruiting territory`
+          : project.playerId ? PROJECT_LABEL[project.kind]
+            : `${PROJECT_LABEL[project.kind]} · group project`;
+        const focusNeeded = Math.ceil(project.weeksTotal * .6);
+        /*
+          Once the weeks left cannot carry alignedWeeks to the threshold, the
+          focus bonus is arithmetically gone — the engine decides it with
+          `alignedWeeks >= ceil(weeksTotal * 0.6)` and alignedWeeks only moves
+          on a matching week. Advertising the high end after that point is a
+          number the card cannot deliver, sitting next to a FOCUS WEEKS tile
+          that already says so.
+        */
+        const focusReachable = alignedWeeks + project.weeksLeft >= focusNeeded;
+        const liveStrength = project.state
+          ? pipelineStrength(economy, project.state, team.def.state) : 0;
+        const lo = seat === 'recruiting'
+          ? pipelineProjectGain(economy, project.kind, liveStrength, false) : PROJECT_GAIN;
+        const hi = seat === 'recruiting'
+          ? pipelineProjectGain(economy, project.kind, liveStrength, true) : PROJECT_FOCUS_GAIN;
+        const top = focusReachable ? hi : lo;
+        // A stateless legacy recruiting project earns nothing at all in the
+        // engine, so it gets no promise here either.
+        const showGain = seat !== 'recruiting' || !!project.state;
+        return <>
         <div className="staff-active-project" role="status">
-          <strong>{PROJECT_LABEL[project.kind]}</strong>
-          <span>{project.state ?? (project.playerId
-            ? activeTarget?.name ?? 'Player left the roster'
-            : `${project.targetIds?.length ?? project.targetCount ?? 0} players · Group project`)}</span>
+          <div className="staff-project-person">
+            {project.playerId ? <Avatar id={project.playerId} team={team.def.abbr} size={40} />
+              : project.state ? <GlobeIcon aria-hidden="true" /> : null}
+            <span><strong>{subject}</strong><small>{kindLine}</small></span>
+          </div>
           <div className="staff-live-progress"><div role="progressbar" aria-label="Project progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={status.progress}><i style={{ width: `${status.progress}%` }} /></div><b>{project.weeksLeft}w left</b></div>
           <div className="staff-project-facts">
-            <span><small>FOCUS WEEKS</small><b>{alignedWeeks} / {Math.ceil(project.weeksTotal * .6)}</b></span>
+            {showGain && <span><small>POTENTIAL GAIN</small><b>+{lo === top ? lo : `${lo}–${top}`}<em>{PROJECT_ATTRIBUTE[project.kind]}{seat === 'recruiting'
+              ? ` · ${liveStrength}/100 now` : ' · on success, up to 99'}</em></b></span>}
+            <span><small>FOCUS WEEKS</small><b>{alignedWeeks} / {focusNeeded}</b></span>
             {project.playerId && <span><small>SUCCESS CHANCE</small><b>{activeOdds === null ? '—' : `${Math.round(activeOdds * 100)}%`}</b></span>}
           </div>
           <p className="staff-work-note">{level < 1 ? `${facility.label} required to resume.` : weeksAvailable === 0 ? 'Resumes next recruiting season.' : 'Advances after each recruiting week.'}</p>
-          <p className="staff-work-note">Bonus focus: {DIRECTIVE_LABEL[PROJECT_FOCUS[project.kind]]}.</p>
+          <details className="staff-work-details">
+            <summary>Focus bonus · {DIRECTIVE_LABEL[PROJECT_FOCUS[project.kind]]}</summary>
+            <p className="staff-work-note">Keep {DIRECTIVE_LABEL[PROJECT_FOCUS[project.kind]]} focus for {focusNeeded} of {project.weeksTotal} weeks to earn the higher gain.{focusReachable ? '' : ` Only ${project.weeksLeft} week${project.weeksLeft === 1 ? '' : 's'} remain, so the bonus is out of reach for this project.`}</p>
+          </details>
         </div>
         {level < 1 && <button type="button" className="secondary-command tap" onClick={() => onFacility(facility.key)}>Open {facility.label}</button>}
         {canManage && <Confirmable className="staff-cancel-project tap" idle="Cancel project" armed="Confirm cancel · progress will be lost" onConfirm={() => cancel(seat)} />}
-      </> : level < 1 ? <button type="button" className="staff-facility-door tap" onClick={() => onFacility(facility.key)}>
+        </>;
+      })() : level < 1 ? <button type="button" className="staff-facility-door tap" onClick={() => onFacility(facility.key)}>
         <LockClosedIcon aria-hidden="true" /><span><small>UNLOCK PROJECTS</small><strong>Build {facility.label}</strong><small>{dollars(facilityUpgradeCost(facility.key, 1))}</small></span><ChevronRightIcon aria-hidden="true" />
       </button> : <>
         {seat === 'recruiting' && <label className="staff-state-select"><span><b>1. Choose a state</b><small>{strength}/100 strength</small></span>

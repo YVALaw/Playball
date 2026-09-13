@@ -9,6 +9,58 @@
 // that depict round things.
 
 import { FACILITY_MAX_LEVEL, type Building } from '../engine/economy.js';
+import { RECORDS, type RecordKey } from '../engine/records.js';
+import type { CareerYear, SeasonState } from '../engine/season.js';
+import type { PlayerId } from '../engine/types.js';
+import { pct } from './format.js';
+
+/**
+ * What the archive kept of a college career, and nothing more.
+ *
+ * A missing statistic stays missing: a man whose rows carry no at bats gets an
+ * em dash, never a .000, because a zero here reads as a fact about him rather
+ * than about the save he was written into. ERA and innings are real baseball —
+ * earned runs over twenty-seven outs, and outs printed as innings-point-thirds.
+ */
+export function collegeSummary(years: readonly CareerYear[]) {
+  const sum = (key: keyof CareerYear) => years
+    .reduce((n, y) => n + (typeof y[key] === 'number' ? y[key] as number : 0), 0);
+  const ab = sum('ab'), h = sum('h'), outs = sum('outs'), er = sum('er');
+  return {
+    first: years.length ? Math.min(...years.map((y) => y.year)) : undefined,
+    last: years.length ? Math.max(...years.map((y) => y.year)) : undefined,
+    hitting: ab > 0,
+    pitching: outs > 0,
+    average: ab > 0 ? pct(h / ab) : '\u2014',
+    era: outs > 0 ? (er * 27 / outs).toFixed(2) : '\u2014',
+    h, hr: sum('hr'), rbi: sum('rbi'), k: sum('k'), w: sum('w'),
+    innings: `${Math.floor(outs / 3)}.${outs % 3}`,
+  };
+}
+
+/**
+ * The national marks one man still holds, each named by its own group.
+ *
+ * The prefix is load-bearing: a single-game home-run record and a career one
+ * are both filed under the label HOME RUNS, so an unprefixed list says the same
+ * two words twice and means different things by them. Team and coach rows are
+ * skipped — they belong to a program, not to a player.
+ */
+export function marksHeldBy(season: SeasonState, id: PlayerId): string[] {
+  const out: string[] = [];
+  for (const [key, mark] of Object.entries(season.records ?? {})) {
+    if (mark.id !== id) continue;
+    const spec = RECORDS[key as RecordKey];
+    const prefix = spec.group === 'game' ? 'GAME'
+      : spec.group === 'season' ? 'SEASON'
+        : spec.group === 'career' ? 'CAREER'
+          : spec.group === 'feat' ? 'GAME'
+            : null;
+    if (prefix === null) continue;
+    out.push(`${prefix} ${spec.label}`);
+  }
+  return out;
+}
 
 /** How far a building has come, as filled segments. */
 export function LevelTrack(

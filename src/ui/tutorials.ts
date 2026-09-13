@@ -65,7 +65,7 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
   ],
   "program-overview": [
     {
-      title: "Run your program",
+      title: "Around the program",
       body: "Manage your budget, staff, facilities, and board goals here.",
       action: "Choose a section to get started.",
     },
