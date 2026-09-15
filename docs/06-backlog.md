@@ -3624,7 +3624,8 @@ standing after moving the ground under them.
 - **Every climb figure came off a probe that signed nobody.** *(Re-run
   September 15 on the engine at `8706742`, before the stationarity pass: five
   of ten two-star careers reached Omaha, median year twelve, none won it, two
-  never made a regional. Re-run again on the stationary world is queued —
+  never made a regional. Re-run on the stationary world the same night: eight
+  of ten to Omaha, median year ten, none won it, none shut out of a regional —
   `05` §83.8.)*
   `tests/climb-probe.ts` reassembled the offseason out of engine parts, and the
   engine has no recruiting driver — `aiTargets` and `closeWeek` live in
@@ -3800,8 +3801,13 @@ would not reproduce.
 
 ### AH.2 Small, and follows from the above
 
-- **The climb probe on the stationary world.** Its last run was on the engine
-  before this pass. One command and ninety minutes.
+- ~~**The climb probe on the stationary world.**~~ **Read the same night**
+  (`05` §83.8): eight of ten two-star careers reach Omaha with the automatic
+  staff, median year ten, against five of ten before the pass; none win it in
+  either world. The floor question §P left -- whether a two-star can win it at
+  all -- now has its honest baseline: Omaha is reachable from the bottom, the
+  title is not without coaching, and that is the shape the coaching layers
+  are supposed to fill.
 - **Walk-ons are still a tenth of every roster** — 80 to 127 bats and arms
   apiece, every year — now balanced between the sides. That is the honest
   shape of a league where a class of 720 meets 96 programmes with holes by
