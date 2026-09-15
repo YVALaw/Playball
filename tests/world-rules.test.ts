@@ -25,6 +25,7 @@ import {
   PHASES, stepAfter, stepsFor, liveStep, useDynasty,
 } from '../src/state/store.js';
 import { makeRng } from '../src/engine/rng.js';
+import { reviewSeason, playerBoard, type Board } from '../src/engine/program.js';
 import { CONFERENCES } from '../src/data/schools.js';
 import type { Player } from '../src/engine/types.js';
 
@@ -306,3 +307,88 @@ describe('the rules of a world', () => {
     expect(rulesOf(useDynasty.getState().season)).toEqual(DEFAULT_RULES);
   });
 });
+
+describe('a chair that cannot be taken', () => {
+  // The verdict is still handed down — security, prestige and the message all
+  // move exactly as they would — and the two lines that turn it into a sacking
+  // or a declined renewal are the only things the switch reaches.
+  const bad = {
+    wins: 12, losses: 33, conferenceRank: 11, conferenceSize: 12,
+    wonConference: false, madeTournament: false, wonRegional: false,
+    reachedOmaha: false, wonTitle: false,
+  };
+  const coachAt = (contractYears: number, security: number) => ({
+    prestige: 40, security, tenure: 3, badRun: 0,
+    contractYears, contractLength: 4, caughtLooking: false,
+  } as unknown as Parameters<typeof reviewSeason>[0]);
+  const tenured = (): Board => ({ ...playerBoard(45, 45, 45), tenured: true });
+
+  it('is armed in a standard world', () => {
+    expect(DEFAULT_RULES.firing).toBe(true);
+  });
+
+  it('keeps a seat that has gone cold, and says so', () => {
+    const armed = reviewSeason(coachAt(3, 20), 45, 45, bad, 45);
+    const held = reviewSeason(coachAt(3, 20), 45, 45, bad, 45, tenured());
+    expect(armed.fired).toBe(true);
+    expect(held.fired).toBe(false);
+    expect(held.spared).toBe(true);
+    // Same verdict, same movement: the meeting still happened.
+    expect(held.verdict).toBe(armed.verdict);
+    expect(held.securityAfter).toBe(armed.securityAfter);
+    expect(held.prestigeAfter).toBe(armed.prestigeAfter);
+    expect(held.message).toMatch(/can do nothing about it/);
+  });
+
+  it('renews a dead deal nobody wanted to renew', () => {
+    const armed = reviewSeason(coachAt(1, 50), 45, 45, bad, 45);
+    const held = reviewSeason(coachAt(1, 50), 45, 45, bad, 45, tenured());
+    expect(armed.notRenewed).toBe(true);
+    expect(held.notRenewed).toBe(false);
+    expect(held.renewed).toBe(true);
+    expect(held.contractYears).toBeGreaterThan(0);
+    expect(held.spared).toBe(true);
+    expect(held.message).toMatch(/renewed regardless/);
+  });
+
+  it('spares nobody who did not need it', () => {
+    const held = reviewSeason(coachAt(3, 80), 45, 45, bad, 45, tenured());
+    expect(held.spared).toBe(false);
+    expect(held.fired).toBe(false);
+    expect(held.message).not.toMatch(/can do nothing|regardless/);
+  });
+
+  it('reaches the chair through the world it was opened in', () => {
+    useDynasty.getState().start(4242, 0, undefined, 'full', undefined, false, under({ firing: false }));
+    // The same cold seat store.test.ts uses to prove a sacking lands.
+    useDynasty.setState({
+      coach: { ...useDynasty.getState().coach, prestige: 55, security: 12, tenure: 4 },
+    });
+    useDynasty.getState().settleSeason();
+    const review = useDynasty.getState().lastReview;
+    expect(review).not.toBeNull();
+    expect(review?.fired).toBe(false);
+    expect(review?.spared).toBe(true);
+    expect(useDynasty.getState().jobSearch).toBe(false);
+  });
+
+  it('still lands the sacking in a standard world', () => {
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({
+      coach: { ...useDynasty.getState().coach, prestige: 55, security: 12, tenure: 4 },
+    });
+    useDynasty.getState().settleSeason();
+    expect(useDynasty.getState().lastReview?.fired).toBe(true);
+    expect(useDynasty.getState().lastReview?.spared).toBe(false);
+  });
+
+  it('loads a save from before the switch with the board still armed', () => {
+    const s = world(4242, under({ injuries: 'off' }));
+    delete (s.rules as Partial<SeasonRules>).firing;
+    const back = fromPortable(JSON.parse(JSON.stringify(toPortable(s), (_k, v) =>
+      (v instanceof Map ? [...v.entries()] : v))) as never);
+    expect(rulesOf(back).firing).toBe(true);
+    expect(rulesOf(back)).toEqual(under({ injuries: 'off' }));
+  });
+});
+

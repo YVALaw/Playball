@@ -130,7 +130,8 @@ export const seasonLength = (config: SeasonConfig): number =>
  * deliberately absent from the catalogue there.
  *
  * So this is that other thing. Every rule below changes the simulation, for all
- * ninety-six programs at once, and none of them could be a preference.
+ * ninety-six programs at once, and none of them could be a preference — with
+ * one exception argued at its own field: `firing` reaches a single chair.
  *
  * **They are fixed for the life of a career.** A world whose rules moved would
  * make its own record book meaningless — an era with injuries off is not
@@ -154,6 +155,21 @@ export interface SeasonRules {
   poaching: boolean;
   /** How long the regular season is. See `SEASON_SPANS`. */
   length: 'short' | 'standard' | 'long';
+  /**
+   * Whether the board can end your tenure. Off, the meeting still happens —
+   * the verdict is handed down, security and prestige still move, the seat
+   * still goes warm — but nobody in the room can act on it: a deal that runs
+   * out is renewed, and a seat that has gone cold is kept (`Board.tenured`).
+   *
+   * The one rule here that is about your chair rather than the world's, and
+   * the only one the other ninety-five programs do not share: their carousel
+   * keeps turning, because a job market in which nobody ever loses a job is
+   * not a market. It lives here rather than in the depth catalogue because it
+   * changes what happens to you, not what you are asked; and it is chosen
+   * once with the rest because a career that could flip it on the morning of
+   * a bad review would not be a career with a board in it.
+   */
+  firing: boolean;
 }
 
 /** Every rule at the value the game has always played by. */
@@ -163,6 +179,7 @@ export const DEFAULT_RULES: SeasonRules = {
   realignment: true,
   poaching: true,
   length: 'standard',
+  firing: true,
 };
 
 /**

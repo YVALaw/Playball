@@ -251,7 +251,7 @@
 .program-trend-head em { color:var(--dim); font:700 calc(6.7px * var(--ts)) var(--mono); font-style:normal; letter-spacing:.1em; }
 .program-trend-bars { display:flex; align-items:flex-end; gap:6px; }
 .program-trend-bars > div { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; }
-.program-trend-bars strong { font:800 calc(10px * var(--ts)) var(--display); color:var(--dim); }
+.program-trend-bars strong { font:800 calc(10px * var(--ts)) var(--display); color:var(--dim); white-space:nowrap; font-variant-numeric:tabular-nums; }
 .program-trend-bars small { margin-top:4px; color:var(--dim); font:500 calc(7px * var(--ts)) var(--mono); }
 .program-trend-bars > div > span {
   display:flex; align-items:flex-end; width:100%; height:calc(52px * var(--ts));
@@ -297,11 +297,6 @@
 .program-launch-levels { grid-column:1/-1; display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:7px; }
 .program-launch-levels > span { display:flex; align-items:center; gap:5px; color:var(--dim); font:700 calc(7px * var(--ts)) var(--mono); }
 .program-launch-levels .program-level-track i { width:9px; }
-
-/* The head coach reads as a person, so his row carries his face. */
-.program-career-row.is-coach { background:var(--soft); gap:10px; }
-.program-career-row.is-coach > span { flex:1; }
-.program-career-row.is-coach > svg:first-child { flex:none; }
 
 /* --- Facilities ---------------------------------------------------------- */
 /* A drafting elevation per specialty, drawn in the accent so it follows the
@@ -417,27 +412,37 @@
 }
 
 /* --- A departed player's card --------------------------------------------- */
-/* Still no portrait — there is no rating left to draw a face against. The
-   chips carry what eight label/value rows used to spell out, above the fold. */
+/* The plaque. Name on the left, his college line top right beside it, what he
+   left behind as chips underneath — the shape the hall's own plaque has on the
+   Program screen, so a man reads the same from either door. Still no
+   portrait: there is no rating left to draw a face against. */
 .alumnus-head { padding:13px 12px; border:1px solid var(--line); background:var(--paper); }
 .alumnus-head.is-legend { border-left:3px solid var(--clay); }
-.alumnus-head > small { display:block; color:var(--clay); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.11em; }
-.alumnus-head > h2 { margin:6px 0 0; font:800 calc(26px * var(--ts))/1 var(--display); color:var(--ink); overflow-wrap:anywhere; }
-.alumnus-head > p { margin:6px 0 0; color:var(--dim); font:500 calc(9px * var(--ts))/1.4 var(--mono); }
+.alumnus-head-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 14px; align-items:start; }
+.alumnus-identity { min-width:0; }
+.alumnus-identity > small { display:block; color:var(--clay); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.11em; }
+.alumnus-identity > h2 { margin:6px 0 0; font:800 calc(26px * var(--ts))/1 var(--display); color:var(--ink); overflow-wrap:anywhere; }
+.alumnus-identity > p { margin:6px 0 0; color:var(--dim); font:500 calc(9px * var(--ts))/1.4 var(--mono); }
+/* Three figures to a row; a two-way man gets two rows. Right-aligned, so the
+   numbers hang off the card's edge the way a line does on a plaque. */
+.alumnus-line { display:grid; grid-template-columns:repeat(3,auto); gap:7px 12px; justify-content:end; padding-top:3px; text-align:right; }
+.alumnus-line > b { display:block; min-width:0; }
+.alumnus-line small { display:block; color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.08em; }
+.alumnus-line strong { display:block; margin-top:2px; color:var(--clay); font:800 calc(17px * var(--ts))/1 var(--display); font-variant-numeric:tabular-nums; }
 .alumnus-head .alumnus-chips { margin-top:10px; }
 .alumnus-profile > .segmented { margin-top:12px; }
-.alumnus-note { margin:0 0 12px; color:var(--dim); font:400 calc(9px * var(--ts))/1.45 var(--body); }
-.alumnus-profile .hall-summary { margin:0 0 8px; }
+.alumnus-note { margin:12px 0 0; color:var(--dim); font:400 calc(9px * var(--ts))/1.45 var(--body); }
 
-/* Lead with the result; the year-by-year rows are the detail under it. */
+/* Lead with the result; the year-by-year rows follow it, open. */
 .alumnus-next { margin:16px 0 4px; padding:12px 11px; border:1px solid var(--line); border-left:3px solid var(--clay); background:var(--wash); }
 .alumnus-next > small { display:block; color:var(--clay); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.1em; }
 .alumnus-next > strong { display:block; margin-top:5px; font:800 calc(17px * var(--ts))/1.15 var(--display); color:var(--ink); }
+.alumnus-next > em { display:block; margin-top:4px; color:var(--dim); font:500 calc(8.5px * var(--ts)) var(--mono); font-style:normal; }
 
-.alumnus-plaque { display:grid; grid-template-columns:38px minmax(0,1fr); gap:10px; padding:11px; border:1px solid var(--line); border-left:3px solid var(--clay); background:var(--paper); }
-.alumnus-marks { margin-top:8px; padding:11px; border:1px solid var(--line); background:var(--paper); }
-.alumnus-marks > small { display:block; margin-bottom:6px; color:var(--clay); font:700 calc(7px * var(--ts)) var(--mono); letter-spacing:.1em; }
-.alumnus-marks > i { display:block; color:var(--ink); font:500 calc(10px * var(--ts))/1.5 var(--mono); font-style:normal; }
+@media (max-width:360px) {
+  .alumnus-head-row { grid-template-columns:1fr; }
+  .alumnus-line { justify-content:start; text-align:left; }
+}
 
 .alumnus-fold { margin-top:10px; border-top:1px solid var(--line); }
 .alumnus-fold .program-record-line:first-of-type { border-top:0; }

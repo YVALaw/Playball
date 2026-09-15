@@ -2337,7 +2337,15 @@
 }
 .rivalry-line { color: var(--alert); font-weight: 600; }
 .rivalry-line svg { align-self: center; }
+/* The reserved stake row sat 39px between the arms and PREPARATION on a night
+   with nothing to say: 10 of margin under the arms, a 16px line, and 12 of
+   padding under it — from `.next-game > p`, which outranks `.stake-line` and
+   is why the padding above never applied here. Asked on the 15th to "reduce
+   a bit the space": the arms give up four, the row gives up five, and it is
+   still a reserved row, so the card still does not resize when the series
+   starts saying something. */
 .stake-line { color: var(--dim); }
+.next-game > .stake-line { padding-bottom: 7px; }
 
 /* ---------------------------------------------------------------------------
    The dynasty remembers — stage 13. The moments and the pro years ride the
@@ -5130,7 +5138,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 }
 .probable-arms {
   display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
-  margin: 0 12px 10px; border: 1px solid var(--line); background: var(--line);
+  margin: 0 12px 6px; border: 1px solid var(--line); background: var(--line);
 }
 .probable-arms button {
   min-width: 0; padding: 7px 8px; border: 0; background: var(--paper);

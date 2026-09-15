@@ -3739,3 +3739,25 @@ of them. The whole assignment lives in one file, by role, from three tokens.
   the next tap. Correct behaviour for a player; friction for a test drive.
   Not a bug and nothing to build — noted so the next agent budgets a
   dismissal per room rather than diagnosing dropped clicks.
+
+## AG. September 15, the second batch — what the five asks opened
+
+Written up at `05` §82. One system (firing off, §82.1) and four screen items,
+all shipped. What the batch left:
+
+- **The rules-of-the-world fold now carries one rule that is not the world's.**
+  §82.1 argues why it lives there anyway. If a second player-only switch ever
+  appears — the sack is the obvious first; a guaranteed budget or a board that
+  never changes its mandate would be the next — the fold should split into
+  "the world" and "your chair" rather than grow a second exception. **Nothing
+  to build** until there is a second one.
+- **`Review.spared` is recorded and not yet shown.** The season report prints
+  the message, which says it in words; nothing on the report or the board
+  sheet marks the year as one the rule saved. A chip on the report would be
+  the honest thing once somebody plays a tenured career and asks. **Small.**
+- **A rate rolled per-year, again.** Firing off changes how many years a
+  career lasts, so every per-career probability downstream of it — hall of
+  fame odds, the alumni-become-coaches pipeline, prestige at year thirty —
+  now has a second population it was never measured on. Nothing here is
+  wrong; §AE.2's rule applies: whoever measures a tenured career should state
+  both numbers.

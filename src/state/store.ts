@@ -4205,6 +4205,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     );
     const ask = get().boardAsk;
     if (ask) board.expectation = ask;
+    // The one rule of the world that reaches a single chair: a world opened
+    // with firing off hands this board the verdict and takes away the sack
+    // (`SeasonRules.firing`; 05 §82). The other ninety-five never see it.
+    if (!rulesOf(season).firing) board.tenured = true;
     const review = reviewSeason(
       coach, me.prestige, rosterStrength(me.team), outcome, seasonLength(season.config),
       board,

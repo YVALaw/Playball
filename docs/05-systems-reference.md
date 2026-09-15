@@ -9357,7 +9357,7 @@ continuous document: an era with injuries off is not comparable to the era
 before it, and the hall of fame, the national table and every school annal read
 across all of them. `start` stamps `season.rules` and nothing writes it again.
 
-### 70.2 The five
+### 70.2 The five — and, since September 15, a sixth that is about one chair
 
 | Rule | Answers | What moves |
 | --- | --- | --- |
@@ -9366,6 +9366,7 @@ across all of them. `start` stamps `season.rules` and nothing writes it again.
 | Realignment | on / off | `realignmentFor` at the year roll |
 | Poaching | on / off | The carousel's poach branch, and your own staff's departures |
 | Season | 45 / 34 games | `gamesPerSeries`, and the slot the midweek arm starts in |
+| Firing | on / off | Your board's two firing lines, and nothing about the other ninety-five (§82.1) |
 
 **Injuries** is a multiplier and not a second model, which matters: `off` is that
 multiplier at nought, and `hurtsToday` already returns null for a chance that
@@ -10591,3 +10592,121 @@ A note for whoever drives the browser next: at the mobile preset the pane's
 screenshot crops the right quarter of the page (563 of 750 device pixels).
 The page is fine — `clientWidth` equals `scrollWidth` — but the picture is
 not, so read computed style and take the picture for the left three-quarters.
+
+## 82. The chair that cannot be taken, and four things from the phone — **September 15 2026**
+
+Five asks in one message, the morning after the corners. One is a system; the
+other four are the sort a session finds and each took a measurement to do
+honestly.
+
+### 82.1 Firing, off
+
+*"An option that can be toggled when we are starting a new career so we can
+deactivate getting fired."* It is the sixth switch on the rules-of-the-world
+fold (`SeasonRules.firing`, default `true`), and it is the one rule there
+that is **about your chair rather than the world's**. That needed arguing,
+because §70.1 is explicit that the fold is for things that change the
+simulation for all ninety-six programs at once, and the depth catalogue is for
+what the player is asked. This is neither: it changes what happens *to* you.
+It goes on the fold anyway, for two reasons written at the field — it is
+chosen once at the start and stamped with the rest, and a career that could
+flip it on the morning of a bad review would not be a career with a board in
+it — and it reaches one chair only: the other ninety-five boards never see it,
+because a job market in which nobody ever loses a job is not a market, and the
+player's own market depends on theirs turning.
+
+The mechanism is deliberately small. `Board` gains `tenured?: boolean`, and
+`reviewSeason` keeps *whether the seat went cold* apart from *whether the
+board may act on it*: `cold` is the old sacking condition, `sacked` is
+`cold && !tenured`, and a dead deal is renewed under the renew bar when the
+board is tenured. Everything else in the meeting — the verdict, the security
+movement, the prestige, the bad-run penalty — is byte-identical either way,
+which the test pins by grading the same cold seat on both boards and comparing
+`verdict`, `securityAfter` and `prestigeAfter`. The review says what
+happened rather than hiding it: *"The board has seen enough, and can do
+nothing about it. The chair is yours — 4 more years."* and *"Out of contract
+and out of favour, and renewed regardless."* A new `Review.spared` flag
+records that the rule, not the board, is why he is still there.
+
+Two things it had to get right on the way in. **A save from before the switch
+has no `firing` field**, and `rulesOf` returns the season's own object rather
+than a copy — App.tsx's selector depends on that identity — so the field could
+not be defaulted at the reader. `fromPortable` fills a stored `rules` object
+against `DEFAULT_RULES` once, on load, and the test round-trips a world with
+the field deleted and finds the board armed. And the store wires it at exactly
+one place: `settleSeason` sets `board.tenured` off `rulesOf(season).firing`
+after the stamped expectation, so the rivals' path in `engine/rivals.ts` is
+untouched by construction. Seven tests, including the store-level one that
+reuses `store.test.ts`'s cold seat (security 12, tenure 4) and finds
+`fired: false`, `spared: true`, `jobSearch: false` in a world opened with
+firing off — and `fired: true` in a standard one.
+
+### 82.2 The alumnus card is a plaque
+
+*"The average, home runs, rbi etc should be at the top right where their name
+is — or better, remove the honors and add that to his card up top instead;
+then you can have the life after college and signature moments; also, life
+after college should not be folded."* Taken as the second reading, whole.
+
+The head card is the plaque now: identity on the left, the college line —
+AVG / HR / RBI, or ERA / K / IP, both rows for a two-way man — top right
+beside the name, and everything he left behind as chips underneath: the Hall
+of Fame year, each national record he still holds (`RECORD · CAREER HOME
+RUNS`), and the cabinet grouped by title with a count (`ALL-CONFERENCE ×3`
+rather than three chips saying the same thing), then the quiet chip for how
+he left. That is the shape the hall's own `Plaque` on the Program screen
+already had — honours chips and STILL HOLDS under the name — so the two doors
+now open on one object, which the September 13 pass had promised and only
+half delivered. The HONORS section, its plaque with the legacy sentence, the
+STILL HOLDS block and the award shelf are gone from the body; the sentence
+survives on the hall's plaque, where it was always read.
+
+The body is two things and a fold: LIFE AFTER COLLEGE — the headline it had,
+with the draft round and year under it, and the year-by-year timeline
+**open** beneath it (it was behind a `<details>`; the fold was hiding the one
+part of an alumnus that still changes after he leaves) — then SIGNATURE
+MOMENTS, then the player-background fold as before. `ProYears` takes a
+`heading` prop so the timeline can be handed over without its own section
+head, and `AwardCase` is split into `useAwardsWon` (what the case holds) and
+the shelf (how the live card shows it), so the chips and the shelf read one
+list. At 360 and under the stats drop beneath the name, left-aligned.
+
+### 82.3 The record, not the percentage
+
+The six-bar trajectory on History labelled each bar with its win percentage.
+*"Instead of win% put there their wins and losses."* The label is the record
+now — `7-3`, `5-4` — and the bar is still win percentage, because six bars
+need one scale and a record is two numbers; the head reads REG SEASON RECORD
+and the strip is labelled *Record by season*. `white-space: nowrap` and
+tabular figures on the label, because a record has a hyphen a narrow column
+would happily break on. Verified on a career with two seasons on the shelf.
+
+### 82.4 The head coach's row, and the tabs, and the gap
+
+- **The hub's head-coach row is gone.** He is in the header behind his own
+  face, and the attention card at the top of the hub already names an
+  unopened achievement, so the row under YOUR CAREER was the same door twice.
+  Board and Watchlist remain; the `is-coach` rules went with it.
+- **The TODAY / WIRE strip was "a bit big."** The shape pass had set it to 52
+  with 44px cells against the 42 it was before. It is 46 with 40px cells now —
+  measured 47/40 in the browser — a cell still taller than its label by a
+  margin a thumb can use, and a strip that no longer reads as a second header.
+- **The space between the probable arms and PREPARATION** measured 39px on a
+  night with nothing to say: 10 of margin under the arms, the reserved stake
+  row at 28. Reserved on purpose (§76: the card must not resize when the
+  series starts saying something), so the row stays; it just gets shorter.
+  The arms give up four and the row five — and the first attempt at the five
+  did nothing, because the row's padding comes from `.next-game > p`, which
+  outranks `.stake-line`. The rule that wins is `.next-game > .stake-line`,
+  and the gap is **30** with the warnings band closed.
+
+### 82.5 Verified
+
+TypeScript clean; the full suite, with the seven new rules tests. Driven at
+375×812: the strip and the gap by computed style; the hub's five rows (History,
+Alumni, Hall of Fame, Board, Watchlist — no coach); the trajectory on a career
+carried two seasons forward from the console (`window.store`: `simWeek`,
+`settleSeason`, `rollYear`), reading `7-3` and `5-4` off the bars; the new
+FIRING row on the New Career fold. The alumnus plaque was driven on the same
+career once an offseason had been walked through the draft, which is the only
+way a save acquires an alumnus.

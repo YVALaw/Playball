@@ -994,6 +994,13 @@ export interface Board {
    * culture says otherwise — see `sackBarFor`.
    */
   sackAt: number;
+  /**
+   * The board cannot end the tenure. The verdict, the security and the
+   * prestige are all still read; the two lines that turn them into a sacking
+   * or a declined renewal are not. Set from `SeasonRules.firing`, and only
+   * ever on the player's board — see that field for why.
+   */
+  tenured?: boolean;
 }
 
 /**
@@ -1954,6 +1961,11 @@ export interface Review {
   fired: boolean;
   /** Ran out the deal without convincing anyone. Not the same as being sacked. */
   notRenewed: boolean;
+  /**
+   * The board would have ended the tenure and could not — a cold seat kept,
+   * or a dead deal renewed — because the world was opened with firing off.
+   */
+  spared: boolean;
   /** Bad seasons in a row, this one included. Zero after any acceptable year. */
   badRun: number;
   /** What the run cost his standing on top of the season. Zero on the first. */
@@ -2013,7 +2025,11 @@ export function reviewSeason(
     reason the gamble is worth taking at all.
   */
   const bar = (board.sackAt ?? SACK_BAR) + (coach.caughtLooking ? 14 : 0);
-  const sacked = securityAfter < bar && coach.tenure >= 1;
+  // Whether the seat went cold is kept apart from whether the board may act on
+  // it: a tenured coach is still told, because a board that cannot fire him is
+  // still a board, and the message below reads the difference.
+  const cold = securityAfter < bar && coach.tenure >= 1;
+  const sacked = cold && !board.tenured;
 
   // Contract management is a real cycle now, not a countdown that can stick at
   // zero. Exceeded years earn an early full extension; steady MET years can keep
@@ -2024,7 +2040,7 @@ export function reviewSeason(
   const rollingExtension = !sacked && verdict === 'met' && coach.contractYears === 2
     && securityAfter >= 55;
   const renewed = !sacked && !fullExtension && !rollingExtension && remaining === 0
-    && securityAfter >= board.renewAt;
+    && (securityAfter >= board.renewAt || board.tenured === true);
   const extended = fullExtension || rollingExtension;
   const contractYears = fullExtension ? dealLength
     : rollingExtension ? Math.min(dealLength, remaining + 1)
@@ -2035,6 +2051,10 @@ export function reviewSeason(
   const notRenewed = !sacked && !extended && !renewed && remaining === 0
     && securityAfter < board.renewAt;
   const fired = sacked || notRenewed;
+  // Kept regardless: the seat went cold, or the deal ran out under the renew
+  // bar, and the only reason he is still here is the rule of the world.
+  const spared = board.tenured === true
+    && (cold || (renewed && securityAfter < board.renewAt));
 
   // A run says something a single season cannot, so it gets said. It goes
   // *before* the ordinary lines rather than after them because "twice in a row"
@@ -2048,6 +2068,10 @@ export function reviewSeason(
     ? 'The board has seen enough. You are relieved of your duties.'
     : notRenewed
       ? 'Your contract expires and the board has chosen not to renew it.'
+      : spared
+        ? cold
+          ? `The board has seen enough, and can do nothing about it. The chair is yours${renewed ? ` — ${contractYears} more years` : ''}.${run}`
+          : `Out of contract and out of favour, and renewed regardless — ${contractYears} more years.${run}`
       : renewed
         ? `The board renews your contract — ${contractYears} more years.`
         : extended
@@ -2081,6 +2105,7 @@ export function reviewSeason(
     renewed,
     fired,
     notRenewed,
+    spared,
     badRun,
     prestigePenalty,
     message,

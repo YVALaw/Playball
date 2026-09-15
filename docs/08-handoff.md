@@ -6,16 +6,19 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 15, 2026 · **Branch:** `main` · **the corners** —
-every radius in the app now comes from three tokens through one file,
-`src/ui/rounded-ui.css`, assigned by role: control 8, card 10, dialog 14,
-meters as pills. It came from the outside `profile-and-shape-polish` pass,
-which was branched off pre-Sunday code and would have reverted the program
-pass had it been copied; the shape language was taken and the rest refused.
-Fourteen dead selectors dropped, eight program-pass surfaces and a scrim reset
-added, walked at 375×812 by computed style (`05` §81, `06` §AF). This
-**reverses** the September 13 refusal of rounded boxes, on the reporter's
-word.
+**Last session:** September 15, 2026 · **Branch:** `main` · **the corners,
+then five from the phone** — every radius in the app now comes from three
+tokens through one file, `src/ui/rounded-ui.css`, by role: control 8, card 10,
+dialog 14, meters as pills (`05` §81, `06` §AF); it **reverses** the September
+13 refusal of rounded boxes, on the reporter's word. Then the second batch
+(`05` §82, `06` §AG): **firing can be switched off at NEW CAREER** — the sixth
+rule on the fold and the one that is about your chair rather than the world,
+`Board.tenured` keeping the verdict and taking away the sack, a save from
+before it loading armed; the **alumnus card is a plaque** — his line top right
+beside his name, honours as chips, life after college open, the HONORS section
+gone; the trajectory labels **records not percentages**; the hub's head-coach
+row gone; the TODAY/WIRE strip 47/40 and the arms-to-PREPARATION gap 39 → 30,
+after the first attempt was outranked by `.next-game > p`.
 
 *Before that, September 13, small hours:* **the program pass** — the outside
 `program-visual-rework` zip's organisation taken and its skin refused. The hub

@@ -184,8 +184,12 @@ button, [role='button'], input:not([type='range']):not([type='checkbox']):not([t
   width: max(0px,calc(var(--slide-w) - 16px));
   transform: translateX(calc(var(--slide-x) + 8px));
 }
-.context-nav { height: auto; min-height: 52px; gap: 4px; padding: 4px 8px; }
-.context-nav > button { min-height: 44px; border-radius: var(--radius-control); }
+/* Reported "a bit big" at 52 on the 15th, against the 42 it was before this
+   file. 46 splits the difference: a cell still taller than its label by a
+   margin a thumb can use, and a strip that no longer reads as a second
+   header under the crest. */
+.context-nav { height: auto; min-height: 46px; gap: 4px; padding: 3px 8px; }
+.context-nav > button { min-height: 40px; border-radius: var(--radius-control); }
 .context-nav > button.active { background: var(--soft); }
 .context-nav[data-slide]::before { bottom: 4px; height: 2px; border-radius: 2px; }
 .context-nav > button.active::after { bottom: 0; height: 2px; border-radius: 2px; }
@@ -235,8 +239,7 @@ button, [role='button'], input:not([type='range']):not([type='checkbox']):not([t
    that is its own surface on the page rounds, and the grids, heads, scales and
    fact rows inside it do not.
    --------------------------------------------------------------------------- */
-:root :is(.program-trend, .network-scouting, .network-lead, .alumnus-plaque,
-  .alumnus-marks, .alumnus-next) {
+:root :is(.program-trend, .network-scouting, .network-lead, .alumnus-next) {
   border-radius: var(--radius-card);
 }
 

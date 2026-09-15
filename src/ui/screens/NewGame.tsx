@@ -736,6 +736,18 @@ const RULE_ROWS: readonly RuleRow[] = [
     at: (r) => r.length,
     set: (r, v) => ({ ...r, length: v as SeasonRules['length'] }),
   },
+  // Last, and apart: the five above are the world's, this one is your chair's.
+  // See `SeasonRules.firing` for why it is a rule of the world at all.
+  {
+    key: 'firing',
+    label: 'Firing',
+    options: [
+      { value: 'on', label: 'ON', note: 'A cold seat ends your tenure' },
+      { value: 'off', label: 'OFF', note: 'The board grades you and can never sack you' },
+    ],
+    at: (r) => (r.firing ? 'on' : 'off'),
+    set: (r, v) => ({ ...r, firing: v === 'on' }),
+  },
 ];
 
 /**
@@ -761,9 +773,9 @@ function WorldRules(
         <b>{changed === 0 ? 'EDIT' : String(changed)}</b>
       </summary>
       <p className="career-rule-note">
-        Chosen once, for the life of the career, and the same for all ninety-six
-        programs. They cannot be changed later — a record book has to be
-        comparable with itself.
+        Chosen once, for the life of the career. The first five are the same for
+        all ninety-six programs; the last is about your chair alone. None can be
+        changed later — a record book has to be comparable with itself.
       </p>
       {RULE_ROWS.map((row) => {
         const at = row.at(rules);

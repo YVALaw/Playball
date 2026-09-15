@@ -275,15 +275,10 @@ export function Program() {
         <span><strong>Board</strong><small>{waiting ? 'Review waiting' : security} · {coach.contractYears}y contract</small></span>
         <ChevronRightIcon aria-hidden="true" />
       </button>
-      <button
-        className={`program-career-row is-coach tap${unseenTrophies > 0 && waiting ? ' needs-attention' : ''}`}
-        type="button" onClick={() => setSheet('coach')}
-      >
-        <CoachPortrait look={coach.look} size={38} />
-        <span><strong>{coach.name}</strong><small>Head coach · {unseenTrophies > 0 && waiting
-          ? `${unseenTrophies} new achievement${unseenTrophies === 1 ? '' : 's'}` : security}</small></span>
-        <ChevronRightIcon aria-hidden="true" />
-      </button>
+      {/* No head-coach row. The man is already in the header behind his own
+          face, and the attention card above names an unopened achievement, so
+          a second door here was the same door twice — "it isn't needed if we
+          already have it up top," September 15. */}
       <button className="program-career-row tap" type="button" onClick={() => setSheet('watchlist')}>
         <span><strong>Watchlist</strong><small>{watch.programs.length} programs · {watch.jobs.length} jobs</small></span><ChevronRightIcon aria-hidden="true" />
       </button>

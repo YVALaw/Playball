@@ -20,7 +20,7 @@
 import { noFeats } from '../engine/achievements.js';
 import { ageFor } from '../engine/players.js';
 import { rngFromState } from '../engine/rng.js';
-import { buildSchedule, rebuildNameIndex, worldFromTeams } from '../engine/season.js';
+import { buildSchedule, DEFAULT_RULES, rebuildNameIndex, worldFromTeams } from '../engine/season.js';
 import { DEFAULT_STRATEGY, strategyFor } from '../engine/strategy.js';
 import { initialPrestige } from '../engine/program.js';
 import { seededBook } from '../engine/records.js';
@@ -57,6 +57,13 @@ export function fromPortable(p: Portable): SeasonState {
     team.strategy = { ...DEFAULT_STRATEGY, ...team.strategy };
     if (typeof t.prestige !== 'number') team.prestige = initialPrestige(team.def.prestige);
   }
+
+  // A world opened before a switch existed plays that switch at its default —
+  // the rule `rulesOf` applies to a save with no rules at all, one field down.
+  // Filled here, once, rather than read defensively at every caller, so the
+  // season's own object stays the one stable reference the selectors compare
+  // against.
+  if (p.season.rules) p.season.rules = { ...DEFAULT_RULES, ...p.season.rules };
 
   // The same rule one level down: a save written before players had ages holds
   // men whose age is simply absent, and draft eligibility reads it. Backfilled

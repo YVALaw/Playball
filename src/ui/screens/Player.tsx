@@ -559,18 +559,63 @@ function Alumnus(
   const [half, setHalf] = useState<'bat' | 'arm'>(wasPitcher ? 'arm' : 'bat');
   const twoWay = summary.hitting && summary.pitching;
 
+  // The cabinet, grouped: three All-Conference selections are one chip with a
+  // count on it, not three chips saying the same thing. Newest year kept, so
+  // a single honour still says when.
+  const honours: { title: string; count: number; year: number }[] = [];
+  for (const w of useAwardsWon(id)) {
+    const h = honours.find((x) => x.title === w.title);
+    if (h) { h.count += 1; h.year = Math.max(h.year, w.year); }
+    else honours.push({ title: w.title, count: 1, year: w.year });
+  }
+
   return (
     <main className="profile-workspace alumnus-profile">
-      {/* Still no portrait: there is no rating left to draw a face against and
-          no team colour to draw it in. But the chips carry what the eight-row
-          panel used to spell out, and they carry it above the fold. */}
+      {/*
+        The plaque. Everything the archive knows about him on one card: who he
+        was; what he hit or threw here, top right beside the name, because the
+        line is the first thing anybody reads on a plaque; and what he left
+        behind, as chips. The HONORS section this replaces sat three screens
+        down under the numbers — asked on the 15th to "remove the honors and
+        add that to his card up top instead." The hall's own plaque on the
+        Program screen carries the same chips, so the two doors open on one
+        object.
+
+        Still no portrait: there is no rating left to draw a face against and
+        no team colour to draw it in.
+      */}
       <section className={`alumnus-head${hall ? ' is-legend' : ''}`}>
-        <small>{abbr ? `${abbr} · ` : ''}PROGRAM ALUMNUS</small>
-        <h2>{name}</h2>
-        <p>{[role, span].filter(Boolean).join(' · ') || 'College career archive'}</p>
+        <div className="alumnus-head-row">
+          <span className="alumnus-identity">
+            <small>{abbr ? `${abbr} · ` : ''}PROGRAM ALUMNUS</small>
+            <h2>{name}</h2>
+            <p>{[role, span].filter(Boolean).join(' · ') || 'College career archive'}</p>
+          </span>
+          {(summary.hitting || summary.pitching) && (
+            <span className="alumnus-line" aria-label={`College totals${abbr ? ` at ${abbr}` : ''}`}>
+              {summary.hitting && (
+                <>
+                  <b><small>AVG</small><strong>{summary.average}</strong></b>
+                  <b><small>HR</small><strong>{summary.hr}</strong></b>
+                  <b><small>RBI</small><strong>{summary.rbi}</strong></b>
+                </>
+              )}
+              {summary.pitching && (
+                <>
+                  <b><small>ERA</small><strong>{summary.era}</strong></b>
+                  <b><small>K</small><strong>{summary.k}</strong></b>
+                  <b><small>IP</small><strong>{summary.innings}</strong></b>
+                </>
+              )}
+            </span>
+          )}
+        </div>
         <span className="alumnus-chips">
           {hall && <i>Hall of Fame · {hall.year}</i>}
-          {marks.length > 0 && <i>National record holder</i>}
+          {marks.map((mark) => <i key={mark}>Record · {mark}</i>)}
+          {honours.map((h) => (
+            <i key={h.title}>{h.count > 1 ? `${h.title} ×${h.count}` : `${h.title} · ${h.year}`}</i>
+          ))}
           <i className="quiet">{(gone || note)
             ? (drafted ? `Drafted${round !== undefined ? ` · Round ${round}` : ''}`
               : walkedOn ? 'Walk-on, year up' : 'Graduated')
@@ -585,60 +630,24 @@ function Alumnus(
       />
       {active === 'overview' && (
         <>
-          <SectionHeading
-            kicker={abbr ? `AT ${abbr}` : 'COLLEGE CAREER'}
-            title={`${career.length} recorded season${career.length === 1 ? '' : 's'}`}
-          />
-          {summary.hitting && (
-            <div className="hall-summary">
-              <span><small>AVERAGE</small><strong>{summary.average}</strong></span>
-              <span><small>HOME RUNS</small><strong>{summary.hr}</strong></span>
-              <span><small>RBI</small><strong>{summary.rbi}</strong></span>
-            </div>
-          )}
-          {summary.pitching && (
-            <div className="hall-summary">
-              <span><small>ERA</small><strong>{summary.era}</strong></span>
-              <span><small>STRIKEOUTS</small><strong>{summary.k}</strong></span>
-              <span><small>INNINGS</small><strong>{summary.innings}</strong></span>
-            </div>
-          )}
           {!summary.hitting && !summary.pitching && (
             <p className="alumnus-note">The book was not keeping statistics while he was here.</p>
           )}
 
-          {/* Lead with the result. The year-by-year rows are the detail. */}
+          {/* Lead with the result; the year-by-year rows follow it, open. They
+              were behind a fold until the 15th — "life after college should
+              not be folded" — and the fold was hiding the one part of an
+              alumnus that still changes after he leaves. */}
           <section className="alumnus-next">
-            <small>BEYOND CAMPUS</small>
+            <small>LIFE AFTER COLLEGE</small>
             <strong>{showYears > 0 ? `${showYears} season${showYears === 1 ? '' : 's'} in The Show`
               : current?.level === COACHING_LEVEL ? 'Coaching now'
                 : current?.level ?? (drafted ? 'His professional career begins next season' : 'His playing career ended in June')}</strong>
+            {note && pro.length > 0 && (
+              <em>{note.reason === 'drafted' ? `Round ${note.round ?? '?'}, ${note.year}` : 'After the last game'}</em>
+            )}
           </section>
-          {pro.length > 0 && (
-            <details className="alumnus-fold">
-              <summary>Life after college · year by year</summary>
-              <ProYears id={id} />
-            </details>
-          )}
-
-          {(hall || marks.length > 0) && <SectionHeading kicker="HONORS" title="What he left behind" />}
-          {hall && (
-            <div className="alumnus-plaque">
-              <span className="hall-plaque-seal" aria-hidden="true">{hall.pitcher ? 'P' : 'H'}</span>
-              <span className="hall-plaque-body">
-                <strong>Program Hall of Fame · {hall.year}</strong>
-                <small>{hall.first}–{hall.last}{hall.teams ? ` · ${hall.teams}` : ''}</small>
-                <em>{hall.line}</em>
-              </span>
-            </div>
-          )}
-          {marks.length > 0 && (
-            <div className="alumnus-marks">
-              <small>STILL HOLDS</small>
-              {marks.map((mark) => <i key={mark}>{mark}</i>)}
-            </div>
-          )}
-          <AwardCase id={id} />
+          {pro.length > 0 && <ProYears id={id} heading={false} />}
 
           <SignatureMoments id={id} />
 
@@ -685,7 +694,7 @@ function Alumnus(
  * from the one note the save keeps of a departed man. Nothing here for a man
  * who left before the book existed: the note is written the June he leaves.
  */
-function ProYears({ id }: { id: string }) {
+function ProYears({ id, heading = true }: { id: string; heading?: boolean }) {
   const alumni = useDynasty((s) => s.alumni);
   const year = useDynasty((s) => s.year);
   const note = alumni[id];
@@ -695,12 +704,16 @@ function ProYears({ id }: { id: string }) {
   const over = rows.some((r) => r.final);
   return (
     <>
-      <SectionHeading
-        kicker="THE PROFESSIONAL GAME"
-        title={note.reason === 'drafted'
-          ? `Round ${note.round ?? '?'}, ${note.year}`
-          : 'After the last game'}
-      />
+      {/* The alumnus card leads with its own LIFE AFTER COLLEGE line and
+          hands this the timeline alone; the live card still wants the head. */}
+      {heading && (
+        <SectionHeading
+          kicker="THE PROFESSIONAL GAME"
+          title={note.reason === 'drafted'
+            ? `Round ${note.round ?? '?'}, ${note.year}`
+            : 'After the last game'}
+        />
+      )}
       <section className="timeline moment-timeline">
         {rows.map((r) => (
           <div key={r.year}>
@@ -1699,7 +1712,12 @@ function SeasonRows(
  * anything new to store — and the season in progress is read live, because
  * an award won in May should not wait until the roll to appear.
  */
-function AwardCase({ id }: { id: PlayerId }) {
+/**
+ * Every award the book has his name on, newest first. The case's contents,
+ * kept apart from the case itself so the alumnus plaque can wear them as chips
+ * while the live card still shows the shelf.
+ */
+function useAwardsWon(id: PlayerId): { year: number; title: string }[] {
   const history = useDynasty((s) => s.history);
   const season = useDynasty((s) => s.season);
   const year = useDynasty((s) => s.year);
@@ -1719,6 +1737,11 @@ function AwardCase({ id }: { id: PlayerId }) {
       }
     }
   }
+  return won.sort((a, b) => b.year - a.year);
+}
+
+function AwardCase({ id }: { id: PlayerId }) {
+  const won = useAwardsWon(id);
   if (won.length === 0) return null;
 
   return (
@@ -1728,7 +1751,7 @@ function AwardCase({ id }: { id: PlayerId }) {
         title={won.length === 1 ? 'One honor' : `${won.length} honors`}
       />
       <section className="award-list">
-        {won.sort((a, b) => b.year - a.year).map((w) => (
+        {won.map((w) => (
           <div key={`${w.year}-${w.title}`}>
             <span className="award-mark">{w.year}</span>
             <span>

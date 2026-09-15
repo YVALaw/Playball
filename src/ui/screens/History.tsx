@@ -37,24 +37,28 @@ const FINISH_COLOR: Record<Finish, string> = {
 };
 
 /**
- * Six seasons of win percentage, as bars. The only thing in the archive that
- * shows a direction rather than a state.
+ * Six seasons as bars, each labelled with the record it was. The only thing in
+ * the archive that shows a direction rather than a state.
  *
- * The scale is a true 0–100, not a min/max fit: college seasons cluster in the
- * .400–.750 band and a truncated axis would turn one extra win into a cliff.
+ * The bar is win percentage, because six bars need one scale and a record is
+ * two numbers; the label is the record, because "35-21" is what a coach says
+ * and "63" is what a spreadsheet says — asked for on the 15th: "instead of
+ * win% put there their wins and losses." The scale is a true 0–100, not a
+ * min/max fit: college seasons cluster in the .400–.750 band and a truncated
+ * axis would turn one extra win into a cliff.
  */
 export function SeasonTrend({ seasons }: { seasons: readonly SchoolSeason[] }) {
   const years = [...seasons].sort((a, b) => a.year - b.year).slice(-6);
   if (years.length < 2) return null;
   return (
-    <section className="program-trend" aria-label="Win percentage by season">
-      <div className="program-trend-head"><small>PROGRAM TRAJECTORY</small><em>REG SEASON WIN %</em></div>
+    <section className="program-trend" aria-label="Record by season">
+      <div className="program-trend-head"><small>PROGRAM TRAJECTORY</small><em>REG SEASON RECORD</em></div>
       <div className="program-trend-bars">
         {years.map((s) => {
           const value = s.w + s.l > 0 ? Math.round(s.w / (s.w + s.l) * 100) : 0;
           return (
             <div key={s.year} className={s.finish === 'champion' ? 'champion' : ''}>
-              <strong>{value}</strong>
+              <strong>{s.w}-{s.l}</strong>
               <span><i style={{ height: `${value}%` }} /></span>
               <small>{s.year}</small>
             </div>
