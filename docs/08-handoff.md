@@ -21,9 +21,10 @@ moved with it (`TALENT_CENTRE`, `BOARD_MID`, the cap and draw-cost pins), a
 real fault surfaced (June re-dealt the coached card in spot order), the
 overlays got a stack (back from a letter's board is the inbox), the
 two-second freeze profiled at 35ms and would not reproduce, and the program
-pass finally has its section (§84). **Open:** whether the league should be
-defined by the world rather than the harness — the world sits eight percent
-above it — and a nine percent five-year drift on one seed of two.
+pass finally has its section (§84). **Decided the same night:** the harness stays the definition of the league
+-- the reporter's call, with the case for the world made in full; its eight
+percent is banded and watched. **Open:** a nine percent five-year drift on
+one seed of two.
 
 *Earlier the same day:* **the corners, then five from the phone** — every radius in the app now comes from three
 tokens through one file, `src/ui/rounded-ui.css`, by role: control 8, card 10,

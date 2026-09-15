@@ -10823,9 +10823,12 @@ The world also sits about eight percent above the harness in year one
 (7.26–7.39 against 6.77), where it sat four above before. That is the
 between-programmes quality spread — a sixty-eight's aged seniors stand much
 further above a twenty-four's than their freshmen did — on a convex model.
-The harness is still what the league is defined by, per `ratings.ts`; whether
-that definition should move to the world is the one open question this pass
-leaves (`06` §AH), and it is a decision, not a fix.
+The harness is still what the league is defined by, per `ratings.ts`. Whether
+that definition should move to the world was put as a decision rather than a
+fix, with the case for moving it made in full, and **decided the same night:
+it stays.** The reporter's call. The world's eight percent is recorded here,
+banded in `tests/calibration-seasons.test.ts`, and watched rather than tuned
+(`06` §AH.1).
 
 ### 83.5 Everything downstream that had been fitted to the defect
 

@@ -3783,15 +3783,19 @@ would not reproduce.
 
 ### AH.1 Decisions this opened
 
-- **What population defines the league.** `ratings.ts` fits its norms to the
-  harness — two aged quality-50 rosters — and the world now sits about eight
-  percent above it in year one (7.26–7.39 runs against 6.77), where it sat
-  four above before, because ageing widens the between-programmes spread on a
-  convex model. A career is played in the world. Moving the definition there
-  is one number (`CONTEXT.normalizer`, about +0.05) and a re-record, and the
-  argument against it is the one the file makes: the harness is what
-  `npm run calibrate` reports and what every constant was fitted to. **A
-  decision, then small.**
+- ~~**What population defines the league.**~~ **Decided September 15 2026 --
+  kept as it is.** `ratings.ts` fits its norms to the harness -- two aged
+  quality-50 rosters -- and the world now sits about eight percent above it
+  in year one (7.26-7.39 runs against 6.77), where it sat four above before,
+  because ageing widens the between-programmes spread on a convex model. The
+  case for moving the definition to the world was made in full -- a career
+  is played there, the pair is a population nobody plays either, it is a
+  day's pass -- and the reporter's call was to keep the harness as the
+  definition: it is what `npm run calibrate` reports, what every constant
+  was fitted to, and the one measurement that cannot mistake a change to
+  recruiting for a change to the engine. The world's eight percent is
+  recorded at `05` §83.4, banded, and watched. Binding until revisited
+  out loud.**
 - **The residual drift.** Seed 12161 rises nine percent over five years,
   4242 one. The census reads it as a slow symmetric rise in signed talent (the
   class ladder's mean sits two above the country's generated quality) on the
