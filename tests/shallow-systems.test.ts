@@ -155,8 +155,11 @@ describe('a staff working the portal', () => {
       the country every winter.
     */
     const donor = season.teams[6]!.team;
+    // Elite outright: a day-one roster is the one June leaves (05 s85), and
+    // a strong programme's right fielder reads 82 on it, which is what an
+    // 88-bat man came to and was refused for by the edge.
     const good = { ...donor.lineup[0]!, id: 'good' as Player['id'] } as Hitter;
-    Object.assign(good, { contact: 88, power: 88, eye: 88, speed: 70, range: 70, hands: 70, arm: 70, armAccuracy: 70, blocking: 60 });
+    Object.assign(good, { contact: 96, power: 96, eye: 96, speed: 85, range: 85, hands: 85, arm: 85, armAccuracy: 85, blocking: 75 });
     const cheap = { ...donor.bench[0]!, id: 'cheap' as Player['id'] } as Hitter;
     Object.assign(cheap, { contact: 22, power: 22, eye: 22, speed: 22, range: 22, hands: 22, arm: 22, armAccuracy: 22, blocking: 22 });
     good.pos = cheap.pos;

@@ -8,7 +8,8 @@
 //
 //   npx tsx tests/pitch-level-check.ts
 
-import { makeRng, makeTeam, resetNames } from '../src/engine/players.js';
+import { makeRng, resetNames } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { ENGINES } from '../src/engine/engines.js';
 import { LEAGUE_PITCH } from '../src/engine/ratings.js';
 import type { EngineFn, PitchResult } from '../src/engine/types.js';

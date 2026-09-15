@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { makeTeam, resetNames } from '../src/engine/players.js';
+import { resetNames } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { makeRng } from '../src/engine/rng.js';
 import { createLiveGame } from '../src/engine/liveGame.js';
 

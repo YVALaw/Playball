@@ -21,7 +21,7 @@ import {
 import { LEAGUE_BEST, yearsToBeat } from './records-probe.js';
 import { restoreCoach, type CoachState } from '../src/engine/program.js';
 import { TeamState, type GameResult } from '../src/engine/game.js';
-import { makeTeam } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { makeRng } from '../src/engine/rng.js';
 import { buildSaveFile } from '../src/state/persistence.js';
 import { toPortable, fromPortable } from '../src/state/seasonCodec.js';

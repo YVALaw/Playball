@@ -6,7 +6,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { makeRng } from '../src/engine/rng.js';
-import { makeTeam, resetNames } from '../src/engine/players.js';
+import { resetNames } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { simGame } from '../src/engine/game.js';
 import { compactReplayEvents } from '../src/engine/season.js';
 import { buildFrames } from '../src/ui/replay.js';

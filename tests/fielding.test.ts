@@ -14,7 +14,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { simGame, createHalfInning, TeamState, throwRisk } from '../src/engine/game.js';
-import { makeTeam, resetNames } from '../src/engine/players.js';
+import { resetNames } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { makeRng } from '../src/engine/rng.js';
 import {
   createSeason, simNextDay, archiveSeason, nextSeason, fieldingFor, fieldingPct,

@@ -7,7 +7,8 @@
 //
 //   npx tsx tests/parity-sweep.ts
 
-import { makeRng, makeTeam, resetNames } from '../src/engine/players.js';
+import { makeRng, resetNames } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { simGame } from '../src/engine/game.js';
 
 const N = 4000;

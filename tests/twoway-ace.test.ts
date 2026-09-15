@@ -11,7 +11,8 @@
 // reads the eight field spots plus HIM, and no spot is worn twice.
 
 import { describe, it, expect } from 'vitest';
-import { makeTwoWay, makeTeam, resetNames } from '../src/engine/players.js';
+import { makeTwoWay, resetNames } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { makeRng } from '../src/engine/rng.js';
 import { simGame } from '../src/engine/game.js';
 

@@ -56,8 +56,10 @@ describe('the best nine', () => {
   it('leaves two corner outfielders where they are rather than swapping them', () => {
     // Reported: AUTO sent the RF to LF and the LF to RF, both a rung worse.
     const team = fresh();
-    const lf = team.lineup.find((p) => p.pos === 'LF')!;
-    const rf = team.lineup.find((p) => p.pos === 'RF')!;
+    // The men whose OWN spots are the corners: a dealt card can have a right
+    // fielder adopted in left, and he is a right fielder to `bestNine`.
+    const lf = team.lineup.find((p) => (p.homePos ?? p.pos) === 'LF')!;
+    const rf = team.lineup.find((p) => (p.homePos ?? p.pos) === 'RF')!;
     // Make the left fielder the slightly better bat, the way it was found.
     rate(lf, 52);
     rate(rf, 50);
@@ -70,10 +72,13 @@ describe('the best nine', () => {
     // The second report: a left fielder six points better still swapped
     // with the right fielder, both a rung worse. A pure swap is never a gain.
     const team = fresh();
-    const lf = team.lineup.find((p) => p.pos === 'LF')!;
-    const rf = team.lineup.find((p) => p.pos === 'RF')!;
-    rate(lf, 56);
-    rate(rf, 44);
+    const lf = team.lineup.find((p) => (p.homePos ?? p.pos) === 'LF')!;
+    const rf = team.lineup.find((p) => (p.homePos ?? p.pos) === 'RF')!;
+    // Both still the corner men worth playing: a bench is six or seven men
+    // in the forties now rather than four in the twenties, and a right
+    // fielder rated under the bench is benched, which is a different test.
+    rate(lf, 70);
+    rate(rf, 58);
     const { lineup } = bestNine(team, 0);
     expect(lineup.find((p) => p.id === lf.id)!.pos).toBe('LF');
     expect(lineup.find((p) => p.id === rf.id)!.pos).toBe('RF');

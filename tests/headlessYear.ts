@@ -56,6 +56,7 @@ import { setMood, settleMood, squadRanks } from '../src/engine/morale.js';
 import { healUp } from '../src/engine/injury.js';
 import { resetWorkload } from '../src/engine/workload.js';
 import type { Player } from '../src/engine/types.js';
+import { overallOf } from '../src/engine/ratings.js';
 
 /**
  * The recruiting window, as the store runs it, with every chair on the AI.
@@ -158,7 +159,15 @@ export function headlessYear(
     the two halves are separable for exactly this reason and anything that
     removes players has to sit between them.
   */
-  departAndDevelop(season, season.rng, { userTeam: me });
+  const june = departAndDevelop(season, season.rng, { userTeam: me });
+  if (process.env.PORTAL_LOG === '1') {
+    const juniors = june.drafted.filter((d) => d.classYear !== 'SR');
+    const back = juniors.filter((d) => d.returned);
+    console.log(`  draft   seniors taken ${june.drafted.length - juniors.length}  juniors taken ${juniors.length}`
+      + `  talked back ${back.length} (${(100 * back.length / Math.max(1, juniors.length)).toFixed(0)}%)`
+      + `  gone @${(juniors.filter((d) => !d.returned).reduce((s2, d) => s2 + d.overall, 0) / Math.max(1, juniors.length - back.length)).toFixed(1)}`
+      + `  back @${(back.reduce((s2, d) => s2 + d.overall, 0) / Math.max(1, back.length)).toFixed(1)}`);
+  }
 
   // The portal, both directions, with every staff shopping it.
   const pool = openPortal(season.teams, {
@@ -175,10 +184,22 @@ export function headlessYear(
     }
   }
   // Anybody unsigned has left college baseball.
+  let gone = 0, goneBats = 0, goneArms = 0, goneSum = 0;
   for (const m of pool) {
     if (taken.has(String(m.player.id))) continue;
     const from = season.teams[m.from];
     if (from) releaseFrom(from.team, m.player.id);
+    gone += 1;
+    if (m.player.type === 'pitcher') goneArms += 1; else goneBats += 1;
+    goneSum += overallOf(m.player);
+  }
+  // PORTAL_LOG=1 prints what the portal drains from the country each June --
+  // a measurement tests/class-census.ts wants and nothing else reads.
+  if (process.env.PORTAL_LOG === '1') {
+    const movedSum = [...pool].filter((m) => taken.has(String(m.player.id)))
+      .reduce((a, m) => a + overallOf(m.player), 0);
+    console.log(`  portal  entered ${pool.length}  moved ${taken.size} @${(movedSum / Math.max(1, taken.size)).toFixed(1)}`
+      + `  gone ${gone} (${goneBats} bats, ${goneArms} arms) @${(goneSum / Math.max(1, gone)).toFixed(1)}`);
   }
 
   /*

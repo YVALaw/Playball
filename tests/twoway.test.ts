@@ -6,7 +6,8 @@
 // is what makes the fatigue crossing real and what these tests hold.
 
 import { describe, it, expect } from 'vitest';
-import { makeTwoWay, makeTeam, resetNames } from '../src/engine/players.js';
+import { makeTwoWay, resetNames } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { makeRng } from '../src/engine/rng.js';
 import { generateClass } from '../src/engine/recruiting.js';
 import { isTwoWay, uniquePlayers } from '../src/engine/types.js';

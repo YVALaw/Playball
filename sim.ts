@@ -7,7 +7,8 @@
 //   npm run sim -- platoon --n 20000       verify the handedness effect is real
 //   npm run sim -- parity --n 1000         how often does the better team win
 
-import { makeRng, makeTeam, makeHitter, makePitcher } from './src/engine/players.js';
+import { makeRng, makeHitter, makePitcher } from './src/engine/players.js';
+import { makeTeam } from './src/engine/roster.js';
 import { simGame, boxScore } from './src/engine/game.js';
 import { ENGINES } from './src/engine/engines.js';
 import { TARGETS, metrics, newTeams, runSeason } from './src/engine/calibration.js';

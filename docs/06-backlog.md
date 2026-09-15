@@ -3796,12 +3796,14 @@ would not reproduce.
   recruiting for a change to the engine. The world's eight percent is
   recorded at `05` §83.4, banded, and watched. Binding until revisited
   out loud.**
-- **The residual drift.** Seed 12161 rises nine percent over five years,
-  4242 one. The census reads it as a slow symmetric rise in signed talent (the
-  class ladder's mean sits two above the country's generated quality) on the
-  same asymmetry the harness was corrected for. Ten seasons on four seeds
-  would say whether it is a trend or a spread. **Measure before touching the
-  ladder.**
+- ~~**The residual drift.**~~ **Measured and fixed the same night** (`05` §85,
+  §AI): ten seasons on four seeds read the nine percent as noise and a three
+  percent step from a generated opening to a recruited steady state under
+  it -- a generated roster was twenty-three men drawn to the shape and a
+  recruited one is twenty-eight with walk-ons who play. The generator builds
+  the roster June leaves now, the harness plays its games the way a season
+  does, the engine was refit once, and year one sits within two percent of
+  year ten on every rate. The ladder was not touched.
 
 ### AH.2 Small, and follows from the above
 
@@ -3812,7 +3814,8 @@ would not reproduce.
   all -- now has its honest baseline: Omaha is reachable from the bottom, the
   title is not without coaching, and that is the shape the coaching layers
   are supposed to fill.
-- **Walk-ons are still a tenth of every roster** — 80 to 127 bats and arms
+- **Walk-ons are still a tenth of every roster** (and §AI.1 says whose: half
+  of them by year ten sit on the starved four-star tier) — 80 to 127 bats and arms
   apiece, every year — now balanced between the sides. That is the honest
   shape of a league where a class of 720 meets 96 programmes with holes by
   position; whether a walk-on should be that weak (thirteen under, overall
@@ -3820,3 +3823,62 @@ would not reproduce.
 - **The hall bar.** `hall.test.ts` passed on the retuned engine, but the
   strongest programme in a twelve-year world inducted eleven men in twelve,
   and the population it was fitted to was the unaged one. Worth a probe.
+
+## AI. September 15, the drift — what measuring it left
+
+`05` §85. The "nine percent five-year drift on one seed" §AH.1 asked to have
+measured was measured, ten seasons on four seeds, and it was two things: seed
+noise, and a three percent step from a generated opening to a recruited
+steady state that the generator did not reproduce. The generator reproduces
+it now — a roster is four signed classes through `refill`, in `roster.ts` —
+the harness plays its games the way a season does, and the engine was refit
+once. The step is inside the seed spread; the league sits a few percent under
+the D1 target from year one. What the measurement turned up and did not fix:
+
+### AI.1 Found on the way, and not this pass's to settle
+
+- **The ladder compresses the country, from the first winter.** A 66-quality
+  programme signs freshmen at 57 and a 27 signs them at 40 (year two, at the
+  world's opening prestige; `24 + 0.52 × quality` by year ten), so the
+  table's spread of eleven across programmes narrows to eight inside a
+  decade — the blue bloods' lineups fall from 72 to 65, the bottom's rise from
+  39 to 47. It is the tier gates and a ladder whose top band is twenty-two men
+  a year for thirty boards, not prestige creep: it reads the same in year two.
+  Nothing about the *level* of the league; everything about how far apart
+  programmes are, which is the disparity question §P and the thirty-season
+  report both raised from the other side. **A design decision** — whether a
+  programme's quality should mean what its recruiting delivers, which would
+  move the ladder's ends or the tiers, or the table is day-one flavour the
+  world is meant to erode. Measured, tabled at `05` §85.3, not touched.
+- **The four-star tier starves as prestige inflates.** By year ten the twelve
+  programmes in the 60–71 prestige band carry 8.7 walk-ons each on 23-man
+  rosters, against 1.2 to 2.1 for every other tier, because their board plan
+  points 83% of its slots at the five- and four-star bands — 87 men a year —
+  and by then thirty boards are pointed at the same men. Half the country's
+  walk-ons by year ten are this. The one- and two-star tiers, whose plans
+  point slots at bands that do not exist below one star, are *not* starved.
+  **Recruiting AI, `aiTargets`' plan table.** The starved tier is also why the
+  steady state's walk-ons throw a tenth of the country's outs at thirty-one
+  overall while a day-one roster's throw four percent: they sit on thin pens.
+- **Prestige inflation is documented and priced** (`05` §74b) and it is what
+  drives the previous item; nothing new to file, but §85.3's ten-season
+  table is the first place its effect on the *run environment* is separated
+  from everything else, and it is small.
+- **The rotation was picked from labels June itself downgraded.** Fixed in
+  passing (`refill` no longer relabels a signed starter parked in the pen);
+  recorded here because it is the kind of thing worth knowing exists: a
+  label with a lifetime, read by a rule that assumed it was a profile.
+
+### AI.2 Small
+
+- **The climb probe's rows at `05` §83.8 predate this pass.** The engine and
+  the opening roster both moved; eight of ten reaching Omaha was measured on
+  neither. Ninety minutes, one command, no code.
+- **`tests/class-census.ts` grew knobs** (`SEED`, `BY_TEAM`, the played-men
+  and best-four rows, `PORTAL_LOG` through `headlessYear`) and
+  `tests/harness-rates.ts` is new — the per-plate-appearance reader the norm
+  fit had always described and never had. Both are instruments; neither is
+  a test.
+- **A day-one roster carries about half the walk-ons a June leaves** (1.6
+  against 2.4), because the tail is the starved tier above and a thinness
+  that has a history. Recorded at `05` §85.4 as the residual, not tuned.

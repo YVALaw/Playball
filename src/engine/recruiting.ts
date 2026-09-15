@@ -25,6 +25,7 @@
 // exists to produce.
 
 import { ageFor, makeHitter, makeTwoWay, makePitcher } from './players.js';
+import { CLASS_SHAPE } from './roster.js';
 import { overallOf } from './ratings.js';
 import {
   GRADE_LADDER, TOP_GENERATED_GRADE, potentialGrade, scoutNoise, type PotentialGrade,
@@ -35,31 +36,6 @@ import type {
 } from './types.js';
 import { STATES_BY_REGION, type Region } from '../data/schools.js';
 
-/**
- * Positions a class is built to cover, in proportion to what a roster turns
- * over — and the proportion was wrong for years, in a way nothing measured.
- *
- * It was eight bats to five arms, 38% arms, for a roster that is thirteen
- * bats and ten arms, 43%. A census of the country (tests/class-census.ts,
- * 2026-09-15) found what that costs: 141 to 180 of the nation's ~1,070
- * pitchers every season were walk-ons at overall 32 — one arm in six —
- * against 46 to 63 of ~1,500 bats. A walk-on is released after his one
- * season, so the hole he filled reopens every winter, and the country's
- * pitching sat three points under the world it was generated as while its
- * hitting rose two. That five-point swing toward the bats is most of the two
- * runs a game the league gained between its first season and its fifth
- * (05 §71, §83) — not the ladder, not the engine.
- *
- * Seven arms in fifteen now, 47%: 3.5 arms a programme a year against a
- * staff that turns over about that many, and four bats against a lineup
- * and bench that turn over about four. Four starters to three relievers
- * because a pitcher is recruited as a starter and becomes a reliever, not
- * the other way round.
- */
-const CLASS_SHAPE: readonly (Position | 'SP' | 'RP')[] = [
-  'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF',
-  'SP', 'SP', 'SP', 'SP', 'RP', 'RP', 'RP',
-];
 
 /**
  * The five things a recruit can care about.

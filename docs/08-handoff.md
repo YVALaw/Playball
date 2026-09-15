@@ -6,25 +6,38 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 15, 2026 · **Branch:** `main` · **the league no
-longer climbs** — `05` §71's two runs a game were three causes, measured
-apart with `tests/class-census.ts`: the generator never aged the men it
-generated (a quarter of it), the recruiting class supplied five arms in
-thirteen for a roster that is ten in twenty-three so one pitcher in six was a
-walk-on at 32 every year (most of it), and only a generated roster drew its
-rotation up and its bench down (the rest). Generation and recruiting draw the
-same man now; seed 4242 plays 7.98 → 8.10 across five seasons with no engine
-change, and the engine was then recalibrated once against that population —
-one round of the documented norm procedure, everything inside 3%, goldens
-re-recorded (`05` §83, `06` §AH). Four constants fitted to the old population
-moved with it (`TALENT_CENTRE`, `BOARD_MID`, the cap and draw-cost pins), a
-real fault surfaced (June re-dealt the coached card in spot order), the
-overlays got a stack (back from a letter's board is the inbox), the
+**Last session:** September 15, 2026, night · **Branch:** `main` · **the drift
+was measured, and it was the opening roster** -- `06` §AH.1's "nine percent
+on one seed" was run for ten seasons on four seeds and read as noise over a
+three percent step from year one to year two that never grew. A generated
+roster was twenty-three men drawn to the shape; a recruited one is
+twenty-eight, its nine and four the best of a deeper pool, with two walk-ons
+who throw a tenth of the country's outs. So `makeTeam` (now `roster.ts`)
+builds four signed classes through the same `refill` June uses -- as many
+men as a board lands, the draft's juniors gone less the share a staff talks
+back, bats three above the table and arms at it, the card dealt. Then the
+harness turned out to have been starting the ace every game and batting an
+undealt nine; it plays its games the way a season does now, and the engine
+was refit once against the honest pair. **Year one 6.51 runs, years two to
+ten 6.62, every rate flat**; the world sits two percent under the D1 target
+where it sat eight over, a box score reading 6.6 a side where it read 7.5
+this afternoon (`05` §85, `06` §AI). Found on the way and left as decisions:
+the ladder compresses the country from its first winter (a sixty-six signs at
+fifty-seven, a twenty-seven at forty), and the four-star tier starves on
+eighty-seven top men as prestige inflates. The climb probe's rows predate
+this pass.
+
+*Earlier the same evening:* **the stationarity pass** -- `05` §71's two runs
+a game were three causes, measured apart with `tests/class-census.ts`: the
+generator never aged the men it generated (a quarter of it), the recruiting
+class supplied five arms in thirteen for a roster that is ten in twenty-three
+so one pitcher in six was a walk-on at 32 every year (most of it), and only a
+generated roster drew its rotation up and its bench down (the rest). Four
+constants fitted to the old population moved with it, a real fault surfaced
+(June re-dealt the coached card in spot order), the overlays got a stack, the
 two-second freeze profiled at 35ms and would not reproduce, and the program
-pass finally has its section (§84). **Decided the same night:** the harness stays the definition of the league
--- the reporter's call, with the case for the world made in full; its eight
-percent is banded and watched. **Open:** a nine percent five-year drift on
-one seed of two.
+pass has its section (§84). **Decided:** the harness stays the definition of
+the league -- the reporter's call (`05` §83, `06` §AH).
 
 *Earlier the same day:* **the corners, then five from the phone** — every radius in the app now comes from three
 tokens through one file, `src/ui/rounded-ui.css`, by role: control 8, card 10,
@@ -64,22 +77,16 @@ headroom is a roll rather than a class-year constant, the S grade is rare and
 belongs to projects, and a professional career is rolled each year instead of
 stamped once (`05` §73, §74, §75).
 
-**Open, and read it before you trust a number.** The league gains **two runs a
-game** over its first four seasons and then holds there — 6.9–7.1 in year one
-against 8.6–9.1 from year five, a third above the 6.73 D1 target, with every
-rate inflating behind it (batting average .280 to .310, slugging .441 to
-.513). The cause is measured and it is a defect: **`makeTeam` never ages the
-roster it generates**, so a generated senior is no better than a freshman and
-the engine is calibrated against a population that exists on day one of a
-career and never again. It is guarded by `tests/calibration-seasons.test.ts`
-and **filed rather than fixed** — it would move every golden in the suite and
-wants its own pass (`05` §71.4, `06` §AC.1b). And the first version of that
-guard shipped measuring a league of walk-ons, because `tests/headlessYear.ts`
-was cut out of `climb-probe.ts` from the lines directly above a block headed
-"KNOWN WRONG — do not read numbers off this file yet". It was caught and
-corrected the same day and the lesson is in the file: **a harness measuring
-nothing looks exactly like a harness measuring something reassuring** (`05`
-§71.2).
+**Read before you trust a number.** The two-runs-a-game climb this paragraph
+used to describe was fixed on September 15 (`05` §83) and the three percent
+step it left was fixed the same night (§85); `tests/calibration-seasons.test.ts`
+guards a flat decade now. What survives of the warning is the lesson: the
+first version of that guard shipped measuring a league of walk-ons, because
+`tests/headlessYear.ts` was cut out of `climb-probe.ts` from the lines directly
+above a block headed "KNOWN WRONG -- do not read numbers off this file yet".
+**A harness measuring nothing looks exactly like a harness measuring something
+reassuring** (`05` §71.2) -- and a harness starting the ace every game looked
+exactly like a calibrated one for as long as the rotation was unsorted (§85.4).
 
 > **September 11, night into the 12th — development means something, and an
 > alumnus is rolled each year.**

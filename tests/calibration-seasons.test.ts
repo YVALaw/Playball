@@ -73,30 +73,49 @@
 // and the eight-seed harness sweep landed inside 3% on every row.
 //
 // ---------------------------------------------------------------------------
+// What the world did on September 15, and what the "drift" was
+// ---------------------------------------------------------------------------
+//
+// Five seasons, two worlds, the engine as it stood that afternoon:
+//
+//   seed 4242   7.39  7.37  7.37  7.41  7.46      avg .285 -> .284   hr 1.10 -> 1.09
+//   seed 12161  7.26  7.56  7.67  7.73  7.93      avg .283 -> .296   hr 1.10 -> 1.19
+//
+// Flat on one seed, nine percent on the other, and `06` §AH.1 asked for ten
+// seasons on four seeds before anybody touched the ladder. Ten seasons on four
+// seeds said (05 §85): the nine was noise -- 12161 peaked at 7.85 in year seven
+// and was back at 7.49 by year ten -- and under it was a three percent step
+// from year one to year two that never grew. Year one was the odd year out.
+// A generated roster was twenty-three men drawn to the shape, nine four four
+// and six; a recruited one is twenty-eight, with the extras a class leaves on
+// the bench and in the pen, two walk-ons who play, seniors the draft has
+// thinned, and freshmen the ladder signs a few points above the table. The
+// nine and the four of the recruited roster were two and four points better,
+// being the best of a deeper pool, and its pen and bench worse. That step was
+// the whole of the drift; from year two the world was flat for a decade.
+//
+// ---------------------------------------------------------------------------
 // What the world does now
 // ---------------------------------------------------------------------------
 //
-// Five seasons, two worlds, the final engine (tests/class-census.ts):
+// A generated roster is the one June leaves (roster.ts `makeTeam`: four signed
+// classes through `refill`), the harness plays its games the way a season
+// does, and the engine was refit once against the honest pair. Ten seasons,
+// four seeds, the final engine (tests/class-census.ts):
 //
-//   seed 4242   7.39  7.37  7.37  7.41  7.46      avg .285 → .284   hr 1.10 → 1.09
-//   seed 12161  7.26  7.56  7.67  7.73  7.93      avg .283 → .296   hr 1.10 → 1.19
+//   seed 4242   6.45  6.55  6.53  6.58  6.74  6.61  6.61  6.49  6.49  6.62
+//   seed 12161  6.47  6.70  6.81  6.86  6.63  6.46  6.74  6.66  6.54  6.72
+//   seed 20080  6.63  6.72  6.81  6.69  6.66  6.61  6.67  6.59  6.54  6.61
+//   seed 27999  6.50  6.79  6.70  6.53  6.48  6.51  6.53  6.60  6.51  6.53
 //
-// Flat on one seed, a nine percent drift on the other, against the twenty-two
-// it was. What is left is not a ladder and not a balance — the census reads
-// bats and arms within a point of each other in every year of both worlds —
-// but a slow, symmetric rise in signed talent (about two points over four
-// winters on both sides, because the class ladder's mean sits two above the
-// country's generated quality) landing on the same sensitivity asymmetry the
-// harness was corrected for. It is inside the seed-to-seed spread and it is
-// recorded here rather than tuned away.
-//
-// The world also sits about eight percent above the harness in year one
-// (7.26–7.39 against 6.77), where it sat four percent above before this pass.
-// That is the between-programmes quality spread, which ageing widens — a
-// sixty-eight quality programme's aged seniors stand much further above a
-// twenty-four's than their freshmen did — landing on a convex model. The
-// harness is still what the league is defined by (ratings.ts, `BAT_NORM`);
-// whether the definition should move to the world is `06` §AH.
+// Year one 6.51, years two to ten 6.62, every rate flat (average .268 -> .270,
+// on-base .375 -> .378, slugging .419 -> .422, home runs 0.94 -> 0.95,
+// strikeouts 8.02 -> 8.12, walks 4.62 -> 4.77). The one and a half percent
+// that remains is the walk-ons a June leaves on thin rosters and a day-one
+// roster does not (05 §85.4); it is inside the seed spread and recorded
+// rather than tuned. The world sits two percent under the harness now, where
+// it sat eight above, because the old harness measured an undealt nine and a
+// fixed starter; the harness is still what the league is defined by.
 //
 // This file is a guard. It pins the stationarity, so that whoever touches
 // generation, development, recruiting or the norms next can watch it move.
@@ -126,20 +145,21 @@ import { headlessYear, lastSigned } from './headlessYear.js';
 const SEASONS = 5;
 
 /**
- * What every season is allowed to be — one band for the whole run, because
- * the run is flat now. Taken from the two-world census in the header and
- * widened to the nearest round number; both worlds' five seasons sit inside
+ * What every season is allowed to be -- one band for the whole run, because
+ * the run is flat. Taken from the four-world, ten-season census in the header
+ * and widened to the nearest round number; all forty season-rows sit inside
  * every row. A band this wide would not have held the old world: its year
- * five read 8.6 runs, .307 and 1.36 home runs.
+ * five read 8.6 runs, .307 and 1.36 home runs -- nor the September 15
+ * afternoon's, at 7.3 to 7.9.
  */
 const BAND: Record<keyof Omit<LeagueRates, 'teamGames'>, [number, number]> = {
-  runs: [6.9, 8.2],     // measured 7.26 - 7.93
-  avg: [0.274, 0.302],  // measured .283 - .296
-  obp: [0.380, 0.412],  // measured .389 - .405
-  slg: [0.435, 0.485],  // measured .446 - .475
-  hr: [0.98, 1.26],     // measured 1.05 - 1.19
-  k: [7.2, 7.9],        // measured 7.35 - 7.66
-  bb: [4.6, 5.4],       // measured 4.81 - 5.24
+  runs: [6.2, 7.1],     // measured 6.45 - 6.86
+  avg: [0.255, 0.285],  // measured .266 - .273
+  obp: [0.360, 0.395],  // measured .373 - .384
+  slg: [0.400, 0.445],  // measured .415 - .431
+  hr: [0.82, 1.10],     // measured 0.90 - 1.01
+  k: [7.5, 8.7],        // measured 7.89 - 8.35
+  bb: [4.3, 5.2],       // measured 4.55 - 4.95
 };
 
 /** One world, played forward, measured after each regular season. */
@@ -205,11 +225,12 @@ describe('a league five years old', () => {
 
   it('does not climb', () => {
     /*
-      The old assertion here was the inverse — `last.runs / first.runs > 1.15`,
-      with home runs and slugging rising alongside and strikeouts falling —
-      because the climb was pinned as a fact. The ratio the two worlds in the
-      header actually read is 1.01 and 1.09; the bar leaves room for the
-      second and none for the twenty-two percent that was.
+      The old assertion here was the inverse -- `last.runs / first.runs > 1.15`,
+      with home runs and slugging rising alongside and strikeouts falling --
+      because the climb was pinned as a fact. The year-five-over-year-one ratio
+      the four worlds in the header read is 1.05, 1.03, 1.01 and 1.00; the bar
+      leaves room for a hot fifth year and none for the twenty-two percent
+      that was.
     */
     const first = rates[0]!;
     const last = rates[rates.length - 1]!;

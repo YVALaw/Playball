@@ -11,7 +11,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { makeRng } from '../src/engine/rng.js';
-import { makeTeam, resetNames } from '../src/engine/players.js';
+import { resetNames } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { createHalfInning, TeamState } from '../src/engine/game.js';
 import { createLiveGame, OFFENSE } from '../src/engine/liveGame.js';
 import { ENGINES } from '../src/engine/engines.js';

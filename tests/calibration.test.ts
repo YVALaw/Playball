@@ -16,12 +16,32 @@
 
 import { describe, it, expect } from 'vitest';
 import { runSeason, metrics, TARGETS } from '../src/engine/calibration.js';
-import { makeRng, makeTeam, makeHitter, makePitcher, resetNames } from '../src/engine/players.js';
+import { makeRng, makeHitter, makePitcher, resetNames } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { simGame } from '../src/engine/game.js';
 import { ENGINES } from '../src/engine/engines.js';
 import type { Hitter, Pitcher } from '../src/engine/types.js';
 
 /**
+ * Re-recorded 2026-09-15, late, when a generated roster became the roster
+ * June leaves and the harness began playing its games the way a season does
+ * (05 s85). `makeTeam` moved to roster.ts and builds four signed classes
+ * through `refill` -- as many men as a board lands, the draft's juniors gone
+ * less the share a staff talks back, the bats three above the programme's
+ * quality and the arms at it, the card dealt -- so a quality-50 pair is
+ * twenty-six or twenty-seven men with a walk-on or two, and the harness
+ * pair now matches the world's programmes of the same quality on every
+ * card row where the old pair had an undealt nine three points of bat
+ * under the world's. And `runSeason` starts the scheduled slot and calls
+ * the rested arm first: left to `simGame`'s defaults it had begun starting
+ * the ace every game and finishing with the two best relievers the moment
+ * the rotation was sorted, and read walks nine percent under a league whose
+ * seasons had not moved. On the honest pair the sweep read runs +13.8%,
+ * home runs +15.9%, doubles +6.7%, walks +4.4%, strikeouts -10.4%; one round
+ * of the norm procedure and one of JENSEN_K put it at runs -0.3%, average
+ * -1.6%, on-base -1.7%, home runs -3.7%, strikeouts +0.5%, walks -2.0%,
+ * slugging -0.9%. Every seeded number moved and none could have survived.
+ *
  * Re-recorded 2026-09-15, when the generator began ageing men into their class
  * and the engine was calibrated once against the population that produces
  * (05 §83). Three things changed the harness's men at once: every man is
@@ -150,20 +170,20 @@ import type { Hitter, Pitcher } from '../src/engine/types.js';
  * philosophy.
  */
 const GOLDEN: Record<string, number> = {
-  'Runs per team per game': 6.811458333333333,
-  'PA per team per game': 41.8225,
-  'Batting average': 0.27430073544614114,
-  'On base percentage': 0.38185526702938843,
-  'Home runs per team per game': 0.9695833333333334,
-  'Strikeouts per team per game': 8.23625,
-  'Walks per team per game': 4.9225,
-  'Pitches per plate appearance': 3.7385229242632554,
-  'Slugging': 0.42878577546740704,
+  'Runs per team per game': 6.629375,
+  'PA per team per game': 41.450208333333336,
+  'Batting average': 0.2739103417665335,
+  'On base percentage': 0.37724782825208875,
+  'Home runs per team per game': 0.9875,
+  'Strikeouts per team per game': 8.336666666666666,
+  'Walks per team per game': 4.643125,
+  'Pitches per plate appearance': 3.741879061725665,
+  'Slugging': 0.43299304630862556,
 };
 
-const GOLDEN_SLUGGING = 0.42878577546740704;
-const GOLDEN_ERRORS = 0.9779166666666667;
-const GOLDEN_SB_PCT = 0.7207949587978671;
+const GOLDEN_SLUGGING = 0.43299304630862556;
+const GOLDEN_ERRORS = 0.936875;
+const GOLDEN_SB_PCT = 0.72038503337991;
 
 /**
  * Metrics still outside the 10% bar. The list is now empty, and keeping the

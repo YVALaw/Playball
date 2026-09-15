@@ -14,7 +14,14 @@ import {
   visibleValue, yearsOfLeverage,
   type DraftBoard, type DraftedMan,
 } from './draft.js';
-import { ageFor, makeHitter, makePitcher, releaseNames, reserveNames } from './players.js';
+import { releaseNames, reserveNames } from './players.js';
+import {
+  LINEUP_SPOTS, ROTATION_SIZE, BULLPEN_SIZE, BENCH_SIZE,
+  draftChance, LEVERAGE_DISCOUNT, byOverall, byArm, isArm, refill, walkOnHitter, walkOnArm,
+} from './roster.js';
+// The draft's odds moved to roster.ts with `refill` (the generator reads
+// them too); the screens that always asked here still can.
+export { draftChance } from './roster.js';
 import { develop } from './development.js';
 export { arcOf, arcReach } from './development.js';
 export type { Arc } from './development.js';
@@ -25,7 +32,7 @@ import { GENERATED_POTENTIAL_CAP } from './scouting.js';
 import { armValue, overallOf, clamp, respectCeiling } from './ratings.js';
 import { flexibleOffseasonBudget, windowBudget } from './recruiting.js';
 import type { Prospect } from './recruiting.js';
-import { gauss, makeRng } from './rng.js';
+import { makeRng } from './rng.js';
 import { cultureFor } from '../data/cultures.js';
 import { bankRedshirt } from './redshirt.js';
 // Value import, and safe: `season.ts` imports nothing from this file, so
@@ -49,21 +56,6 @@ function countHoles(team: Team): number {
 const NEXT_CLASS: Record<ClassYear, ClassYear | null> = {
   FR: 'SO', SO: 'JR', JR: 'SR', SR: null,
 };
-
-const LINEUP_SPOTS: readonly Position[] = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];
-
-/**
- * The default staff, and the number every world but one is rebuilt to.
- *
- * A fifty-six game schedule carries five starters — see `rotationSizeFor` — so
- * the rebuild has to be told, or the fifth man is quietly dropped at the first
- * winter and the world spends its second season handing the midweek back to the
- * Friday ace.
- */
-const ROTATION_SIZE = 4;
-const BULLPEN_SIZE = 6;
-const BENCH_SIZE = 4;
-
 
 
 /**
@@ -158,33 +150,6 @@ export interface OffseasonReport {
   holes: { pos: string; count: number }[];
 }
 
-/**
- * How likely a club is to spend a pick on a man of this ability.
- *
- * The roadmap's core tension expressed as a number: a star is on a three year
- * clock whether you like it or not. A 70 overall is gone almost every time; a 45
- * almost never hears his name. Seniors leave regardless, so the draft only
- * really *costs* you men with eligibility left.
- */
-export function draftChance(overall: number): number {
-  return clamp((overall - 46) / 34, 0, 0.88);
-}
-
-/**
- * How much a club discounts a man who can walk away from it.
- *
- * Nought years of eligibility left is a senior, who has no leverage and signs.
- * One is a junior, who can go back for a victory lap and mostly does not. Two
- * or three is an underclassman the age clause has exposed, and he can cost a
- * club a whole pick by simply going back to school — so clubs take him only
- * when they mean to pay him, which is what keeps the age exception occasional
- * rather than a second graduating class every June.
- *
- * These are the numbers the old talent bars produced, kept deliberately: the
- * frequency an underclassman leaves at was right, it was the *reason* that was
- * a fiction.
- */
-const LEVERAGE_DISCOUNT: Record<number, number> = { 0: 0.6, 1: 1, 2: 0.35, 3: 0.15 };
 
 /**
  * The odds this man is gone in June, before the draw that decides it.
@@ -224,232 +189,6 @@ function departure(p: Player, rng: Rng): DepartureReason | null {
   return rng() < chance ? 'drafted' : null;
 }
 
-/** Best first. */
-const byOverall = <T extends Player>(xs: T[]): T[] =>
-  [...xs].sort((a, b) => overallOf(b) - overallOf(a));
-
-/** Anybody with an arm job, ranked by the arm. */
-const isArm = (p: Player): p is Arm => p.type === 'pitcher' || isTwoWay(p);
-const byArm = <T extends Arm>(xs: T[]): T[] =>
-  [...xs].sort((a, b) => armValue(b) - armValue(a));
-
-/**
- * Rebuild a roster to its structural shape, filling every hole with a freshman.
- *
- * Recruit quality tracks program quality, which is what makes prestige worth
- * something: a 57 program signs better classes than a 44 program, year after
- * year, and that compounds.
- */
-/**
- * Rebuild a roster from who is left, who was signed, and who can be found.
- *
- * The order matters and is the point of the whole recruiting system: **signed
- * recruits are used before walk-ons.** A program that recruits well fills its
- * holes with players it chose; one that does not fills them with whoever turned
- * up, and `WALK_ON_PENALTY` is how much that costs.
- *
- * That penalty used to be 5, applied to everybody, which meant recruiting could
- * not matter because every program reloaded at its own quality regardless. It is
- * steeper now, and it only applies to the players nobody recruited.
- */
-function refill(
-  team: Team, survivors: Player[], rng: Rng, signed: Player[] = [],
-  collect?: Player[], walkOns: readonly Player[] = [],
-  rotationSize = ROTATION_SIZE,
-  /** The coached programme: his surviving nine keep the order he had them in. */
-  keepOrder = false,
-): number {
-  const hadOrder = new Map(team.lineup.map((h, i) => [String(h.id), i]));
-  const bodies = uniquePlayers(survivors);
-  const hitters = byOverall(bodies.filter((p): p is Hitter => p.type === 'hitter'));
-  // A two-way man is in BOTH pools — his lineup spot and his rotation slot
-  // are the same body, which is the entire feature.
-  const arms = byArm(bodies.filter(isArm));
-  let recruits = 0;
-
-  // The signed class, best first, waiting to be placed.
-  const signedHitters = byOverall(signed.filter((p): p is Hitter => p.type === 'hitter'));
-  const signedArms = byArm(signed.filter(isArm));
-
-  // The men who walk on, drawn in advance and queued by the spot they were
-  // drawn for. `walkOnClass` walks this same placement order, so the queue holds
-  // exactly what the loops below are about to ask for — and the class review
-  // three taps back has already shown the coach these very men. The fallback
-  // draw is a safety net for a caller that supplied nothing.
-  const spare = new Map<string, Player[]>();
-  for (const p of walkOns) {
-    const key = p.type === 'pitcher' ? (p as Pitcher).role : p.pos;
-    const queue = spare.get(key);
-    if (queue) queue.push(p); else spare.set(key, [p]);
-  }
-
-  // One body, one count — a two-way signing placed at a lineup spot AND a
-  // rotation slot is still one recruit. Every path that hands out a man
-  // reports him through this.
-  const countedIds = new Set<string>();
-  const counted = <T extends Player>(man: T): T => {
-    if (!countedIds.has(String(man.id))) { countedIds.add(String(man.id)); recruits += 1; }
-    return man;
-  };
-
-  const freshHitter = (pos: Position): Hitter => {
-    // Somebody you actually recruited who plays here, else the best bat signed,
-    // else a walk-on. A man promised his position is never the "best bat
-    // signed" for somebody else's hole: the refill moved him on the day he
-    // arrived and the promise read as broken before the coach had made a
-    // single decision (05 §62.4). He waits for his own spot or the bench.
-    const exact = signedHitters.findIndex((h) => h.pos === pos);
-    if (exact >= 0) return counted(signedHitters.splice(exact, 1)[0] as Hitter);
-    const free = signedHitters.findIndex((h) => h.recruitPromise?.kind !== 'keepPosition');
-    const any = free >= 0 ? signedHitters.splice(free, 1)[0] : undefined;
-    if (any) { any.pos = pos; return counted(any); }
-    const p = (spare.get(pos)?.shift() as Hitter | undefined)
-      ?? (walkOnHitter(rng, team.quality, pos));
-    collect?.push(p);
-    return counted(p);
-  };
-  const freshArm = (role: 'SP' | 'RP'): Arm => {
-    const exact = signedArms.findIndex((a) => a.role === role);
-    if (exact >= 0) return counted(signedArms.splice(exact, 1)[0] as Arm);
-    const any = signedArms.shift();
-    if (any) { any.role = role; return counted(any); }
-    const p = (spare.get(role)?.shift() as Pitcher | undefined)
-      ?? (walkOnArm(rng, team.quality, role));
-    collect?.push(p);
-    return counted(p);
-  };
-
-  // The lineup wants a body at every spot on the diamond. Take the best
-  // returning player who plays there; sign one if nobody does. The DH slot
-  // is the exception because a DH is not a species — it takes the best bat
-  // left whatever his position, and never manufactures a "DH". Reported:
-  // "there should not be a need for DH; we just select someone to be there."
-  const lineup: Hitter[] = [];
-  for (const spot of LINEUP_SPOTS) {
-    if (spot === 'DH') {
-      /*
-        The slot adopts him rather than him becoming a "DH": position
-        memory keeps his real spot on the card, the engine keeps its one
-        man per label, and a returning starter moved here is NOT a recruit
-        — only a signed bat consumed for the slot counts.
-      */
-      const returning = hitters.shift();
-      // A signed bat takes the slot only if his position was not promised him.
-      const freeIndex = signedHitters.findIndex((h) => h.recruitPromise?.kind !== 'keepPosition');
-      const best = returning ?? (freeIndex >= 0 ? signedHitters.splice(freeIndex, 1)[0] : undefined);
-      if (best) {
-        if (!returning) counted(best);
-        adoptSpot(best, 'DH');
-        lineup.push(best);
-      } else {
-        const made = freshHitter('1B');
-        adoptSpot(made, 'DH');
-        lineup.push(made);
-      }
-      continue;
-    }
-    const i = hitters.findIndex((h) => h.pos === spot);
-    if (i >= 0) lineup.push(hitters.splice(i, 1)[0] as Hitter);
-    else lineup.push(freshHitter(spot));
-  }
-
-  /*
-    Every returning bat past the nine stays. The bench was cut to four here
-    and the rest of the survivors — men who were on the roster in May, not
-    drafted, not graduated, not in the portal — silently ceased to exist,
-    forty to seventy of them a June once the classes were signed, the coached
-    program's included (05 §62.4). A roster is allowed to be deep; it is not
-    allowed to lose a man to nothing.
-  */
-  const bench: Hitter[] = hitters.splice(0, hitters.length);
-  while (bench.length < BENCH_SIZE) {
-    bench.push(freshHitter(LINEUP_SPOTS[bench.length % LINEUP_SPOTS.length] as Position));
-  }
-
-  const starters = arms.filter((p) => p.role === 'SP');
-  const relievers = arms.filter((p) => p.role === 'RP');
-
-  const rotation: Arm[] = starters.splice(0, rotationSize);
-  while (rotation.length < rotationSize) rotation.push(freshArm('SP'));
-
-  // Starters who did not make the rotation slide to the bullpen, exactly as they
-  // would in a real program.
-  const bullpen: Arm[] = [...relievers, ...starters];
-  while (bullpen.length < BULLPEN_SIZE) bullpen.push(freshArm('RP'));
-
-  // A signed recruit who does not fit anywhere simply does not arrive. He was
-  // generated during the window and never played a game, so dropping him costs
-  // nothing and keeps the league's player count exactly conserved.
-
-  // Anybody signed who has not found a spot yet still joins the program.
-  //
-  // A roster built to exactly nine, four, four and six only places a recruit
-  // when there is a *hole* at his position — so a class signed into a roster
-  // that returns most of its starters had nowhere to put the extras and quietly
-  // threw them away. From the player's side that is the worst bug the game can
-  // have: you spent three weeks and eight scholarships on men who then did not
-  // exist. If he signed, he is on the roster; the bench and bullpen carry him.
-  /*
-    A two-way signing is one recruit, not two: his bat may already have been
-    placed while his arm still waits here (or the other way round), and both
-    placements are the same young man. The id sets keep the count and the
-    arrays honest — pushed into the second unit if genuinely unplaced there,
-    counted once ever.
-  */
-  const batIds = new Set([...lineup, ...bench].map((m) => String(m.id)));
-  const armIds = new Set([...rotation, ...bullpen].map((m) => String(m.id)));
-  for (const extra of signedHitters) {
-    if (batIds.has(String(extra.id))) continue;
-    counted(extra);
-    bench.push(extra); batIds.add(String(extra.id));
-  }
-  for (const extra of signedArms) {
-    if (armIds.has(String(extra.id))) continue;
-    counted(extra);
-    bullpen.push(extra); armIds.add(String(extra.id));
-  }
-
-  // Same rule as `regroup`, for the same man: the June refill gathers the
-  // nine in spot order to fill holes, and for the coached programme that
-  // was quietly a re-deal of his batting order. His survivors keep their
-  // places; the men who arrived take the places the departed left.
-  if (keepOrder) {
-    const kept = lineup.filter((h) => hadOrder.has(String(h.id)))
-      .sort((a, b) => (hadOrder.get(String(a.id)) ?? 0) - (hadOrder.get(String(b.id)) ?? 0));
-    const added = lineup.filter((h) => !hadOrder.has(String(h.id)));
-    lineup.splice(0, lineup.length, ...kept, ...added);
-  }
-  team.lineup = lineup;
-  team.bench = bench;
-  team.rotation = rotation;
-  team.bullpen = bullpen;
-  return recruits;
-}
-
-/**
- * One walk-on, at the level a program that missed on him ends up with.
- *
- * Split out so the man the class review shows and the man the year roll puts on
- * the roster come off one piece of code rather than two that resemble each
- * other. Everything about him except the draws is fixed here: a freshman, aged
- * back into step with that, and marked — `Player.walkOn` is what puts him on a
- * one year lease and what the departure notice reads next June.
- */
-function walkOnHitter(rng: Rng, quality: number, pos: Position): Hitter {
-  // Built as the freshman he is. He used to be drawn at whatever class the
-  // generator handed him and relabelled afterwards, which was harmless while
-  // a class was only a label; now that the generator ages a man into his
-  // class, a relabelled junior would arrive with two winters he never had.
-  const p = makeHitter(rng, quality - WALK_ON_PENALTY + gauss(rng) * 3, { pos, classYear: 'FR' });
-  p.walkOn = true;
-  return p;
-}
-
-function walkOnArm(rng: Rng, quality: number, role: 'SP' | 'RP'): Pitcher {
-  const p = makePitcher(rng, quality - WALK_ON_PENALTY + gauss(rng) * 3, { role, classYear: 'FR' });
-  p.walkOn = true;
-  return p;
-}
 
 /**
  * The stream a program's walk-ons come out of.
@@ -591,15 +330,6 @@ export function walkOnShortfall(
  * season's statistics are not carried across — those belong to the year that
  * produced them, and a new season starts a fresh book.
  */
-/**
- * How far below a program's own level an unrecruited body is.
- *
- * This is the entire cost of a bad recruiting class, so it has to bite. At the
- * old value of 5 — applied to every incoming player, recruited or not — a
- * program reloaded at its own quality no matter what it did, and four years of
- * recruiting changed nothing about the roster.
- */
-const WALK_ON_PENALTY = 13;
 
 export interface OffseasonOpts {
   /** The program the player coaches, so its board is not overwritten by the AI. */

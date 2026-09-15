@@ -23,7 +23,7 @@ import { describe, it, expect } from 'vitest';
 import { explicitRecruitPromiseBroken, recruitPromiseProgress } from '../src/engine/morale.js';
 import { adoptSpot, restoreHome } from '../src/engine/depthChart.js';
 import { movePosition } from '../src/engine/positions.js';
-import { makeTeam } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { makeRng } from '../src/engine/rng.js';
 import type { Hitter, Player, Position } from '../src/engine/types.js';
 

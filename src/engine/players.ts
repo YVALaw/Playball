@@ -14,7 +14,7 @@ import { GENERATED_POTENTIAL_CAP, scoutNoise } from './scouting.js';
 import { FIRST, LAST } from '../data/names.js';
 import { CLASS_ORDER, playerId } from './types.js';
 import type {
-  Bats, ClassYear, Hand, Hitter, PitcherRole, Pitcher, PlayerId, Position, Rng, Team, TwoWay,
+  Bats, ClassYear, Hand, Hitter, PitcherRole, Pitcher, PlayerId, Position, Rng, TwoWay,
 } from './types.js';
 
 const POSITIONS: readonly Position[] = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];
@@ -672,46 +672,6 @@ export function makeTwoWay(rng: Rng, quality = 50, opts: { classYear?: ClassYear
   return man;
 }
 
-const LINEUP_POSITIONS: readonly Position[] = ['C','1B','2B','3B','SS','LF','CF','RF','DH'];
-
-/**
- * `starters` defaults to four, and the default is load bearing.
- *
- * Every arm is a draw, so asking for a fifth moves every random number after it
- * — which is fine in a world built to want one and unacceptable everywhere
- * else. Only the fifty-six game schedule passes anything but four, so every
- * calibration figure taken before it stands untouched. See `rotationSizeFor`.
- */
-export function makeTeam(rng: Rng, name: string, quality = 50, starters = 4): Team {
-  /*
-    Every man at the programme's quality, and the card sorts them.
-
-    The rotation used to be drawn three above it and the bench six below,
-    which made a generated roster a shape a recruited one never has: a
-    recruit is drawn at one quality whether he is a starter or a bench bat,
-    and it is `setTheCard` — dealt to all ninety-six on day one and again
-    every June — that makes the best four arms the rotation and the worst
-    four bats the bench. The same selection now makes the same shape here.
-
-    What the bonuses cost was measured (tests/class-census.ts, 2026-09-15):
-    a generated world sat about three points arm-favoured against the world
-    its own recruiting produced — the rotation's three on four arms in ten,
-    the bench's six on four bats in thirteen — and that swing, together with
-    the unaged ladder above and the arms the class never supplied, was the
-    two runs a game the league gained between its first season and its
-    fifth (05 §83). Generation and recruiting draw the same man now, so day
-    one is the settled world and the engine is calibrated once, against it.
-  */
-  const lineup: Hitter[] = [];
-  for (const pos of LINEUP_POSITIONS) {
-    lineup.push(makeHitter(rng, quality + gauss(rng) * 4, { pos }));
-  }
-  const rotation = Array.from({ length: Math.max(1, starters) },
-    () => makePitcher(rng, quality, { role: 'SP' }));
-  const bullpen = [0, 1, 2, 3, 4, 5].map(() => makePitcher(rng, quality, { role: 'RP' }));
-  const bench = [0, 1, 2, 3].map(() => makeHitter(rng, quality));
-  return { name, lineup, rotation, bullpen, bench, quality };
-}
 
 // Re-exported so callers that used to get it from here keep working.
 export { makeRng } from './rng.js';

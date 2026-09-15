@@ -309,6 +309,9 @@ describe('June carries every survivor', () => {
   it('a deep roster loses nobody to the shape of the bench and the pen', () => {
     const season = fresh(6);
     const me = season.teams[0]!;
+    // A day-one roster is already the deep one June leaves (05 s85), so the
+    // count is whatever it holds plus the six borrowed below.
+    const held = new Set([...me.team.lineup, ...me.team.bench, ...me.team.rotation, ...me.team.bullpen].map((p) => p.id)).size;
     // Nobody graduates, nobody is draft-eligible: every man must come back.
     const extraBats = season.teams[1]!.team.bench.splice(0, 3);
     const extraArms = season.teams[1]!.team.bullpen.splice(0, 3);
@@ -317,7 +320,7 @@ describe('June carries every survivor', () => {
     const everyone = [...me.team.lineup, ...me.team.bench, ...me.team.rotation, ...me.team.bullpen];
     for (const p of everyone) p.classYear = 'SO';
     const ids = new Set(everyone.map((p) => p.id));
-    expect(ids.size).toBe(29);
+    expect(ids.size).toBe(held + 6);
 
     const next = nextSeason(season);
     const after = next.teams[0]!;

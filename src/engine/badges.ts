@@ -76,7 +76,10 @@ const arm = (p: Player): p is Arm => p.type === 'pitcher' || isTwoWay(p);
 const pitchers: Eligible = (p) => arm(p);
 const starters: Eligible = (p) => arm(p) && p.role === 'SP';
 const relievers: Eligible = (p) => arm(p) && p.role === 'RP';
-const at = (...spots: Position[]): Eligible => (p) => p.type === 'hitter' && spots.includes(p.pos);
+// Read from home: a shortstop covering left this week, or adopted at DH by
+// the card, is still the infielder his badge was signed for.
+const at = (...spots: Position[]): Eligible => (p) =>
+  p.type === 'hitter' && spots.includes((p as { homePos?: Position }).homePos ?? p.pos);
 
 const INFIELD: Position[] = ['C', '1B', '2B', '3B', 'SS'];
 const THROWERS: Position[] = ['C', 'LF', 'CF', 'RF', '3B'];

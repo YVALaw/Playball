@@ -76,8 +76,12 @@ describe('the offseason', () => {
     const seniorsBefore = snapshot.filter((p) => p.classYear === 'SR');
     const departed = new Set([...report.graduated, ...report.drafted].map((d) => d.id));
     for (const s of seniorsBefore) expect(departed.has(s.id)).toBe(true);
+    // The notice lists a walk-on's one-year lease under `graduated` too, and
+    // a day-one roster carries the walk-ons June leaves (05 s85), so the
+    // seniors are the rows that say so.
+    const graduatedSeniors = report.graduated.filter((d) => d.reason !== 'walk-on');
     expect(seniorsBefore.length).toBe(
-      report.graduated.length + report.drafted.filter((d) => d.classYear === 'SR').length,
+      graduatedSeniors.length + report.drafted.filter((d) => d.classYear === 'SR').length,
     );
   });
 
@@ -101,13 +105,16 @@ describe('the offseason', () => {
   });
 
   it('keeps every roster at full strength', () => {
+    // Nine, four and at least the structural bench and pen: a roster is
+    // allowed to be deep (05 s62.4), and since it is the one June leaves
+    // rather than twenty-three men drawn to the shape, it usually is.
     for (let i = 0; i < season.teams.length; i++) {
       const t = season.teams[i]!.team;
       expect(t.lineup).toHaveLength(9);
-      expect(t.bench).toHaveLength(4);
+      expect(t.bench.length).toBeGreaterThanOrEqual(4);
       expect(t.rotation).toHaveLength(4);
-      expect(t.bullpen).toHaveLength(6);
-      expect(rosterOf(season, i)).toHaveLength(23);
+      expect(t.bullpen.length).toBeGreaterThanOrEqual(6);
+      expect(rosterOf(season, i).length).toBeGreaterThanOrEqual(23);
     }
   });
 
@@ -118,9 +125,14 @@ describe('the offseason', () => {
     }
   });
 
-  it('replaces exactly what it lost', () => {
-    expect(report.recruits).toBe(lost().length);
-    expect(after).toHaveLength(before.length);
+  it('replaces what it lost, and only the holes', () => {
+    // A deep roster absorbs a departure the way a real one does: the class
+    // `signClasses` hands every programme covers the holes the survivors
+    // leave and nothing else, so the men who arrive are at most the men who
+    // left, the count is exact either way, and nobody arrives as an extra.
+    expect(report.recruits).toBeLessThanOrEqual(lost().length);
+    expect(report.recruits).toBeGreaterThan(0);
+    expect(after).toHaveLength(before.length - lost().length + report.recruits);
   });
 
   it('signs the replacements as freshmen', () => {
@@ -187,7 +199,11 @@ describe('a dynasty across five years', () => {
     // Four class years means a roster empties roughly every four seasons.
     const rosterTotal = season.teams.length * 23;
     expect(departures).toBeGreaterThan(rosterTotal);
-    expect(arrivals).toBe(departures);
+    // A class signed to the holes replaces fewer men than left while a
+    // roster is deeper than the shape, and the world settles toward the
+    // shape from above rather than ever falling under it.
+    expect(arrivals).toBeLessThanOrEqual(departures);
+    expect(everyone(season).length).toBeGreaterThanOrEqual(rosterTotal);
   });
 
   it('never repeats a name across the whole run', () => {

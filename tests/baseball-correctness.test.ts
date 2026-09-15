@@ -11,7 +11,8 @@ import { makeRng } from '../src/engine/rng.js';
 import {
   createSeason, simNextDay, currentDay, injuryClock, pitcherReady, recoveryGap,
 } from '../src/engine/season.js';
-import { makeTeam, resetNames } from '../src/engine/players.js';
+import { resetNames } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import type { EngineFn, Hitter, PAResult, Rng } from '../src/engine/types.js';
 
 const scriptedRng = (values: number[], fallback = 0.5): Rng => {

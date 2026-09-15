@@ -10802,6 +10802,10 @@ accepted the sweep at a worst deviation of 3%.
 
 ### 83.4 What the world does now, and two things written down rather than tuned
 
+*Superseded the same night by §85: the drift this section records was measured
+over ten seasons on four seeds and fixed at the generator; the tables below
+are the afternoon's.*
+
 Five seasons, two worlds, the final engine:
 
 | | y1 | y2 | y3 | y4 | y5 |
@@ -10960,3 +10964,247 @@ Three defects in the incoming version were found and not shipped: a live
 crash from hooks declared below an early return, an attention card that would
 have burned red for a whole season, and a gain range advertising a bonus the
 arithmetic could no longer reach.
+
+## 85. The drift, measured, and the roster June leaves — **September 15 2026, night**
+
+§83.4 left one number open: seed 12161 rose nine percent over five seasons
+where 4242 rose one, and `06` §AH.1 said to measure ten seasons on four seeds
+before touching anything. The reporter's word was "go ahead and fix the drift
+then." This is the measurement, what it turned out to be, and the fix — which
+was not to the ladder.
+
+### 85.1 Ten seasons, four seeds: a spread with a step under it
+
+`tests/class-census.ts` grew a `SEED` knob (one world per process, because
+`uniqueName` is module state and the second world in a process is not the
+world of that seed alone) and was run for ten seasons on 4242, 12161, 20080
+and 27999. Runs per team per game, the engine as it stood that afternoon:
+
+| seed | y1 | y2 | y3 | y4 | y5 | y6 | y7 | y8 | y9 | y10 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4242 | 7.39 | 7.40 | 7.52 | 7.45 | 7.44 | 7.45 | 7.53 | 7.43 | 7.47 | 7.42 |
+| 12161 | 7.26 | 7.58 | 7.78 | 7.64 | 7.71 | 7.77 | 7.85 | 7.78 | 7.54 | 7.49 |
+| 20080 | 7.30 | 7.55 | 7.63 | 7.54 | 7.53 | 7.58 | 7.55 | 7.56 | 7.60 | 7.52 |
+| 27999 | 7.31 | 7.47 | 7.57 | 7.49 | 7.62 | 7.44 | 7.43 | 7.49 | 7.55 | 7.75 |
+
+The nine percent was noise: 12161 peaked in year seven and was back at 7.49
+by year ten, 27999 wandered the other way. Under it was a **step of about
+three percent from year one to year two** — 7.32 to 7.55 on the four-seed
+mean — that never grew. The world was flat for a decade; year one was the
+odd year out.
+
+### 85.2 What the step was made of
+
+The census was given two more rows. `played` weights every hitter by his
+plate appearances and every arm by his outs, because a roster mean cannot see
+who takes the field; `card` prints the nine, the rotation, the pen and the
+bench, and the roster's size. Year one against years five to ten, four seeds:
+
+| | nine | rotation | pen | bench | roster | played bats | played arms | walk-on PA / outs |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| year one (generated) | 52.9 | 52.1 | 48.9 | 40.7 | 23.0 | 52.5 | 50.6 | 0% / 0% |
+| years 5–10 (recruited) | 55.1 | 55.5 | 47.2 | 39.9 | 28.1 | 54.3 | 51.8 | 7% / 10% |
+
+A generated roster was twenty-three men drawn to the structural shape — nine,
+four, four and six, one man a spot. A recruited roster is twenty-eight: every
+signed man enrols (§62.4), so the extras a class leaves carry on the bench
+and in the pen; the June draft has taken the best juniors; the ladder signs
+freshmen a few points above the table; and every June leaves about two and a
+half walk-ons a roster, at thirty overall, who actually play — the rest-day
+rule and the rested-first pen hand them seven percent of the country's plate
+appearances and a tenth of its outs. So the recruited nine and four are two
+and four points better, being the best of a deeper pool, and its pen and
+bench are worse. That, on the sensitivity asymmetry §83.3 describes, is three
+percent of runs, and it is the entire "drift". The world never climbed; it
+opened on a roster no June ever leaves.
+
+Two things were found on the way and are not this pass's to settle. **The
+ladder compresses the country from the first winter**: by quality bucket,
+year-two signed freshmen read 57.0 / 49.9 / 45.6 / 40.5 / 40.1 for programmes
+in the sixties / fifties / forties / thirties / twenties, against generated
+freshmen of 63.9 / 53.6 / 44.9 / 36.0 / 29.5, and by year ten the country's
+nine reads `33.8 + 0.50 × quality` where it was generated at `16.1 + 0.88 ×
+quality` — a spread of eleven narrowed to eight. It is the tier gates and a
+ladder whose top band is twenty-two men a year, and it is not prestige creep,
+because it reads the same in year two. **The four-star tier starves**: by year
+ten the twelve programmes at prestige 60–71 carry 8.7 walk-ons each on
+23-man rosters, against 1.2 to 2.1 for every other tier, because their board
+plan points 83% of its slots at the 87 five- and four-star men a class holds
+and thirty boards are pointed at them by then. Both are at `06` §AI.1 with
+their numbers.
+
+### 85.3 The fix: a roster is the one June leaves
+
+`makeTeam` moved from `players.ts` to a new `roster.ts`, with `refill`, the
+walk-on makers, `draftChance` and the roster constants lifted out of
+`progression.ts` so that the generator could call the June code rather than
+resemble it (`players.ts` cannot import `progression.ts`; `progression.ts`
+imports `roster.ts` back and re-exports `draftChance` for the screens). A
+generated roster is now **four signed classes run through `refill` on no
+survivors, then the card dealt**:
+
+- **As many men as a board lands.** The country signs 640 to 670 of 720 a
+  year and not evenly: 52% of boards land all eight scholarships, 11% seven,
+  13% six, 10% five, 5% four, 7% three or fewer (four winters, 96 boards
+  each). `LANDED_A_CLASS` is that distribution in twenty-five seats, mean
+  6.7. The variance is the point: June's walk-ons come from thin rosters, and
+  a stack of four even classes had none, so `refill` made one walk-on a roster
+  where a June leaves two and a half. A flat "walk-on load" was tried first
+  and rejected — it put three walk-ons on every roster who then barely played,
+  because a walk-on plays when the pen he sits in is thin.
+- **From `CLASS_SHAPE`, at the level recruiting leaves.** `RECRUITED_LIFT` is
+  `{ bat: 3, arm: 0 }`: what reaches the field, PA- and outs-weighted with the
+  walk-ons taken out, stands about three above the table for bats and at it
+  for arms, once the roster is stacked the way June stacks it. Recruiting
+  selects on ceiling — a signed class outgrows a drawn one by a point and a
+  half between its first spring and its third — and it selects differently on
+  the two sides, because a reliever's profile reads better to the services
+  than a starter's and grows less. A lift of two on the arms was tried and
+  read as two too many on the four, the rotation being the best four of a
+  pool the shape already over-supplies. The ladder itself was left where the
+  reporter tuned it (§77): it is the surface a coach reads every winter, and
+  a day-one roster is not.
+- **The seniors the clubs passed on or the staff talked back.** Each senior is
+  built to his junior year, offered to the draft at `draftChance` less
+  `DRAFTED_JUNIORS_KEPT` (0.29 — 199 to 209 juniors taken a June, 52 to 65
+  talked back by their staffs, the ones who go averaging 65), and only then
+  given his last winter. Without the keep a generated senior class stood four
+  points under a recruited one; with it, seniors read 52.5 against 52.6.
+- **June keeps a signed arm's role.** `refill` used to relabel a signed
+  starter parked in the pen as an RP, for life, and next June's rotation is
+  picked from SP labels — so the country's rotations were drawn from a pool a
+  man smaller every year (6.3 SP-labelled arms a roster against the 7.5 the
+  shape signs) and stood a point and a half under the four best starters
+  actually on the roster. A starter in the pen is a starter in the pen now,
+  which is what the note under `bullpen` already said of the survivors.
+- **June's relabel of a bat goes through `adoptSpot`.** A signed shortstop
+  placed in left because nobody signed a left fielder stays a shortstop with
+  the card remembering it, rather than becoming an outfielder for life who
+  holds an infielder's badge and is never considered for short again. Badge
+  eligibility (`at()`) and `respectCeiling` read the home position with it,
+  so a man adopted somewhere he is taxed does not come home a point over a
+  ceiling measured on the tax.
+
+Three of the generator's numbers are measured off the world's own Junes
+rather than derived — the landing table, the lift, the keep — and the file
+says so beside each. `tests/class-census.ts` is the instrument that fitted
+them; `tests/calibration-seasons.test.ts` is the guard that fails when June
+stops leaving what they say it leaves. The alternative, a generator that ran
+the recruiting AI, was not available: the walk-on tail is the starved tier
+above, and the level is the ladder meeting a table it was never fitted to.
+
+### 85.4 The harness was measuring the wrong staff
+
+With the roster fixed the harness fell nine percent on walks while the
+world's year one had not moved a digit, and the reason was in `runSeason`:
+`simGame` left to its defaults starts `rotation[0]` and calls the pen in
+array order. That measured nothing while a rotation was four starters drawn
+in no order and a pen six relievers much alike; on a roster whose rotation is
+the four best of seven, best first, over a pen that runs from the fifth
+starter down to a walk-on, it had the ace start every game and the two best
+relievers finish it. And `newTeams` had never dealt its nine: the harness pair
+batted the positional order `makeTeam` drew, three points of bat under the
+dealt card every programme in the world has fielded since §66. Measured on
+seed 4242's pair against the world's fifteen programmes of quality 47–53:
+
+| | nine | rotation | pen | bench |
+| --- | --- | --- | --- | --- |
+| harness pair, before | 55.6 | 58.8 | 54.1 | 56.9 |
+| world 47–53, before | 58.9 | 56.9 | 54.5 | 48.3 |
+| harness pair, now | 60.8 | 61.9 | 53.3 | 47.3 |
+| world 47–53, now | 60.6 | 61.0 | 53.4 | 46.2 |
+
+The harness plays its games the way a season does now — the scheduled slot
+starts, the pen is called rested-first (rotated a man a game, which over a
+spring is what `restedFirst` amounts to), the season's `closerFrom` holds the
+best arm back — and the pair matches the world's programmes of its quality on
+every row. On that honest pair the eight-seed sweep read runs +13.8%, home
+runs +15.9%, doubles +6.7%, walks +4.4%, strikeouts −10.4% against the
+targets. `tests/harness-rates.ts` is new: the per-plate-appearance reader the
+norm procedure had always described and never had. One round of it (`BAT_NORM`
+single 0.975 → 0.9397, double 0.960 → 0.8998, triple 0.9903 → 0.8911, homerun
+0.905 → 0.8408, walk 1.0003 → 0.9790; `PIT_NORM` homerun 0.940 → 0.8733, walk
+1.0034 → 0.9820) put every widened event inside one percent of where it had
+been; then `JENSEN_K` 0.9593 → 1.0329 on the strikeout rate, which had fallen
+seven percent on a league whose outs had not moved, because the bats that
+reach the field stand three above the table and the arms at it. The sweep
+after: runs −0.3%, average −1.6%, on-base −1.7%, home runs −3.7%, strikeouts
++0.5%, walks −2.0%, slugging −0.9%. Goldens re-recorded.
+
+### 85.5 What the world does now
+
+Ten seasons, four seeds, the final engine:
+
+| seed | y1 | y2 | y3 | y4 | y5 | y6 | y7 | y8 | y9 | y10 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4242 | 6.45 | 6.55 | 6.53 | 6.58 | 6.74 | 6.61 | 6.61 | 6.49 | 6.49 | 6.62 |
+| 12161 | 6.47 | 6.70 | 6.81 | 6.86 | 6.63 | 6.46 | 6.74 | 6.66 | 6.54 | 6.72 |
+| 20080 | 6.63 | 6.72 | 6.81 | 6.69 | 6.66 | 6.61 | 6.67 | 6.59 | 6.54 | 6.61 |
+| 27999 | 6.50 | 6.79 | 6.70 | 6.53 | 6.48 | 6.51 | 6.53 | 6.60 | 6.51 | 6.53 |
+
+Year one 6.51, years two to ten 6.62; average .268 → .270, on-base .375 →
+.378, slugging .419 → .422, home runs 0.94 → 0.95, strikeouts 8.02 → 8.12,
+walks 4.62 → 4.77. The year-five-over-year-one ratio reads 1.05, 1.03, 1.01
+and 1.00 where §83.4's read 1.01 and 1.09. On the card rows year one is
+within half a point of the steady state on the nine and the played bats,
+within a point on the rotation, the pen and the played arms, and carries 1.6
+walk-ons a roster against June's 2.4 — the gap is the starved tier and a
+thinness that has a history, and it is the one and a half percent that
+remains: the walk-ons on thin pens throw nine percent of the country's outs
+from year five and four in year one. Recorded, banded in
+`tests/calibration-seasons.test.ts`, and not tuned.
+
+The world sits about two percent **under** the harness now, where §83.4 had it
+eight above — average .270 against .276, home runs 0.95 against 0.99 — because
+the eight was mostly the old harness's undealt nine and fixed starter, not the
+between-programmes spread. The harness is still what the league is defined by,
+as decided the same afternoon (§83.4, `06` §AH.1); the number it defines simply
+moved to where the game is played, and the world followed it down by about
+twelve percent of runs. A box score reads 6.6 runs a side where it read 7.5
+this afternoon and 7.3 this morning, which is college baseball's 6.7.
+
+### 85.6 Everything that had stood on the old roster
+
+- **Tests whose premise was twenty-three men drawn to the shape**:
+  `progression.test.ts` asserted a bench of four and a roster of twenty-three
+  after a roll, that a roll replaces exactly the men it lost, and that five
+  years' arrivals equal departures — each true only of a roster with no depth
+  to absorb a loss; they say "at least the shape", "the holes and only the
+  holes", and "settles toward the shape from above" now. Its "graduates every
+  senior" count had been reading walk-on leases out of `report.graduated` as
+  seniors; it reads the rows that say so. `best-nine.test.ts`'s corner-
+  outfield fixtures picked men by label, which on a dealt card can be a right
+  fielder adopted in left, and rated one corner under a bench that is six men
+  in the forties now rather than four in the twenties. `portal.test.ts`'s
+  buried bench man was sometimes a senior, who graduates rather than
+  transfers; its content-star sample allows the two wanders in thirty winters
+  that 0.012 a winter makes ordinary. `traits.test.ts`'s first baseman was
+  sometimes an adopted right fielder; its tendency-neutrality bound is twelve
+  thousandths for a pool of ~900 bats and ~720 arms.
+- **Five more that had stood on the twenty-three or on the old harness.**
+  `release-audit.test.ts` counted a deep roster as twenty-three plus six and
+  counts what the roster holds plus six. `mandate.test.ts` sweeps sixteen
+  seeds for a world whose ask moves at the first roll, because the first
+  eight all held theirs on the new roster. `overhaul.test.ts`'s SIM WEEK
+  presses again from an injury stop the way a coach would, since a week that
+  stops when it costs you somebody is the feature and not the boundary.
+  `shallow-systems.test.ts`'s portal bargain is elite outright, a strong
+  programme's right fielder reading 82 now where an 88-bat man came to 82
+  and was refused by the edge. `delegated-recruiting.test.ts`'s floor is half
+  the peer average rather than six tenths: seed 4242 read 0.56 against 0.94
+  and 0.82 on two others, the same board and a different draw of who was in
+  the way, and the bug it guards against read 0.41.
+- **`respectCeiling`** reads the home position as well as tonight's — a man
+  adopted somewhere he is taxed used to come home a point over a ceiling
+  measured on the tax, which the "never above his own ceiling" guard caught
+  the moment June adopted men instead of relabelling them.
+- **`tests/calibration-seasons.test.ts`** bands re-taken from the forty
+  season-rows: runs 6.2–7.1, average .255–.285, on-base .360–.395, slugging
+  .400–.445, home runs 0.82–1.10, strikeouts 7.5–8.7, walks 4.3–5.2.
+
+### 85.7 Verified
+
+TypeScript clean; the full suite; the census five times over on the way and
+once on the final engine, four seeds each; the harness read before, after,
+and after each round; the goldens recorded by the script that refuses a
+sweep off by ten. Every number in this section came off a printed table.

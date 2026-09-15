@@ -198,6 +198,14 @@ describe('SIM WEEK plays out the week and stops', () => {
     s.simWeek();
 
     expect(season.dayIndex).toBeGreaterThan(0);
+    // A week stops early when it costs the coach somebody (`weekStoppedBy`),
+    // and a hurt starter then holds the desk until the card is fixed. That
+    // is the feature, not the boundary; press on the way a coach would.
+    for (let presses = 0; useDynasty.getState().weekStoppedBy !== null && presses < 6; presses++) {
+      useDynasty.getState().clearWeekStop();
+      useDynasty.getState().autoLineup();
+      useDynasty.getState().simWeek();
+    }
     const now = season.schedule[season.dayIndex];
     // Either the season ended or the calendar sits on a new week.
     if (!seasonComplete(season) && now) {

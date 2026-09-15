@@ -91,7 +91,10 @@ describe('who leaves', () => {
 
     // And a man who is fine but has not played, which is the case college
     // coaches actually lose people to.
-    const content = team.bench[1] ?? team.bench[0]!;
+    // A senior is graduating rather than transferring, so the bench man has
+    // to be somebody with a year left -- a day-one bench carries seniors now
+    // that it is the bench June leaves rather than four men drawn for it.
+    const content = team.bench.find((p) => p.classYear !== 'SR') ?? team.bench[0]!;
     setMood(content, SETTLED);
     let anyBuried = false;
     for (let year = 2027; year < 2040; year++) {
@@ -206,7 +209,11 @@ describe('the balance pass', () => {
     for (let year = 2027; year < 2057; year++) {
       if (entersPortal(star, { squadRank: 20, starts: 0, games: 45, year, seed: 4242 })) went++;
     }
-    expect(went).toBeLessThanOrEqual(1);
+    // STAR_WANDER is 0.012 a winter times the market, so thirty winters
+    // expect about one and a half; two is the top of ordinary luck for one
+    // man, and the assertion is that the buried channel is gone -- under it
+    // he went nine or ten times in thirty.
+    expect(went).toBeLessThanOrEqual(2);
   });
 
   it('still loses a genuinely miserable star', () => {

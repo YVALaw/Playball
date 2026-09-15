@@ -10,7 +10,8 @@
 // a game.
 
 import { makeRng } from '../src/engine/rng.js';
-import { makeTeam, resetNames } from '../src/engine/players.js';
+import { resetNames } from '../src/engine/players.js';
+import { makeTeam } from '../src/engine/roster.js';
 import { overallOf } from '../src/engine/ratings.js';
 import { generateClass, starsFor, serviceScore } from '../src/engine/recruiting.js';
 import { potentialGrade, type PotentialGrade } from '../src/engine/scouting.js';

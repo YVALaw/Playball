@@ -312,7 +312,8 @@ describe('the catcher', () => {
     // behind the plate now matters in both directions: a cannon deters attempts
     // AND retires more of the runners who go anyway.
     const { simGame } = await import('../src/engine/game.js');
-    const { makeTeam, resetNames } = await import('../src/engine/players.js');
+    const { resetNames } = await import('../src/engine/players.js');
+    const { makeTeam } = await import('../src/engine/roster.js');
     const { makeRng } = await import('../src/engine/rng.js');
 
     const run = (catcherArm: number) => {

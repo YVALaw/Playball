@@ -316,7 +316,7 @@ const PIT_SENS: SensTable<keyof PitcherRatings> = {
 type NormTable = Partial<Record<OffensiveEvent, number>>;
 
 const BAT_NORM: NormTable = {
-  single: 0.975, double: 0.960, triple: 0.9903, homerun: 0.905, walk: 1.0003,
+  single: 0.9397, double: 0.8998, triple: 0.8911, homerun: 0.8408, walk: 0.9790,
 };
 
 // Barely off one, where the batter's home run correction is three percent, and
@@ -326,7 +326,7 @@ const BAT_NORM: NormTable = {
 // events where both sides widened, so those corrections were split evenly —
 // each side carries the square root of what the event needed.
 const PIT_NORM: NormTable = {
-  homerun: 0.940, walk: 1.0034,
+  homerun: 0.8733, walk: 0.9820,
 };
 
 // `source` is typed to guarantee every attribute the table names is present, so
@@ -463,7 +463,13 @@ export function platoonSplit(p: Hitter | Pitcher): PlatoonSplit {
  * same way as the norm tables above and against the same harness: strikeouts per
  * plate appearance, before and after, four seeds.
  */
-const JENSEN_K = 0.9593;
+// 1.0329 since the roster became the one June leaves (05 s85): the bats
+// that reach the field stand three above the table and the arms at it, so
+// the contact-against-stuff share of an out fell seven percent on a league
+// whose outs had not moved. Fitted as the note above says -- strikeouts per
+// plate appearance, before and after, on the eight-seed sweep -- after the
+// norm tables had been refitted, so the out count it divides was settled.
+const JENSEN_K = 1.0329;
 
 /**
  * Strikeout share of outs, resolved after the log5 model says 'out'.
@@ -776,7 +782,12 @@ export function overallOf(p: Hitter | Pitcher): number {
  * every program in the country began fielding a fitted nine.
  */
 export function respectCeiling(p: Hitter | Pitcher): void {
-  const now = overallOf(p);
+  // Where he stands tonight AND where he is himself. A card adopts a man to
+  // a spot (`adoptSpot`, homePos kept), a winter measures him there, and the
+  // bench sends him home a point above a ceiling measured on the tax he was
+  // paying somewhere else. Both readings, so the number never lies at either.
+  const home = 'homePos' in p && p.homePos ? overallOf({ ...p, pos: p.homePos } as Hitter) : 0;
+  const now = Math.max(overallOf(p), home);
   if (now > p.potential) p.potential = now;
 }
 

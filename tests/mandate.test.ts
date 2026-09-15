@@ -47,7 +47,9 @@ describe('the board asks for one number', () => {
       from a fresh one is the thing that let this through.
     */
     let moved = 0;
-    for (const seed of [4242, 909, 1717, 2103, 31337, 77, 55, 8]) {
+    // Sixteen seeds since the roster became the one June leaves (05 s85):
+    // the first eight all held their ask through the first roll on it.
+    for (const seed of [4242, 909, 1717, 2103, 31337, 77, 55, 8, 12161, 20080, 27999, 35918, 43837, 51756, 59675, 6]) {
       useDynasty.getState().start(seed, 0);
       const before = useDynasty.getState().boardAsk?.targetWins;
       expect(before).toBeDefined();

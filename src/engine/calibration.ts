@@ -6,9 +6,11 @@
 // regression test measure the same way. Two copies of this would drift, which is
 // the exact failure mode documented as B2 in 04-implementation-plan.md.
 
-import { makeRng, makeTeam, resetNames } from './players.js';
+import { makeRng, resetNames } from './players.js';
+import { makeTeam } from './roster.js';
+import { closerFrom } from './season.js';
 import { simGame, type TeamState } from './game.js';
-import type { EngineName, Rng, Team } from './types.js';
+import type { Arm, EngineName, Rng, Team } from './types.js';
 
 /**
  * Modern NCAA Division I reference points.
@@ -103,7 +105,39 @@ export function runSeason(engine: EngineName, n: number, seed = 4242): Acc {
     const { rng, a, b } = newTeams(seed + pair * 1000);
     const games = Math.min(perPair, n - played);
     for (let i = 0; i < games; i++) {
-      const res = simGame(a, b, rng, { engine });
+      /*
+        The staff a season would use tonight, not the top of two arrays.
+
+        `simGame` left to its defaults starts `rotation[0]` and calls the pen
+        in array order, and until 2026-09-15 that measured nothing: a roster
+        was four starters drawn in no order and six relievers much alike. A
+        roster is the one June leaves now (roster.ts) -- the four best
+        starters of seven or eight, best first, over a pen of nine that runs
+        from the fifth starter down to a walk-on -- so the defaults had the
+        ace start every game and the two best relievers finish it, and the
+        harness read walks nine percent under a league whose seasons had
+        not moved. A season starts the scheduled slot and calls the rested
+        arm first (`restedFirst`, season.ts), which over a spring is every
+        arm in turn; the rotation of both here is the same thing without the
+        calendar. The closer is the season's rule verbatim.
+      */
+      const relief = (pen: readonly Arm[]): Arm[] => {
+        const k = pen.length === 0 ? 0 : i % pen.length;
+        return [...pen.slice(k), ...pen.slice(0, k)];
+      };
+      const homePen = relief(a.bullpen);
+      const awayPen = relief(b.bullpen);
+      const homeClose = closerFrom(homePen);
+      const awayClose = closerFrom(awayPen);
+      const res = simGame(a, b, rng, {
+        engine,
+        homeStarter: i % Math.max(1, a.rotation.length),
+        awayStarter: i % Math.max(1, b.rotation.length),
+        homeBullpen: homePen,
+        awayBullpen: awayPen,
+        ...(homeClose ? { homeCloser: homeClose } : {}),
+        ...(awayClose ? { awayCloser: awayClose } : {}),
+      });
       accumulate(acc, res.home);
       accumulate(acc, res.away);
     }
