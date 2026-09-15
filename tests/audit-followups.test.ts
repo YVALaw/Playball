@@ -9,6 +9,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { createSeason, simSeason, currentDay, pitcherReady } from '../src/engine/season.js';
+import { available } from '../src/engine/depthChart.js';
 import {
   freezeRegularSeason, protectedTopFour, NATIONAL_BIDS, CONF_ADVANCE,
   allConferenceTournaments, stageRegionals, stageNational, STAGE_BREAK,
@@ -247,6 +248,11 @@ describe('the postseason calendar', () => {
       const rec = s.teams[i];
       expect(rec).toBeDefined();
       for (const [slot, arm] of rec!.team.rotation.slice(0, 2).entries()) {
+        // The break is about rest. A starter in the trainer's room on the
+        // night the regionals open is not a scheduling fault, and the roster
+        // June leaves (05 s85) has enough real arms that one of them is hurt
+        // somewhere in the country most Junes.
+        if (!available(arm, opens)) continue;
         expect(pitcherReady(s, arm, opens, opens), `${rec!.def.abbr} slot ${slot}`)
           .toBe(true);
       }

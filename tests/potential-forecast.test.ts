@@ -223,17 +223,34 @@ describe('a recruiting class', () => {
 
   it('keeps the ceiling a forecast rather than a restatement of ability', () => {
     // r was 0.751 and is 0.636. It must not return to being a relabelling of
-    // current overall, and it must not decouple entirely either — a five-star
+    // current overall, and it must not decouple entirely — a five-star
     // who might be anything is a different game, and not the one on offer.
-    const xs = potentials.map((r) => r.ovr);
-    const ys = potentials.map((r) => r.pot);
-    const mx = mean(xs);
-    const my = mean(ys);
-    const cov = mean(xs.map((x, i) => (x - mx) * (ys[i]! - my)));
-    const sx = Math.sqrt(mean(xs.map((x) => (x - mx) ** 2)));
-    const sy = Math.sqrt(mean(ys.map((y) => (y - my) ** 2)));
-    const r = cov / (sx * sy);
-    expect(r).toBeLessThan(0.70);
+    //
+    // Read inside each star band as well as across the class since the
+    // ladder's top went up (05 s88). Across a class, r rises with the range
+    // of overall the ladder spans — 68-80 freshmen carry ceilings near them
+    // by construction, and there are twice as many — and read 0.74 on the
+    // raised ladder with nothing about the forecast changed. Inside a band
+    // the range is fixed, so the old bug (headroom a class-year constant,
+    // potential a relabelling) would read near 1.0 there and the roll reads
+    // well under 0.7. The class-wide bound is widened to say what it can.
+    const corr = (rows: { ovr: number; pot: number }[]): number => {
+      const xs = rows.map((r) => r.ovr);
+      const ys = rows.map((r) => r.pot);
+      const mx = mean(xs);
+      const my = mean(ys);
+      const cov = mean(xs.map((x, i) => (x - mx) * (ys[i]! - my)));
+      const sx = Math.sqrt(mean(xs.map((x) => (x - mx) ** 2)));
+      const sy = Math.sqrt(mean(ys.map((y) => (y - my) ** 2)));
+      return cov / (sx * sy);
+    };
+    const r = corr(potentials);
+    expect(r).toBeLessThan(0.80);
     expect(r).toBeGreaterThan(0.50);
+    for (const stars of [1, 2, 3, 4, 5]) {
+      const band = potentials.filter((p) => p.stars === stars);
+      if (band.length < 30) continue;
+      expect(corr(band), `${stars} star r inside the band`).toBeLessThan(0.70);
+    }
   });
 });

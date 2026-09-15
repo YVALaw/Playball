@@ -6,7 +6,24 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 15, 2026, last · **Branch:** `main` · **the
+**Last session:** September 15, 2026, last of all · **Branch:** `main` · **a
+five-star is a seventy-three, so that a blue blood can stay one** -- the top
+of the ladder went up by the reporter's word, prestige staying as it is:
+five-star band 68–80 at five percent of the class, four-star 60–70 at ten,
+thresholds 72 and 62, the §77 star shares held at 27 / 31 / 24 / 11 / 7. A
+blue blood's nine holds around 70 for five years and 67 at ten where it fell
+to 65; the fifties hold, the twenties gain two rather than four. The lift took
+half a point back on both sides, the harness moved a percent, no norm was
+touched, goldens re-recorded; the twelve test files fitted to the top of the
+population all hold. **The price, recorded and not tuned** (`05` §88.4): the
+level does not move but a top that stays the top makes the country's games
+more lopsided as seeded classes turn into recruited ones, three percent of
+runs by year five, inside the guard's bands and its 1.12. **Next:** nobody has
+opened a day-one roster in the app since the generator changed; the climb
+probe and the hall probe are unmeasured on this engine; the one-star tier
+carries the walk-ons now, at a rating of fifteen at a twenty-five programme.
+
+*Earlier the same night:* **the
 ladder's bottom, and the top left as a decision** -- with the boards fixed,
 recruiting by quality bucket read: the twenties sign freshmen at 39 against the
 32 they are built at, the sixties at 56 against 66. The bottom is the ladder

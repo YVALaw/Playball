@@ -123,6 +123,14 @@
 // every rate flat, and all forty season-rows inside the bands below, which
 // were taken in s85 and did not need re-taking.
 //
+// And last of all the ladder's top went up so that a blue blood could stay
+// one (05 s88): on that engine the four seeds read year one 6.55 and years
+// two to ten 6.75, ratios 1.04 / 1.05 / 1.02 / 1.03, the played bats and arms
+// level to a tenth, the three percent being lopsided games on a country whose
+// top now stays the top -- the reporter's shape, at the reporter's price --
+// and all forty season-rows still inside the bands below. Seed 4242's year
+// five reads 1.06 over its year one against the 1.12 the guard allows.
+//
 // This file is a guard. It pins the stationarity, so that whoever touches
 // generation, development, recruiting or the norms next can watch it move.
 

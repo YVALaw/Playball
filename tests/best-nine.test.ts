@@ -14,7 +14,7 @@ import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
 import { overallOf } from '../src/engine/ratings.js';
 import { useDynasty } from '../src/state/store.js';
-import type { Hitter, Team } from '../src/engine/types.js';
+import type { Hitter, Position, Team } from '../src/engine/types.js';
 
 const fresh = (): Team => {
   const world = createSeason(makeRng(4242), undefined, CONFERENCES);
@@ -27,6 +27,33 @@ const rate = (h: Hitter, v: number): void => {
     contact: v, power: v, eye: v, speed: v,
     range: v, hands: v, arm: v, armAccuracy: v, blocking: v,
   });
+};
+
+/**
+ * Nine naturals, one a spot, all alike, and nobody on the bench.
+ *
+ * The two corner-outfield tests below are about one thing -- does AUTO trade
+ * the corners with each other -- and on the roster June leaves (05 s85) a
+ * corner man rated into the fifties is the best man available at whichever
+ * spot's natural happens to be in the forties, centre one week and third the
+ * next, which is a different question with the right answer. So the nine is
+ * built to ask only the one: every man his own spot's natural at 55, the
+ * corners rated as each test says, and no cover anywhere to be had.
+ */
+const nine = (): Team => {
+  const team = fresh();
+  team.bench.splice(0, team.bench.length);
+  SPOTS.forEach((spot, i) => {
+    const m = team.lineup[i]!;
+    delete m.homePos;
+    m.pos = spot;
+    rate(m, 55);
+    // A DH is a first baseman by glove here, not an outfielder: `naturalPos`
+    // reads a DH's range and arm, and at 55 everywhere he is a left fielder
+    // who then takes a corner off the men the test is about.
+    if (spot === 'DH') Object.assign(m, { range: 40, arm: 40, armAccuracy: 40 });
+  });
+  return team;
 };
 
 describe('the best nine', () => {
@@ -55,11 +82,9 @@ describe('the best nine', () => {
 
   it('leaves two corner outfielders where they are rather than swapping them', () => {
     // Reported: AUTO sent the RF to LF and the LF to RF, both a rung worse.
-    const team = fresh();
-    // The men whose OWN spots are the corners: a dealt card can have a right
-    // fielder adopted in left, and he is a right fielder to `bestNine`.
-    const lf = team.lineup.find((p) => (p.homePos ?? p.pos) === 'LF')!;
-    const rf = team.lineup.find((p) => (p.homePos ?? p.pos) === 'RF')!;
+    const team = nine();
+    const lf = team.lineup.find((p) => p.pos === 'LF')!;
+    const rf = team.lineup.find((p) => p.pos === 'RF')!;
     // Make the left fielder the slightly better bat, the way it was found.
     rate(lf, 52);
     rate(rf, 50);
@@ -71,14 +96,11 @@ describe('the best nine', () => {
   it('never trades two men into each other\'s spots, whatever the gap between their bats', () => {
     // The second report: a left fielder six points better still swapped
     // with the right fielder, both a rung worse. A pure swap is never a gain.
-    const team = fresh();
-    const lf = team.lineup.find((p) => (p.homePos ?? p.pos) === 'LF')!;
-    const rf = team.lineup.find((p) => (p.homePos ?? p.pos) === 'RF')!;
-    // Both still the corner men worth playing: a bench is six or seven men
-    // in the forties now rather than four in the twenties, and a right
-    // fielder rated under the bench is benched, which is a different test.
-    rate(lf, 70);
-    rate(rf, 58);
+    const team = nine();
+    const lf = team.lineup.find((p) => p.pos === 'LF')!;
+    const rf = team.lineup.find((p) => p.pos === 'RF')!;
+    rate(lf, 62);
+    rate(rf, 48);
     const { lineup } = bestNine(team, 0);
     expect(lineup.find((p) => p.id === lf.id)!.pos).toBe('LF');
     expect(lineup.find((p) => p.id === rf.id)!.pos).toBe('RF');

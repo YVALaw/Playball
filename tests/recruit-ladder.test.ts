@@ -85,12 +85,17 @@ describe('what a recruit is worth when he signs', () => {
     // and two with the two-star threshold, measured 30.5 / 40.1 / 50.2 / 58.8
     // / 68.7 over ten classes. The one-star mean sits a point over its band
     // because the services still misfile a few two-star men beneath it.
+    // And again the same night (05 s88), when the top two bands went UP so
+    // that a blue blood could stay one -- five-star 68-80 at five percent of
+    // the class, four-star 60-70 at ten, thresholds 72 and 62 -- measured
+    // 30.5 / 40.0 / 50.5 / 62.2 / 73.3, shares 27 / 31 / 24 / 11 / 7. A
+    // five-star is a seventy-three now, by the reporter's word.
     const bands: Record<number, [number, number]> = {
       1: [29.0, 32.0],
-      2: [38.6, 41.6],
-      3: [48.4, 51.4],
-      4: [56.7, 59.7],
-      5: [67.1, 70.1],
+      2: [38.5, 41.5],
+      3: [49.0, 52.0],
+      4: [60.7, 63.7],
+      5: [71.8, 74.8],
     };
     for (const [stars, [lo, hi]] of Object.entries(bands)) {
       const m = mean(by.get(Number(stars))!);

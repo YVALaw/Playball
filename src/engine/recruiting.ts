@@ -427,12 +427,14 @@ export function serviceScore(p: Player): number {
  * were left where they were, because nobody complained about them and a five
  * star ought to keep meaning the thing it has always meant. Two came down
  * again with its band on 2026-09-15 (40 → 38; 05 s87), the one-star band
- * having no threshold of its own to move.
+ * having no threshold of its own to move -- and five and four went UP with
+ * theirs the same night (68 → 72, 60 → 62; 05 s88), when the reporter chose
+ * to let a five-star mean a seventy-four so that a blue blood could stay one.
  */
 export function starsFor(p: Player): number {
   const score = serviceScore(p);
-  if (score >= 68) return 5;
-  if (score >= 60) return 4;
+  if (score >= 72) return 5;
+  if (score >= 62) return 4;
   if (score >= 50) return 3;
   if (score >= 38) return 2;
   return 1;
@@ -688,6 +690,21 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
       the header of `tests/calibration-seasons.test.ts` for why the plateau
       barely notices.
 
+      And the top two came UP the same night (05 s88), by the reporter's word
+      -- "a five-star is a seventy-four now". A blue blood is a school in the
+      sixties, and a class of 720 held 42 five-stars at 69 and 93 four-stars
+      at 59, so the best class any board could land averaged 64 and the one
+      a blue blood actually lands 57; its nine settled at 65 by year ten,
+      eight under the 73 it was built with, and a coach who took the job on
+      day one watched the team get worse for four years while signing the
+      best classes in the country. The five-star band is 68-80 at five
+      percent of the class now and the four-star band 60-70 at ten, with
+      their thresholds moved with the bands (68 -> 72, 60 -> 62; five by its
+      mean, the band being wider now, four by its floor), so a blue
+      blood's class averages about 64 and its nine holds around 71. Every
+      constant fitted to the top of the population moved with it; s88 lists
+      them.
+
       The bottom two came down again on 2026-09-15 (05 s87), four and two,
       and the two-star threshold with them. Not for the feel of a card this
       time but for what the country becomes: measured over ten seasons on
@@ -701,8 +718,8 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
     */
     const roll = rng();
     const quality =
-      roll > 0.97 ? 66 + rng() * 10
-      : roll > 0.88 ? 58 + rng() * 8
+      roll > 0.95 ? 68 + rng() * 12
+      : roll > 0.85 ? 60 + rng() * 10
       : roll > 0.65 ? 48 + rng() * 8
       : roll > 0.30 ? 36 + rng() * 8
       : 25 + rng() * 8;

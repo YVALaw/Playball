@@ -23,6 +23,16 @@ import { ENGINES } from '../src/engine/engines.js';
 import type { Hitter, Pitcher } from '../src/engine/types.js';
 
 /**
+ * Re-recorded 2026-09-15, last of all, when the ladder's top two bands went
+ * up by the reporter's word -- a five-star is a seventy-three now, so that a
+ * blue blood can stay one (05 s88) -- and the generator's lift took half a
+ * point back on both sides for it (`RECRUITED_LIFT` { bat: 2.5, arm: -0.5 }).
+ * The harness moved with the lift and no further: against the previous
+ * recording, runs +1.4%, walks +1.2%, strikeouts -2.0%, home runs unmoved,
+ * inside the sweep's own spread; no norm was touched. Against the targets:
+ * runs +1.0%, average -1.2%, on-base -1.2%, home runs -3.4%, strikeouts
+ * -1.1%, walks -0.5%, slugging -0.6%.
+ *
  * Re-recorded 2026-09-15, last, when the ladder's bottom two bands came down
  * four and two (05 s87) and the generator's lift was re-fitted to what the
  * lowered ladder delivers -- `RECRUITED_LIFT` { bat: 3, arm: 0 } to { bat: 2,
@@ -181,20 +191,20 @@ import type { Hitter, Pitcher } from '../src/engine/types.js';
  * philosophy.
  */
 const GOLDEN: Record<string, number> = {
-  'Runs per team per game': 6.6691666666666665,
-  'PA per team per game': 41.70520833333333,
-  'Batting average': 0.27385608192205374,
-  'On base percentage': 0.3785829259270368,
-  'Home runs per team per game': 0.963125,
-  'Strikeouts per team per game': 8.07625,
-  'Walks per team per game': 4.770833333333333,
-  'Pitches per plate appearance': 3.7379923570697104,
-  'Slugging': 0.4280085178172209,
+  'Runs per team per game': 6.670208333333333,
+  'PA per team per game': 41.463541666666664,
+  'Batting average': 0.2752665787434871,
+  'On base percentage': 0.378431244374494,
+  'Home runs per team per game': 0.979375,
+  'Strikeouts per team per game': 8.156666666666666,
+  'Walks per team per game': 4.670833333333333,
+  'Pitches per plate appearance': 3.739258887074488,
+  'Slugging': 0.43279495171124927,
 };
 
-const GOLDEN_SLUGGING = 0.4280085178172209;
-const GOLDEN_ERRORS = 1.0014583333333333;
-const GOLDEN_SB_PCT = 0.7255733584668552;
+const GOLDEN_SLUGGING = 0.43279495171124927;
+const GOLDEN_ERRORS = 0.95125;
+const GOLDEN_SB_PCT = 0.7221713937175969;
 
 /**
  * Metrics still outside the 10% bar. The list is now empty, and keeping the

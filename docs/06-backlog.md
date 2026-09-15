@@ -3837,8 +3837,8 @@ the D1 target from year one. What the measurement turned up and did not fix:
 
 ### AI.1 Found on the way, and not this pass's to settle
 
-- ~~**The ladder compresses the country, from the first winter.**~~ **Half
-  done, half a decision** (`05` §87). The bottom was the ladder and is fixed:
+- ~~**The ladder compresses the country, from the first winter.**~~ **Done,
+  both ends** (`05` §87, §88). The bottom was the ladder and is fixed:
   the one- and two-star bands came down four and two with the two-star
   threshold, the thirties sign at what they were built at and the twenties
   four over rather than seven; what the twenties' nine still gains over a
@@ -3851,8 +3851,16 @@ the D1 target from year one. What the measurement turned up and did not fix:
   and the four-star band 60–70, thresholds with them — a five-star a
   seventy-four rather than a sixty-nine, twice as common, and the draft's,
   hall's and pro-career's centres moving with the top of the population. Or
-  the table's top comes down to the sixty a blue blood actually holds. **Say
-  which.** The original finding, for the record: a 66-quality
+  the table's top comes down to the sixty a blue blood actually holds. **Said:
+  bump it up, and prestige stays as it is.** A five-star is a seventy-three
+  (68–80 at five percent, four-star 60–70 at ten, thresholds 72 and 62), a
+  blue blood's nine holds around 70 for five years and 67 at ten against 65
+  before, the §77 shares held, no constant fitted to the top moved out of its
+  band, and the price is three percent of runs by year five as a top that
+  stays the top makes the country's games more lopsided -- inside the guard,
+  recorded at `05` §88.4. What compression remains is prestige inflation
+  crowding the top tiers, kept by choice. The original finding, for the
+  record: a 66-quality
   programme signs freshmen at 57 and a 27 signs them at 40 (year two, at the
   world's opening prestige; `24 + 0.52 × quality` by year ten), so the
   table's spread of eleven across programmes narrows to eight inside a

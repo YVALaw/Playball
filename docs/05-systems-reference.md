@@ -11440,3 +11440,124 @@ TypeScript clean; the full suite; ten classes for the ladder; the census on
 four seeds for ten seasons on the ladder before the refit and once on the
 final engine; the harness read before and after; the goldens recorded by the
 script that refuses a sweep off by ten.
+
+## 88. A five-star is a seventy-three, so that a blue blood can stay one — **September 15 2026, last of all**
+
+§87.3 sized the top of the ladder and left it as a decision. The reporter
+took it: "yeah lets bump it up", with prestige to stay as it is. This is the
+bump, what it was fitted by, and what it costs.
+
+### 88.1 The bands
+
+The five-star band goes from 66–76 at three percent of the class to **68–80
+at five**, the four-star band from 58–66 at nine percent to **60–70 at ten**,
+and the thresholds with them: five-star at 72 rather than 68 (by the band's
+mean, the band being wider now), four-star at 62 rather than 60 (by its
+floor). Ten classes read 30.5 / 40.0 / 50.5 / 62.2 / 73.3 by star, shares
+27 / 31 / 24 / 11 / 7 percent — the §77 shares held, which is what moving
+the thresholds with the bands is for. The five-star threshold was tried at
+70 first and read 9 percent of the class at 72; the rule of §77 is that a
+band's share stays and its meaning moves, so 72 it is. A class holds 53
+five-stars now, 6.3 S ceilings, and six or seven freshmen at 80 or better;
+the best of ten classes is a 91. The class draw pin did not move, the top
+bands sitting above the raw gate either way.
+
+### 88.2 What a blue blood holds now
+
+By quality bucket, four seeds, the nine at year one, five and ten:
+
+| bucket | before (§87) | after |
+| --- | --- | --- |
+| sixties | 73.1 → 66.6 → 65.1 | 72.2 → 70.6 → 67.1 |
+| fifties | 63.7 → 61.6 → 63.4 | 63.7 → 64.3 → 64.6 |
+| forties | 55.9 → 54.8 → 56.6 | 54.6 → 54.7 → 56.3 |
+| thirties | 47.8 → 46.8 → 48.9 | 47.5 → 47.0 → 47.5 |
+| twenties | 40.3 → 43.3 → 44.5 | 41.5 → 41.9 → 43.8 |
+
+A blue blood's signed class averages 59 now where it averaged 57, and its
+nine holds around 70 for five years and 67 at ten, against 65 before. It is
+not the full hold §87.3 sized — that would want the class at 64 — because
+the second half of the arithmetic is prestige, which the reporter chose to
+keep: the five-star tier grows from three boards to nineteen over the decade
+and the four-star tier from eleven to sixteen, and thirty boards share 53
+five-stars however good they are. The fifties hold and rise, the forties
+rise a point and a half, the thirties are flat, the twenties gain two rather
+than four. The country is less unequal at year ten than at year one still,
+but by four points of nine at the top rather than eight.
+
+The boards under it: signed men per board by tier at year ten read 6.6 /
+7.6 / 7.0 / 6.0 / 7.4, the four-star tier a little under §86's 6.6 because
+its top men are dearer now, with walk-ons a roster 1.1 to 4.1 in that tier
+against §86's 1.9 to 2.5 and §85's nine. Boards signing three or fewer are
+nought to three a year from year five; unsigned five-stars nought to three.
+
+### 88.3 What it cost downstream
+
+`RECRUITED_LIFT` took half a point back on both sides, `{ bat: 2, arm: -1 }`
+→ `{ bat: 2.5, arm: -0.5 }`: what reaches the field league-wide rose about
+half a point on both sides with the top, the sixties and fifties buckets
+carrying it. The harness moved with the lift and no further — against the
+previous recording runs +1.4%, walks +1.2%, strikeouts −2.0%, home runs
+unmoved, inside the sweep's own spread — so no norm was touched and the
+goldens were re-recorded for the draws: against the targets runs +1.0%,
+average −1.2%, on-base −1.2%, home runs −3.4%, strikeouts −1.1%, walks
+−0.5%, slugging −0.6%, worst deviation three percent.
+
+The constants fitted to the top of the population were run through their
+own tests and none moved out of band: the draft's first round (`BOARD_MID`),
+the pro-career centre (`TALENT_CENTRE`), the hall bar and the star line all
+hold their guards on the raised ladder. They were not re-fitted, because
+their tests are the measurements and every one passed; whoever next probes
+the hall or the pro survey should know the population's top is where §88
+put it, not where §83.5 measured it.
+
+Six tests moved with the seeded worlds and say why. The forecast guard
+(`potential-forecast.test.ts`) reads the ceiling-against-overall correlation
+inside each star band as well as across the class: across a class it rises
+with the range the ladder spans, and read 0.74 on the raised ladder with
+nothing about the forecast changed, while inside a band the old bug would
+read near one and the roll reads well under 0.7. The roster grades test takes
+the worst student in the country rather than the first under the line, whose
+odds a point under it are once in a hundred weeks. The delegated live game
+samples twelve games rather than six, visits to a coached mound with the
+pitching coach also delegated being a handful a game. The two corner-outfield
+tests are built on a clean nine of naturals with the DH a first baseman by
+glove, because on the roster June leaves a corner man rated into the fifties
+is the best man available at whichever spot's natural is in the forties. And
+the postseason break test skips a starter who is in the trainer's room on the
+night the regionals open, the break being about rest.
+
+### 88.4 What the world does now, and the price of the top
+
+Ten seasons, four seeds, the finished engine:
+
+| seed | y1 | y2 | y3 | y4 | y5 | y6 | y7 | y8 | y9 | y10 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4242 | 6.54 | 6.56 | 6.73 | 6.78 | 6.93 | 7.04 | 6.84 | 6.84 | 6.63 | 6.62 |
+| 12161 | 6.36 | 6.58 | 6.81 | 6.63 | 6.64 | 6.76 | 6.65 | 6.58 | 6.55 | 6.73 |
+| 20080 | 6.66 | 6.76 | 6.73 | 6.59 | 6.65 | 6.76 | 6.94 | 6.91 | 6.83 | 6.78 |
+| 27999 | 6.64 | 6.74 | 6.71 | 6.79 | 6.98 | 6.94 | 6.78 | 6.80 | 6.79 | 6.72 |
+
+Year one 6.55, years two to ten 6.75; average .269 → .272, on-base .375 →
+.382, slugging .419 → .427, home runs 0.93 → 0.96, strikeouts 8.08 → 8.17,
+walks 4.64 → 4.84. The played bats read 53.4 in year one and 53.5 from year
+five, the played arms 51.4 and 51.5: **the level does not move.** What moves
+is three percent of runs, ratios 1.04 / 1.05 / 1.02 / 1.03, and it is the
+price of the decision: a top that stays the top and a bottom that stays the
+bottom is a country whose games get more lopsided as the seeded classes
+turn into recruited ones, and lopsided games score more on a convex model;
+the walk-ons on thin pens throwing seven percent of the outs from year five
+against four in year one are the rest. Every one of the forty season-rows
+sits inside the bands `tests/calibration-seasons.test.ts` took in §85, and
+the year-five ratio the guard reads on seed 4242 is 1.06 against its 1.12.
+Recorded, guarded, and not tuned: the reporter asked for the shape and this
+is what the shape costs.
+
+### 88.5 Verified
+
+TypeScript clean; the full suite; ten classes for the ladder at two
+thresholds; the census on four seeds for ten seasons twice, once on the
+raised bands and once on the finished engine; the harness read after the
+lift; the goldens recorded by the script that refuses a sweep off by ten;
+the twelve test files fitted to the top of the population run on the raised
+ladder before anything else was touched.

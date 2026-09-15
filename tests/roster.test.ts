@@ -81,8 +81,13 @@ describe('grades', () => {
   it('catches up with a man in trouble sometimes, not every week', () => {
     // A man who sat every week would be a roster spot removed rather than a
     // risk taken.
-    const bad = everyone().find((p) => gradesOf(p) < FAILING);
+    // The worst student in the country rather than the first one under the
+    // line: the odds are per man and per week, and a man a point under the
+    // line misses once in a hundred weeks, which reads as "never" on a
+    // hundred-week sample and is the rule working as written.
+    const bad = [...everyone()].sort((a, b) => gradesOf(a) - gradesOf(b))[0];
     expect(bad, 'nobody in the country is failing').toBeDefined();
+    expect(gradesOf(bad!)).toBeLessThan(FAILING);
     let hits = 0;
     for (let week = 1; week <= 100; week++) if (failsThisWeek(bad!, 2027, week)) hits++;
     expect(hits, 'he never missed a week').toBeGreaterThan(2);

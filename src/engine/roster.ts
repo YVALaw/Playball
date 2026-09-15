@@ -402,19 +402,20 @@ const LANDED_A_CLASS: readonly number[] = [
  * not about the table: the class shape over-supplies starters, the boards
  * sign fewer arms than it offers, and the services read a reliever's
  * profile better than a starter's, so what reaches a rotation stands a
- * little under what the school is.
+ * little under what the school is. Half a point back on both sides when
+ * the ladder's top went up (05 s88): a five-star is a seventy-three now
+ * and a four-star a sixty-two, and what reaches the field league-wide rose
+ * about half a point on both sides with them.
  *
  * Applied to the signed classes and not to the walk-ons, who come at the
  * walk-on penalty under the programme's own quality in June and here alike.
- * The ladder was left where the reporter tuned it (05 s77) rather than
- * moved down to meet the table, because the ladder is the surface a coach
- * reads every winter and a day-one roster is not. What the ladder does to
- * the SHAPE of the country -- a sixty-six signs at fifty-seven and a
- * twenty-seven at forty, the table's spread of eleven narrowing to eight
- * inside a decade -- is not a level and is not corrected here; it is the
- * open question at 06 sAI.
+ * The ladder's ends were moved to meet the table the same night (05 s87,
+ * s88): the bottom down so that the twenties sign near what they are built
+ * at, the top up so that a blue blood can stay one. What compression is
+ * left is prestige inflation crowding the top tiers, which the reporter
+ * chose to keep (06 sAI).
  */
-export const RECRUITED_LIFT = { bat: 2, arm: -1 } as const;
+export const RECRUITED_LIFT = { bat: 2.5, arm: -0.5 } as const;
 
 /**
  * The share of drafted juniors a staff talks back.

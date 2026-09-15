@@ -695,7 +695,11 @@ describe('when the pitching coach has the conversations', () => {
   const over = (opts: Switches) => {
     let mine = 0;
     let theirs = 0;
-    for (const seed of [4242, 909, 77, 1717, 2103, 31337]) {
+    // Twelve games rather than six since the roster became the one June leaves
+    // (05 s85, s88): visits to the coached mound with the pitching coach also
+    // delegated are a handful a game at most, and six games of the new pairs
+    // read nought once, which is sampling on a count that small.
+    for (const seed of [4242, 909, 77, 1717, 2103, 31337, 12161, 20080, 27999, 35918, 43837, 51756]) {
       const one = played(seed, opts);
       mine += one.mine;
       theirs += one.theirs;
