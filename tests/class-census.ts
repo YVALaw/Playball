@@ -29,7 +29,7 @@ import { CONFERENCES } from '../src/data/schools.js';
 import { overallOf, armValue } from '../src/engine/ratings.js';
 import { isTwoWay } from '../src/engine/types.js';
 import type { Arm, ClassYear, Player } from '../src/engine/types.js';
-import { headlessYear, lastSigned } from './headlessYear.js';
+import { headlessYear, lastSigned, lastUnsignedTop } from './headlessYear.js';
 
 const YEARS = Number(process.env.YEARS ?? 5);
 const WORLDS = Number(process.env.WORLDS ?? 2);
@@ -196,7 +196,8 @@ for (let w = 0; w < WORLDS; w++) {
   console.log(`  ${''.padEnd(6)}${CLASSES.map((k) => k.padStart(5)).join(' ')}`);
   for (let y = 1; y <= YEARS; y++) {
     const c = census(season);
-    console.log(`year ${y}  signed ${y === 1 ? '—' : lastSigned}`);
+    console.log(`year ${y}  signed ${y === 1 ? '—' : lastSigned}`
+      + (y === 1 ? '' : `   top men unsigned: five ${lastUnsignedTop.five}  four ${lastUnsignedTop.four}`));
     console.log(row('bats', c.bats));
     console.log(row('arms', c.arms));
     while (!seasonComplete(season)) simSeason(season);

@@ -48,7 +48,7 @@ import { runRivalYear } from '../src/engine/rivals.js';
 import type { PostseasonSummary } from '../src/engine/postseason.js';
 import {
   windowBudget, RECRUITING_WEEKS, aiTargets, closeWeek, leadersAtWeekStart,
-  resetWeeklySpend, weeklyPoints,
+  resetWeeklySpend, weeklyPoints, boardsByTier,
 } from '../src/engine/recruiting.js';
 import { pitchFor, developmentScore } from '../src/engine/pitch.js';
 import { CONFERENCES, type Region } from '../src/data/schools.js';
@@ -83,10 +83,14 @@ function recruitWindow(season: SeasonState): number {
         ...record.team.lineup, ...record.team.bench,
         ...record.team.rotation, ...record.team.bullpen,
       ]).reduce((a, h) => a + h.count, 0);
+      // The week goes in, as the store passes it: the chase cut tightens as
+      // the window runs, and a measurement that never said which week it was
+      // ran the whole window at the opening cut (found 2026-09-15, 05 s86).
       for (const { prospect, actions } of aiTargets(
         record.index, pitch, staff?.prestige ?? 45, season.recruiting.prospects,
         need, season.rng, atWeekStart,
         season.draft?.rivalSpend[record.index] ?? 0,
+        w, 1, boardsByTier(season.teams.map((t) => prestigeStars(t.prestige))),
       )) {
         prospect.points[record.index] = (prospect.points[record.index] ?? 0)
           + weeklyPoints(
@@ -97,6 +101,11 @@ function recruitWindow(season: SeasonState): number {
     closeWeek(season.recruiting, season.rng, w >= RECRUITING_WEEKS);
     resetWeeklySpend(season.recruiting);
   }
+  const unsigned = season.recruiting.prospects.filter((p) => p.signedBy === null);
+  lastUnsignedTop = {
+    five: unsigned.filter((p) => p.stars === 5).length,
+    four: unsigned.filter((p) => p.stars === 4).length,
+  };
   return season.recruiting.prospects.filter((p) => p.signedBy !== null).length;
 }
 
@@ -108,6 +117,9 @@ function recruitWindow(season: SeasonState): number {
  * hypothetical, it is what the first version of this file did.
  */
 export let lastSigned = 0;
+
+/** The top men nobody signed in the most recent window: the "nobody on him" count. */
+export let lastUnsignedTop = { five: 0, four: 0 };
 
 /** One offseason, the way the store runs it, minus the screens. */
 export function headlessYear(

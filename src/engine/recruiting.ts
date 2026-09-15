@@ -535,6 +535,20 @@ export const reachFloor = (stars: number): number =>
   Math.max(1, Math.min(4, stars - 1));
 
 /**
+ * How many boards the country has at each prestige tier, index one to five.
+ * Handed to `aiTargets` by whoever drives a recruiting week, so a board's
+ * reach can be priced against the boards it is actually reaching past.
+ */
+export function boardsByTier(tiers: readonly number[]): number[] {
+  const out = [0, 0, 0, 0, 0, 0];
+  for (const t of tiers) {
+    const i = Math.max(1, Math.min(5, t));
+    out[i] = (out[i] ?? 0) + 1;
+  }
+  return out;
+}
+
+/**
  * What a shared home state is worth: one more star of reach.
  *
  * *"if a school for example is 3 star but there are 5 stars in their pipeline
@@ -1672,6 +1686,16 @@ export function aiTargets(
    * does not make the feature a punishment for using it. See `delegateEffort`.
    */
   effort = 1,
+  /**
+   * How many boards the country has at each prestige tier, index one to five
+   * (`boardsByTier`). What a board can expect to land above its own weight
+   * depends on who else is reaching for the same men, and that changed under
+   * the plan table without the table knowing: prestige inflation put thirty
+   * boards in the top two tiers by year ten where the world opened with
+   * fourteen. Omitted, the plan is taken as written -- the opening world's
+   * shape -- which is what every caller did until 2026-09-15.
+   */
+  league?: readonly number[],
 ): { prospect: Prospect; actions: number }[] {
   void coachPrestige;
 
@@ -1694,7 +1718,18 @@ export function aiTargets(
     // to twelve. And the cut tightens as the window runs (2026-09-10): a
     // week-six leader is contested only by a program genuinely close, so a
     // five-star chase has an end rather than a field that never clears.
-    return mine >= best || (best - mine) / best < chaseCut(weekNo);
+    //
+    // Half that above the program's own tier (2026-09-15, 05 s86). A board
+    // pointed most of its slots at the bands above it and let go of a man
+    // there at the same margin as anywhere else, so it lost the argument at
+    // the top in the ordinary time and arrived at its own band a cut-stage
+    // late, when the men there had leaders too. Ten seasons in, with prestige
+    // inflation putting thirty boards in the top two tiers on the 135 top men
+    // a class holds, the four-star tier signed one to three men a winter and
+    // carried nine walk-ons a roster. An argument above your weight is one to
+    // leave as soon as you are clearly not winning it.
+    const cut = chaseCut(weekNo) * (p.stars > tier ? 0.5 : 1);
+    return mine >= best || (best - mine) / best < cut;
   });
 
   // Always work a full board. A program short of targets is a program handing
@@ -1749,8 +1784,46 @@ export function aiTargets(
   const picks: Prospect[] = [];
   const taken = new Set<PlayerId>();
 
+  /*
+    What a board can expect to land in the two bands the country fights over.
+
+    The plan above is a fixed table for a world whose shape moves. A class
+    holds about 42 five-stars and 93 four-stars; the world opens with three
+    five-star boards and eleven four-star ones pointed at them, and ten
+    seasons of prestige inflation make that nineteen and sixteen, with the
+    three-star tier's reach slots on top. The four-star tier's board pointed
+    seven of its eight slots at those men throughout, lost the arguments to
+    the tier above, and arrived at its own band a cut-stage late: by year
+    six it signed three or four men a winter and carried nine walk-ons a
+    roster (05 s86). So a slot in the five- or four-star band is capped at
+    the board's fair share of the band's unsigned supply among the boards
+    that can reach it, each weighted by how the argument tends to go, and
+    what the cap frees rolls down to the next band on the plan, where the
+    board can actually bank a commitment. At the opening world's shape the
+    cap is the plan; it only bites once the top is crowded.
+
+    The pipeline band -- two grades up, one slot, only a home-state kid the
+    gate let through -- is left alone: it is opportunistic by construction.
+  */
+  const REACH_WEIGHT: Record<number, number> = { 5: 1, 4: 0.5, 3: 0.25, 2: 0.1, 1: 0.05 };
+  const fairRoom = (stars: number): number | null => {
+    if (!league) return null;
+    let weight = 0;
+    for (let t = 1; t <= 5; t++) {
+      if (t >= reachFloor(stars)) weight += (league[t] ?? 0) * (REACH_WEIGHT[t] ?? 0);
+    }
+    if (weight <= 0) return null;
+    const supply = prospects.filter((p) => p.signedBy === null && p.stars === stars).length;
+    return supply * (REACH_WEIGHT[tier] ?? 0) / weight;
+  };
+  let carry = 0;
   for (const band of plan) {
-    const room = Math.max(1, Math.round(wants * band.share));
+    const planned = Math.max(1, Math.round(wants * band.share));
+    let room = planned + carry;
+    const contested = band.stars >= 4 && band.stars <= tier + 1;
+    const fair = contested ? fairRoom(band.stars) : null;
+    if (fair !== null) room = Math.min(room, Math.max(0, Math.round(fair)));
+    carry = planned + carry - room;
     const pool = available
       .filter((p) => p.stars === band.stars && !taken.has(p.id))
       // Within a band, chase the ones who actually want what this program has —
@@ -1776,10 +1849,22 @@ export function aiTargets(
 
   // Backfill from anywhere if the bands came up short, so a program never walks
   // away from a class it needs.
+  //
+  // Ranked by who can still be won, not by stars. It used to be `stars *
+  // fit`, which sent a board whose top bands had emptied straight back to the
+  // highest-starred men still nominally open -- the ones it had just been
+  // cut from the fights for -- and it spent the rest of the window losing
+  // them. A man nobody leads, or this board leads, is worth chasing at any
+  // star; a man somebody else is halfway to is worth half.
   if (picks.length < wants) {
     const rest = available
       .filter((p) => !taken.has(p.id))
-      .map((p) => ({ p, score: p.stars * fit(p, pitch) }))
+      .map((p) => {
+        const best = atWeekStart[p.id] ?? 0;
+        const mine = p.points[team] ?? 0;
+        const lead = best <= 0 ? 1.3 : mine >= best ? 1.35 : Math.max(0, 1 - (best - mine) / best);
+        return { p, score: fit(p, pitch) * lead * (0.6 + 0.1 * p.stars) };
+      })
       .sort((a, b) => b.score - a.score);
     for (const { p } of rest.slice(0, wants - picks.length)) { picks.push(p); taken.add(p.id); }
   }

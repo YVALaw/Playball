@@ -11208,3 +11208,98 @@ TypeScript clean; the full suite; the census five times over on the way and
 once on the final engine, four seeds each; the harness read before, after,
 and after each round; the goldens recorded by the script that refuses a
 sweep off by ten. Every number in this section came off a printed table.
+
+## 86. The four-star tier was starving, and the board reads the room now — **September 15 2026, later**
+
+§85.2 and `06` §AI.1 found it and left it: by year ten the twelve programmes at
+prestige 60–71 carried nine walk-ons each on 23-man rosters. The reporter's
+word was that it had to be fixed, and that it was something he had raised
+before — it is the other face of "many of the recruits end up with nobody on
+him when they are even high ranking", which the September 10 board tilt
+answered from the top. This is the same system read from the tier below.
+
+### 86.1 What it was
+
+A class holds about 42 five-stars and 93 four-stars. The plan table in
+`aiTargets` pointed seven of a four-star programme's eight slots at those
+men and all eight of a five-star programme's, and the table did not move
+while the world did: the opening world has three five-star boards and eleven
+four-star ones, and ten seasons of prestige inflation make that nineteen and
+sixteen, with the three-star tier's reach slots on top. The four-star board
+lost the arguments at the top to the tier above — the five-star tier wins by
+coach prestige and by fit — let go of them at the ordinary chase cut, and
+arrived at its own band a cut-stage late, when the men there had leaders
+too; its backfill then ranked by stars and sent it straight back to the men
+it had just been cut from. Measured with the census's per-team view, signed
+men per board by tier at year ten read **6.8 / 7.8 / 7.7 / 3.5 / 7.5** for the
+one- to five-star tiers. The four-star tier signed half a class from year six
+on, its real roster shrank to eighteen men, and `refill` made up the count
+with walk-ons who then left every June and reopened the hole.
+
+The first thing tried was a fallback: halve the chase cut above a board's own
+tier, so it leaves an argument above its weight as soon as it is clearly not
+winning it, and rank the backfill by who can still be won rather than by
+stars. Both are kept, and together they moved the four-star tier from 3.5
+signed to 4.2. The cause was upstream of the fallback: the plan itself
+pointed the board at men it would lose, from week one, before any cut could
+act.
+
+### 86.2 The fix: a fair share of the two bands the country fights over
+
+`aiTargets` takes the league's tier census now (`boardsByTier`, handed in by
+the store, by `headlessYear` and by every probe that drives a window). For
+the five- and four-star bands, a slot is capped at the board's fair share of
+the band's unsigned supply among the boards that can reach it, each weighted
+by how the argument tends to go (five-star boards 1, four-star ½, three-star
+¼, two-star 1/10, one-star 1/20), and what the cap frees rolls down to the
+next band on the plan, where the board can bank a commitment from week one.
+The pipeline band — two grades up, one slot, only a home-state kid the gate
+let through — is left alone. At the opening world's shape the cap is the
+plan: a five-star board's fair share of the five-star band reads 4.9 against
+its planned 4, a four-star board's 2.5 against 3. It only bites once the top
+is crowded: by year ten a five-star board points two slots at five-stars
+rather than four and a four-star board one, and both put the difference on
+three-stars they can sign.
+
+Ten seasons, four seeds, signed men per board by tier and walk-ons a roster
+by tier, year ten, before → after:
+
+| tier | signed before | signed after | walk-ons before | walk-ons after |
+| --- | --- | --- | --- | --- |
+| one-star | 7.3 | 6.6 | 0.7–1.9 | 2.4–3.0 |
+| two-star | 7.8 | 7.5 | 0.4–0.9 | 0.8–1.6 |
+| three-star | 7.7 | 6.9 | 1.2–1.9 | 1.5–2.4 |
+| four-star | 3.5 | 6.6 | 5.8–9.4 | 1.9–2.5 |
+| five-star | 7.5 | 7.7 | 2.1–4.7 | 1.1–1.6 |
+
+Boards signing three or fewer a winter went from six to thirteen a year to
+nought to four; the country signs 656 to 682 of 720 where it signed 630 to
+645; unsigned five-stars read nought to three a year from year three and
+unsigned four-stars two to eight. The run environment did not move: year one
+6.45–6.63, years two to ten 6.58–6.73, ratios 1.015 to 1.026.
+
+Two things worth knowing about the table. The one-star tier is the
+walk-on-heaviest tier now, at two to three a roster, because its boards land
+five and a half to six and a half men: its plan points three of nine slots at
+bands that do not exist under one star, its fit is poor everywhere, and its
+budget is the smallest — the honest price of being a one-star programme, and
+where §AI's "whether a walk-on should be that weak" question now lives. And
+the five-star tier still loses four juniors a June to the draft on top of
+three seniors; it signs eight and holds twenty-six, which is the three-year
+clock doing what it is for.
+
+### 86.3 Also found: the measurement had never said which week it was
+
+`headlessYear`'s recruiting loop never passed the week to `aiTargets`, so the
+chase cut sat at its week-one forty percent for the whole window; the store
+passes it. It does now, as do `hall.test.ts` and the three probes that drive
+a window. The censuses in §85 were run without it; the difference is small
+and the bands there still hold, and every number in this section was taken
+with it.
+
+### 86.4 Verified
+
+TypeScript clean; the full suite; the census on four seeds for ten seasons
+with the per-team view, before and after, on the same generator. The
+by-bucket table of what recruiting delivers, taken on these boards, is the
+input to the ladder pass (§87).

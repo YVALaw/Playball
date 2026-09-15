@@ -28,7 +28,9 @@ import { seatCoaches, syncCoachMods } from '../src/engine/rivals.js';
 import {
   RECRUITING_WEEKS, aiTargets, closeWeek, leadersAtWeekStart, resetWeeklySpend,
   weeklyPoints,
+  boardsByTier,
 } from '../src/engine/recruiting.js';
+import { prestigeStars } from '../src/engine/program.js';
 import { pitchFor, developmentScore } from '../src/engine/pitch.js';
 import { offer, type RecordBook } from '../src/engine/records.js';
 import { makeRng } from '../src/engine/rng.js';
@@ -429,7 +431,8 @@ describe('the rate a dynasty inducts at', () => {
         ]).reduce((a, h) => a + h.count, 0);
         for (const { prospect, actions } of aiTargets(
           record.index, pitch, staff?.prestige ?? 45, season.recruiting.prospects,
-          need, season.rng, atWeekStart, 0,
+          need, season.rng, atWeekStart, 0, w, 1,
+          boardsByTier(season.teams.map((t) => prestigeStars(t.prestige))),
         )) {
           prospect.points[record.index] = (prospect.points[record.index] ?? 0)
             + weeklyPoints(prospect, pitch, actions,

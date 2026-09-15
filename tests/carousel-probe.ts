@@ -29,6 +29,7 @@ import {
 import { runRivalYear, seatCoaches, syncCoachMods } from '../src/engine/rivals.js';
 import {
   RECRUITING_WEEKS, aiTargets, closeWeek, leadersAtWeekStart, resetWeeklySpend, weeklyPoints,
+  boardsByTier,
 } from '../src/engine/recruiting.js';
 import { pitchFor, developmentScore } from '../src/engine/pitch.js';
 import { openPortal, type Portable } from '../src/engine/portal.js';
@@ -63,7 +64,8 @@ function recruitWindow(season: SeasonState): void {
       for (const { prospect, actions } of aiTargets(
         record.index, pitch, staff?.prestige ?? 45, season.recruiting.prospects,
         need, season.rng, atWeekStart,
-        season.draft?.rivalSpend[record.index] ?? 0,
+        season.draft?.rivalSpend[record.index] ?? 0, w, 1,
+        boardsByTier(season.teams.map((t) => prestigeStars(t.prestige))),
       )) {
         prospect.points[record.index] = (prospect.points[record.index] ?? 0)
           + weeklyPoints(

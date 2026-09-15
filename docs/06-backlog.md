@@ -3849,17 +3849,23 @@ the D1 target from year one. What the measurement turned up and did not fix:
   report both raised from the other side. **A design decision** — whether a
   programme's quality should mean what its recruiting delivers, which would
   move the ladder's ends or the tiers, or the table is day-one flavour the
-  world is meant to erode. Measured, tabled at `05` §85.3, not touched.
-- **The four-star tier starves as prestige inflates.** By year ten the twelve
-  programmes in the 60–71 prestige band carry 8.7 walk-ons each on 23-man
-  rosters, against 1.2 to 2.1 for every other tier, because their board plan
-  points 83% of its slots at the five- and four-star bands — 87 men a year —
-  and by then thirty boards are pointed at the same men. Half the country's
-  walk-ons by year ten are this. The one- and two-star tiers, whose plans
-  point slots at bands that do not exist below one star, are *not* starved.
-  **Recruiting AI, `aiTargets`' plan table.** The starved tier is also why the
-  steady state's walk-ons throw a tenth of the country's outs at thirty-one
-  overall while a day-one roster's throw four percent: they sit on thin pens.
+  world is meant to erode. Measured, tabled at `05` §85.3, not touched -- and re-measured on the fixed
+  boards at `05` §86.4's pointer: by quality bucket (sixties / fifties /
+  forties / thirties / twenties), year-two signed freshmen read 56.1 / 50.0 /
+  44.3 / 40.0 / 39.3 against generated freshmen of 65.7 / 55.7 / 46.2 / 38.6 /
+  31.7, and the nine at year ten 65.1 / 63.4 / 56.6 / 48.9 / 44.5 against
+  73.1 / 63.7 / 55.9 / 47.8 / 40.3. The middle holds; the top loses eight
+  and the bottom gains four. The ladder pass is §87.
+- ~~**The four-star tier starves as prestige inflates.**~~ **Fixed later the
+  same night** (`05` §86): the board takes the league's tier census and caps
+  its five- and four-star slots at a fair share of the band's supply among the
+  boards that can reach it, rolling what it frees down to men it can sign;
+  the chase cut is halved above a board's own tier and the backfill ranks by
+  who can still be won. Year ten signed-per-board by tier went 6.8 / 7.8 /
+  7.7 / **3.5** / 7.5 to 6.6 / 7.5 / 6.9 / **6.6** / 7.7; the four-star tier's
+  walk-ons from nine a roster to two. The one-star tier is the walk-on-
+  heaviest now at two to three a roster, honestly: poor fit, the smallest
+  budget, and three of nine plan slots pointed under one star.
 - **Prestige inflation is documented and priced** (`05` §74b) and it is what
   drives the previous item; nothing new to file, but §85.3's ten-season
   table is the first place its effect on the *run environment* is separated

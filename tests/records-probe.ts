@@ -36,7 +36,9 @@ import { departAndDevelop, fillRosters, holesFor } from '../src/engine/progressi
 import {
   RECRUITING_WEEKS, aiTargets, closeWeek, leadersAtWeekStart, resetWeeklySpend,
   weeklyPoints,
+  boardsByTier,
 } from '../src/engine/recruiting.js';
+import { prestigeStars } from '../src/engine/program.js';
 import { pitchFor, developmentScore } from '../src/engine/pitch.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES, type Region } from '../src/data/schools.js';
@@ -122,7 +124,8 @@ function recruitWindow(season: SeasonState): void {
       ]).reduce((a, h) => a + h.count, 0);
       for (const { prospect, actions } of aiTargets(
         record.index, pitch, staff?.prestige ?? 45, season.recruiting.prospects,
-        need, season.rng, atWeekStart, season.draft?.rivalSpend[record.index] ?? 0,
+        need, season.rng, atWeekStart, season.draft?.rivalSpend[record.index] ?? 0, w, 1,
+        boardsByTier(season.teams.map((t) => prestigeStars(t.prestige))),
       )) {
         prospect.points[record.index] = (prospect.points[record.index] ?? 0)
           + weeklyPoints(

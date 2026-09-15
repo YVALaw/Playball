@@ -133,6 +133,7 @@ import {
   hasRecruitingRelationship, swayRecruit, planAiRecruitActions, availableRecruitPromises,
   askBlocked, askForCommitment,
   type RecruitingFactor, type RecruitMajorAction, type RecruitMajorInput,
+  boardsByTier,
 } from '../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../engine/pitch.js';
 
@@ -195,6 +196,7 @@ export function seedRivalInterest(
         record.index, pitch, staff?.prestige ?? 45, season.recruiting.prospects,
         holesFor(record), season.rng, snapshot,
         season.draft?.rivalSpend[record.index] ?? 0,
+        0, 1, boardsByTier(season.teams.map((t) => prestigeStars(t.prestige))),
       )) {
         prospect.points[record.index] =
           (prospect.points[record.index] ?? 0)
@@ -3304,6 +3306,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             recruits.prospects,
             holesFor(record), season.rng, atWeekStart, priorSpend, recruits.week,
             mine ? myEffort : 1,
+            boardsByTier(season.teams.map((t) => prestigeStars(t.prestige))),
           );
       if (!byHand) {
         planAiRecruitActions(

@@ -6,7 +6,22 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 15, 2026, night · **Branch:** `main` · **the drift
+**Last session:** September 15, 2026, later · **Branch:** `main` · **the
+four-star tier stops starving** -- the boards' plan table was fixed while the
+tier populations moved: by year ten thirty boards pointed at the 135 top men
+a class holds, the four-star tier lost the arguments to the tier above,
+arrived at its own band a cut-stage late, and signed half a class a winter.
+`aiTargets` takes the league's tier census now and caps a board's five- and
+four-star slots at its fair share of the band's supply, rolling the rest
+down to men it can sign; the cut is halved above a board's own tier and the
+backfill ranks by who can still be won. Year ten signed-per-board by tier
+6.8 / 7.8 / 7.7 / **3.5** / 7.5 → 6.6 / 7.5 / 6.9 / **6.6** / 7.7, the four-star
+tier's walk-ons nine a roster → two, the country signing thirty more men,
+runs flat (`05` §86, `06` §AI). The measurement had never told the boards
+which week it was; it does. **Next:** the ladder's ends (§87), sized by the
+by-bucket table at §86.4.
+
+*Earlier the same night:* **the drift
 was measured, and it was the opening roster** -- `06` §AH.1's "nine percent
 on one seed" was run for ten seasons on four seeds and read as noise over a
 three percent step from year one to year two that never grew. A generated
