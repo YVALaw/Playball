@@ -3837,7 +3837,22 @@ the D1 target from year one. What the measurement turned up and did not fix:
 
 ### AI.1 Found on the way, and not this pass's to settle
 
-- **The ladder compresses the country, from the first winter.** A 66-quality
+- ~~**The ladder compresses the country, from the first winter.**~~ **Half
+  done, half a decision** (`05` §87). The bottom was the ladder and is fixed:
+  the one- and two-star bands came down four and two with the two-star
+  threshold, the thirties sign at what they were built at and the twenties
+  four over rather than seven; what the twenties' nine still gains over a
+  decade is prestige inflation moving them up a tier. **The top is a supply
+  question and is the reporter's to decide:** a class holds 42 five-stars
+  averaging 69 and 93 four-stars averaging 59, and a sixty-four programme's
+  class of eight lands two and three of them and fills with three-stars,
+  which averages 57. To hold a sixty-four at sixty-four the five-star band
+  would read 68–80 at five percent of the class rather than 66–76 at three
+  and the four-star band 60–70, thresholds with them — a five-star a
+  seventy-four rather than a sixty-nine, twice as common, and the draft's,
+  hall's and pro-career's centres moving with the top of the population. Or
+  the table's top comes down to the sixty a blue blood actually holds. **Say
+  which.** The original finding, for the record: a 66-quality
   programme signs freshmen at 57 and a 27 signs them at 40 (year two, at the
   world's opening prestige; `24 + 0.52 × quality` by year ten), so the
   table's spread of eleven across programmes narrows to eight inside a
@@ -3846,10 +3861,7 @@ the D1 target from year one. What the measurement turned up and did not fix:
   a year for thirty boards, not prestige creep: it reads the same in year two.
   Nothing about the *level* of the league; everything about how far apart
   programmes are, which is the disparity question §P and the thirty-season
-  report both raised from the other side. **A design decision** — whether a
-  programme's quality should mean what its recruiting delivers, which would
-  move the ladder's ends or the tiers, or the table is day-one flavour the
-  world is meant to erode. Measured, tabled at `05` §85.3, not touched -- and re-measured on the fixed
+  report both raised from the other side. Measured, tabled at `05` §85.3, not touched -- and re-measured on the fixed
   boards at `05` §86.4's pointer: by quality bucket (sixties / fifties /
   forties / thirties / twenties), year-two signed freshmen read 56.1 / 50.0 /
   44.3 / 40.0 / 39.3 against generated freshmen of 65.7 / 55.7 / 46.2 / 38.6 /

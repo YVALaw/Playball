@@ -1279,7 +1279,10 @@ describe('the top of the ladder is reserved', () => {
       what actually happens, and the top of the ladder is where the code
       always said it was.
     */
-    expect(s / CLASSES).toBeGreaterThan(6);
+    // 5.9 a class since the ladder's bottom came down (05 s87): the men who
+    // moved under the raw gate draw ceilings a band lower too. Still bounded
+    // on both sides; nought would still make it decoration.
+    expect(s / CLASSES).toBeGreaterThan(5);
     expect(s / CLASSES).toBeLessThan(18);
     // Rare, but findable often enough to be worth scouting for.
     expect(aPlus).toBeGreaterThan(s);

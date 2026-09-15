@@ -499,7 +499,17 @@ export class TeamState {
       // Same rule as a start, mid-game: the DH's night ends (to the bench,
       // where his seat is kept), and a bench bat enters at the vacated
       // grass, batting in the DH's slot.
-      const dhIdx = this.order.findIndex((m) => m.pos === 'DH' && String(m.id) !== String(next.id));
+      //
+      // The man STANDING at DH tonight, not the man labelled DH. A dealt
+      // card adopts a first baseman at DH and the fit above then fields him
+      // at first when he is the better glove there, which leaves the first
+      // baseman by label as the night's DH; sitting the label sat a man who
+      // was in the field and left a fielder who no longer batted (found
+      // 2026-09-15 by twoway.test.ts once every roster was a dealt one).
+      const standing = this.byPosition.get('DH');
+      const dhIdx = standing
+        ? this.order.findIndex((m) => String(m.id) === String(standing.id) && String(m.id) !== String(next.id))
+        : this.order.findIndex((m) => m.pos === 'DH' && String(m.id) !== String(next.id));
       const dhMan = dhIdx >= 0 ? this.order[dhIdx] : undefined;
       const cover = this.benchCoverFor(spot);
       if (dhMan && cover) {

@@ -312,7 +312,9 @@ describe('the hole it leaves', () => {
     */
     const world = fresh();
     const team = world.teams[13]!.team;
-    for (const p of [...team.bench].slice(0, 4)) releaseFrom(team, p.id);
+    // The whole bench and two of the nine: a day-one bench is six or seven
+    // men now (05 s85), and the point is a squad that cannot field nine.
+    for (const p of [...team.bench]) releaseFrom(team, p.id);
     for (const p of [...team.lineup].slice(0, 2)) releaseFrom(team, p.id);
 
     expect(squad(team).length).toBeLessThan(9);

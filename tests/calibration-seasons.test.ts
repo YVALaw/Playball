@@ -117,6 +117,12 @@
 // it sat eight above, because the old harness measured an undealt nine and a
 // fixed starter; the harness is still what the league is defined by.
 //
+// Then the boards were fixed and the ladder's bottom came down the same night
+// (05 s86, s87), and the lift re-fitted: on that engine the four seeds read
+// year one 6.58 and years two to ten 6.66, ratios 1.03 / 1.00 / 1.01 / 1.01,
+// every rate flat, and all forty season-rows inside the bands below, which
+// were taken in s85 and did not need re-taking.
+//
 // This file is a guard. It pins the stationarity, so that whoever touches
 // generation, development, recruiting or the norms next can watch it move.
 

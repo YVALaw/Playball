@@ -6,7 +6,25 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 15, 2026, later · **Branch:** `main` · **the
+**Last session:** September 15, 2026, last · **Branch:** `main` · **the
+ladder's bottom, and the top left as a decision** -- with the boards fixed,
+recruiting by quality bucket read: the twenties sign freshmen at 39 against the
+32 they are built at, the sixties at 56 against 66. The bottom is the ladder
+and is fixed (`05` §87): one- and two-star bands down four and two with the
+two-star threshold, so a one-star is a 29 and a two-star a 40, shares 27 / 32
+/ 22 / 12 / 7, the thirties signing at what they were built at and the
+twenties four over rather than seven. The generator's lift re-fitted to it
+(`RECRUITED_LIFT` `{ bat: 2, arm: -1 }`), the harness moved a percent and no
+norm was touched, goldens re-recorded; year one 6.58 runs, years two to ten
+6.66, every rate flat, the §85 bands holding. **The top is a supply question
+and yours to decide** (`06` §AI.1): a class holds 42 five-stars at 69 and 93
+four-stars at 59, so a sixty-four programme's class averages 57 whatever its
+board does; holding it at sixty-four means a five-star band of 68–80 at five
+percent and a four-star band of 60–70 -- a five-star a seventy-four, twice as
+common, the draft's, hall's and pro-career's centres moving with it -- or the
+table's top coming down to the sixty a blue blood actually holds. Say which.
+
+*Earlier the same night:* **the
 four-star tier stops starving** -- the boards' plan table was fixed while the
 tier populations moved: by year ten thirty boards pointed at the 135 top men
 a class holds, the four-star tier lost the arguments to the tier above,

@@ -30,8 +30,11 @@ import type { Hitter, Player, Position } from '../src/engine/types.js';
 /** A shortstop who was promised he could stay there. */
 const shortstop = (): Hitter => {
   const team = makeTeam(makeRng(4242), 'Test Club', 50);
-  const man = [...team.lineup, ...team.bench].find((p) => p.pos === 'SS')
+  // By the spot that is his own: a dealt card can have a second baseman
+  // adopted at short, and adopting him again would send him home to second.
+  const man = [...team.lineup, ...team.bench].find((p) => (p.homePos ?? p.pos) === 'SS')
     ?? team.lineup[0]!;
+  delete (man as Hitter & { homePos?: Position }).homePos;
   man.pos = 'SS';
   (man as Player).recruitPromise = {
     kind: 'keepPosition', madeYear: 2027, promisedPos: 'SS',

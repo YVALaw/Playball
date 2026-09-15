@@ -425,14 +425,16 @@ export function serviceScore(p: Player): number {
  * 44 → 40) so that a weaker class still divides into roughly the shares it
  * used to: 26% one star, 31% two, 26% three, 12% four, 7% five. Four and five
  * were left where they were, because nobody complained about them and a five
- * star ought to keep meaning the thing it has always meant.
+ * star ought to keep meaning the thing it has always meant. Two came down
+ * again with its band on 2026-09-15 (40 → 38; 05 s87), the one-star band
+ * having no threshold of its own to move.
  */
 export function starsFor(p: Player): number {
   const score = serviceScore(p);
   if (score >= 68) return 5;
   if (score >= 60) return 4;
   if (score >= 50) return 3;
-  if (score >= 40) return 2;
+  if (score >= 38) return 2;
   return 1;
 }
 
@@ -685,14 +687,25 @@ export function generateClass(year: number, teams: number, rng: Rng): RecruitCla
       The league pays about a fifth of a run a game for this and no more; see
       the header of `tests/calibration-seasons.test.ts` for why the plateau
       barely notices.
+
+      The bottom two came down again on 2026-09-15 (05 s87), four and two,
+      and the two-star threshold with them. Not for the feel of a card this
+      time but for what the country becomes: measured over ten seasons on
+      four seeds by the school's quality bucket, the twenties signed freshmen
+      at 39 against the 32 they were built at and the thirties at 40 against
+      39, so the bottom of the table rose four points of nine inside a decade
+      while the top fell eight. A one-star reads 29 now and a two-star 40;
+      the twenties sign at about 34 and the thirties at 38, near what they
+      were built at, and the tail assertions in tests/recruit-ladder.test.ts
+      say what is left of the outliers.
     */
     const roll = rng();
     const quality =
       roll > 0.97 ? 66 + rng() * 10
       : roll > 0.88 ? 58 + rng() * 8
       : roll > 0.65 ? 48 + rng() * 8
-      : roll > 0.30 ? 38 + rng() * 8
-      : 29 + rng() * 8;
+      : roll > 0.30 ? 36 + rng() * 8
+      : 25 + rng() * 8;
 
     const slot = CLASS_SHAPE[i % CLASS_SHAPE.length] as Position | 'SP' | 'RP';
     const goesBothWays = slot === 'SP' && twoWayLeft > 0 && rng() < 0.015;

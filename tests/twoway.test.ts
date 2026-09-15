@@ -148,11 +148,22 @@ describe('both jobs at once', () => {
     const man = makeTwoWay(rng, 58);
     man.pos = 'LF';
     man.role = 'RP';
+    // Leading off, so he is the man standing in left. `positionPenalty` is
+    // read off labels and a dealt card can carry a second natural left
+    // fielder (a first baseman adopted at DH whose glove reads left); the
+    // fit breaks that tie by batting order, and when the other man won it
+    // the two-way man was the night's DH -- who, taking the ball, has nobody
+    // to sit for him. Correct, and a different night from this test's.
     const lfIdx = team.lineup.findIndex((h) => h.pos === 'LF');
-    team.lineup[lfIdx] = man;
-    const dhMan = team.lineup.find((h) => h.pos === 'DH')!;
+    team.lineup.splice(lfIdx, 1);
+    team.lineup.unshift(man);
     // An ordinary starter has the ball; the two-way man is out in left.
     const st = new TeamState(team, true, 0);
+    // Tonight's DH is the man STANDING there, not the man labelled DH: on a
+    // dealt card the label can belong to a first baseman the fit put back at
+    // first (05 s87), and it is the standing man whose night ends.
+    const dhMan = st.byPosition.get('DH')!;
+    expect(dhMan).toBeDefined();
     expect([...st.byPosition.values()].some((f) => String(f.id) === String(man.id))).toBe(true);
     st.coverPitcher(man);
     // Off the grass, still batting; the DH's night is over; his stand-in

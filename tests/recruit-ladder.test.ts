@@ -81,9 +81,13 @@ describe('what a recruit is worth when he signs', () => {
       would not have caught the thing it was written for — the old figures
       (37.4 / 45.0 / 51.2) sit outside all three of the bottom bands here.
     */
+    // Re-recorded 2026-09-15 (05 s87): the bottom two bands came down four
+    // and two with the two-star threshold, measured 30.5 / 40.1 / 50.2 / 58.8
+    // / 68.7 over ten classes. The one-star mean sits a point over its band
+    // because the services still misfile a few two-star men beneath it.
     const bands: Record<number, [number, number]> = {
-      1: [31.8, 34.8],
-      2: [40.1, 43.1],
+      1: [29.0, 32.0],
+      2: [38.6, 41.6],
       3: [48.4, 51.4],
       4: [56.7, 59.7],
       5: [67.1, 70.1],

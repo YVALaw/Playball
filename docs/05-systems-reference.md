@@ -11303,3 +11303,140 @@ TypeScript clean; the full suite; the census on four seeds for ten seasons
 with the per-team view, before and after, on the same generator. The
 by-bucket table of what recruiting delivers, taken on these boards, is the
 input to the ladder pass (§87).
+
+## 87. The ladder's bottom, and the top left as a decision — **September 15 2026, last**
+
+§85.2 found that recruiting compresses the country from its first winter and
+§86.4 re-measured it on the fixed boards. The reporter's word was to fix the
+boards and then do the ladder's ends "with the numbers in front of us". This
+is the bottom end, done, and the top end, sized and left.
+
+### 87.1 The numbers in front of us
+
+Signed freshmen by the school's quality bucket on the fixed boards, four
+seeds, against the freshmen the generator draws (year one, at the table's
+quality plus the lift):
+
+| bucket | mean quality | generated | signed, year 2 | signed, year 10 | nine, year 1 → 10 |
+| --- | --- | --- | --- | --- | --- |
+| sixties | 63.8 | 65.7 | 56.1 | 52.8 | 73.1 → 65.1 |
+| fifties | 54.1 | 55.7 | 50.0 | 52.8 | 63.7 → 63.4 |
+| forties | 43.9 | 46.2 | 44.3 | 46.9 | 55.9 → 56.6 |
+| thirties | 34.8 | 38.6 | 40.0 | 40.5 | 47.8 → 48.9 |
+| twenties | 27.3 | 31.7 | 39.3 | 37.2 | 40.3 → 44.5 |
+
+The middle holds. The bottom signs seven above what it was built at and
+rises four on the nine inside a decade; the top signs ten under and falls
+eight. Two different mechanisms, so two different answers.
+
+### 87.2 The bottom: the ladder, again, and the reporter's own complaint
+
+The bottom is the ladder. A one-star band of 29–37 averaged 33 and a two-star
+band of 38–46 averaged 42, and a twenty-seven programme's board lands both,
+so it signed at 39 and its class of eight was eight points better than the
+men it replaced. The reporter had said twice that one- and two-stars start
+too good; the September 12 pass (§77) brought the bottom two bands down five
+and four for the feel of a card, and this brings them down again, four and
+two, for what the country becomes — 25–33 and 36–44 — with the two-star
+threshold moved with its band (40 → 38), as §77 established both must move.
+Ten classes read 30.5 / 40.1 / 50.2 / 58.8 / 68.7 by star, shares 27 / 32 /
+22 / 12 / 7 percent against the 26 / 31 / 26 / 12 / 7 of §77 (the three-star
+share gave four points to two, since fewer men at the top of the two-star
+band read up), the best one-star in ten classes still a 44 and the best
+two-star a 56, and the class draw pin unmoved. After, by bucket:
+
+| bucket | generated | signed, year 2 | signed, year 10 | nine, year 1 → 10 |
+| --- | --- | --- | --- | --- |
+| twenties | 31.7 | 36.7 | 35.7 | 40.3 → 44.1 |
+| thirties | 38.6 | 37.7 | 38.6 | 47.8 → 47.9 |
+| forties | 46.2 | 42.8 | 46.5 | 55.9 → 56.4 |
+
+The thirties sign at what they were built at now, the twenties four over
+rather than seven. What the twenties' nine still gains over a decade is
+prestige, not the ladder: the one-star tier shrinks from 46 programmes to 25
+as the country's prestige inflates (§74b), and a programme that leaves the
+tier signs from the band above.
+
+### 87.3 The top: a supply question, sized and left
+
+The top is not the ladder's shape but its supply. A class holds 42
+five-stars averaging 69 and 93 four-stars averaging 59, and a sixty-four
+programme's class of eight lands two of the first and three of the second
+and fills with three-stars, which averages 57 — exactly what the sixties
+bucket signs. To hold a sixty-four at sixty-four, its class would have to
+average sixty-five: the five-star band would read 68–80 at five percent of
+the class rather than 66–76 at three, the four-star band 60–70, and both
+thresholds would move with them — a five-star would be a seventy-four rather
+than a sixty-nine, twice as common, and everything fitted to the top of the
+population (`TALENT_CENTRE`, `BOARD_MID`, the hall bar, the star line) would
+move with it. The alternative is that the table's top comes down to the
+sixty a blue blood actually holds. Either is a decision about what a
+five-star means on the board the reporter reads every winter, and it is
+left as one, at `06` §AI.1, with these numbers.
+
+### 87.4 What it cost downstream
+
+The generator's lift is re-fitted to what the lowered ladder delivers:
+`RECRUITED_LIFT` `{ bat: 3, arm: 0 }` → `{ bat: 2, arm: -1 }`, the men a June
+leaves on the field reading a point under the day-one roster on both sides
+once a one-star is a 29, and the arms a point under the table itself — the
+sign a fact about recruiting rather than the table (the shape over-supplies
+starters, the boards sign fewer arms than it offers, the services read a
+reliever's profile better than a starter's). The harness moved with the
+lift and no further — on the eight-seed sweep runs +1.2%, doubles +1.4%,
+walks +1.8%, strikeouts −1.6% against §85.4's recording, all inside the
+sweep's own spread — so no norm was touched, and the goldens were
+re-recorded for the draws. Against the targets: runs +0.8%, average −1.5%,
+on-base −1.2%, home runs −2.5%, strikeouts −0.8%, walks 0.0%, slugging
+−0.7%; worst deviation three percent.
+
+Three things the suite found on the way, each of them the dealt card or the
+deeper roster showing something a drawn roster never could. **A drafted man's
+name leaked**: the generator built a senior to his junior year, offered him to
+the draft, and dropped him with his name still in the process's pool and in
+no save's, so a career resumed from disk grew a different class from the one
+the running app would have — the exact fault `identity.test.ts` watches for;
+the name goes back now. **`coverPitcher` sat the man labelled DH**: a dealt
+card adopts a first baseman at DH and the fit then fields him at first when
+he is the better glove there, leaving the first baseman by label as the
+night's DH, so a two-way reliever taking the ball sat a man who was in the
+field and left a fielder who no longer batted; it sits the man standing at DH.
+And six fixtures and floors moved with the population: the keep-position
+shortstop is a man whose own spot is short, the portal's short squad releases
+the whole bench rather than four of it, the two-way reliever leads off so that
+he and not a first baseman adopted at DH is the man standing in left (the fit
+breaks a tie at zero cost by batting order), the single-pairing error floor
+sits under the 0.82 the pair reads, S ceilings per class are bounded at five
+rather than six, and the tendency-neutrality bound is fifteen thousandths.
+
+### 87.5 What the world does now
+
+Ten seasons, four seeds, the final engine — the boards of §86, the ladder's
+bottom, the lifts re-fitted:
+
+| seed | y1 | y2 | y3 | y4 | y5 | y6 | y7 | y8 | y9 | y10 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4242 | 6.48 | 6.45 | 6.65 | 6.75 | 6.94 | 6.85 | 6.61 | 6.71 | 6.53 | 6.60 |
+| 12161 | 6.73 | 6.63 | 6.77 | 6.68 | 6.70 | 6.61 | 6.72 | 6.77 | 6.71 | 6.85 |
+| 20080 | 6.61 | 6.78 | 6.74 | 6.55 | 6.73 | 6.47 | 6.51 | 6.60 | 6.79 | 6.83 |
+| 27999 | 6.50 | 6.58 | 6.62 | 6.54 | 6.72 | 6.68 | 6.64 | 6.56 | 6.48 | 6.51 |
+
+Year one 6.58, years two to ten 6.66; average .270 → .270, on-base .376 →
+.380, slugging .421 → .422, home runs 0.94 → 0.95, strikeouts 8.02 → 8.18,
+walks 4.65 → 4.80. Ratios of the decade to year one 1.03, 1.00, 1.01, 1.01.
+The played bats read 53.3 in year one and 52.7 from year five, the played
+arms 51.2 and 51.0; the walk-ons a roster 1.6 and 2.0, taking four percent
+of the outs in year one and seven from year five, which is what the one and
+a half percent that remains is made of. All forty season-rows sit inside the
+bands `tests/calibration-seasons.test.ts` took in §85, which did not need
+re-taking. Against the D1 targets the world plays runs −1%, average −3.5%,
+on-base −1%, slugging −3.5%, home runs −8%, strikeouts +2%, walks +2%: a
+shade under real college baseball on power, as a league whose mean quality
+is forty-two is entitled to be against a harness of fifties.
+
+### 87.6 Verified
+
+TypeScript clean; the full suite; ten classes for the ladder; the census on
+four seeds for ten seasons on the ladder before the refit and once on the
+final engine; the harness read before and after; the goldens recorded by the
+script that refuses a sweep off by ten.

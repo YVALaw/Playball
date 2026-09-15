@@ -23,7 +23,7 @@
 // (this file imports it), which is why `makeTeam` moved here with the code
 // it needed rather than the other way round.
 
-import { ageFor, makeHitter, makePitcher } from './players.js';
+import { ageFor, makeHitter, makePitcher, releaseNames } from './players.js';
 import { develop } from './development.js';
 import { adoptSpot, setTheCard } from './depthChart.js';
 import { armValue, overallOf, clamp } from './ratings.js';
@@ -395,6 +395,15 @@ const LANDED_A_CLASS: readonly number[] = [
  * its own recruiting would leave, and a career's first two seasons were
  * played in a league weaker than every season after them.
  *
+ * Two and minus one since the ladder's bottom came down (05 s87): the men a
+ * June leaves on the field read a point under the day-one roster on both
+ * sides once a one-star is a 29 and a two-star a 40, and the arms a point
+ * under the table itself. The sign on the arms is a fact about recruiting,
+ * not about the table: the class shape over-supplies starters, the boards
+ * sign fewer arms than it offers, and the services read a reliever's
+ * profile better than a starter's, so what reaches a rotation stands a
+ * little under what the school is.
+ *
  * Applied to the signed classes and not to the walk-ons, who come at the
  * walk-on penalty under the programme's own quality in June and here alike.
  * The ladder was left where the reporter tuned it (05 s77) rather than
@@ -405,7 +414,7 @@ const LANDED_A_CLASS: readonly number[] = [
  * inside a decade -- is not a level and is not corrected here; it is the
  * open question at 06 sAI.
  */
-export const RECRUITED_LIFT = { bat: 3, arm: 0 } as const;
+export const RECRUITED_LIFT = { bat: 2, arm: -1 } as const;
 
 /**
  * The share of drafted juniors a staff talks back.
@@ -471,7 +480,15 @@ export function makeTeam(rng: Rng, name: string, quality = 50, starters = ROTATI
         // which is the discount `departure` applies to him, and his staff
         // talked back the share it talks back.
         const called = draftChance(overallOf(p)) * (LEVERAGE_DISCOUNT[1] ?? 1);
-        if (rng() < called * (1 - DRAFTED_JUNIORS_KEPT)) continue;
+        if (rng() < called * (1 - DRAFTED_JUNIORS_KEPT)) {
+          // He was never here, so his name goes back too. Left reserved it
+          // stayed in this process's pool and in no save's, and a career
+          // resumed from disk grew a different class from the one the
+          // running app would have -- the exact fault identity.test.ts
+          // watches for.
+          releaseNames([p.name]);
+          continue;
+        }
         p.classYear = 'SR';
         p.age = ageFor(p.id, 'SR');
         develop(p, rng);

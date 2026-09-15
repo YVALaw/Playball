@@ -567,10 +567,10 @@ describe('errors belong to somebody', () => {
     const pct = (t.chances - t.errors) / t.chances;
     expect(pct).toBeGreaterThan(0.950);
     expect(pct).toBeLessThan(0.978);
-    // The twelve-pair calibration harness reads 1.08 a game in the modern
-    // environment; this single pairing reads 0.88, which is roster lottery
-    // rather than drift, so the floor sits under it.
-    expect(per(t.errors, t)).toBeGreaterThan(0.85);
+    // The twelve-pair calibration harness reads 0.94 a game on the roster
+    // June leaves (05 s85, s87); this single pairing reads 0.82, which is
+    // roster lottery rather than drift, so the floor sits under it.
+    expect(per(t.errors, t)).toBeGreaterThan(0.80);
     expect(per(t.errors, t)).toBeLessThan(1.30);
     // And a third or so of them are the throw rather than the glove, which is
     // roughly the real split and the entire reason the two paths are separate.
