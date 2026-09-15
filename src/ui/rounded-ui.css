@@ -1,0 +1,260 @@
+/* The shape language.
+
+   Every corner in the app comes from one of the three tokens in tokens.css,
+   picked by what a thing IS rather than what screen it is on: a control, a
+   card, or a floating dialog. This file is the whole of that assignment, kept
+   in one place on purpose — a radius written next to a screen's own rules is a
+   radius nobody will find when the language changes again.
+
+   Two rules it follows, and they are the reason it is a list of names rather
+   than a wildcard. Only actual surfaces own an outer radius; layout wrappers,
+   grid cells, timelines and joined rows do not, because a rounded corner
+   inside a rounded corner reads as two objects where there is one. And a
+   joined list has ONE outline: the rows meet at straight continuous rules and
+   only the first and last child round, against the parent's radius less its
+   border.
+
+   It arrived as part of an outside pass (`Playball-profile-and-shape-polish`)
+   and is taken almost as delivered, because the role model in it is right. Two
+   things changed on the way in: fourteen selectors naming classes from that
+   pass's own program redesign — which this tree refused in favour of its own —
+   were dropped rather than left as dead weight, and the surfaces built by the
+   September 13 program pass, which this file predates, were added at the foot.
+
+   Loaded last, after program.css, so it settles shape and nothing else. */
+
+/* Shared shapes by component role. Only actual surfaces own an outer radius;
+   layout wrappers, timelines, grid cells, and joined rows do not. */
+button, [role='button'], input:not([type='range']):not([type='checkbox']):not([type='radio']), select, textarea {
+  border-radius: var(--radius-control);
+}
+
+/* Standalone cards and panels, including the older screens. Explicit names
+   keep a card's labels, grid wrappers, and decorative layers out of this rule. */
+:root :is(.action-card, .alumni-card, .big-moment-card,
+.board-mandate-card, .board-review-card, .bracket-slot-card, .build-card,
+.coach-background-card, .coach-card, .coach-skill-card, .coach-trophy-card,
+.college-form-card, .college-identity-card, .college-matchup-card,
+.command-action-card, .dossier-coach-card, .dossier-intel-card, .dossier-program-card,
+.facility-specialty-tile, .god-card, .god-link-card, .god-summary-card,
+.hire-card, .job-offer-card, .june-stake-card, .money-plan-card, .network-panel,
+.pipeline-card, .playbook-intel-card, .portal-budget-card, .postseason-next-card,
+.program-dashboard-card, .program-panel, .record-group-card, .recruit-card,
+.retention-pitch-card, .save-file-card, .season-card, .season-leader-card,
+.setting-choice-card, .setting-toggle-card, .settings-god-panel, .settings-reset-card,
+.settings-tile, .staff-candidate-tile, .staff-card, .staff-result-card,
+.staff-roster-card, .strategy-control-card, .today-board-card, .today-recruiting-card,
+.next-game, .featured-player, .prospect-hero, .player-hero, .team-profile-hero,
+.coach-profile-hero, .board-room-hero, .postseason-hero,
+.season-verdict, .champion-banner, .settings-command-hero, .settings-god-hero,
+.season-report-hero, .offer-decision-hero, .career-summary, .career-offer-detail,
+.start-continue, .start-door, .watchlist-summary, .watchlist-empty,
+.program-launch, .program-career-row, .program-attention,
+.facility-blueprint, .staff-work-section, .staff-profile-section,
+.network-region, .network-state-detail, .network-coordinator,
+.recruit-pitch-room, .recruit-filter-head, .recruit-filter-section,
+.portal-command-center, .portal-candidate, .portal-empty, .portal-sign-player,
+.postseason-spotlight, .postseason-outcome, .june-standing-modern, .bracket-match,
+.series-match, .signing-class, .award-feature, .match-prep, .match-warnings,
+.field-note, .scout-note, .dossier-empty-report, .delegation-banner,
+.career-world-rules, .god-context-note, .god-toast, .start-storage-error, .app-crash,
+.prospect-estimate, .prospect-offer, .career-identity, .live-matchup, .manager-call,
+.bracket-board, .championship-tease, .postseason-box-score, .draft-pitch,
+.recruiting-filter, .college-compare, .recruit-week-warning, .recruit-promise-file,
+.board-review-contract, .career-look, .timeline-detail, .return-strip,
+.pregame-show, .pregame-lineup, .park-loading, .mail-open, .money-command-center,
+.staff-release, .coach-career-school, .coach-career-empty, .game-picker-row,
+.game-picker-empty, .history-empty, .coach-builder-stage, .coach-appearance-board,
+.background-stat-preview, .mailbox-empty, .season-mvp-feature, .prestige-journey,
+.prestige-next-rung, .retention-call-read, .retention-call-target,
+.retention-offer-board, .retention-pick-prompt, .portal-sign-story,
+.portal-sign-money, .settings-career-note, .recruit-decision-note,
+.drop-strip, .hall-empty, .portal-budget-breakdown, .postseason-spotlight-game,
+.spotlight-tbd, .god-command-hero, .portal-origin-strip, .recruiting-calendar-note) {
+  border-radius: var(--radius-card);
+}
+:root :is(.career-depth-options, .career-plan-list, .career-offers, .answer-list, .game-tool-options) > button {
+  border-radius: var(--radius-card);
+}
+
+/* A joined list has one outline. Its rows meet at straight, continuous rules. */
+.decision-stack, .data-table, .lineup-table, .rotation-list, .standings-table,
+.message-list, .prospect-list, .save-list, .inline-actions, .captain-list,
+.award-list, .repertoire-list, .tendency-list, .dossier-list, .tool-table,
+.hall-class, .hall-table, .record-book, .alumni-year, .account-menu,
+.identity-board, .strategy-board, .needs-board, .skill-board, .retention-list,
+.career-club-list, .mailbox-list, .lineup-bench, .school-chase, .depth-list {
+  border-radius: var(--radius-card);
+}
+:is(.decision-stack, .data-table, .lineup-table, .rotation-list, .message-list,
+  .prospect-list, .save-list, .inline-actions, .captain-list, .tendency-list,
+  .dossier-list, .account-menu, .hall-class, .hall-table, .record-group-card,
+  .standings-table, .identity-board, .strategy-board, .needs-board, .skill-board,
+  .retention-list, .career-club-list, .alumni-year, .staff-player-options,
+  .postseason-agenda-list) > button,
+.record-modern-row, .mailbox-row, .player-row, .postseason-lineup-row,
+.depth-list > div > button,
+.match-actions > button, .simulation-row > button, .save-file-card > button {
+  border-radius: 0;
+}
+:is(.decision-stack, .data-table, .lineup-table, .rotation-list, .inline-actions,
+  .message-list, .prospect-list, .save-list, .captain-list, .account-menu,
+  .hall-class, .record-group-card, .alumni-year, .next-game, .board-mandate-card,
+  .facility-blueprint, .champion-banner, .postseason-spotlight, .standings-table,
+  .identity-board, .strategy-board, .needs-board, .skill-board, .retention-list,
+  .career-club-list, .mailbox-list, .lineup-bench) > :first-child {
+  border-start-start-radius: calc(var(--radius-card) - 1px);
+  border-start-end-radius: calc(var(--radius-card) - 1px);
+}
+:is(.decision-stack, .data-table, .lineup-table, .rotation-list, .inline-actions,
+  .message-list, .prospect-list, .save-list, .captain-list, .account-menu,
+  .hall-class, .record-group-card, .alumni-year, .next-game, .board-mandate-card,
+  .facility-blueprint, .champion-banner, .postseason-spotlight, .standings-table,
+  .identity-board, .strategy-board, .needs-board, .skill-board, .retention-list,
+  .career-club-list, .mailbox-list, .lineup-bench, .hall-table) > :last-child {
+  border-end-start-radius: calc(var(--radius-card) - 1px);
+  border-end-end-radius: calc(var(--radius-card) - 1px);
+}
+:is(.decision-stack, .data-table, .lineup-table, .rotation-list, .inline-actions,
+  .account-menu, .hall-class) > button:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: -3px;
+}
+
+/* Shared stat strips are a single surface, with square internal cells. These
+   compact strips have no floating menus; contain their edge backgrounds. */
+.pulse-grid, .season-line, .metric-strip, .club-capacity, .program-score,
+.player-quick-facts, .fielding-strip, .player-records, .split-grid,
+.prospect-stats, .count-board, .acquisition-needs, .portal-needs-strip,
+.player-status-grid, .board-review-deltas, .probable-arms, .record-book-summary,
+.hall-summary {
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+:is(.pulse-grid, .season-line, .metric-strip, .club-capacity, .program-score,
+  .player-quick-facts, .fielding-strip, .player-records, .split-grid,
+  .prospect-stats, .count-board, .acquisition-needs, .portal-needs-strip,
+  .player-status-grid, .board-review-deltas, .probable-arms, .record-book-summary,
+  .hall-summary) > * {
+  border-radius: 0;
+}
+.pulse-grid > button:focus-visible { outline: 2px solid var(--clay); outline-offset: -3px; }
+
+/* Settings contains spaced cards, not a joined list. The empty wrapper must
+   not clip their edges or paint an extra shadow behind the entire group. */
+.settings-workspace .settings-list { border-radius: 0; overflow: visible; box-shadow: none; }
+.settings-workspace .settings-list > :is(.setting-toggle-card, .setting-choice-card, .settings-reset-card) {
+  border-radius: var(--radius-card);
+}
+
+/* Inset segmented controls: 10px outer corner minus 4px padding gives 6px
+   inner corners. The selected underline sits inside that surface. */
+:root .segmented {
+  display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line);
+  border-radius: var(--radius-card); background: var(--wash);
+}
+:root .segmented > button {
+  flex: 1 0 auto; min-width: 58px; min-height: 44px; margin: 0;
+  border: 0; border-radius: calc(var(--radius-card) - 4px);
+  background: transparent; box-shadow: none;
+}
+:root .segmented > button.active,
+:root .segmented[data-slide] > button.active,
+:root .segmented > button[aria-selected='true'],
+:root .segmented[data-slide] > button[aria-selected='true'] {
+  color: var(--ink); background: var(--paper); box-shadow: 0 1px 3px rgba(0,0,0,.09);
+}
+:root .segmented[data-slide]::before {
+  width: max(0px,calc(var(--slide-w) - 12px));
+  transform: translateX(calc(var(--slide-x) + 6px));
+  bottom: 4px; height: 2px; border-radius: 2px;
+}
+:root .segmented.wrap > button { margin: 0; border-top: 0; }
+:root .alumnus-profile > .segmented > button { flex: 1 1 0; min-width: 0; }
+:root .segmented.wrap[data-slide]::before { top: calc(var(--slide-y, 0px) + var(--slide-h, 100%) - 2px); bottom: auto; }
+:root .segmented > button:focus-visible { outline: 2px solid var(--clay); outline-offset: -2px; }
+
+/* Navigation buttons get breathing room and a selected surface. Vertical
+   dividers no longer curl around each button's corners. */
+.primary-nav { gap: 4px; padding: 4px 8px calc(4px + env(safe-area-inset-bottom)); }
+.primary-nav > button { min-height: 58px; border: 0; border-radius: var(--radius-control); }
+.primary-nav > button.active { background: var(--soft); }
+.primary-nav[data-slide]::before {
+  top: 4px; height: 2px; border-radius: 2px;
+  width: max(0px,calc(var(--slide-w) - 16px));
+  transform: translateX(calc(var(--slide-x) + 8px));
+}
+.context-nav { height: auto; min-height: 52px; gap: 4px; padding: 4px 8px; }
+.context-nav > button { min-height: 44px; border-radius: var(--radius-control); }
+.context-nav > button.active { background: var(--soft); }
+.context-nav[data-slide]::before { bottom: 4px; height: 2px; border-radius: 2px; }
+.context-nav > button.active::after { bottom: 0; height: 2px; border-radius: 2px; }
+
+/* Explicit square resets left in old controls. */
+:root :is(.primary-command, .secondary-command, .square-command, .filter-button,
+  .header-icon, .month-button, .scout-again, .sim-command, .player-action-button,
+  .tutorial-back, .career-reroll, .career-offer-gate, .career-offer-close,
+  .reveal-all, .profile-actions-launcher, .scout-secondary-command,
+  .coach-points-command, .coach-record-command, .candidate-hire-cta,
+  .facility-invest-cta, .retention-call-close, .retention-let-go,
+  .recruit-filter-toggle, .settings-god-command, .settings-god-restore,
+  .staff-facility-door, .staff-player-select, .staff-cancel-project,
+  .search-row, .network-state) {
+  border-radius: var(--radius-control);
+}
+:root .god-bolt, :root .god-field input[type='text'], :root .god-field select,
+:root .god-selects select, :root .staff-player-picker input, :root .staff-state-select select,
+:root .career-field select, :root .network-assignment select, :root .network-state-filter select,
+:root .staff-candidate-dialog > header > button, :root .postseason-map-tools button, :root .mailbox-mark-all {
+  border-radius: var(--radius-control);
+}
+
+/* Floating dialogs own their outline. Full-screen overlays and scrims do not. */
+.modal-card, .tutorial-card, .retention-sheet, .offer-modal, .offer-decision-modal,
+.profile-command-sheet, .game-picker-sheet, .portal-sign-sheet,
+.staff-candidate-dialog, .playbook-library-sheet,
+.player-actions-popover, .college-actions-popover, .game-manager-popover {
+  border-radius: var(--radius-dialog);
+}
+/* Two of the scrims are buttons — a full-screen tap target that closes what
+   it sits behind — so the control rule above reached them and put an 8px
+   corner on a layer the size of the phone. A scrim is not a surface. */
+:root [class*='scrim'] { border-radius: 0; }
+:is(.game-picker-sheet, .portal-sign-sheet, .staff-candidate-dialog) > header {
+  border-start-start-radius: calc(var(--radius-dialog) - 1px);
+  border-start-end-radius: calc(var(--radius-dialog) - 1px);
+}
+
+
+/* ---------------------------------------------------------------------------
+   The September 13 program pass, which this stylesheet predates.
+
+   Its surfaces were built square, under our own class names, while the pass
+   this file came from was working from its own redesign of the same rooms. So
+   they are assigned here rather than there, by the same two rules: a thing
+   that is its own surface on the page rounds, and the grids, heads, scales and
+   fact rows inside it do not.
+   --------------------------------------------------------------------------- */
+:root :is(.program-trend, .network-scouting, .network-lead, .alumnus-plaque,
+  .alumnus-marks, .alumnus-next) {
+  border-radius: var(--radius-card);
+}
+
+/* The shelf is a joined list: full-bleed rows meeting at continuous rules,
+   with the best season sitting among them. It clips rather than rounding its
+   children, because nothing inside it floats or takes a focus ring. */
+:root .program-shelf { border-radius: var(--radius-card); overflow: hidden; }
+
+/* The grid is spacing. The two tiles in it are the surfaces. */
+:root .staff-impact-grid > span { border-radius: var(--radius-card); }
+
+/* Meters and tracks: the bar is the rounded thing, so it takes the cap rather
+   than a card's corner. The fill rounds with its track; the 60-gate marker on
+   the strength meter stays a square tick, because it is a line on a scale and
+   a rounded one reads as a handle you could drag. */
+:root :is(.staff-mini-progress, .staff-mini-progress i,
+  .staff-live-progress > div, .staff-live-progress i,
+  .network-strength-meter, .network-strength-meter > i,
+  .program-level-track i, .facility-specialty-tile > i em) {
+  border-radius: var(--radius-pill);
+}

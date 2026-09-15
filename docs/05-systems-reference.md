@@ -10490,3 +10490,104 @@ animated.
   not to the inbox. `overlay` is a single value, so opening the board from a
   letter forgets the inbox was ever there. Fixing it properly means an overlay
   stack, which is a bigger change than this pass.
+
+## 81. The corners — **September 15 2026**
+
+Every corner in the app now comes from one of three tokens in `tokens.css`,
+picked by what a thing *is*: `--radius-control` (8px) for a button, a field or
+a nav cell; `--radius-card` (10px) for anything that is its own surface on the
+page; `--radius-dialog` (14px) for a floating sheet or popover, which owns its
+outline and so carries the largest corner. `--radius-pill` (99px) is not a
+fourth word — it is the end cap on a meter, where the rounded thing is the bar
+rather than a surface around it. One file, `src/ui/rounded-ui.css`, is the
+whole of the assignment, loaded last after `program.css` so it settles shape
+and nothing else. Nothing anywhere else writes a radius; a radius written next
+to a screen's own rules is a radius nobody finds when the language changes.
+
+### 81.1 The rules, which are why it is a list of names and not a wildcard
+
+- **Only a surface owns an outer radius.** Layout wrappers, grid cells, fact
+  rows, heads, scales and timelines do not, because a rounded corner inside a
+  rounded corner reads as two objects where there is one. The metric strip is
+  a single rounded surface with square cells; the trend chart's bar wells stay
+  square because they are an axis.
+- **A joined list has one outline.** The roster, the standings, the mailbox,
+  the decision stack, the coach menu: the container rounds, the rows are 0 and
+  meet at straight continuous rules, and only the first and last child round,
+  against the parent's radius less its border (`9px 9px 0 0` / `0 0 9px 9px`).
+  The program archive's shelf clips instead, because nothing inside it floats
+  or takes a focus ring.
+- **A segmented control is inset.** 10px outer, 4px padding, 6px inner corners
+  on the buttons, the selected one raised on paper. Its buttons are
+  `flex: 1 0 auto` with a 58px floor — measured at 375 wide, every one in the
+  app fits (Seasons / The Book / Alumni at 112 + 116 + 105 in 349; Budget /
+  Staff / Facilities / Network likewise) and `scrollWidth` never left 375.
+- **Scrims own nothing.** Two of them are buttons — a full-screen tap target
+  that closes what it sits behind — so the plain `button` rule reached them
+  and put an 8px corner on a layer the size of the phone. `[class*='scrim']`
+  is reset to 0, which is what the file's own header already said.
+- **Meters are pills.** The facility level dashes, the coach's project
+  progress, the network strength meter and its fill. The 60-gate marker on the
+  strength meter stays a square tick, because it is a line on a scale and a
+  rounded one reads as a handle you could drag.
+
+### 81.2 Where it came from, and what was refused
+
+The outside pass `Playball-profile-and-shape-polish` (extracted at
+`Downloads/New folder/Playball-main`, September 13, 08:00) was **a branch off
+the tree before the September 13 program pass**. Its `rounded-ui.css` is taken
+almost as delivered, because the role model in it is right; its three tokens
+are taken with the same values. The rest of it was not:
+
+- Its `prototype-frame.css` would have reverted Sunday's program pass — the
+  house left rule on season and alumni cards back to a coloured border, the
+  alumnus portrait removed, the three-column status grid back to two, the
+  facility budget grid fix gone — and re-added drop shadows on the season
+  card, the alumni card and the segmented control. Refused whole. Every
+  radius it added is covered by the shape file under one token rather than
+  the 11, 12, 13, 14 and 15px it used across five adjacent surfaces.
+- Its `program-redesign.css` and `ProgramVisuals.tsx` are the skin the
+  September 13 pass already refused (`PROGRAM_MENU_PASS_2026-09-13.md`).
+- `data/interview.ts` and `engine/interviewResult.ts` — an interview system
+  the pass also carried — are unrelated to shape, unreviewed, and not taken.
+  Nothing in `src/engine` moved.
+
+Fourteen selectors naming that pass's own program classes (`legacy-*`,
+`program-hq-hero`, `network-home-base`, `program-pulse` and so on) matched
+nothing in this tree and were dropped rather than shipped dead. Eight
+surfaces built by the September 13 pass, which the file predates, were
+assigned at its foot: `.program-shelf`, `.program-trend`, `.network-scouting`,
+`.network-lead`, `.alumnus-plaque`, `.alumnus-marks`, `.alumnus-next` and the
+two tiles of `.staff-impact-grid` — the grid itself is spacing — plus the
+five meters above as pills. `.network-lead` was found in the browser: a wash
+block with the house left rule that stayed square among rounded cards, and
+exactly the surface the incoming file had rounded under its own name.
+
+### 81.3 A decision reversed, on the record
+
+The September 13 pass refused rounded boxes by name and squared four surfaces
+to match. This reverses that, on the reporter's instruction on the 15th —
+*"the rounded squares looks better"* — and the reversal is written here so the
+trail stays honest: `06` says a recorded decision is binding until explicitly
+revisited, and this is the revisit. The other half of that pass's refusal —
+the invented gold, the shadows, the second stylesheet — stands.
+
+### 81.4 Verified
+
+TypeScript clean; 90 files, **1,531 tests** pass (the 1,524 the program pass
+recorded plus its seven). Driven at 375×812 on a fresh career, reading
+computed `border-radius` rather than trusting the eye: the start screen, all
+five coach-builder steps, the offer sheet (14 outside, 10 inside), Today
+(card 10, its header band 9/9/8/8, joined action rows 0 with the bottom one
+0/0/9/9, nav cells 8 at 58 tall), the program hub, Network, Staff,
+Facilities, History, Alumni, the roster, the coach menu and Settings, and the
+dark theme once on Facilities. No screen's `scrollWidth` left 375. Two
+things could not be seen on a fresh career and are verified statically only —
+the archive shelf and trend, and the alumnus plaque, marks and next-chapter
+card need a played season; the shape file is the only rule in the tree that
+touches them and every selector resolves to a class in the source.
+
+A note for whoever drives the browser next: at the mobile preset the pane's
+screenshot crops the right quarter of the page (563 of 750 device pixels).
+The page is fine — `clientWidth` equals `scrollWidth` — but the picture is
+not, so read computed style and take the picture for the left three-quarters.

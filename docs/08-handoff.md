@@ -6,15 +6,36 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 12, 2026 · **Branch:** `main` · **a play session's
-twenty-six items, and an audit of the answer to them** — a hurt arm that says
-so and a trainer's room at the foot of the card, Reliever of the Year, a
-fifty-six game schedule and the fifth arm it costs, one press per tier for a
-coach only watching, the star ladder and its thresholds brought down together,
-the recruiting board delegated to a coordinator, and the climb to the majors a
-summer longer (`05` §76–§79). Then every item was re-checked against the code
-and every DONE verdict handed to a second pass told to prove it wrong, which
-overturned two of them (§80).
+**Last session:** September 15, 2026 · **Branch:** `main` · **the corners** —
+every radius in the app now comes from three tokens through one file,
+`src/ui/rounded-ui.css`, assigned by role: control 8, card 10, dialog 14,
+meters as pills. It came from the outside `profile-and-shape-polish` pass,
+which was branched off pre-Sunday code and would have reverted the program
+pass had it been copied; the shape language was taken and the rest refused.
+Fourteen dead selectors dropped, eight program-pass surfaces and a scrim reset
+added, walked at 375×812 by computed style (`05` §81, `06` §AF). This
+**reverses** the September 13 refusal of rounded boxes, on the reporter's
+word.
+
+*Before that, September 13, small hours:* **the program pass** — the outside
+`program-visual-rework` zip's organisation taken and its skin refused. The hub
+opens on the school with one ranked attention card; History gets a shelf and
+one divider per coaching era; Alumni gets search, filters and the college
+career it had never printed; the network is a map of the eight regions; staff
+cards name the man a project is about. Engine byte-identical; three defects
+found in the incoming version, one a live crash. It was written up only in
+`docs/PROGRAM_MENU_PASS_2026-09-13.md` and never folded into `05` — that is
+still true, and it is the next documentation debt.
+
+*Before that, September 12:* **a play session's twenty-six items, and an
+audit of the answer to them** — a hurt arm that says so and a trainer's room
+at the foot of the card, Reliever of the Year, a fifty-six game schedule and
+the fifth arm it costs, one press per tier for a coach only watching, the star
+ladder and its thresholds brought down together, the recruiting board
+delegated to a coordinator, and the climb to the majors a summer longer (`05`
+§76–§79). Then every item was re-checked against the code and every DONE
+verdict handed to a second pass told to prove it wrong, which overturned two
+of them (§80).
 
 *Before that, September 12 morning:* development, the ceiling and the alumni —
 headroom is a roll rather than a class-year constant, the S grade is rare and

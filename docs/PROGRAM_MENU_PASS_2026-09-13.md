@@ -27,7 +27,9 @@ to outrank our own type scale by one class of specificity.
 
 ## What was refused, and why
 
-- **The rounded boxes.** Asked for by name. Everything new is square: `1px solid
+- **The rounded boxes.** Asked for by name. **Reversed September 15** — the
+  reporter chose them after seeing both; the whole shape language now lives in
+  `src/ui/rounded-ui.css` (`05` §81). What follows is the record of the 13th. Everything new is square: `1px solid
   var(--line)` on `var(--paper)`, with a 3px left rule for emphasis. Four
   surfaces this pass reworked and that were still on the old rounded layer —
   the season card, the alumni card, the facility tiles and the blueprint — were

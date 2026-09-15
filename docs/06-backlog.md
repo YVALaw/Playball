@@ -3709,3 +3709,33 @@ letter opening the wrong table, a board that did not say the year.
   was paired with (§78.3). **Nothing to build** — it is a rule for whoever
   changes a duration next: re-measure every per-year probability attached to
   it, and state both numbers.
+
+## AF. The corners — September 15 2026
+
+One item, and it is a decision rather than a build: **rounded corners are the
+house shape now** (`05` §81), reversing the September 13 program pass's refusal
+of them. The whole assignment lives in one file, by role, from three tokens.
+
+### AF.1 What it proved about this page, again
+
+- **The folder a pass is named by is a stale copy.** `New folder/Playball-main`
+  was a branch off the tree from *before* Sunday's program pass, and its
+  `prototype-frame.css` would have quietly reverted that pass's emphasis
+  rules, portrait and grids while adding shadows. Third time this shape has
+  come up; the rule is the same: diff against the current tree with CR
+  stripped, take the organisation, refuse the skin.
+- **A rule stated in a file's header is not a rule the file follows.** The
+  shape file said scrims own no outline and then rounded two of them through
+  the plain `button` selector. Found by reading computed style on a
+  full-screen element, not by looking.
+
+### AF.2 What it left open
+
+- **The archive and alumnus surfaces are verified statically, not at
+  runtime.** `.program-shelf`, `.program-trend`, `.alumnus-plaque`,
+  `.alumnus-marks` and `.alumnus-next` need a played season to appear. The
+  next play session that reaches a June should look at them once. **Small.**
+- **The tutorial fires in every room of a fresh career**, and its scrim eats
+  the next tap. Correct behaviour for a player; friction for a test drive.
+  Not a bug and nothing to build — noted so the next agent budgets a
+  dismissal per room rather than diagnosing dropped clicks.

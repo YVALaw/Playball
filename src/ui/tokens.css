@@ -130,6 +130,27 @@
    * all. The device settings write it here; it is never stored in the save,
    * because a preference belongs to the phone rather than the dynasty. */
   --ts: 1;
+
+  /* The corner radii, one per role.
+   *
+   * Shape is a language with three words in it, and every surface in the app
+   * speaks exactly one of them: a control (a button, a field, a nav cell), a
+   * card (anything that is its own surface on the page), or a floating dialog,
+   * which owns its outline and so carries the largest corner. Nothing else may
+   * invent a fourth number — a screen that rounds to 11px because 11px looked
+   * right on that screen is how a design loses its edges. The incoming pass
+   * these came from used 11, 12, 13, 14 and 15 across five adjacent surfaces.
+   *
+   * The values are small on purpose. These are dense information screens on a
+   * phone; a corner's job here is to say "this is one object", not to soften.
+   *
+   * --radius-pill is not a fourth word. It is the end cap on a meter or a
+   * track, where the rounded thing is the bar itself rather than a surface
+   * around it. */
+  --radius-control: 8px;
+  --radius-card: 10px;
+  --radius-dialog: 14px;
+  --radius-pill: 99px;
 }
 
 

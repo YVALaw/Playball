@@ -10,6 +10,9 @@ import './ui/tokens.css';
 import './ui/prototype.css';
 import './ui/prototype-frame.css';
 import './ui/program.css';
+// Shape last: one file assigns every corner in the app from the three radius
+// tokens, so a radius is never written beside a screen's own rules.
+import './ui/rounded-ui.css';
 
 /*
   Preferences before the first paint.
