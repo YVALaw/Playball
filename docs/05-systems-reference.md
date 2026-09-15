@@ -10906,8 +10906,13 @@ backdrop-blurred scrim, which a desktop GPU makes free — and it stays open at
   two-star careers of thirty seasons on the engine as it stood at `8706742`,
   before this pass — five of ten reached Omaha (median year twelve), none won
   it, two never made a regional. The rows §AA and §54.4 quote are superseded
-  by that, and that in turn by whatever the probe reads on the stationary
-  world, which is queued and not yet read.
+  by that. Then again on the stationary world, the same ten seeds: **eight
+  of ten reached Omaha, median year ten; none won it; none went thirty years
+  without a regional.** The floor moved up -- a two-star programme run by the
+  automatic staff gets to Omaha more often and sooner in a world whose
+  upperclassmen are real -- and the title stayed where it was, out of reach
+  for a staff that does nothing a coach would. The second run is the one to
+  quote.
 - **The program pass** (September 13) is folded into this reference at last:
   §84.
 
