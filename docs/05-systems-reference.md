@@ -9494,6 +9494,9 @@ equilibrium the game settles into, not a runaway.
 
 ### 71.4 The cause, which is a defect rather than a curve
 
+> **Closed September 15 2026 — §83.** It was three causes, measured apart, and
+> the ladder below was the smallest of them. The world is stationary now.
+
 Census by class year, league-wide, mean overall:
 
 | | | FR | SO | JR | SR |
@@ -10710,3 +10713,242 @@ carried two seasons forward from the console (`window.store`: `simWeek`,
 FIRING row on the New Career fold. The alumnus plaque was driven on the same
 career once an offseason had been walked through the draft, which is the only
 way a save acquires an alumnus.
+
+## 83. The world is stationary, and what it took — **September 15 2026**
+
+§71 filed the defect and refused to fix it in passing: the league gained two
+runs a game over its first four seasons, .278 to .307, and held there, and
+"any of the three moves every golden in the suite, so it wants its own pass
+and its own measurement." This is that pass. It also carries the overlay
+stack (§83.6), the two-second freeze that could not be reproduced (§83.7),
+and three ledger errands (§83.8).
+
+### 83.1 The instrument first
+
+`tests/class-census.ts` prints, for a world and for four winters of its own
+offseason, the mean overall by class year for bats and for arms, how many of
+each are walk-ons and at what level, the same means with the walk-ons taken
+out, and the league's rates after each regular season. Everything below was
+read off it, and it was run before any change so that the first line could be
+checked against §71.4's table. It reproduced it to the digit — bats FR 40.8
+SO 41.3 JR 40.3 SR 41.8, year five 8.64 runs on seed 4242 — which is the
+property a harness has to have before its second line is worth reading.
+
+### 83.2 Three causes, in the order they were found
+
+**The ladder** (§71.4's hypothesis). `makeTeam` drew every man from one
+distribution and stamped a class on him afterwards. Every man is built as the
+freshman he was now — a freshman's ceiling, the hidden-gem channel included —
+and aged into the class he is for through the same `develop` a recruited man
+gets, one winter per class climbed, his class advancing ahead of each, his
+arc stamped at his first winter (`engine/development.ts`, lifted out of
+`progression.ts` because `players.ts` cannot import it). A generated senior
+is a freshman plus three real winters, which is exactly what a recruited one
+is. Recruits and walk-ons pass `'FR'` and age not at all; a two-way man ages
+once, after his arm exists, so both halves grow off the one ceiling; a
+god-mode arm drawn onto an existing man is aged into that man's class. The
+opening world got its ladder — bats 41.7 → 52.1, arms 45.1 → 54.6 — and year
+one moved from 7.02 to 7.31 runs. **A quarter of the climb**, and year five
+did not move at all.
+
+**The arms the class never supplied.** With the ladder in, the census showed
+what was left: 141 to 180 of the nation's ~1,070 pitchers every season were
+walk-ons at overall 32 — one arm in six — against 46 to 63 of ~1,500 bats.
+Taking the walk-ons out, signed arms sat at 50.7–51.6, the same as the 51.4
+the world was generated at; the recruit generator was never the problem.
+`CLASS_SHAPE` supplied five arms in thirteen prospects, 38%, for a roster that
+is ten arms in twenty-three, 43%, and a walk-on is released after his one
+season, so the hole he filled reopened every winter. The country's pitching
+fell three points across four years while its hitting rose two, and that
+five-point swing toward the bats on a log5 model with asymmetric
+sensitivities is most of what two runs a game is made of. Seven arms in
+fifteen now — four starters to three relievers, because a pitcher is
+recruited as a starter and becomes a reliever rather than the reverse — and
+walk-on arms went 141–180 → 95–122, year five 8.91 → 8.27.
+
+**The shape only a generated roster had.** `makeTeam` drew its rotation three
+above the programme's quality and its bench six below. No recruited roster
+has that shape: a recruit is drawn at one quality, and `setTheCard` — dealt
+to all ninety-six on day one since §66 and again every June — makes the best
+four arms the rotation and the worst four bats the bench. The generated world
+was therefore about three points arm-favoured against the world its own
+recruiting produced, which is the residual the census still read after the
+first two: arms 51.4 → 48.4 over five years, bats 47.5 → 49.4. Everybody is
+drawn at quality now and the card sorts them, as it does in June.
+
+With all three in and **no engine change at all**, seed 4242 plays 7.98 7.96
+8.07 8.08 8.10. Generation and recruiting draw the same man; the world is
+stationary.
+
+### 83.3 Then the engine, calibrated once against it
+
+The harness (`newTeams`, two aged quality-50 rosters) read +9.0% runs, +13.2%
+home runs, +5.4% slugging, +2.8% average on the eight-seed sweep, with
+strikeouts and walks already on target. That pattern is the sensitivity
+asymmetry in `ratings.ts` landing on a stronger mean: a joint rise of bats and
+arms cancels only where the batter's and the pitcher's sensitivities match
+per event, and on home runs (1.87 against −1.33), doubles and singles they do
+not. The documented procedure — read the sweep, multiply the constant by the
+ratio, two rounds converge — took one round: `BAT_NORM` homerun 0.9657 →
+0.905 and `PIT_NORM` homerun 1.0022 → 0.940 (split, as the file splits a
+correction both sides widened), doubles 0.9978 → 0.960, and a `single` entry
+at 0.975 where there had been none, because "an event with no entry needs no
+correction" was true of a population centred under the pivot and is not true
+of one centred over it. Sweep after: runs +0.6%, average −1.3%, on-base
+−1.4%, home runs −2.8%, strikeouts +1.0%, walks −0.9%, slugging −0.7%.
+Everything inside 3%, which is the sweep's own seed-to-seed spread; a second
+round would have been fitting noise. Goldens re-recorded; `record-goldens`
+accepted the sweep at a worst deviation of 3%.
+
+### 83.4 What the world does now, and two things written down rather than tuned
+
+Five seasons, two worlds, the final engine:
+
+| | y1 | y2 | y3 | y4 | y5 |
+| --- | --- | --- | --- | --- | --- |
+| seed 4242 runs | 7.39 | 7.37 | 7.37 | 7.41 | 7.46 |
+| seed 12161 runs | 7.26 | 7.56 | 7.67 | 7.73 | 7.93 |
+| 4242 bats / arms | 49.3 / 50.0 | 47.0 / 48.6 | 47.2 / 49.1 | 47.5 / 49.7 | 48.2 / 50.6 |
+| 12161 bats / arms | 48.9 / 50.3 | 47.6 / 48.1 | 47.8 / 48.3 | 48.2 / 49.3 | 48.7 / 49.4 |
+
+Flat on one seed, +9% on the other, against the +22% it was. Bats and arms
+are within a point and a half of each other in every cell; what is left is a
+slow, symmetric rise in signed talent — about two points over four winters on
+both sides, because the class ladder's mean sits two above the country's
+generated quality — landing on the same asymmetry the harness was corrected
+for. It is inside the seed spread and `tests/calibration-seasons.test.ts`
+pins it at a ratio under 1.12 rather than tuning it away.
+
+The world also sits about eight percent above the harness in year one
+(7.26–7.39 against 6.77), where it sat four above before. That is the
+between-programmes quality spread — a sixty-eight's aged seniors stand much
+further above a twenty-four's than their freshmen did — on a convex model.
+The harness is still what the league is defined by, per `ratings.ts`; whether
+that definition should move to the world is the one open question this pass
+leaves (`06` §AH), and it is a decision, not a fix.
+
+### 83.5 Everything downstream that had been fitted to the defect
+
+Every constant fitted against a population of unaged upperclassmen was fitted
+to a world that existed for one season. Four moved, each re-measured on its
+own test's harness:
+
+- **`TALENT_CENTRE` in `legacy.ts`, 55 → 67.** A drafted junior or senior is
+  63.5 overall now (p50 63, p90 75) where the flat generator made him fifty,
+  and 35.7% of them were reaching the top level. 14.7% at 67, against §74's
+  sixteen; 81% of the first two rounds, 15% of rounds six to ten, 4.5% of
+  big-leaguers ever an All-Star. The synthetic pacing survey's band moved with
+  it, and the test says why.
+- **`BOARD_MID` in `draft.ts`, 61 → 64.** The settled league's draft read 5.8
+  first rounders a year and a quarter of everybody inside five rounds — the
+  stacked top the logistic exists to prevent. 64 reads 2.0 and 14.4% over
+  five drafts of an eight-year world, all twenty rounds used.
+- **The cap test** (`recruiting.test.ts`) asserted no generated man's ceiling
+  above 94. A steady man's ceiling is lifted to what he is and never lowered,
+  so three winters can leave it a few points over what he reads today; 247 of
+  3,000 at quality 95 stand above the cap and every one is within six of it
+  himself, and at 68 — the best real programme — it is one man in three
+  thousand. Freshmen hold it outright, and the test says all three.
+- **The draw-cost pins** (`identity.test.ts`) are per class now: a hitter costs
+  24 draws a winter and an arm 18, a freshman one more than the old pin
+  because every freshman is offered the hidden-gem roll where the drawn class
+  used to keep three quarters of them from it, and a class of sixty costs
+  2475 where it cost 2468 — the same seats seating 27 arms instead of 23.
+
+And three tests whose premise was "a fresh league holds nobody above
+eighty-two," which it does now: the happy-man portal test sets stars aside for
+the wander door that is theirs, the miserable-star test accepts a slow decade
+at a 0.4 chance, the denominator test makes the short year twelve games, the
+delegated board is measured against its rivals' seedings rather than a
+constant, and the alumni-book test locates a programme whose draftee can be
+argued with instead of assuming team 0 has one.
+
+One of them was a real fault the change exposed rather than a premise that
+aged. `doc-sweep.test.ts` had claimed since §66 that the June roll leaves the
+coached programme's card alone, and it held for months by the luck of which
+men graduated: both `regroup` (the draft step) and `refill` (signing day)
+gather the nine in spot order to fill holes, so a coach's batting order came
+out of every June as C, 1B, 2B however he had written it in May. Survivors
+keep their places now and the fill-ins take the places the departed left,
+for his programme only; the other ninety-five are dealt a card in June
+anyway.
+
+### 83.6 The overlay stack
+
+`06` §AE.2: a letter that opened the board replaced the inbox, so the back
+press from the board landed on whatever screen the inbox had been over.
+`overlayStack` keeps the layers underneath, bottom first, each with the sheet
+it was showing and the sheet it was opened at; `openOverlay` pushes the layer
+it covers and spends one history entry for the new one, `closeOverlay`
+consumes one and brings the layer underneath back exactly as it was left,
+and re-opening the layer already on top is not a new layer. The test that had
+pinned the swap at no extra entry — one visible layer, one history entry —
+now pins one entry per layer and the peels in order, plus a buried Program
+layer returning on the Money sheet it was left on. Driven in the browser
+through real `history.back()` calls: board → inbox → nothing.
+
+### 83.7 The freeze, measured and not found
+
+Opener card → board → back, profiled on desktop Chrome with a long-task
+observer: 50ms into the board (one task, the Program overlay mounting), 35ms
+from `history.back()` to the popstate with the opener card back up, no long
+task in either direction. The path is as cheap as it looks. What remains is a
+device profile — the phone composites the re-mounted opener over a
+backdrop-blurred scrim, which a desktop GPU makes free — and it stays open at
+`06` §AE.2 as small, with that as the next step rather than another guard.
+
+### 83.8 Three errands off the ledger
+
+- **The test aids** (`06` §R) were already gone: SIM THE SEASON, the loaded
+  Pascagoula Tech roster and its guaranteed offer all left on September 8,
+  `docs/TESTING_SHORTCUTS.md` said so, and the ledger line had not been told.
+- **The climb probe re-run** (`06` §AD.3, "one command and a wait"): ten
+  two-star careers of thirty seasons on the engine as it stood at `8706742`,
+  before this pass — five of ten reached Omaha (median year twelve), none won
+  it, two never made a regional. The rows §AA and §54.4 quote are superseded
+  by that, and that in turn by whatever the probe reads on the stationary
+  world, which is queued and not yet read.
+- **The program pass** (September 13) is folded into this reference at last:
+  §84.
+
+### 83.9 Verified
+
+TypeScript clean; 90 files and 1,550 tests, the census twice over on the final engine,
+the sweep three times, the goldens recorded by the script that refuses a
+sweep off by ten. Every number in this section came off a printed table and
+none was transcribed from memory.
+
+## 84. The program menu, on the school — **September 13 2026, written up September 15**
+
+The pass itself is in `docs/PROGRAM_MENU_PASS_2026-09-13.md`, kept as the
+record of the day; this is the standing description.
+
+An outside pass (`Playball-program-visual-rework.zip`) reworked the program
+menu and its rooms. Its organisation was taken and its skin refused — square
+then, rounded since §81, but never its second stylesheet, its invented gold or
+its drop shadows. **The hub** opens on the same crest hero every college
+profile wears, with the regular-season record the board reads, the live
+conference position and job security beneath it; one attention card replaces
+three scattered signals, ranked so there is never more than one red thing on
+the screen — a waiting board review, then an expiring assistant's contract
+(gated to the offseason, because the stamp reads true all spring while
+nothing can be done), then an unopened achievement; History and Alumni are
+doors to the archive screen rather than a second copy inside a sheet; the
+four tiles carry live subtitles and three facility level meters. **History**
+gains a shelf — the all-time regular-season record, the winningest year, six
+seasons as bars labelled with their records (§82.3) — one divider per
+coaching era, and folds for the conference line, the coach and the honours.
+**Alumni** gains a search, an Everyone / Drafted / Honored filter, hall and
+record chips, and the college career each man had here, which the archive
+had kept and never printed; the alumnus card is the plaque described at
+§82.2. **Facilities** trades a paragraph for three meters and a two-press
+build naming the cost and what is left; **Network** is a map of the game's
+own eight regions where tapping a state also arms the coordinator's next
+assignment; **Staff** names the man a project is about and a POTENTIAL GAIN
+tile says what the work is worth, gated on the focus bonus still being
+reachable. Engine untouched; two display readers moved into `ProgramBits`
+(`collegeSummary`, `marksHeldBy`) so three screens read one implementation.
+Three defects in the incoming version were found and not shipped: a live
+crash from hooks declared below an early return, an attention card that would
+have burned red for a whole season, and a gain range advertising a bonus the
+arithmetic could no longer reach.

@@ -22,6 +22,24 @@ import { ENGINES } from '../src/engine/engines.js';
 import type { Hitter, Pitcher } from '../src/engine/types.js';
 
 /**
+ * Re-recorded 2026-09-15, when the generator began ageing men into their class
+ * and the engine was calibrated once against the population that produces
+ * (05 §83). Three things changed the harness's men at once: every man is
+ * built as a freshman and given the winters his class implies, so a
+ * quality-50 roster's seniors stand a real ladder above its freshmen; the
+ * rotation is no longer drawn three above quality nor the bench six below,
+ * because no recruited roster has that shape; and the per-event norms in
+ * ratings.ts were re-fitted for it — home runs, doubles and a new entry for
+ * singles, which had been riding the batter/pitcher sensitivity asymmetry on
+ * the stronger mean (the sweep read +13.2% home runs and +9.0% runs before
+ * the fit). After: runs +0.6%, average −1.3%, on-base −1.4%, home runs −2.8%,
+ * strikeouts +1.0%, walks −0.9%, slugging −0.7% on the eight-seed sweep.
+ * Every seeded number moved and none could have survived; the league did not.
+ *
+ * The world the harness stands for is different now too: `tests/class-census.ts`
+ * reads a five-season league flat at 7.4 runs on seed 4242 where it used to
+ * climb to 8.6. See calibration-seasons.test.ts for the bands.
+ *
  * Re-recorded 2026-09-10, when the cover matrix replaced the position ladder.
  *
  * A man out of position pays by the pair now — a natural cover a rung, a
@@ -132,20 +150,20 @@ import type { Hitter, Pitcher } from '../src/engine/types.js';
  * philosophy.
  */
 const GOLDEN: Record<string, number> = {
-  'Runs per team per game': 6.758125,
-  'PA per team per game': 41.99395833333333,
-  'Batting average': 0.2759170467619387,
-  'On base percentage': 0.378480849118483,
-  'Home runs per team per game': 0.9970833333333333,
-  'Strikeouts per team per game': 7.96875,
-  'Walks per team per game': 4.625,
-  'Pitches per plate appearance': 3.6963055201393056,
-  'Slugging': 0.43062798941768043,
+  'Runs per team per game': 6.811458333333333,
+  'PA per team per game': 41.8225,
+  'Batting average': 0.27430073544614114,
+  'On base percentage': 0.38185526702938843,
+  'Home runs per team per game': 0.9695833333333334,
+  'Strikeouts per team per game': 8.23625,
+  'Walks per team per game': 4.9225,
+  'Pitches per plate appearance': 3.7385229242632554,
+  'Slugging': 0.42878577546740704,
 };
 
-const GOLDEN_SLUGGING = 0.43062798941768043;
-const GOLDEN_ERRORS = 1.08875;
-const GOLDEN_SB_PCT = 0.7164085718754888;
+const GOLDEN_SLUGGING = 0.42878577546740704;
+const GOLDEN_ERRORS = 0.9779166666666667;
+const GOLDEN_SB_PCT = 0.7207949587978671;
 
 /**
  * Metrics still outside the 10% bar. The list is now empty, and keeping the

@@ -212,7 +212,8 @@ describe('how long it takes to get there', () => {
 
   it('surveyed enough careers to say anything', () => {
     expect(survey1.n).toBe(4000);
-    expect(survey1.every.length).toBeGreaterThan(1000);
+    // 753 of 4,000 since the talent centre moved (below); 1,800 before it.
+    expect(survey1.every.length).toBeGreaterThan(500);
   });
 
   it('does not put a first rounder in the big leagues in two summers', () => {
@@ -251,14 +252,23 @@ describe('how long it takes to get there', () => {
     /*
       The assertion this file exists for. 44.9% before the pacing change and
       44.7% after — the wash-out age term came down from 5 to 3.2 to pay for
-      the extra summers. Banded at ±5 points: wide enough that the arithmetic
+      the extra summers — banded at ±5 points: wide enough that the arithmetic
       of a longer career does not trip it, far too narrow to let the 29.0% a
       naive slowdown produces back in.
+
+      18.8% since 2026-09-15, and the band moved with it, for a reason worth
+      keeping: this survey's men are drawn at overall 52 to 77, which sat
+      ABOVE the old talent centre of 55 and now straddles the centre of 67
+      that the aged generator's draft class needed (legacy.ts,
+      `TALENT_CENTRE`; 05 §83). The share it reads is therefore close to the
+      real draft class's 14.7% above for the first time, rather than a
+      population skewed to the top of it. The constraint is unchanged — a
+      pacing change must not move this number — only the number is.
     */
     expect(survey1.share, `${(survey1.share * 100).toFixed(1)}% ever reached`)
-      .toBeGreaterThan(0.40);
+      .toBeGreaterThan(0.13);
     expect(survey1.share, `${(survey1.share * 100).toFixed(1)}% ever reached`)
-      .toBeLessThan(0.50);
+      .toBeLessThan(0.25);
   });
 
   it('still reads as a draft: the early rounds get there more often', () => {
@@ -270,6 +280,8 @@ describe('how long it takes to get there', () => {
     };
     expect(at('1-2')).toBeGreaterThan(at('3-5'));
     expect(at('3-5')).toBeGreaterThan(at('6-10'));
-    expect(at('1-2')).toBeGreaterThan(0.7);
+    // 0.63 on a survey whose first rounders are drawn as low as 52 overall;
+    // the real class, where a first rounder is a first rounder, reads 0.81.
+    expect(at('1-2')).toBeGreaterThan(0.55);
   });
 });

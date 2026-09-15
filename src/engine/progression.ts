@@ -15,6 +15,9 @@ import {
   type DraftBoard, type DraftedMan,
 } from './draft.js';
 import { ageFor, makeHitter, makePitcher, releaseNames, reserveNames } from './players.js';
+import { develop } from './development.js';
+export { arcOf, arcReach } from './development.js';
+export type { Arc } from './development.js';
 import { adoptSpot, setTheCard } from './depthChart.js';
 import { coverTier } from './positions.js';
 import { prestigeStars } from './program.js';
@@ -221,147 +224,6 @@ function departure(p: Player, rng: Rng): DepartureReason | null {
   return rng() < chance ? 'drafted' : null;
 }
 
-/**
- * The arc a man was always on — stage 16, the 2K question answered.
- *
- * NBA 2K's model was investigated and its community's verdict kept: potential
- * bands with boom/bust are a good idea poorly expressed, because booming
- * there is a coin flip at the roll rather than anything you watch happen. So
- * here the arc is fixed from the day the man exists — a hash of his id, no
- * draw, no reload re-rolling who blooms — and it expresses through the same
- * play-scaled development pull as everything else: each June the scout's
- * number moves a step toward where the arc was always taking him, and the
- * year's growth then chases the revised number at whatever rate his minutes,
- * redshirt and culture set. A bust does not fall off a cliff: the pull only
- * chases a lowered ceiling at the ordinary rate — a point or so a winter —
- * and the revise-upward rule under `develop` keeps the printed number honest
- * against what he still actually does.
- *
- * HIDDEN, per the register: the word never prints anywhere. What the player
- * sees is the letter itself drifting — asked for in exactly those terms:
- * "not only getting worse but also getting better... a player that came in
- * as a C player but he starts getting better and we see the potential go
- * up." Steady is most of everybody, and the two tails are equal.
- */
-export type Arc = 'bust' | 'steady' | 'boom';
-
-const arcHash = (p: Player): number => {
-  let h = 2166136261;
-  const id = String(p.id);
-  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619) >>> 0;
-  return h;
-};
-
-export function arcOf(p: Player): Arc {
-  const r = arcHash(p) % 100;
-  if (r < 15) return 'boom';
-  if (r < 30) return 'bust';
-  return 'steady';
-}
-
-/** How far the arc bends the ceiling, jittered per man so no two read alike. */
-export function arcReach(p: Player): number {
-  const arc = arcOf(p);
-  if (arc === 'steady') return 0;
-  const jitter = (arcHash(p) >>> 8) % 5;
-  return arc === 'boom' ? 8 + jitter : -(9 + jitter);
-}
-
-/**
- * A year of development, applied after the class year advances.
- *
- * Players move toward their potential, fastest early: the jump from freshman to
- * sophomore is the biggest a college player ever makes. The noise term is what
- * makes recruiting a gamble rather than arithmetic — a 60 potential freshman can
- * stall, and a 48 can outgrow his projection.
- */
-function develop(p: Player, rng: Rng, growthMult = 1): number {
-  /*
-    The June reveal, before the pull, so this year's growth already chases
-    the revised number. The goal is stamped at the man's first offseason
-    (sparse -- an older save's men are put on their arcs from wherever their
-    ceiling stands today) and the reveal takes no draw, so every rng pin
-    below survives it. Three points a year: a full boom is watched across
-    three winters rather than granted at one.
-  */
-  const man = p as Player & { arcGoal?: number };
-  const reach = arcReach(p);
-  if (reach !== 0) {
-    man.arcGoal ??= clamp(Math.round(p.potential + reach), 25, GENERATED_POTENTIAL_CAP);
-    const left = man.arcGoal - p.potential;
-    if (left !== 0) p.potential += Math.sign(left) * Math.min(3, Math.abs(left));
-  }
-
-  const before = overallOf(p);
-  const gap = p.potential - before;
-  const rate = p.classYear === 'SO' ? 0.45 : p.classYear === 'JR' ? 0.35 : 0.25;
-  // The training skill scales the systematic pull toward potential and nothing
-  // else — the noise stays untouched, so a trained program raises the floor of
-  // a class without making development any less of a gamble. It also keeps the
-  // rng draw order identical whatever the multiplier, which is what lets a
-  // test compare skill levels on the same stream.
-  const delta = gap * rate * growthMult + gauss(rng) * 2.2;
-
-  const bump = (v: number): number => clamp(v + delta + gauss(rng) * 1.2, 15, 99);
-
-  if (p.type === 'hitter') {
-    p.contact = bump(p.contact);
-    p.power = bump(p.power);
-    p.eye = bump(p.eye);
-    p.speed = bump(p.speed);
-    p.range = bump(p.range);
-    p.hands = bump(p.hands);
-    p.arm = bump(p.arm);
-    p.armAccuracy = bump(p.armAccuracy);
-    p.blocking = bump(p.blocking);
-    p.bunt = bump(p.bunt);
-    p.steal = bump(p.steal);
-    if (isTwoWay(p)) {
-      // Both halves of him grow off the one ceiling: the same winter that
-      // adds bat adds arm, at the same pull, with its own noise per field.
-      p.stuff = bump(p.stuff);
-      p.movement = bump(p.movement);
-      p.control = bump(p.control);
-      p.stamina = bump(p.stamina);
-      p.velocity = Math.round(clamp(p.velocity + delta * 0.08, 79, 103));
-    }
-  } else {
-    p.stuff = bump(p.stuff);
-    p.movement = bump(p.movement);
-    p.control = bump(p.control);
-    p.stamina = bump(p.stamina);
-    // A pitcher's glove develops now, and did not before — every fielding
-    // rating he had sat at its generated value for four years, which nobody
-    // noticed because nothing in the engine ever read them. Comebackers reach
-    // him now, so a senior who has been fielding his position since he was
-    // eighteen should be better at it than he was as a freshman.
-    p.range = bump(p.range);
-    p.hands = bump(p.hands);
-    p.arm = bump(p.arm);
-    p.armAccuracy = bump(p.armAccuracy);
-    // Velocity is mph, not a 0 to 100 rating, so it cannot take the same delta.
-    // Roughly a mile an hour for every twelve points of development.
-    p.velocity = Math.round(clamp(p.velocity + delta * 0.08, 79, 103));
-  }
-
-  /*
-    A ceiling a player has already cleared is not a ceiling. Scouts revise a
-    projection upward when someone outgrows it, and without this the number
-    quietly turns into nonsense — a senior reading "overall 52, potential 46".
-
-    Measured at his own position, not at the one he happened to be covering.
-    `overallOf` carries the glove tax for a man standing somewhere he does not
-    belong, so a ceiling raised while he was out of position was raised to a
-    number smaller than the player — and the moment a card put him back where
-    he belongs he stood above it. Found 2026-09-11, when every program in the
-    country started fielding a fitted nine and men went home in numbers.
-  */
-  const after = overallOf(p);
-  respectCeiling(p);
-
-  return after - before;
-}
-
 /** Best first. */
 const byOverall = <T extends Player>(xs: T[]): T[] =>
   [...xs].sort((a, b) => overallOf(b) - overallOf(a));
@@ -394,7 +256,10 @@ function refill(
   team: Team, survivors: Player[], rng: Rng, signed: Player[] = [],
   collect?: Player[], walkOns: readonly Player[] = [],
   rotationSize = ROTATION_SIZE,
+  /** The coached programme: his surviving nine keep the order he had them in. */
+  keepOrder = false,
 ): number {
+  const hadOrder = new Map(team.lineup.map((h, i) => [String(h.id), i]));
   const bodies = uniquePlayers(survivors);
   const hitters = byOverall(bodies.filter((p): p is Hitter => p.type === 'hitter'));
   // A two-way man is in BOTH pools — his lineup spot and his rotation slot
@@ -544,6 +409,16 @@ function refill(
     bullpen.push(extra); armIds.add(String(extra.id));
   }
 
+  // Same rule as `regroup`, for the same man: the June refill gathers the
+  // nine in spot order to fill holes, and for the coached programme that
+  // was quietly a re-deal of his batting order. His survivors keep their
+  // places; the men who arrived take the places the departed left.
+  if (keepOrder) {
+    const kept = lineup.filter((h) => hadOrder.has(String(h.id)))
+      .sort((a, b) => (hadOrder.get(String(a.id)) ?? 0) - (hadOrder.get(String(b.id)) ?? 0));
+    const added = lineup.filter((h) => !hadOrder.has(String(h.id)));
+    lineup.splice(0, lineup.length, ...kept, ...added);
+  }
   team.lineup = lineup;
   team.bench = bench;
   team.rotation = rotation;
@@ -561,19 +436,17 @@ function refill(
  * one year lease and what the departure notice reads next June.
  */
 function walkOnHitter(rng: Rng, quality: number, pos: Position): Hitter {
-  const p = makeHitter(rng, quality - WALK_ON_PENALTY + gauss(rng) * 3, { pos });
-  p.classYear = 'FR';
-  // Generated at whatever class year the draw handed him, so his age has to
-  // come back into step with the freshman the roster is about to call him.
-  p.age = ageFor(p.id, 'FR');
+  // Built as the freshman he is. He used to be drawn at whatever class the
+  // generator handed him and relabelled afterwards, which was harmless while
+  // a class was only a label; now that the generator ages a man into his
+  // class, a relabelled junior would arrive with two winters he never had.
+  const p = makeHitter(rng, quality - WALK_ON_PENALTY + gauss(rng) * 3, { pos, classYear: 'FR' });
   p.walkOn = true;
   return p;
 }
 
 function walkOnArm(rng: Rng, quality: number, role: 'SP' | 'RP'): Pitcher {
-  const p = makePitcher(rng, quality - WALK_ON_PENALTY + gauss(rng) * 3, { role });
-  p.classYear = 'FR';
-  p.age = ageFor(p.id, 'FR');
+  const p = makePitcher(rng, quality - WALK_ON_PENALTY + gauss(rng) * 3, { role, classYear: 'FR' });
   p.walkOn = true;
   return p;
 }
@@ -1033,7 +906,7 @@ export function departAndDevelop(
 
     if (record.index === mine) report.holes = holesFor(survivors);
 
-    regroup(team, survivors);
+    regroup(team, survivors, record.index === mine);
 
     // And now the other ninety five make the call the user is about to be
     // shown a screen for.
@@ -1156,7 +1029,7 @@ export function departAndDevelop(
  * door he came out of, and two versions of "where does he go" would eventually
  * disagree about a fourth starter.
  */
-function regroup(team: Team, survivors: readonly Player[]): void {
+function regroup(team: Team, survivors: readonly Player[], keepOrder = false): void {
   const bodies = uniquePlayers(survivors);
   const hitters = bodies.filter((p): p is Hitter => p.type === 'hitter');
   const arms = bodies.filter(isArm);
@@ -1188,6 +1061,23 @@ function regroup(team: Team, survivors: readonly Player[]): void {
       lineup.push(man);
     }
   }
+  /*
+    The coached programme's card is his. The nine above are gathered in spot
+    order, which for the other ninety-five is a scratch card `fillRosters`
+    re-deals in June anyway — but for him it was quietly a re-deal too: his
+    batting order came out of the draft step as C, 1B, 2B and so on, however he
+    had written it in May. The men who survive the June keep the order he had
+    them in, and the fill-ins take the places the departed left. Caught by
+    `tests/doc-sweep.test.ts` on 2026-09-15, which had claimed this property
+    for months and only held by the luck of which men happened to graduate.
+  */
+  if (keepOrder) {
+    const was = new Map(team.lineup.map((h, i) => [String(h.id), i]));
+    const kept = lineup.filter((h) => was.has(String(h.id)))
+      .sort((a, b) => (was.get(String(a.id)) ?? 0) - (was.get(String(b.id)) ?? 0));
+    const added = lineup.filter((h) => !was.has(String(h.id)));
+    lineup.splice(0, lineup.length, ...kept, ...added);
+  }
   team.lineup = lineup;
   team.bench = pool;
   team.rotation = starters.slice(0, ROTATION_SIZE);
@@ -1218,7 +1108,8 @@ export function reinstate(
   const survivors: Player[] = [
     ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen, p,
   ];
-  regroup(team, survivors);
+  // Only the coached programme talks a man back, so the card is always his.
+  regroup(team, survivors, true);
   return gained;
 }
 
@@ -1302,6 +1193,7 @@ export function fillRosters(
       // Read off the schedule, so a fifty-six game world keeps the fifth
       // starter it was built with instead of losing him at its first winter.
       rotationSizeFor(season.config),
+      record.index === opts.userTeam,
     );
     for (const p of collected) {
       walkOns.push({

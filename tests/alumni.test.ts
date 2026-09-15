@@ -8,6 +8,7 @@
 // left his note standing.
 
 import { describe, it, expect, vi } from 'vitest';
+import { KEEP_PITCHES, type DraftBoard } from '../src/engine/draft.js';
 import { useDynasty, PHASES } from '../src/state/store.js';
 import { simSeason } from '../src/engine/season.js';
 import type { AlumnusNote } from '../src/engine/legacy.js';
@@ -34,32 +35,52 @@ const rosterIds = (): Set<string> => {
 
 describe('the alumni book', () => {
   it('tears up the note of a man talked into returning', async () => {
-    useDynasty.getState().start(4242, 0);
-    // A played season, then one step from the coach's sheet into the draft,
-    // which is the step that runs the departures and writes the book.
-    simSeason(useDynasty.getState().season!);
-    useDynasty.setState({ phase: 'coach', furthestPhase: PHASES.indexOf('coach') });
-    await useDynasty.getState().nextPhase();
-    expect(useDynasty.getState().phase).toBe('draft');
-    const board = useDynasty.getState().season!.draft!;
-    const pending = board.men.filter((m) => m.outcome === 'pending');
-    expect(pending.length, 'the draft took nobody from this roster').toBeGreaterThan(0);
-
-    // Every man the clubs took is in the book the moment the step opens.
-    for (const m of pending) expect(useDynasty.getState().alumni[String(m.player.id)]).toBeDefined();
-
-    // Make the case to each, latest round first, with everything in the till.
+    /*
+      A programme with a man the clubs took late enough to argue with. This
+      used to be team 0 and always found one; once the generator aged its
+      seniors into their class (05 §83) every man drafted off that 66-quality
+      roster went inside the first rounds, where no case can keep him, and
+      the weakest programme in the world had nobody drafted at all. So the
+      precondition is found rather than assumed — not a hunt for a lucky
+      seed, the shape the test needs stated and then located — and the
+      property is asserted on whichever programme has it.
+    */
+    let board: DraftBoard | null = null;
     let kept: string | null = null;
-    for (const m of [...pending].sort((a, b) => b.round - a.round)) {
-      useDynasty.getState().keepPlayer(m.player.id, 'ring', 999);
-      if (m.outcome === 'stayed') { kept = String(m.player.id); break; }
+    for (const team of [0, 12, 24, 36, 48, 60, 72, 84]) {
+      useDynasty.getState().start(4242, team);
+      // A played season, then one step from the coach's sheet into the draft,
+      // which is the step that runs the departures and writes the book.
+      simSeason(useDynasty.getState().season!);
+      useDynasty.setState({ phase: 'coach', furthestPhase: PHASES.indexOf('coach') });
+      await useDynasty.getState().nextPhase();
+      expect(useDynasty.getState().phase).toBe('draft');
+      board = useDynasty.getState().season!.draft!;
+      const pending = board.men.filter((m) => m.outcome === 'pending');
+      if (pending.length === 0) continue;
+
+      // Every man the clubs took is in the book the moment the step opens.
+      for (const m of pending) expect(useDynasty.getState().alumni[String(m.player.id)]).toBeDefined();
+
+      // Make a case to each, latest round first. One case per man, a bounded
+      // offer so a refusal does not drain the till for the next, and a
+      // different pitch each time, because what a man can be talked round
+      // with is his own business — a ring means little at a programme that
+      // has never won one.
+      let i = 0;
+      for (const m of [...pending].sort((a, b) => b.round - a.round)) {
+        useDynasty.getState().keepPlayer(m.player.id, KEEP_PITCHES[i++ % KEEP_PITCHES.length]!, 120);
+        if (m.outcome === 'stayed') { kept = String(m.player.id); break; }
+      }
+      if (kept) break;
     }
-    expect(kept, 'nobody could be kept, so nothing to check').not.toBeNull();
+    expect(kept, 'no programme in eight had a man who could be talked round').not.toBeNull();
+    expect(board).not.toBeNull();
 
     // He is on the roster and out of the book; the men who went stay in it.
     expect(rosterIds().has(kept!)).toBe(true);
     expect(useDynasty.getState().alumni[kept!]).toBeUndefined();
-    for (const m of board.men) {
+    for (const m of board!.men) {
       if (m.outcome === 'gone') expect(useDynasty.getState().alumni[String(m.player.id)]).toBeDefined();
     }
   });

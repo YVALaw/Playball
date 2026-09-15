@@ -24,6 +24,7 @@ vi.mock('idb', () => ({
 
 import { createLiveGame } from '../src/engine/liveGame.js';
 import { newTeams } from '../src/engine/calibration.js';
+import { overallOf } from '../src/engine/ratings.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
 import {
@@ -33,7 +34,7 @@ import { hurt, isHurt } from '../src/engine/injury.js';
 import { threw, armMileage } from '../src/engine/workload.js';
 import { available } from '../src/engine/depthChart.js';
 import { redshirt, redshirtCount } from '../src/engine/redshirt.js';
-import { openPortal } from '../src/engine/portal.js';
+import { openPortal, STAR_LINE } from '../src/engine/portal.js';
 import { moodOf, SETTLED } from '../src/engine/morale.js';
 import { freezeRegularSeason, allConferenceTournaments, protectedTopFour } from '../src/engine/postseason.js';
 import { jobOffers } from '../src/engine/program.js';
@@ -509,15 +510,21 @@ describe('the portal measures each program against its own season', () => {
     for (const t of season.teams) { t.w = 30; t.l = 30; }
     const mine = season.teams[3]!;
     for (const p of [...mine.team.lineup, ...mine.team.bench]) (p as Player & { starts?: number }).starts = 10;
+    // A star leaves through the wander, not through playing time, so his
+    // answer cannot move with the denominator and he is set aside here.
     const ids = (pool: { player: Player; from: number }[]) => ({
-      mine: new Set(pool.filter((m) => m.from === 3).map((m) => m.player.id)),
+      mine: new Set(pool.filter((m) => m.from === 3 && overallOf(m.player) < STAR_LINE).map((m) => m.player.id)),
       others: new Set(pool.filter((m) => m.from !== 3).map((m) => m.player.id)),
     });
     const sixty = ids(openPortal(season.teams, { year: 2027, seed: 4242 }));
     for (const p of everyone(season)) delete (p as Player & { inPortal?: boolean }).inPortal;
-    mine.w = 15; mine.l = 15;
+    // Ten starts in twelve games is a man who played every night; in sixty
+    // he was buried. Thirty games used to be the short year here, and the
+    // gap it left — a sixth of a season against a third — was one the men's
+    // own derived rolls could straddle without one of them changing his
+    // answer, so the count read equal on a roster the generator now ages.
+    mine.w = 6; mine.l = 6;
     const thirty = ids(openPortal(season.teams, { year: 2027, seed: 4242 }));
-    // Ten starts in thirty games is a man who played; in sixty he was buried.
     expect(thirty.mine.size).toBeLessThan(sixty.mine.size);
     for (const id of thirty.mine) expect(sixty.mine.has(id)).toBe(true);
     // And nobody else's answer moved.

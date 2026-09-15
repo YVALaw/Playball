@@ -6,8 +6,26 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 15, 2026 · **Branch:** `main` · **the corners,
-then five from the phone** — every radius in the app now comes from three
+**Last session:** September 15, 2026 · **Branch:** `main` · **the league no
+longer climbs** — `05` §71's two runs a game were three causes, measured
+apart with `tests/class-census.ts`: the generator never aged the men it
+generated (a quarter of it), the recruiting class supplied five arms in
+thirteen for a roster that is ten in twenty-three so one pitcher in six was a
+walk-on at 32 every year (most of it), and only a generated roster drew its
+rotation up and its bench down (the rest). Generation and recruiting draw the
+same man now; seed 4242 plays 7.98 → 8.10 across five seasons with no engine
+change, and the engine was then recalibrated once against that population —
+one round of the documented norm procedure, everything inside 3%, goldens
+re-recorded (`05` §83, `06` §AH). Four constants fitted to the old population
+moved with it (`TALENT_CENTRE`, `BOARD_MID`, the cap and draw-cost pins), a
+real fault surfaced (June re-dealt the coached card in spot order), the
+overlays got a stack (back from a letter's board is the inbox), the
+two-second freeze profiled at 35ms and would not reproduce, and the program
+pass finally has its section (§84). **Open:** whether the league should be
+defined by the world rather than the harness — the world sits eight percent
+above it — and a nine percent five-year drift on one seed of two.
+
+*Earlier the same day:* **the corners, then five from the phone** — every radius in the app now comes from three
 tokens through one file, `src/ui/rounded-ui.css`, by role: control 8, card 10,
 dialog 14, meters as pills (`05` §81, `06` §AF); it **reverses** the September
 13 refusal of rounded boxes, on the reporter's word. Then the second batch

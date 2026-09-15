@@ -1218,9 +1218,37 @@ describe('the top of the ladder is reserved', () => {
   it('holds the cap for walk-ons and rival rosters too, not just recruits', () => {
     // A walk-on is made straight from `makeHitter`/`makePitcher` rather than
     // through a class, so a gate that only knew about recruiting would leak here.
+    //
+    // Since the generator ages a man into his class (05 §83), an upperclassman
+    // built at 95 can stand ABOVE the cap the way a recruited one can: three
+    // winters of `develop` end in `respectCeiling`, which lifts a ceiling a
+    // man has already cleared to what he is. That is the ceiling telling the
+    // truth, not the cap leaking — so the cap is asserted on the projection,
+    // and a man's own overall is the only thing allowed past it.
+    // A ceiling above the cap belongs to a man who has stood at it. `develop`
+    // lifts a steady man's ceiling to what he is and never lowers it, so a
+    // winter's noise can leave his ceiling a few points over what he reads
+    // today — measured at quality 95, 247 of 3,000 aged men stand above the
+    // cap and every one of them is within six of it himself.
     const rng = makeRng(4242);
     for (let i = 0; i < 3000; i++) {
       const p = i % 2 === 0 ? makeHitter(rng, 95) : makePitcher(rng, 95);
+      expect(p.potential).toBeLessThanOrEqual(99);
+      if (p.potential > GENERATED_POTENTIAL_CAP) {
+        expect(overallOf(p), 'a ceiling above the cap on a man nowhere near it')
+          .toBeGreaterThanOrEqual(GENERATED_POTENTIAL_CAP - 6);
+      }
+    }
+    // At the best real programme in the country it is one man in three thousand.
+    let over = 0;
+    for (let i = 0; i < 3000; i++) {
+      const p = i % 2 === 0 ? makeHitter(rng, 68) : makePitcher(rng, 68);
+      if (p.potential > GENERATED_POTENTIAL_CAP) over += 1;
+    }
+    expect(over).toBeLessThanOrEqual(5);
+    // And a freshman, who has had no winter, holds it outright.
+    for (let i = 0; i < 1000; i++) {
+      const p = i % 2 === 0 ? makeHitter(rng, 95, { classYear: 'FR' }) : makePitcher(rng, 95, { classYear: 'FR' });
       expect(p.potential).toBeLessThanOrEqual(GENERATED_POTENTIAL_CAP);
     }
   });

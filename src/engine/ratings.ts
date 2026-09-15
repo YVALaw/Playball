@@ -316,7 +316,7 @@ const PIT_SENS: SensTable<keyof PitcherRatings> = {
 type NormTable = Partial<Record<OffensiveEvent, number>>;
 
 const BAT_NORM: NormTable = {
-  double: 0.9978, triple: 0.9903, homerun: 0.9657, walk: 1.0003,
+  single: 0.975, double: 0.960, triple: 0.9903, homerun: 0.905, walk: 1.0003,
 };
 
 // Barely off one, where the batter's home run correction is three percent, and
@@ -326,7 +326,7 @@ const BAT_NORM: NormTable = {
 // events where both sides widened, so those corrections were split evenly —
 // each side carries the square root of what the event needed.
 const PIT_NORM: NormTable = {
-  homerun: 1.0022, walk: 1.0034,
+  homerun: 0.940, walk: 1.0034,
 };
 
 // `source` is typed to guarantee every attribute the table names is present, so

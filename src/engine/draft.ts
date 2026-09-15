@@ -216,7 +216,18 @@ const BOARD_PICKS = DRAFT_ROUNDS * PICKS_PER_ROUND;
  * old arithmetic and it was the wrong arithmetic: it said the league's fortieth
  * best college senior was a second round pick.
  */
-const BOARD_MID = 61;
+/*
+  Re-centred 61 → 64 on 2026-09-15, when the generator began ageing men into
+  their class (05 §83). A drafted junior or senior is a freshman plus two or
+  three real winters now, and the whole value distribution of the eligible
+  moved up with him — so the same board read the settled league's draft at
+  5.8 first rounders a year and a quarter of everybody inside five rounds,
+  which is the stacked top the logistic exists to prevent. Measured over five
+  drafts of an eight-year world (seed 918, `tests/progression.test.ts`'s own
+  harness): 64 reads 2.0 first rounders a year and 14.4% inside five rounds,
+  all twenty rounds used, which is where 61 read the old population.
+*/
+const BOARD_MID = 64;
 const BOARD_SPREAD = 6;
 
 /**

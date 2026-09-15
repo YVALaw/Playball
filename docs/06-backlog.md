@@ -2180,8 +2180,10 @@ here, it either shipped or was decided against.**
   stable per-man hash stays (if the words moved there would be nothing to
   learn) and the development lines keep their fuzzy bands (making both axes
   decodable would leave nothing to scout).
-- **Remove the test aids — half done, then half undone.** Hans Hood is gone
-  for good (September 4). The loaded Pascagoula Tech roster and its
+- ~~**Remove the test aids — half done, then half undone.**~~ **Done September
+  8 — all three left together; `docs/TESTING_SHORTCUTS.md` recorded it and this
+  line was not told until September 15.** Hans Hood is gone for good
+  (September 4). The loaded Pascagoula Tech roster and its
   guaranteed offer were removed the same day and **restored September 5**,
   with SIM THE SEASON, so the interface overhaul could be played a season at a
   time (`docs/TESTING_SHORTCUTS.md`). All three leave together in stage 19.
@@ -3374,8 +3376,9 @@ would matter to somebody playing.
   player card in every save, so it wants deciding rather than doing. **Small
   once decided.**
 
-- **`makeTeam` never ages the roster it generates.** *(Measured 2026-09-11,
-  `05` §71.4.)* Census by class year, league-wide: in a generated world the bats
+- ~~**`makeTeam` never ages the roster it generates.**~~ **Closed 2026-09-15,
+  `05` §83 — it was three causes and this was the smallest; the world is
+  stationary.** *(Measured 2026-09-11, `05` §71.4.)* Census by class year, league-wide: in a generated world the bats
   read FR 40.8, SO 41.3, JR 40.3, SR 41.8 and the arms FR 45.6, SO 45.2, JR 45.0,
   SR 44.4 — **a senior is no better than a freshman.** After four years of the
   world running its own development the ladder is real: bats FR 45.1, SO 54.3,
@@ -3618,7 +3621,11 @@ standing after moving the ground under them.
   §69.3), so taking the audit's fix would have made this worse. A correct fix is
   a real clone or a write queue, and neither is worth its cost until somebody
   measures how open the window actually is. **Measure first.**
-- **Every climb figure came off a probe that signed nobody.**
+- **Every climb figure came off a probe that signed nobody.** *(Re-run
+  September 15 on the engine at `8706742`, before the stationarity pass: five
+  of ten two-star careers reached Omaha, median year twelve, none won it, two
+  never made a regional. Re-run again on the stationary world is queued —
+  `05` §83.8.)*
   `tests/climb-probe.ts` reassembled the offseason out of engine parts, and the
   engine has no recruiting driver — `aiTargets` and `closeWeek` live in
   `state/store.ts` — so it refilled the country with walk-ons every winter
@@ -3684,7 +3691,10 @@ letter opening the wrong table, a board that did not say the year.
 
 ### AE.2 What it left open
 
-- **The two-second freeze has no verified cause.** Reported as part of the back
+- **The two-second freeze has no verified cause.** *(Profiled September 15 on
+  desktop Chrome: 50ms in, 35ms out, no long task — `05` §83.7. Not
+  reproducible without a device; next step is a phone profile.)* Reported as
+  part of the back
   gesture: opener card → board → back froze for about two seconds. The
   destination half of that report is genuinely fixed, but the `crossfade`
   visibility guard written for the freeze is unreachable on the path described
@@ -3694,7 +3704,9 @@ letter opening the wrong table, a board that did not say the year.
   simply have been the Program overview sheet rendering, which is no longer
   where the gesture lands. **Small**, but it wants reproducing on a device
   before anybody writes another fix for it (`05` §80.5).
-- **Back from a letter-opened board returns to the screen under the inbox**,
+- ~~**Back from a letter-opened board returns to the screen under the inbox**~~
+  **Closed September 15 — `overlayStack`, `05` §83.6.** It returned to the
+  screen under the inbox,
   not to the inbox. `overlay` is a single value, so opening the board from a
   letter forgets the inbox was ever there. The reported symptom — landing on
   the wrong tab, with a stale modal — is fixed; this is the residue. Fixing it
@@ -3761,3 +3773,40 @@ all shipped. What the batch left:
   now has a second population it was never measured on. Nothing here is
   wrong; §AE.2's rule applies: whoever measures a tenured career should state
   both numbers.
+
+## AH. September 15, the stationarity pass — what it left
+
+`05` §83. The league no longer climbs; three causes, one engine retune, four
+downstream constants re-fitted, a stack under the overlays, and a freeze that
+would not reproduce.
+
+### AH.1 Decisions this opened
+
+- **What population defines the league.** `ratings.ts` fits its norms to the
+  harness — two aged quality-50 rosters — and the world now sits about eight
+  percent above it in year one (7.26–7.39 runs against 6.77), where it sat
+  four above before, because ageing widens the between-programmes spread on a
+  convex model. A career is played in the world. Moving the definition there
+  is one number (`CONTEXT.normalizer`, about +0.05) and a re-record, and the
+  argument against it is the one the file makes: the harness is what
+  `npm run calibrate` reports and what every constant was fitted to. **A
+  decision, then small.**
+- **The residual drift.** Seed 12161 rises nine percent over five years,
+  4242 one. The census reads it as a slow symmetric rise in signed talent (the
+  class ladder's mean sits two above the country's generated quality) on the
+  same asymmetry the harness was corrected for. Ten seasons on four seeds
+  would say whether it is a trend or a spread. **Measure before touching the
+  ladder.**
+
+### AH.2 Small, and follows from the above
+
+- **The climb probe on the stationary world.** Its last run was on the engine
+  before this pass. One command and ninety minutes.
+- **Walk-ons are still a tenth of every roster** — 80 to 127 bats and arms
+  apiece, every year — now balanced between the sides. That is the honest
+  shape of a league where a class of 720 meets 96 programmes with holes by
+  position; whether a walk-on should be that weak (thirteen under, overall
+  ~30) is a design question the balance of the two sides no longer forces.
+- **The hall bar.** `hall.test.ts` passed on the retuned engine, but the
+  strongest programme in a twelve-year world inducted eleven men in twelve,
+  and the population it was fitted to was the unaged one. Worth a probe.

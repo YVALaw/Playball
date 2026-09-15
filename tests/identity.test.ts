@@ -355,20 +355,53 @@ describe('determinism', () => {
     // constant: the projectable-ceiling branch and the platoon draw both spend
     // extra numbers on some men and not others, and a pin that only ever saw
     // the common path would miss a draw added inside a branch.
+    //
+    // And since 2026-09-15, one sequence per class: the generator builds
+    // every man as a freshman and ages him into his class through `develop`
+    // (05 §83), so a sophomore costs a winter more than a freshman and a
+    // senior three. Twenty-four a winter for a hitter, eighteen for an arm —
+    // the bumps, the pull and the arc's reveal. A freshman costs one more
+    // than the old pin because every freshman is now offered the hidden-gem
+    // roll, where the drawn class used to keep three quarters of them from it.
     it.each([
-      { what: 'a hitter', spent: [31, 31, 31, 31, 31, 34, 31, 31] },
-      { what: 'a pitcher', spent: [30, 30, 30, 30, 31, 30, 30, 30] },
-    ])('is fixed for $what', ({ what, spent }) => {
+      { what: 'a freshman hitter', cls: 'FR' as const, spent: [32, 32, 34, 32, 31, 34, 32, 31] },
+      { what: 'a sophomore hitter', cls: 'SO' as const, spent: [56, 56, 58, 56, 55, 58, 56, 55] },
+      { what: 'a junior hitter', cls: 'JR' as const, spent: [80, 80, 82, 80, 79, 82, 80, 79] },
+      { what: 'a senior hitter', cls: 'SR' as const, spent: [104, 104, 106, 104, 103, 106, 104, 103] },
+      { what: 'a freshman pitcher', cls: 'FR' as const, spent: [30, 31, 30, 30, 31, 30, 30, 31] },
+      { what: 'a sophomore pitcher', cls: 'SO' as const, spent: [48, 49, 48, 48, 49, 48, 48, 49] },
+      { what: 'a junior pitcher', cls: 'JR' as const, spent: [66, 67, 66, 66, 67, 66, 66, 67] },
+      { what: 'a senior pitcher', cls: 'SR' as const, spent: [84, 85, 84, 84, 85, 84, 84, 85] },
+    ])('is fixed for $what', ({ what, cls, spent }) => {
       const got = spent.map((_, i) => {
         // An empty pool on every seed: a name already taken costs the rejection
         // loop two more draws, which is a real cost and a different measurement.
         resetNames();
         const c = counted(i + 1);
-        if (what === 'a hitter') makeHitter(c.rng, 50, { pos: 'SS' });
-        else makePitcher(c.rng, 50, { role: 'SP' });
+        if (what.endsWith('hitter')) makeHitter(c.rng, 50, { pos: 'SS', classYear: cls });
+        else makePitcher(c.rng, 50, { role: 'SP', classYear: cls });
         return c.spent();
       });
       expect(got).toEqual(spent);
+    });
+
+    it('costs a drawn class exactly what that class costs', () => {
+      // The class the seed draws, and the winters it buys: the same eight
+      // seeds, no class passed, so a draw added to the class pick or to the
+      // aging loop itself shows here and nowhere else.
+      const got = { hitter: [] as number[], pitcher: [] as number[] };
+      for (let i = 0; i < 8; i++) {
+        resetNames();
+        let c = counted(i + 1);
+        makeHitter(c.rng, 50, { pos: 'SS' });
+        got.hitter.push(c.spent());
+        resetNames();
+        c = counted(i + 1);
+        makePitcher(c.rng, 50, { role: 'SP' });
+        got.pitcher.push(c.spent());
+      }
+      expect(got.hitter).toEqual([80, 104, 58, 104, 55, 34, 80, 103]);
+      expect(got.pitcher).toEqual([84, 49, 66, 84, 31, 66, 48, 67]);
     });
 
     it('is fixed for a whole recruiting class', () => {
@@ -395,7 +428,14 @@ describe('determinism', () => {
       // lower moved two more of these sixty under it, and they each cost a
       // draw. That is the whole of the difference: no draw was added to any
       // man, more men simply qualified to be asked.
-      expect(c.spent()).toBe(2468);
+      //
+      // 2475 after the class took the roster's shape (05 §83): seven arms in
+      // fifteen slots rather than five in thirteen, so these sixty hold 27
+      // pitchers where they held 23. An arm costs a draw less than a bat, and
+      // an SP slot rolls the two-way gate that a bat's slot never does; the
+      // two nearly cancel, and seven is what is left. Again no draw was added
+      // to any man — the same sixty seats simply seat a different mix.
+      expect(c.spent()).toBe(2475);
     });
   });
 });

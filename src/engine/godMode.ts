@@ -393,7 +393,8 @@ const ARM_RATINGS = ['stuff', 'movement', 'control', 'stamina', 'groundBall', 'h
  */
 export function makeTwoWayOf(record: TeamRecord, p: Player, rng: Rng, quality = 60): boolean {
   if (p.type === 'pitcher' || isTwoWay(p)) return false;
-  const arm = makePitcher(rng, Math.max(20, Math.min(99, Math.round(quality))));
+  // Aged into his own class, so a junior's new arm is a junior's.
+  const arm = makePitcher(rng, Math.max(20, Math.min(99, Math.round(quality))), { classYear: p.classYear });
   const m = p as unknown as TwoWay;
   m.twoWay = true;
   m.role = 'RP';

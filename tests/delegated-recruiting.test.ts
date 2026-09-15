@@ -234,17 +234,24 @@ describe('a delegated board opens the way its rivals do', () => {
     const { createSeason } = await import('../src/engine/season.js');
     const me = 0;
 
-    const seeded = (alsoSeedUser: boolean): number => {
+    const seeded = (alsoSeedUser: boolean): { mine: number; rivals: number[] } => {
       const season = createSeason(makeRng(31), undefined, CONFERENCES);
       seedRivalInterest(season, me, alsoSeedUser);
-      return season.recruiting.prospects
-        .filter((p) => (p.points[me] ?? 0) > 0).length;
+      const count = (team: number): number => season.recruiting.prospects
+        .filter((p) => (p.points[team] ?? 0) > 0).length;
+      return { mine: count(me), rivals: season.teams.filter((t) => t.index !== me).map((t) => count(t.index)) };
     };
 
     // A coach working his own board starts from nothing, which is the game.
-    expect(seeded(false)).toBe(0);
-    // His coordinator starts where every other staff in the country starts.
-    expect(seeded(true)).toBeGreaterThan(10);
+    expect(seeded(false).mine).toBe(0);
+    // His coordinator starts where every other staff in the country starts —
+    // measured against them rather than against a number, because how many
+    // names a staff opens on depends on the holes it has, and a roster the
+    // generator ages into its classes has fewer of them.
+    const { mine, rivals } = seeded(true);
+    const sorted = [...rivals].sort((a, b) => a - b);
+    expect(mine).toBeGreaterThan(0);
+    expect(mine).toBeGreaterThanOrEqual(sorted[Math.floor(sorted.length * 0.1)]!);
   });
 
   it('signs a class its peers would recognise', async () => {

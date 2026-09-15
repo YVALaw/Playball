@@ -7,6 +7,7 @@
 // fixtures to move.
 
 import { innateBadges } from './badges.js';
+import { ageIntoClass } from './development.js';
 import { gauss, normal } from './rng.js';
 import { overallOf } from './ratings.js';
 import { GENERATED_POTENTIAL_CAP, scoutNoise } from './scouting.js';
@@ -533,7 +534,18 @@ export function makeHitter(rng: Rng, quality = 50, opts: HitterOpts = {}): Hitte
   // residual is the jump, and it is large on purpose — that residual is the
   // difference between a fast man and a base stealer.
   p.steal = derived(50 + (p.speed - 50) * 0.40, stealNoise, 14);
-  p.potential = projectPotential(rng, overallOf(p), p.classYear);
+  /*
+    Built as the freshman he was, whatever class he is for.
+
+    The ceiling is a freshman's — eleven of room, and the hidden-gem channel
+    — and the class is reached through the winters it implies, so a
+    generated senior is a freshman plus three real winters, exactly what a
+    recruited senior is. Before this the class was stamped on a man drawn
+    from one distribution, and a senior was no better than a freshman
+    (05 §71.4). A recruit and a walk-on pass 'FR' and age not at all.
+  */
+  p.potential = projectPotential(rng, overallOf(p), 'FR');
+  if (classYear !== 'FR') ageIntoClass(p, rng, classYear);
   signWithBadges(p);
   return p;
 }
@@ -599,7 +611,9 @@ export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pit
   // genuinely botch, and until now they could not: comebackers reached the
   // shortstop and the mound had no glove at all.
   p.armAccuracy = Math.max(15, Math.min(95, 46 + (p.control - 50) * 0.25 + accuracyNoise * 10));
-  p.potential = projectPotential(rng, overallOf(p), p.classYear);
+  // A freshman's ceiling; the winters his class implies come below, once
+  // velocity exists for them to move. See makeHitter.
+  p.potential = projectPotential(rng, overallOf(p), 'FR');
 
   // Velocity reads out stuff rather than standing apart from it. Nothing in the
   // engine consumes velocity — it is the number recruits get talked about with,
@@ -608,6 +622,7 @@ export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pit
   p.velocity = Math.round(
     Math.max(78, Math.min(103, 80 + p.stuff * 0.19 + velocityNoise * 2.2)),
   );
+  if (classYear !== 'FR') ageIntoClass(p, rng, classYear);
   signWithBadges(p);
   return p;
 }
@@ -626,8 +641,11 @@ export function makePitcher(rng: Rng, quality = 50, opts: PitcherOpts = {}): Pit
  * fine everywhere a class is generated (the count pins re-record) and
  * nowhere else, because nothing converts an existing man.
  */
-export function makeTwoWay(rng: Rng, quality = 50): TwoWay {
-  const bat = makeHitter(rng, quality + 3, { pos: 'DH' });
+export function makeTwoWay(rng: Rng, quality = 50, opts: { classYear?: ClassYear } = {}): TwoWay {
+  // The bat is built as a freshman and NOT aged here: his winters come below,
+  // once the arm exists, so both halves grow off the one ceiling together
+  // the way `develop` grows a two-way man every June.
+  const bat = makeHitter(rng, quality + 3, { pos: 'DH', classYear: 'FR' });
   let velocityNoise = 0;
   const man = bat as TwoWay;
   man.twoWay = true;
@@ -645,7 +663,12 @@ export function makeTwoWay(rng: Rng, quality = 50): TwoWay {
     Math.max(78, Math.min(103, 80 + man.stuff * 0.19 + velocityNoise * 2.2)),
   );
   // One ceiling for one body: the bat's projection stands, and develop
-  // grows both halves toward it in step.
+  // grows both halves toward it in step — including the winters he has
+  // already had. A recruit passes 'FR'; a generated man draws his class here.
+  const classYear = opts.classYear ?? pick(rng, CLASSES);
+  man.classYear = classYear;
+  man.age = ageFor(man.id, classYear);
+  if (classYear !== 'FR') ageIntoClass(man, rng, classYear);
   return man;
 }
 
@@ -660,14 +683,33 @@ const LINEUP_POSITIONS: readonly Position[] = ['C','1B','2B','3B','SS','LF','CF'
  * calibration figure taken before it stands untouched. See `rotationSizeFor`.
  */
 export function makeTeam(rng: Rng, name: string, quality = 50, starters = 4): Team {
+  /*
+    Every man at the programme's quality, and the card sorts them.
+
+    The rotation used to be drawn three above it and the bench six below,
+    which made a generated roster a shape a recruited one never has: a
+    recruit is drawn at one quality whether he is a starter or a bench bat,
+    and it is `setTheCard` — dealt to all ninety-six on day one and again
+    every June — that makes the best four arms the rotation and the worst
+    four bats the bench. The same selection now makes the same shape here.
+
+    What the bonuses cost was measured (tests/class-census.ts, 2026-09-15):
+    a generated world sat about three points arm-favoured against the world
+    its own recruiting produced — the rotation's three on four arms in ten,
+    the bench's six on four bats in thirteen — and that swing, together with
+    the unaged ladder above and the arms the class never supplied, was the
+    two runs a game the league gained between its first season and its
+    fifth (05 §83). Generation and recruiting draw the same man now, so day
+    one is the settled world and the engine is calibrated once, against it.
+  */
   const lineup: Hitter[] = [];
   for (const pos of LINEUP_POSITIONS) {
     lineup.push(makeHitter(rng, quality + gauss(rng) * 4, { pos }));
   }
   const rotation = Array.from({ length: Math.max(1, starters) },
-    () => makePitcher(rng, quality + 3, { role: 'SP' }));
+    () => makePitcher(rng, quality, { role: 'SP' }));
   const bullpen = [0, 1, 2, 3, 4, 5].map(() => makePitcher(rng, quality, { role: 'RP' }));
-  const bench = [0, 1, 2, 3].map(() => makeHitter(rng, quality - 6));
+  const bench = [0, 1, 2, 3].map(() => makeHitter(rng, quality));
   return { name, lineup, rotation, bullpen, bench, quality };
 }
 

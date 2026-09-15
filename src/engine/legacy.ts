@@ -148,6 +148,9 @@ export interface ProYear {
 
 const LEVELS = ['ROOKIE BALL', 'SINGLE-A', 'DOUBLE-A', 'TRIPLE-A', 'THE SHOW'] as const;
 
+/** The overall a drafted man's `talent` is read against. See its use. */
+const TALENT_CENTRE = 67;
+
 /**
  * The same stable string hash everything derived uses — mixed, which the old
  * one was not.
@@ -429,7 +432,17 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
 
   const round = note.round ?? 10;
   let level = round <= 2 ? 2 : round <= 5 ? 1 : 0;
-  const talent = note.overall - 55 + (3 - Math.min(3, round)) * 4;
+  /*
+    Centred on the drafted man the world actually produces. This read 55
+    until 2026-09-15, when the generator began ageing men into their class
+    (05 §83): a drafted junior or senior is now about 63 overall where the
+    flat generator had made him fifty, and the sixteen percent this whole
+    ladder is tuned to (§74) is a property of the population, not of the
+    number. Re-fitted on the same draft class the test builds — the top six
+    hundred eligible men of a generated season — until the share reaching
+    the top level read where the real game has it.
+  */
+  const talent = note.overall - TALENT_CENTRE + (3 - Math.min(3, round)) * 4;
   /** Summers at the level he is standing on, so a repeat reads as one. */
   let atLevel = 1;
   const rows: ProYear[] = [];
