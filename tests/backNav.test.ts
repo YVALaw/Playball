@@ -289,26 +289,82 @@ describe('one visible layer, one history entry', () => {
     return asked;
   };
 
-  it('spends nothing extra when a letter swaps the inbox for the board', () => {
+  it('spends one for the board a letter opens, and keeps the inbox underneath it', () => {
     /*
       `Inbox.tsx` runs `setProgramSheet(link.sheet)` and then
-      `openOverlay('program')`. `overlay` is a single value, so that REPLACES
-      the inbox: one layer before, one layer after, and the inbox's entry still
-      covers it. Both calls used to checkpoint — the sheet because its guard
-      asked `overlay !== 'program'` and the overlay because its guard asked
-      `overlay !== o` — so one tap minted two entries and orphaned a third.
+      `openOverlay('program')`. `overlay` used to be a single value, so that
+      REPLACED the inbox — and the back press from the board landed on
+      whatever screen the inbox had been over, not on the inbox (06 §AE.2).
+      Both calls once checkpointed as well, minting two entries for the swap
+      and orphaning a third; that half was fixed by checkpointing only a
+      genuinely new layer, and it still holds: the sheet spends nothing.
+
+      Now the board IS a new layer. It spends one entry, the inbox keeps the
+      one it already spent underneath, and closing peels them in order.
     */
     useDynasty.getState().start(4242, 0);
     useDynasty.setState({
       tab: 'program', screen: 'records', overlay: 'inbox', programSheet: 'overview',
-      selectedPlayer: null, coachSeat: null,
+      overlayStack: [], selectedPlayer: null, coachSeat: null,
     });
     const asked = asking(() => {
       useDynasty.getState().setProgramSheet('board');
       useDynasty.getState().openOverlay('program');
     });
-    expect(asked, 'a swap minted an entry').toEqual([]);
-    useDynasty.setState({ overlay: null, programSheet: 'overview' });
+    expect(asked, 'one layer, one entry').toEqual(['push']);
+    expect(useDynasty.getState().overlay).toBe('program');
+    expect(useDynasty.getState().overlayEntrySheet).toBe('board');
+    expect(useDynasty.getState().overlayStack.map((l) => l.overlay)).toEqual(['inbox']);
+
+    // Back from the board: the inbox, not the screen under it.
+    expect(asking(() => { useDynasty.getState().closeOverlay(); })).toEqual(['consume']);
+    expect(useDynasty.getState().overlay).toBe('inbox');
+    expect(useDynasty.getState().overlayStack).toEqual([]);
+    // And back from the inbox: nothing.
+    expect(asking(() => { useDynasty.getState().closeOverlay(); })).toEqual(['consume']);
+    expect(useDynasty.getState().overlay).toBeNull();
+    useDynasty.setState({ overlay: null, overlayStack: [], programSheet: 'overview' });
+  });
+
+  it('brings a buried Program layer back on the sheet it was left on', () => {
+    /*
+      The deeper case: Money open in the Program overlay, the inbox opened
+      over it from the coach menu, a letter in there to the board. The
+      letter sets the shared `programSheet` to 'board' on its way, so without
+      the stack remembering, two back presses would land the coach on a
+      Program overlay showing the board he had just left rather than the
+      Money he was reading.
+    */
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({
+      tab: 'home', screen: 'today', overlay: null, overlayStack: [], programSheet: 'overview',
+      selectedPlayer: null, coachSeat: null,
+    });
+    useDynasty.getState().openOverlay('program');
+    useDynasty.getState().setProgramSheet('money');
+    expect(asking(() => { useDynasty.getState().openOverlay('inbox'); })).toEqual(['push']);
+    useDynasty.getState().setProgramSheet('board');
+    expect(asking(() => { useDynasty.getState().openOverlay('program'); })).toEqual(['push']);
+    expect(useDynasty.getState().overlayStack.map((l) => l.overlay)).toEqual(['program', 'inbox']);
+
+    useDynasty.getState().closeOverlay();
+    expect(useDynasty.getState().overlay).toBe('inbox');
+    useDynasty.getState().closeOverlay();
+    expect(useDynasty.getState().overlay).toBe('program');
+    expect(useDynasty.getState().programSheet).toBe('money');
+    expect(useDynasty.getState().overlayEntrySheet).toBe('overview');
+    useDynasty.getState().closeOverlay();
+    expect(useDynasty.getState().overlay).toBeNull();
+    expect(useDynasty.getState().overlayStack).toEqual([]);
+  });
+
+  it('does not bury a layer under itself', () => {
+    // INBOX from the coach menu while the inbox is already up.
+    useDynasty.getState().start(4242, 0);
+    useDynasty.setState({ tab: 'home', screen: 'today', overlay: 'inbox', overlayStack: [] });
+    expect(asking(() => { useDynasty.getState().openOverlay('inbox'); })).toEqual([]);
+    expect(useDynasty.getState().overlayStack).toEqual([]);
+    useDynasty.setState({ overlay: null, overlayStack: [] });
   });
 
   it('peels a sheet back to the one the overlay opened at, not to the overview', () => {

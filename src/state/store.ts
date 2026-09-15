@@ -1428,6 +1428,21 @@ export interface DynastyStore {
    */
   overlayEntrySheet: ProgramSheet;
   /**
+   * The layers underneath `overlay`, bottom first.
+   *
+   * `overlay` was a single value, so a letter that opened the board REPLACED
+   * the inbox, and the back press from the board landed on whatever screen
+   * the inbox had been over rather than on the inbox: a coach reading his
+   * mail followed one letter and could not get back to the pile (06 §AE.2).
+   * Each entry is a layer he opened and has not closed, carrying the two
+   * things a Program layer needs to come back exactly as it was left — the
+   * sheet it was showing, and the sheet it was opened at.
+   *
+   * Session state, like `overlayEntrySheet`: it describes what is open right
+   * now and never reaches a save file.
+   */
+  overlayStack: { overlay: Overlay; sheet: ProgramSheet; entrySheet: ProgramSheet }[];
+  /**
    * Programmes approached this season, and the ones that bit.
    *
    * `tried` is cleared at the year roll and holds team indices, so the three-a-
@@ -3483,7 +3498,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // The skill ledger goes with them, and that is the whole of the rule about
     // taking points back: they can come off until the step is left, and leaving
     // it is what commits them.
-    set({ overlay: null, selectedPlayer: null, coachSeat: null, spentThisStep: {} });
+    set({ overlay: null, overlayStack: [], selectedPlayer: null, coachSeat: null, spentThisStep: {} });
 
     const next = stepAfter(phase, rulesOf(season));
 
@@ -5136,7 +5151,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!liveStep(phase, rulesOf(get().season))) return;
     navMark(false);
     set({
-      phase, overlay: null, selectedPlayer: null, coachSeat: null, spentThisStep: {},
+      phase, overlay: null, overlayStack: [], selectedPlayer: null, coachSeat: null, spentThisStep: {},
       version: get().version + 1,
     });
   },
@@ -5581,17 +5596,29 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }
     }
     /*
-      One visible layer, one history entry.
+      One visible layer, one history entry — and every layer is a layer.
 
-      `overlay` is a single value and not a stack, so opening the board from an
-      inbox letter REPLACES the inbox: one layer before, one layer after. This
-      checkpointed on any change, which minted a second entry for the swap and
-      orphaned the inbox's own — and the orphan is what the gesture walked into
-      afterwards. Reported 2026-09-12: "it gets crazy and makes me go to
-      different tabs as well". Measured from PROGRAM · OVERVIEW before the fix:
-      three entries for one layer, and five back presses to undo one tap.
+      `overlay` used to be a single value, so opening the board from an inbox
+      letter REPLACED the inbox: one layer before, one after, and the back
+      press from the board landed on whatever the inbox had been over. That
+      swap once minted a second entry and orphaned the inbox's own, which is
+      what the gesture walked into afterwards — reported 2026-09-12, "it gets
+      crazy and makes me go to different tabs as well", and fixed that day by
+      checkpointing only on a genuinely new layer. This is the other half
+      (06 §AE.2): the inbox goes UNDERNEATH, keeping the entry it already
+      spent, the board spends one of its own, and the gesture peels them in
+      the order they were opened. Re-opening the layer already on top is not
+      a new layer — INBOX pressed twice must not bury the inbox under itself.
     */
     if (st.overlay === null) browserHistoryCheckpoint();
+    else if (st.overlay !== o) {
+      set({
+        overlayStack: [...st.overlayStack, {
+          overlay: st.overlay, sheet: st.programSheet, entrySheet: st.overlayEntrySheet,
+        }],
+      });
+      browserHistoryCheckpoint();
+    }
     /*
       And which sheet it was opened AT, because the back press needs to know.
 
@@ -5608,9 +5635,25 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       ? { overlay: o, settingsPage: 'index', overlayEntrySheet: get().programSheet }
       : { overlay: o, overlayEntrySheet: get().programSheet });
   },
-  closeOverlay: () => { if (get().overlay !== null) browserHistoryConsume(); set({ overlay: null }); },
+  closeOverlay: () => {
+    const st = get();
+    if (st.overlay === null) return;
+    browserHistoryConsume();
+    const below = st.overlayStack[st.overlayStack.length - 1];
+    if (!below) { set({ overlay: null }); return; }
+    // The layer underneath comes back exactly as it was left: a Program
+    // layer on the sheet the coach was reading, not on whatever sheet the
+    // letter above it had set.
+    set({
+      overlay: below.overlay,
+      overlayStack: st.overlayStack.slice(0, -1),
+      overlayEntrySheet: below.entrySheet,
+      ...(below.overlay === 'program' ? { programSheet: below.sheet } : {}),
+    });
+  },
   /** The program sheet showing when the current overlay was opened. See `openOverlay`. */
   overlayEntrySheet: 'overview',
+  overlayStack: [],
   settingsPage: 'index',
   setSettingsPage: (p) => {
     const old = get().settingsPage;
@@ -8319,7 +8362,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       screen: 'today',
       // Whatever was covering the screen belonged to the dynasty being put
       // down — including the saves menu this was very likely pressed from.
-      overlay: null,
+      overlay: null, overlayStack: [],
       selectedPlayer: null, coachSeat: null,
       godStack: [],
       lastOffseason: null,
@@ -8434,7 +8477,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       seasonOpener: null,
       selectedPlayer: null, coachSeat: null,
       godStack: [],
-      overlay: null,
+      overlay: null, overlayStack: [],
       loadedSlot: null,
       phase: null,
       inbox: [],
@@ -8537,7 +8580,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // exactly the kind of furniture that would follow a player into a new
     // career and tell him his old board was delighted.
     inbox: [],
-    overlay: null,
+    overlay: null, overlayStack: [],
     selectedPlayer: null, coachSeat: null,
     godStack: [],
     loadError: null,
