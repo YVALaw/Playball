@@ -7,10 +7,12 @@ Mobile first, shipping to Android.
 
 ## Status
 
-**Version 0.8.0, through September 12 2026** (`docs/05-systems-reference.md`
-§66–§80). Twenty-six stages have shipped or closed — 1–18, 18b and 20–27,
-with 27 in ahead of its turn; only 19, the ship, stands before a release, and what
-is left of it is the listing and the keystore. Ninety-six programs in eight
+**Version 0.9.5, through September 16 2026** (`docs/05-systems-reference.md`
+§66–§90) — the last number before 1.0. Twenty-six stages have shipped or closed
+— 1–18, 18b and 20–27, with 27 in ahead of its turn; only 19, the ship, stands
+before a release, and what is left of it is the release process rather than
+the code: the closed test, the payments profile, the credits
+(`docs/15-v1-release-audit.md` §K, `docs/06-backlog.md` §AK.4). Ninety-six programs in eight
 conferences of twelve, a regular season of forty-five games — or thirty-four or
 fifty-six, if the world was opened that way — and the whole loop runs: pick a job
 through a background that shapes who rings you, play or simulate a season,
@@ -135,24 +137,42 @@ undrafted senior takes his old high school at 8%, and a professional whose
 playing days end is hired at 6.6% out of Rookie ball rising to 19.2% out of the
 majors, because the résumé is the qualification.
 
+**September 13–16** (§81–§90). The program menu moved onto the school (§84),
+then the corners and the chair that cannot be taken (§81–§82), then the pass
+that had been owed since §71: the league was not stationary because
+`makeTeam` never aged the roster it generated, and once the generator built
+the roster June leaves — four signed classes aged through their winters, the
+seniors offered to the draft, the holes refilled — the drift went from two
+runs a game over five seasons to three percent (§83, §85). The recruiting
+board reads the room, so a four-star programme signs six men a winter where
+it signed three (§86); the star ladder's bottom came down and its top went
+up, a five-star a seventy-three (§87–§88). Then two phone sessions, six
+reports and thirteen (§89–§90): the hold as the one way to a card, the
+recruiting filter as a box that grows out of its button, opening day's card
+dealt the way AUTO deals it, a park that cannot hang, a reliever back the
+night after a short outing, the retrain door open all year, the board's words
+knowing the year, the regionals' box scores, the undrafted who go on.
+
 The engine is calibrated multi-seed to the modern NCAA D1 environment — .280 /
-.384 / .438, a home run a game, 6.73 runs — and **1,519 tests across 88 files**,
+.384 / .438, a home run a game, 6.73 runs — and **1,566 tests across 92 files**,
 from 1,369 across 77 at the 0.8.0 line, guard it: determinism goldens,
 calibration as a regression test, a baseball-correctness suite for the scorer's
 rules, and a concurrency suite pinning the store's double-press guards.
 
-**And one thing is measured and not fixed** (§71). Nothing had ever measured
-year five. The league gains two runs a game over its first four seasons and then
-holds there — 6.9–7.0 in year one, 8.5–8.9 from year five, batting average .278
-to .311 and slugging .435 to .508 — because `makeTeam` never ages the roster it
-generates, so a generated senior is no better than a freshman and the engine is
-calibrated against a population that exists on day one of a career and never
-again. Guarded by `tests/calibration-seasons.test.ts` and filed at `06` §AC.1b
-rather than fixed: it would move every golden and wants its own pass. The first
-version of that guard measured a league of walk-ons, because its harness was cut
-from the lines directly above a block headed "KNOWN WRONG — do not read numbers
-off this file yet"; a harness measuring nothing looks exactly like a harness
-measuring something reassuring.
+**The league is stationary now** (§71 measured it; §83 and §85 fixed it).
+The run environment used to gain two runs a game over a career's first four
+seasons — 6.9 in year one, 8.5 to 8.9 from year five — because `makeTeam`
+never aged the roster it generated, so the engine was calibrated against a
+population that existed on day one of a career and never again. The
+generator builds the roster June leaves now: four signed classes, aged
+through their winters, the seniors offered to the draft, the holes refilled
+with walk-ons. Ten seasons on four seeds read 6.55 runs in year one and 6.75
+from year two, the played bats and arms level to a tenth, and
+`tests/calibration-seasons.test.ts` guards it. What it took to find is in
+§85: the first version of that guard measured a league of walk-ons, because
+its harness was cut from the lines above a block headed "KNOWN WRONG"; a
+harness measuring nothing looks exactly like a harness measuring something
+reassuring.
 
 **A play session produced twenty-six items, and an audit of it produced three
 more** (§76–§80). Most were what a play session finds: injured pitchers showing
@@ -174,9 +194,11 @@ overturned two, both of them things a commit message had already called
 finished: the alumni request was one sentence asking for a degree *and* for some
 of them to become coaches, and only the degree had shipped; and the tonight card
 had stopped jumping by 28.4px while the band beside it went on jumping by 35.3.
-Two items are recorded at §80.5 as open rather than quietly closed — a
-two-second freeze whose cause is still unverified, and a back press from a
-letter-opened board that lands under the inbox rather than on it.
+One item is recorded at §80.5 as open rather than quietly closed — a
+two-second freeze whose cause is still unverified. The back press from a
+letter-opened board was fixed on September 12 (`06` §AE.2), and three more
+faults in the gesture on September 16 (§90.6), none of them yet watched on a
+phone.
 
 **It installs.** `npm run apk` builds a real Android package — Capacitor over
 the same bundle the browser runs, no server, offline. The toolchain lives
@@ -187,7 +209,7 @@ Testing runs on an Android 16 emulator.
 
 | Not built yet | |
 |---|---|
-| The listing | the keystore backed up, screenshots, privacy policy, content rating, a closed beta and then an open one (stage 19) |
+| The release | the closed test the account type requires (twelve testers opted in, fourteen days), the payments profile and the `god_mode` product, the Freesound credits, then open beta — the keystore, listing, screenshots, privacy policy and content rating are already in the Console (stage 19, `docs/15-v1-release-audit.md` §K) |
 | The creator kit | name, logo and roster packs a player builds and imports locally, careers as files — the second purchase (stage 28) |
 | The majors | the expansion, after v1.0 (stage 29) |
 

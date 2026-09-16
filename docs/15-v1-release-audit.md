@@ -496,7 +496,9 @@ Code and content, from this audit:
 
 The release process, stage 19 (`07`):
 
-- [ ] Bump `package.json` to 1.0.0 (the release commit).
+- [ ] Bump `package.json` to 1.0.0 (the release commit). *0.9.5 on September
+      16, the last pre-release number; the shell's `versionCode` comes off
+      it, which is why there is no `-rc` suffix (`07` stage 19).*
 - [x] Play Billing replaces the Settings UNLOCK stand-in
       (`DevicePrefs.godMode` set by purchase and restore only) — code and
       tests in, September 7; the Play Console product and a licence tester
@@ -520,6 +522,21 @@ The release process, stage 19 (`07`):
       and the test has run 14 days**. Not started; the only bundle in the
       Console is 704 / 0.7.4, on no track.
 - [ ] Closed beta, then open.
+
+### K.1 · Re-read September 16 2026
+
+The suite stands at 92 files and 1,566 tests, from 66 and 1,242 at this
+audit; the type check is clean; the version is 0.9.5. §D was not re-audited
+line by line since September 8, and it should be before the release commit;
+two of its lines are known closed on the way (the once-a-season argument with
+the board is in the save; the letter-opened board's back press, `06` §AE.2)
+and the rest stand as written. Three things this audit could not have listed
+are open now, none of them code that fails a test: the back gesture's three
+September 16 fixes have not been watched on a phone (`06` §AK.1); the 3D
+park's six-second patience has not been seen on wifi (`06` §AJ.1); and the
+climb probe and the hall probe have not been re-run on the engine the
+September 15 passes left (`05` §85, §88.3). The consolidated list is `06`
+§AK.4.
 
 ## L. The strategy wiring audit
 

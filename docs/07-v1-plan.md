@@ -1584,6 +1584,19 @@ new coach. Part teaching (a first-visit on the money surface, a line in
 onboarding), part presentation (the budget wearing its consequences where it
 is spent).
 
+**Where it stands, September 16 2026.** `package.json` reads **0.9.5**, the
+last number before the release commit's 1.0.0. Not a `1.0.0-rc`, because
+`scripts/apk.cjs` writes the shell's `versionCode` as major × 10000 + minor ×
+100 + patch, so a release candidate would have carried the release's own
+code and the Console refuses a second upload at the same one. The code side
+of the checklist (`15` §K) is done; what remains is the reporter's — the
+closed test the account type requires (twelve testers opted in, fourteen
+days), the payments profile and the `god_mode` product, the Freesound
+credits, and the a11y subset this stage chooses — and two things unwatched
+rather than unbuilt: the back gesture's three September 16 fixes on a phone
+(`06` §AK.1) and the 3D park's patience on wifi (`06` §AJ.1). The whole list
+is `06` §AK.4.
+
 ## The screen queue — one-offs waiting for a batch
 
 Not a stage: settled or reporter-owned screen work that gets picked up in

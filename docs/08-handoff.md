@@ -6,7 +6,7 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 16, 2026 · **Branch:** `main` · **thirteen from
+**Last session:** September 16, 2026 · **Branch:** `main` · **Version:** 0.9.5 · **thirteen from
 the phone** -- one message, thirteen reports, one pass (`05` §90): a
 reliever's short outing no longer costs him the next night and the dugout
 lists the whole pen with the resting men explained; the retrain door is
@@ -18,8 +18,11 @@ letter crosses the roll and the opener names the men; the regionals and
 the championship series open their boxes; the board's words know the year
 (`boardWords`); the opener survives a save; the undrafted who sign
 somewhere go on from there; a two-way man is drafted on his better half;
-a first summer's promotion reads as one. **Next:** the back gesture on the
-phone, three reads listed at `06` §AK.1; then the rest of the older list.
+a first summer's promotion reads as one. Then the version went to 0.9.5, the
+last number before 1.0, and every doc was brought current. **Next:** v1.0.
+What is missing is one list, `06` §AK.4 — the closed test, the payments
+profile, the credits, the a11y subset, and two things unwatched on a phone
+(the back gesture, the park) — and a pass over `15` §D with a phone in hand.
 
 *The night before:* **six
 from the phone** -- one message, six reports, one pass (`05` §89): the

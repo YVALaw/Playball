@@ -1,6 +1,6 @@
 # Roadmap
 
-**Last updated:** September 12, 2026 · stages 1–18 and 20–27 shipped or closed ·
+**Last updated:** September 16, 2026 · **v0.9.5, the last number before 1.0** · stages 1–18 and 20–27 shipped or closed ·
 the APK report closed · **three outside passes merged September 5** — the
 interface (`05` §50), the engine (§51) and prestige (§52) · **17 is god mode
 now, not the store**, and it closed September 6 with 18b, 24 and 26 · **stage
@@ -8,7 +8,9 @@ now, not the store**, and it closed September 6 with 18b, 24 and 26 · **stage
 than after it · **an outside audit of twenty-three findings checked and acted
 on September 11** (`05` §69) · **a play session's twenty-six items answered
 September 12, and an audit of that pass found three of them only half done**
-(`05` §76–§80)
+(`05` §76–§80) · **September 13–16: the league made stationary, the board
+reading the room, both ends of the star ladder, and two phone sessions of
+nineteen reports** (`05` §81–§90)
 **Supersedes:** v3, which by the end was wrong about most of what it claimed
 **Companion docs:** `05-systems-reference.md` for what the game does today,
 `06-backlog.md` for what it is going to do and why, `02-sim-engine-spec.md` for
@@ -50,6 +52,15 @@ athletic director can end. Ships to Android.
 
 ## Where it stands
 
+**v0.9.5, September 16 2026 — the last number before 1.0.** Six sessions past
+the 0.8.0 line (`05` §81–§90): the program menu on the school; the league made
+stationary, which was the one thing §71 had measured and not fixed; the
+recruiting board reading the room; the star ladder's bottom brought down and
+its top raised; then nineteen reports from the phone in two sessions, every
+one fixed. What stands between this tree and the store is the release
+process alone (`15` §K, `06` §AK.4): the closed test, the payments profile,
+the credits, and two things unwatched rather than unbuilt.
+
 **v0.8.0, and twenty-six commits past it.** The version was cut September 11, three
 hundred and fifty commits past the v0.7.4 line: five feature blocks, an audit
 pass, an interface overhaul, the guided first season, and the September 10
@@ -66,9 +77,9 @@ game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Eighty-eight test files and 1,519 tests cover it, calibration among them and
-since September 11 a five-season guard on what the league scores, so the engine
-cannot drift without something failing.
+Ninety-two test files and 1,566 tests cover it, calibration among them and
+since September 11 a guard on what the league scores season over season, so
+the engine cannot drift without something failing.
 
 **The audit, checked and acted on** (`05` §69). Twenty-three findings arrived
 against a commit four behind, and every claim was verified against the source
@@ -577,7 +588,7 @@ drafted players at all.
 
 ## Where the stages stand
 
-**Twenty-six stages have shipped or closed, through September 12 2026** — 1–18
+**Twenty-six stages have shipped or closed, through September 16 2026** — 1–18
 and 20–27. Only 19, the ship, stands before a release; 28 and 29 are booked
 after it. Four stages were added September 3 from the phone report, 24
 on September 4, 25 and 26 on September 5, and the half-stage 18b on

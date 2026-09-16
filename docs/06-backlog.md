@@ -3978,3 +3978,43 @@ measure, and one decision recorded.
   rail move.** It could have been argued the other way — a man told in
   February has a whole spring to take ground balls — and it was not, because
   the plan is a plan and the retraining is the winter's; the sheet says so.
+
+### AK.4 What v1.0 is still missing — September 16 2026
+
+The version is 0.9.5, the last number before 1.0. Nothing on this list is
+code that fails a test; it is the release process, three things unwatched,
+and the polish the audit filed.
+
+**The release process, the reporter's** (`15` §K, `07` stage 19):
+
+- The closed test a personal developer account requires before production:
+  twelve testers opted in and fourteen days on the track. The only bundle in
+  the Console is still 704 / 0.7.4; an 0.9.5 bundle from `npm run aab` is
+  the next upload.
+- The payments profile, and the `god_mode` one-time product it gates; a
+  licence tester for the purchase flow.
+- The Freesound credits for the seven samples without a stated licence.
+- The a11y subset stage 19 chooses out of `15` §D — focus states above all.
+- Then the release commit (1.0.0), and the open beta.
+
+**Unwatched, not unbuilt:**
+
+- The back gesture's three fixes, on a phone (`§AK.1`): a card closed by
+  swipe and the next swipe; the opener → board → accept → swipe; whether
+  the uncovered screen arrives still.
+- The 3D park's six-second patience on wifi (`§AJ.1`).
+- The day-one roster in the app since the generator changed (`05` §85), and
+  the climb probe and the hall probe on this engine (`05` §88.3).
+- The two-way man's LEGACY switch on a card, which no generated world
+  carried when it was built (two-way men come only through the door).
+
+**Polish the audit filed and nobody has re-read since September 8** (`15`
+§D): the dugout's HOME RUN splash and the call buttons' gate, the recruiting
+buttons that stay live with no budget, innings in decimal thirds on the
+cards, the loader's scalar validation, the theme's contrast lines, the code
+health items. None blocks a release; a pass over the list with a phone in
+hand is the honest last step before 1.0.
+
+**After 1.0**, booked and not owed: the creator kit (stage 28), called to
+the majors (stage 29), an account and a record book everybody is in (stage
+30), and §C's depth systems, each of which wants its own design pass.

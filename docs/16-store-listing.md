@@ -103,3 +103,9 @@ https://yvalaw.github.io/Playball/privacy
 ```
 
 (Case matters in the repo name; `privacy.md` renders as `/privacy`.)
+
+## What's new (500) — the first closed-test upload, 0.9.5
+
+```
+The first build on the track. Ninety-six programs, a forty-five game season, a June that ends in Omaha. Recruit all season, manage every pitch or hand the game to your staff, argue the draft out of taking your junior, and start again in February. This build: the league holds its level across a career, the recruiting board reads the room, a reliever is back the night after a short outing, and the regionals open their box scores.
+```

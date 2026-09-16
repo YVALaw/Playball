@@ -11907,3 +11907,13 @@ sheet in February (AT SEASON'S END → PLANNED · CANCEL, the plan written on
 the man), the dugout's pen with a tired arm greyed and explained, the
 regionals' thirty-six doors and a box behind one, the beat on the pinned
 button. Not on this desk: the back gesture, which has no edge swipe here.
+
+### 90.15 The version
+
+`package.json` reads 0.9.5 from this session, the last number before the
+release commit's 1.0.0, and the Android shell carries 905 / 0.9.5 with it.
+Not a `1.0.0-rc`: `scripts/apk.cjs` writes the shell's `versionCode` as
+major × 10000 + minor × 100 + patch off the package version, so a release
+candidate would have carried the release's own code, and the Console refuses
+a second upload at the same one (§62.3). What v1.0 is still missing is one
+list, `06` §AK.4.
