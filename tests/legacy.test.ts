@@ -115,10 +115,21 @@ describe('the professional game', () => {
     expect(debuts).toBeGreaterThan(0);
   });
 
-  it('the undrafted get one honest line', () => {
-    const rows = proCareer('g1', note({ reason: 'graduated', round: undefined }), 2035);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]!.final).toBe(true);
+  it('sends the undrafted home with one honest line, or somewhere small with a career', () => {
+    // One line and a full stop was every undrafted man's lot; since
+    // 2026-09-16 the few who sign somewhere go on from there (05 §90.11).
+    let home = 0;
+    let abroad = 0;
+    for (let i = 0; i < 400; i++) {
+      const rows = proCareer(`g-${i}`, note({ reason: 'graduated', round: undefined }), 2045);
+      expect(rows.length).toBeGreaterThan(0);
+      if (rows.length === 1) { home++; expect(rows[0]!.final).toBe(true); continue; }
+      abroad++;
+      const last = rows[rows.length - 1]!;
+      expect(last.final === true || last.year === 2045).toBe(true);
+    }
+    expect(home / 400).toBeGreaterThan(0.6);
+    expect(abroad / 400).toBeGreaterThan(0.08);
   });
 });
 

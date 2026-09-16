@@ -18,6 +18,7 @@ import { prestigeStars } from '../src/engine/program.js';
 import type { DraftBoard } from '../src/engine/draft.js';
 import { createSeason, simSeason, seasonComplete } from '../src/engine/season.js';
 import { bestNine } from '../src/engine/depthChart.js';
+import { retrainablePositions } from '../src/engine/positions.js';
 import type { SeasonState, TeamRecord } from '../src/engine/season.js';
 import type { OffseasonReport } from '../src/engine/progression.js';
 import type { Player, PlayerId } from '../src/engine/types.js';
@@ -1426,5 +1427,56 @@ describe('opening day', () => {
     // And the rotation is the best four arms, the ace on Friday.
     expect(team.rotation.length).toBeGreaterThan(0);
     expect(team.rotation.every((a) => a.role === 'SP')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A move chosen in season is made at the roll
+// ---------------------------------------------------------------------------
+
+describe('a position move chosen during the season', () => {
+  it('is written down, and made at the roll with a winter of settling', async () => {
+    /*
+      Reported 2026-09-16: "the retrain position button is not available, it
+      says in the winter in grayed out ... we should just leave this button
+      available all year round but the outcome of it happening is decided
+      when the season ends." In season the store writes the plan on the man;
+      the roll makes the move where a winter move is made (05 §90.2).
+    */
+    useDynasty.getState().start(4242, 0);
+    // The store is one object for the whole file, and `start` leaves the
+    // offseason rail wherever the test before this one parked it; a plan is
+    // an in-season thing, so the rail is closed here by hand.
+    useDynasty.setState({ phase: null });
+    const s0 = useDynasty.getState();
+    const team = s0.season!.teams[0]!.team;
+    const man = team.lineup.find((h) => retrainablePositions(h).length > 0)!;
+    const to = retrainablePositions(man)[0]!;
+    const from = man.pos;
+    expect(useDynasty.getState().changePosition(man.id, to)).toBe(true);
+    // Planned, not moved: he finishes the season where he is.
+    expect((man as { retrainTo?: string }).retrainTo).toBe(to);
+    expect(man.pos).toBe(from);
+    // Planning the same spot again cancels the plan; planning it once more restores it.
+    expect(useDynasty.getState().changePosition(man.id, to)).toBe(true);
+    expect((man as { retrainTo?: string }).retrainTo).toBeUndefined();
+    expect(useDynasty.getState().changePosition(man.id, to)).toBe(true);
+
+    useDynasty.getState().settleSeason();
+    await useDynasty.getState().rollYear();
+    const s = useDynasty.getState();
+    const after = [...s.season!.teams[s.userTeam]!.team.lineup, ...s.season!.teams[s.userTeam]!.team.bench]
+      .find((h) => h.id === man.id);
+    // A senior would have graduated; the test's man is whoever the plan was on.
+    if (!after) return;
+    expect(after.pos).toBe(to);
+    // A man standing at his own spot carries no home mark; if he carries one
+    // it is the new spot, never the old.
+    const home = (after as { homePos?: string }).homePos;
+    expect(home === undefined || home === to).toBe(true);
+    expect((after as { retrainTo?: string }).retrainTo).toBeUndefined();
+    // Settling from the winter: a move that has not taken yet still carries it.
+    const settling = (after as { settling?: number; stuck?: boolean }).settling;
+    expect(settling === undefined || settling >= 0).toBe(true);
   });
 });

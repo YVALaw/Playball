@@ -129,6 +129,23 @@ export function Postseason() {
   const [followTeam, setFollowTeam] = useState(true);
   const [reviewing, setReviewing] = useState<number | null>(null);
   const [juneTab, setJuneTab0] = useState<JuneTab>(juneTabMemo);
+  /*
+    A beat on the pinned button, the same one the pregame card takes.
+
+    Reported 2026-09-16: "once I'm out of the tournament [simming] is
+    instant, giving the illusion that nothing is actually being simmed."
+    `simBracket` is synchronous and stays so -- a thousand tests call it --
+    so the wait is the button's: seven hundred milliseconds of SIMULATING…
+    before the night is played, and the results land after it.
+  */
+  const [beat, setBeat] = useState<string | null>(null);
+  const beatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (beatTimer.current) clearTimeout(beatTimer.current); }, []);
+  const withBeat = (label: string, run: () => void) => (): void => {
+    if (beat !== null) return;
+    setBeat(label.startsWith('SIM') ? 'SIMULATING…' : 'PLAYING IT OUT…');
+    beatTimer.current = setTimeout(() => { beatTimer.current = null; setBeat(null); run(); }, 700);
+  };
   const setJuneTab = (v: JuneTab): void => { juneTabMemo = v; setJuneTab0(v); };
   // Null until the reader picks one; the default is whichever half is yours.
   const [natHalf, setNatHalf0] = useState<NatHalf | null>(natHalfMemo);
@@ -613,6 +630,8 @@ export function Postseason() {
     /** The red line under the button, when the card is holding it. */
     note?: string;
     secondary?: { label: string; onClick: () => void } | null;
+    /** No beat: the press opens something rather than playing anything. */
+    instant?: boolean;
   } = reviewing !== null
     // Looking back at a finished tournament. The one thing the button can
     // usefully do is put you back where the season actually is -- advancing
@@ -621,6 +640,7 @@ export function Postseason() {
     ? {
         label: `BACK TO ${LIVE_NAME[rung] ?? 'THE TOURNAMENT'}`,
         run: () => setReviewing(null),
+        instant: true,
       }
     : due
     ? (hurtNine.length > 0
@@ -631,6 +651,7 @@ export function Postseason() {
       ? {
           label: 'FIX THE LINEUP',
           run: () => setShowLineup(true),
+          instant: true,
           note: hurtNine.length === 1
             ? `${hurtNine[0]!.name} is in your nine and cannot play — ${whyOut(hurtNine[0]!, injuryClock(season))}. Nobody is moved for you.`
             : `${hurtNine.length} men in your nine cannot play. Nobody is moved for you.`,
@@ -638,6 +659,7 @@ export function Postseason() {
       : {
           label: 'PLAY THIS GAME',
           run: manage,
+          instant: true,
           secondary: { label: 'SIMULATE THIS GAME', onClick: () => sim('game') },
         })
     : myBracket
@@ -1075,6 +1097,7 @@ export function Postseason() {
             {shown === 1 && (
               <RegionalStage
                 regionals={bracket.regionals}
+                onOpen={openGame}
                 mine={myBracket?.kind === 'regional' && myBracket.format === 'series'
                   ? {
                       state: myBracket.state,
@@ -1091,6 +1114,7 @@ export function Postseason() {
             {shown === 2 && (
               <NationalStage
                 nat={nat}
+                onOpenGame={openGame}
                 myBracket={myBracket}
                 sideShow={sideShow}
                 half={natHalf ?? (myBracket?.kind === 'national' && myBracket.format === 'double'
@@ -1118,10 +1142,13 @@ export function Postseason() {
           background: 'var(--field)', borderTop: '1px solid var(--faint)',
         }}>
           <FloatingAction
-            label={action.label}
-            onClick={action.run}
+            label={beat ?? action.label}
+            onClick={action.instant ? action.run : withBeat(action.label, action.run)}
+            disabled={beat !== null}
             note={action.note}
-            secondary={action.secondary ?? null}
+            secondary={action.secondary
+              ? { label: action.secondary.label, onClick: withBeat(action.secondary.label, action.secondary.onClick) }
+              : null}
           />
         </div>
         )}
@@ -1717,9 +1744,11 @@ function ConferenceStage(
 }
 
 function RegionalStage(
-  { regionals, mine, myRegion, season, abbr, userTeam }:
+  { regionals, mine, myRegion, season, abbr, userTeam, onOpen }:
   {
     regionals: RegionalSeries[];
+    /** Open a played game's box. See `openGame`. */
+    onOpen: (g: BracketGame) => void;
     mine: {
       state: SeriesBracket;
       meta: { region: string; name: string; aLabel: string; bLabel: string } | null;
@@ -1764,10 +1793,11 @@ function RegionalStage(
                 bLabel={mineHere.meta?.bLabel ?? ''}
                 abbr={abbr}
                 userTeam={userTeam}
+                onOpen={onOpen}
               />
             )}
             {list.map((r, i) => (
-              <SeriesResultCard key={i} r={r} abbr={abbr} userTeam={userTeam} />
+              <SeriesResultCard key={i} r={r} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
             ))}
           </div>
         );
@@ -1778,9 +1808,10 @@ function RegionalStage(
 
 /** A finished (or simulated) best-of-three, as a card. */
 function SeriesResultCard(
-  { r, abbr, userTeam, tag }:
+  { r, abbr, userTeam, tag, onOpen }:
   { r: RegionalSeries | (TournamentResult & { aLabel?: string; bLabel?: string });
-    abbr: (i: number) => string; userTeam: number; tag?: string },
+    abbr: (i: number) => string; userTeam: number; tag?: string;
+    onOpen?: (g: BracketGame) => void },
 ) {
   const a = r.seeds[0]; const b = r.seeds[1];
   if (a === undefined || b === undefined) return null;
@@ -1810,6 +1841,33 @@ function SeriesResultCard(
         team={b} label={(r as RegionalSeries).bLabel} wins={winsOf(b)}
         champion={r.champion === b} abbr={abbr} userTeam={userTeam}
       />
+      <SeriesGames games={r.games} abbr={abbr} onOpen={onOpen} />
+    </div>
+  );
+}
+
+/**
+ * The games of a series, each a door to its box.
+ *
+ * The bracket maps open a game on a tap and the series cards did not, so
+ * the regionals -- and the championship series -- were the one June stage
+ * whose scores were frozen (2026-09-16: "in the regionals I'm not able to
+ * see the box scores for the games"). Nothing to open before a game is
+ * played, and nothing to draw for a card with no opener.
+ */
+function SeriesGames(
+  { games, abbr, onOpen }:
+  { games: readonly BracketGame[]; abbr: (i: number) => string; onOpen?: (g: BracketGame) => void },
+) {
+  if (!onOpen || games.length === 0) return null;
+  return (
+    <div className="series-games">
+      {games.map((g, i) => (
+        <button key={i} type="button" className="tap" onClick={() => onOpen(g)} aria-label={`Game ${i + 1} box score`}>
+          <small>G{i + 1}</small>
+          <b>{abbr(g.home)} {g.homeRuns}–{g.awayRuns} {abbr(g.away)}</b>
+        </button>
+      ))}
     </div>
   );
 }
@@ -1846,10 +1904,11 @@ function PendingSeriesCard(
 
 /** The user's live series, game by game. */
 function LiveSeriesCard(
-  { state, aLabel, bLabel, abbr, userTeam }:
+  { state, aLabel, bLabel, abbr, userTeam, onOpen }:
   {
     state: SeriesBracket; aLabel: string; bLabel: string;
     abbr: (i: number) => string; userTeam: number;
+    onOpen?: (g: BracketGame) => void;
   },
 ) {
   const s: Series | undefined = state.rounds[0]?.[0];
@@ -1876,6 +1935,7 @@ function LiveSeriesCard(
         team={s.b} label={bLabel} wins={wins(s.b)}
         champion={s.winner === s.b} abbr={abbr} userTeam={userTeam}
       />
+      <SeriesGames games={s.games} abbr={abbr} onOpen={onOpen} />
     </div>
   );
 }
@@ -1926,7 +1986,7 @@ function TeamLine(
 // ---------------------------------------------------------------------------
 
 function NationalStage(
-  { nat, myBracket, sideShow, half, onHalf, abbr, userTeam, onOpen }:
+  { nat, myBracket, sideShow, half, onHalf, abbr, userTeam, onOpen, onOpenGame }:
   {
     nat: NationalProgress | null;
     myBracket: ReturnType<typeof useDynasty.getState>['myBracket'];
@@ -1937,6 +1997,8 @@ function NationalStage(
     abbr: (i: number) => string;
     userTeam: number;
     onOpen: (s: DESlot) => void;
+    /** The championship series' games. */
+    onOpenGame?: (g: BracketGame) => void;
   },
 ) {
   if (!nat) {
@@ -2002,12 +2064,12 @@ function NationalStage(
           <LiveSeriesCard
             state={myBracket.state}
             aLabel="BRACKET A" bLabel="BRACKET B"
-            abbr={abbr} userTeam={userTeam}
+            abbr={abbr} userTeam={userTeam} onOpen={onOpenGame}
           />
         ) : nat.final ? (
           <SeriesResultCard
             r={{ ...nat.final, aLabel: 'BRACKET A', bLabel: 'BRACKET B' }}
-            abbr={abbr} userTeam={userTeam}
+            abbr={abbr} userTeam={userTeam} onOpen={onOpenGame}
           />
         ) : (
           <div style={{

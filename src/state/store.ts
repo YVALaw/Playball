@@ -66,7 +66,7 @@ import {
   letHimGo, makeTheCase, sceneFrom, type KeepPitch, type KeepScene,
 } from '../engine/draft.js';
 import {
-  newCoach, restoreCoach, reviewSeason, jobOffers, rosterStrength, contractFor, playerBoard,
+  newCoach, restoreCoach, reviewSeason, boardWords, jobOffers, rosterStrength, contractFor, playerBoard,
   leagueShape,
   canBeHired,
   approachSchool, APPROACHES_PER_SEASON, CAUGHT_SECURITY_COST, type ApproachOutcome,
@@ -522,6 +522,23 @@ function navMark(back: boolean): void {
 }
 
 export function nextNavInstant(): void { navInstant = true; navMark(true); }
+
+/**
+ * The next few hundred milliseconds belong to a back gesture.
+ *
+ * Stamps the root the way `nextNavInstant` does, without making the next
+ * forward navigation instant: a layer the gesture peels -- a card, an
+ * overlay -- starts no crossfade, but the screen it uncovers mounts with the
+ * rises and fades every screen makes, and a rise on top of a swipe the
+ * platform has already animated is the flick reported on 2026-09-16. The
+ * stamp comes off by itself (05 §90.6).
+ */
+let backStamp: ReturnType<typeof setTimeout> | null = null;
+export function markBackGesture(): void {
+  navMark(true);
+  if (backStamp !== null) clearTimeout(backStamp);
+  backStamp = setTimeout(() => { backStamp = null; navMark(false); }, 700);
+}
 
 /**
  * Whether the browser is already capturing one of these.
@@ -1209,8 +1226,10 @@ export interface DynastyStore {
   /**
    * The board, before the first pitch — one modal at the top of a new
    * season: last year's verdict, both prestige moves, the new asks and the
-   * winter's stings. Null once accepted. Transient: a reload before
-   * reading loses the ceremony, never the facts, which all live on PROGRAM.
+   * winter's stings. Null once accepted. Saved with the dynasty since
+   * 2026-09-16: it was transient, and a phone that reloaded the page while
+   * the card was up came back with no card and no way to accept the mandate
+   * (05 §90.10).
    */
   seasonOpener: {
     year: number; headline: string; message: string;
@@ -2304,6 +2323,22 @@ function usableEconomy(saved: unknown): Economy {
 }
 
 /** The alumni book, from whatever an older save carries. */
+/** The season opener as the save wrote it, or null for anything else. */
+function usableOpener(raw: unknown): DynastyStore['seasonOpener'] {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o['year'] !== 'number' || typeof o['headline'] !== 'string' || typeof o['message'] !== 'string') return null;
+  const num = (k: string): number => (typeof o[k] === 'number' ? (o[k] as number) : 0);
+  const str = (k: string): string => (typeof o[k] === 'string' ? (o[k] as string) : '');
+  return {
+    year: o['year'], headline: o['headline'], message: o['message'],
+    schoolBefore: num('schoolBefore'), schoolAfter: num('schoolAfter'),
+    coachBefore: num('coachBefore'), coachAfter: num('coachAfter'),
+    askSummary: str('askSummary'), askDetail: str('askDetail'), targetWins: num('targetWins'),
+    stings: Array.isArray(o['stings']) ? o['stings'].filter((s): s is string => typeof s === 'string') : [],
+  };
+}
+
 function usableAlumni(saved: unknown): Record<string, AlumnusNote> {
   if (!saved || typeof saved !== 'object') return {};
   const out: Record<string, AlumnusNote> = {};
@@ -3063,8 +3098,22 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       `set` below nulls both — and used to walk off without paying, leaving one
       orphan entry per card the coach had ever opened before changing tab.
     */
-    if (get().selectedPlayer !== null || get().coachSeat !== null) browserHistoryConsume();
-    if (get().tab !== tab || get().screen !== nextScreen) browserHistoryCheckpoint();
+    const cardOpen = get().selectedPlayer !== null || get().coachSeat !== null;
+    const routeMoves = get().tab !== tab || get().screen !== nextScreen;
+    /*
+      Not both. `history.go(-1)` is a traversal the browser runs LATER and
+      `pushState` runs now, so consuming the card's entry and checkpointing
+      the route in one breath pushed the route's entry first and then popped
+      it: the card's entry stayed, the new route had none, and the popped one
+      sat in the FORWARD list, where a phone's forward swipe could walk into
+      it and arrive here as a back press. Reported as the gesture that "does
+      a flick" and "shows the home tab and then goes back" (05 §90.6). A card
+      that closes because the route moved hands its entry to the route
+      instead: nothing pushed, nothing popped, the stack stays the depth of
+      the screen.
+    */
+    if (cardOpen && !routeMoves) browserHistoryConsume();
+    else if (!cardOpen && routeMoves) browserHistoryCheckpoint();
     crossfade(() => set({
       tab,
       screen: nextScreen,
@@ -3128,9 +3177,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   // path synchronous removes the artificial delay globally while primary-tab
   // moves through `go()` retain the broader transition.
   setScreen: (screen) => {
-    // Same as `go`: the card this drops had an entry, and it is spent here.
-    if (get().selectedPlayer !== null || get().coachSeat !== null) browserHistoryConsume();
-    if (get().screen !== screen) browserHistoryCheckpoint();
+    // Same as `go`: a card this drops hands its entry to the screen it drops
+    // it for; spent only when the screen does not move (05 §90.6).
+    const cardOpen = get().selectedPlayer !== null || get().coachSeat !== null;
+    const screenMoves = get().screen !== screen;
+    if (cardOpen && !screenMoves) browserHistoryConsume();
+    else if (!cardOpen && screenMoves) browserHistoryCheckpoint();
     navMark(false);
     set({ selectedPlayer: null, coachSeat: null, focusPlayer: null, screen });
   },
@@ -4303,6 +4355,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       coach, me.prestige, rosterStrength(me.team), outcome, seasonLength(season.config),
       board,
     );
+    /*
+      In words that know what year it is. `reviewSeason` speaks for ninety-six
+      chairs; this board's headline and paragraph are chosen off the seasons
+      before this one, and rotate by year (05 §90.9).
+    */
+    {
+      const words = boardWords(review, { prior: get().history, tenure: coach.tenure, year: get().year });
+      review.headline = words.headline;
+      review.message = words.message;
+    }
 
     // Prestige belongs to the school and survives a coaching change.
     me.prestige = review.prestigeAfter;
@@ -4539,7 +4601,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       posted, so realignment, poaching and the carousel open the new year's
       mail on a clean desk instead of under last season's pile.
     */
-    set({ inbox: [] });
+    /*
+      Except the hall. A man goes in at the draft step and the letter that
+      says so was wiped here, a step later, before anybody who had not opened
+      the inbox during the winter could read it. Reported 2026-09-16: "when a
+      player is inducted to the hall of fame, we should be notified." The
+      unread hall letters cross into the new year, and the opener names the
+      men as well.
+    */
+    set({ inbox: get().inbox.filter((i) => i.kind === 'hall' && !i.read) });
 
     /*
       The staff's winter — stage 11.
@@ -4868,7 +4938,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           healUp(p);
           resetWorkload(p);
           delete (p as Player & { outUntil?: number }).outUntil;
-          if (p.type === 'hitter') settleIn(p as Hitter);
+          if (p.type === 'hitter') {
+            // A move chosen during the season is made here, on the same
+            // footing as one chosen on the rail: one winter of settling
+            // before opening day. See `changePosition`.
+            const planned = (p as Hitter & { retrainTo?: Position }).retrainTo;
+            if (planned !== undefined) {
+              delete (p as Hitter & { retrainTo?: Position }).retrainTo;
+              movePosition(p as Hitter, planned);
+            }
+            settleIn(p as Hitter);
+          }
         }
       }
       /*
@@ -5179,6 +5259,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // went on 2026-09-10 — a signed kid always arrives now — so the list
       // stays empty until the winter grows another surprise worth the opener.
       const lines: string[] = [];
+      for (const m of (season.hall ?? []).filter((m) => m.year === year)) {
+        lines.push(`${m.name} went into the hall of fame.`);
+      }
       // The roll is finished and committed here, so everything the opener
       // reads below — the ask, the year — is the new season's.
       done(season, report);
@@ -5210,7 +5293,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         set({
           seasonOpener: {
             year: get().year,
-            headline: BOARD_HEADLINE[review.verdict],
+            headline: review.headline ?? BOARD_HEADLINE[review.verdict],
             message: review.message,
             schoolBefore: review.prestigeBefore,
             schoolAfter: review.prestigeAfter,
@@ -5440,29 +5523,55 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   changePosition: (id, to) => {
     const { season, userTeam, version } = get();
-    /*
-      An offseason ritual, not a Tuesday — stage 16's door. The gate is the
-      rail itself: `phase` is non-null exactly while the winter is open, so
-      a move committed here is settled once by the year roll's `settleIn`
-      before he plays a game — the winter of retraining is real, and the
-      remaining settling is the temporary glove penalty on a big move,
-      scaled by the climb in `movePosition`. The UI says why the card is
-      shut in May; this guard is for everything that is not the UI.
-    */
-    if (get().phase === null) return false;
     const rec = season?.teams[userTeam];
     if (!rec) return false;
     const man = squad(rec.team).find((p) => p.id === id);
-    if (!man) return false;
-    if (!movePosition(man, to)) return false;
+    if (!man || man.type !== 'hitter') return false;
+    const hitter = man as Hitter & { retrainTo?: Position; homePos?: Position };
+    /*
+      Any day of the year, made at the roll.
+
+      This was an offseason ritual with the gate on the rail: `phase` is
+      non-null exactly while the winter is open, so a move committed then was
+      settled once by the roll's `settleIn` before he played a game, and the
+      button read IN THE WINTER for eleven months. Reported 2026-09-16: "we
+      should just leave this button available all year round but the outcome
+      of it happening is decided when the season ends." So: in the winter the
+      move is made now, as before; during the season it is written down
+      (`retrainTo`) and made by the roll at the same point a winter move
+      would be, which puts both on the same footing -- one winter of settling
+      before opening day. Choosing the spot already planned cancels the plan,
+      and so does choosing his own spot.
+    */
+    if (get().phase !== null) {
+      delete hitter.retrainTo;
+      if (!movePosition(hitter, to)) return false;
+      set({ version: version + 1 });
+      get().post({
+        kind: 'season', year: get().year,
+        title: `${man.name} moves to ${to}`,
+        body: 'Coach — he retrains over the winter and opens next season there, '
+          + 'a step behind for a while.',
+        link: { to: 'player', id: man.id },
+      });
+      void get().saveNow();
+      return true;
+    }
+    const home = hitter.homePos ?? hitter.pos;
+    const cancel = to === home || hitter.retrainTo === to;
+    if (cancel && hitter.retrainTo === undefined) return false;
+    if (cancel) delete hitter.retrainTo;
+    else hitter.retrainTo = to;
     set({ version: version + 1 });
-    get().post({
-      kind: 'season', year: get().year,
-      title: `${man.name} moves to ${to}`,
-      body: 'Coach — he retrains over the winter and opens next season there, '
-        + 'a step behind for a while.',
-      link: { to: 'player', id: man.id },
-    });
+    if (!cancel) {
+      get().post({
+        kind: 'season', year: get().year,
+        title: `${man.name} will move to ${to}`,
+        body: 'Coach — he finishes the season where he is, retrains over the '
+          + 'winter and opens next season there, a step behind for a while.',
+        link: { to: 'player', id: man.id },
+      });
+    }
     void get().saveNow();
     return true;
   },
@@ -8128,6 +8237,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // Whether the case was already put to the board this season. Without
         // it a reload offered the button again, and a second concession.
         arguedTerms: get().arguedTerms,
+        seasonOpener: get().seasonOpener,
         watch: get().watch,
         economy: get().economy,
         rivalry: get().rivalry,
@@ -8299,6 +8409,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       boardAsk: (loaded.boardAsk as Expectation | null | undefined)
         ?? boardAskFor(loaded.season, loaded.userTeam),
       arguedTerms: loaded.arguedTerms === true,
+      seasonOpener: usableOpener(loaded.seasonOpener),
       needsTeam: false,
       // Through the front door and into the career. Remembering WHICH file it
       // came from is what lets a delete of that file take the career with it,

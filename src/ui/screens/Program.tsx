@@ -589,7 +589,7 @@ function MoneySheet({ team }: { team: Owner }) {
                     {(economy.projectHistory ?? []).filter((r) => r.seat === staffSeat).slice(0, 3).map((result, i) => <section className="staff-result-card" key={`${result.year}:${result.week}:${i}`}>
                       <small>{result.year} · WEEK {result.week}</small><strong>{PROJECT_LABEL[result.kind]}{result.state ? ` · ${result.state}` : ''}</strong>
                       <p>{result.took === false ? 'No gain this time' : result.focused ? 'Focus bonus earned' : 'Completed'}</p>
-                      {result.changes.map((c, j) => <div key={j}><span>{c.name} · {c.attribute}</span><b>{c.before} → {c.after}</b></div>)}
+                      {result.changes.map((c, j) => <div key={j}><span>{c.name} · {c.attribute}</span><b>{Math.round(c.before)} → {Math.round(c.after)}</b></div>)}
                       {!result.changes.length && result.took !== false && <p>No eligible player remained.</p>}
                     </section>)}
                   </details>}

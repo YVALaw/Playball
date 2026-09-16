@@ -172,10 +172,15 @@ export function projectResultText(result: StaffProjectResult): string {
       focused project moves a man from 98 to 99 — so the sentence contradicted
       the two figures immediately before it.
     */
-    const moved = c.after - c.before;
-    return `${label} finished in week ${result.week}. ${c.name}: ${c.attribute} ${c.before} → ${c.after}.${result.focused ? ` The matching focus earned +${moved}.` : ''}`;
+    // Whole numbers. A rating is a float under development and the letter
+    // printed it -- "contact 61.4 → 63.4" -- which reads as a different
+    // scale from the card's (2026-09-16: "keep it at a natural number").
+    const before = Math.round(c.before);
+    const after = Math.round(c.after);
+    const moved = after - before;
+    return `${label} finished in week ${result.week}. ${c.name}: ${c.attribute} ${before} → ${after}.${result.focused ? ` The matching focus earned +${moved}.` : ''}`;
   }
   return `${label} finished in week ${result.week}. ${result.changes.length
-    ? result.changes.map((c) => `${c.name}: ${c.attribute} ${c.before} → ${c.after}`).join('; ') + '.'
+    ? result.changes.map((c) => `${c.name}: ${c.attribute} ${Math.round(c.before)} → ${Math.round(c.after)}`).join('; ') + '.'
     : 'The selected players are no longer on this roster; no ratings changed.'}${result.focused ? ' Matching focus earned the project bonus.' : ''}`;
 }

@@ -22,14 +22,14 @@
 // fraction of what a coach guessing pays. The money is recruiting budget,
 // spent from the pool the board opens with in about ninety seconds' time.
 
-import { overallOf } from './ratings.js';
+import { armValue, overallOf } from './ratings.js';
 import { prioritiesFor, starsFor, PRIORITIES } from './recruiting.js';
 import { scoutNoise } from './scouting.js';
 import {
   era, inningsPitched, onBase, slugging, plateAppearances,
   type SeasonState,
 } from './season.js';
-import { CLASS_ORDER } from './types.js';
+import { CLASS_ORDER, isTwoWay } from './types.js';
 import type { ClassYear, Player, Priorities, Priority } from './types.js';
 
 /** Clamp to 0..1, which almost everything below is expressed on. */
@@ -182,11 +182,25 @@ const OPINION_SALT = 4409;
  * something the draft does not.
  */
 export function visibleValue(p: Player, season: SeasonState, ctx: DraftContext): number {
-  const form = seasonForm(p, season, ctx);
   // Clubs pay for youth, and never more than three points of it either way.
   const youth = Math.max(-3, Math.min(3, -(p.age - DRAFT_AGE) * 1.2));
   const disagreement = (scoutNoise(p.id, OPINION_SALT) - 0.5) * 7;
-  return 0.60 * overallOf(p) + 0.40 * form + youth + disagreement;
+  const bat = 0.60 * overallOf(p) + 0.40 * seasonForm(p, season, ctx);
+  if (!isTwoWay(p)) return bat + youth + disagreement;
+  /*
+    A two-way man is drafted for whichever half a club wants.
+
+    `overallOf` reads the bat of anybody typed a hitter and `seasonForm` read
+    his batting line, so the arm counted for nothing. Reported 2026-09-16 of
+    a man with a 2.4 ERA and a 39-2 record who went undrafted on a .252
+    average: "there is no way a guy with that type of career would not end
+    up in the majors." The arm is priced the way a pitcher's is, off
+    `armValue` and his pitching line, and the better half is what the board
+    sees. Not the sum: a club takes him as one thing.
+  */
+  const arm = 0.60 * armValue(p)
+    + 0.40 * seasonForm({ ...p, type: 'pitcher' } as unknown as Player, season, ctx);
+  return Math.max(bat, arm) + youth + disagreement;
 }
 
 // ---------------------------------------------------------------------------

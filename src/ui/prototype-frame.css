@@ -8390,3 +8390,24 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
   letter-spacing: .06em;
   white-space: nowrap;
 }
+
+/* The games of a series, each a door to its box (Postseason `SeriesGames`). */
+.series-games {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 6px 9px 8px;
+  border-top: 1px solid var(--hairline);
+}
+.series-games button {
+  display: flex; align-items: center; gap: 6px;
+  min-height: 28px; padding: 0 8px;
+  border: 1px solid var(--line); background: var(--wash); color: var(--ink);
+}
+.series-games button small { color: var(--dim); font: 700 calc(6.5px * var(--ts)) var(--mono); letter-spacing: .1em; }
+.series-games button b { font: 800 calc(8.5px * var(--ts)) var(--mono); }
+
+/* A pen arm the dugout cannot call on tonight: listed, greyed, explained. */
+.game-picker-row.is-resting { opacity: .55; }
+.game-picker-row.is-resting small { color: var(--clay); }
+
+/* The spot a season-long plan points at (RetrainModal). */
+.retrain-row button.is-planned { background: var(--command); border-color: var(--command); color: var(--cream); }

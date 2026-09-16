@@ -1947,12 +1947,22 @@ export function rollHurtsFor(season: SeasonState, teamIndex: number): void {
  * arm who can pitch — and hands the original back when nobody can, since the
  * engine has to be given somebody.
  */
-/** Minimum calendar gap before an arm is considered ready again. */
+/**
+ * Minimum calendar gap before an arm is considered ready again.
+ *
+ * The short end moved on 2026-09-16. It read two days above twenty pitches
+ * and three above forty, which is a starter's table applied to relievers: in
+ * a June bracket that plays a game a night, two nights in which four men
+ * threw twenty-five pitches each left a coach two arms for the final --
+ * "I had in this save like six bullpen arms and only two were available in
+ * the tournament finals." A reliever who threw up to thirty is back the next
+ * night, which is what the sport does; the long outings keep their rest.
+ */
 export function recoveryGap(pitches: number): number {
   if (pitches > 90) return 5;
   if (pitches > 65) return 4;
-  if (pitches > 40) return 3;
-  if (pitches > 20) return 2;
+  if (pitches > 45) return 3;
+  if (pitches > 30) return 2;
   return 1;
 }
 

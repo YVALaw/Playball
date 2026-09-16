@@ -423,8 +423,18 @@ describe('one visible layer, one history entry', () => {
       useDynasty.getState().openPlayer(id!);
       useDynasty.getState().go('home');
     });
-    expect(asked, 'the card was dropped without spending its entry')
-      .toEqual(['push', 'consume', 'push']);
+    /*
+      One entry, handed over, since 2026-09-16 (05 §90.6). This read
+      ['push', 'consume', 'push'] -- the card's entry spent and the route's
+      pushed -- and that pair is a race the browser loses: `history.go(-1)`
+      is a traversal it runs later and `pushState` runs now, so the route's
+      entry was pushed first and then popped, which left the card's entry in
+      place and the route's in the FORWARD list. A card that closes because
+      the route moved hands its entry to the route instead: nothing pushed,
+      nothing popped, one entry for one visible layer either way.
+    */
+    expect(asked, "the card's entry is the route's now")
+      .toEqual(['push']);
     expect(useDynasty.getState().selectedPlayer).toBeNull();
   });
 
@@ -436,7 +446,8 @@ describe('one visible layer, one history entry', () => {
       useDynasty.getState().openPlayer(id!);
       useDynasty.getState().setScreen('lineup');
     });
-    expect(asked).toEqual(['push', 'consume', 'push']);
+    // The same hand-over as `go`: one entry, the card's, now the screen's.
+    expect(asked).toEqual(['push']);
   });
 });
 

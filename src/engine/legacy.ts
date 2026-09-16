@@ -267,8 +267,11 @@ function bigLeagueSummer(flavour: number, talent: number, proYears: number): str
  * years when they just left the team." The roll is untouched; the line says
  * what the summer was.
  */
+/** "DOUBLE-A" the way a sentence says it. */
+const lower = (level: string): string => level.toLowerCase().replace('-a', '-A');
+
 function minorSummer(level: string, yearsThere: number, first = false): string {
-  const where = level.toLowerCase().replace('-a', '-A');
+  const where = lower(level);
   if (first) return `Assigned to ${where} straight out of the draft. A first summer as a professional.`;
   if (yearsThere >= 3) return `A third year at ${where}. The clock is loud now.`;
   if (yearsThere === 2) return `Repeated ${where}. Not everybody moves every year.`;
@@ -296,20 +299,20 @@ function minorSummer(level: string, yearsThere: number, first = false): string {
  * The independent club stays first and stays the commonest, because it is the
  * likeliest thing to happen to him.
  */
-const ABROAD: readonly { level: string; line: string }[] = [
-  { level: 'INDEPENDENT BALL', line: 'Signed on with an independent club for a summer.' },
-  { level: 'INDEPENDENT BALL', line: 'Caught on with an independent club and hit the bus leagues.' },
-  { level: 'MEXICO', line: 'Signed with a club in Mexico.' },
-  { level: 'THE DOMINICAN', line: 'Went down for the winter league in the Dominican Republic.' },
-  { level: 'VENEZUELA', line: 'Took a winter contract in Venezuela.' },
-  { level: 'PUERTO RICO', line: 'Played the winter in Puerto Rico.' },
-  { level: 'COLOMBIA', line: 'Signed on for a winter in Colombia.' },
-  { level: 'AUSTRALIA', line: 'Went to Australia for their summer, which is our winter.' },
-  { level: 'JAPAN', line: 'Signed with a club in Japan.' },
-  { level: 'KOREA', line: 'Took a contract in Korea.' },
-  { level: 'TAIWAN', line: 'Signed on in Taiwan.' },
-  { level: 'ITALY', line: 'Spent a summer playing in Italy.' },
-  { level: 'THE NETHERLANDS', line: 'Signed with a club in the Netherlands.' },
+const ABROAD: readonly { level: string; place: string; line: string }[] = [
+  { level: 'INDEPENDENT BALL', place: 'the independent leagues', line: 'Signed on with an independent club for a summer.' },
+  { level: 'INDEPENDENT BALL', place: 'the independent leagues', line: 'Caught on with an independent club and hit the bus leagues.' },
+  { level: 'MEXICO', place: 'Mexico', line: 'Signed with a club in Mexico.' },
+  { level: 'THE DOMINICAN', place: 'the Dominican Republic', line: 'Went down for the winter league in the Dominican Republic.' },
+  { level: 'VENEZUELA', place: 'Venezuela', line: 'Took a winter contract in Venezuela.' },
+  { level: 'PUERTO RICO', place: 'Puerto Rico', line: 'Played the winter in Puerto Rico.' },
+  { level: 'COLOMBIA', place: 'Colombia', line: 'Signed on for a winter in Colombia.' },
+  { level: 'AUSTRALIA', place: 'Australia', line: 'Went to Australia for their summer, which is our winter.' },
+  { level: 'JAPAN', place: 'Japan', line: 'Signed with a club in Japan.' },
+  { level: 'KOREA', place: 'Korea', line: 'Took a contract in Korea.' },
+  { level: 'TAIWAN', place: 'Taiwan', line: 'Signed on in Taiwan.' },
+  { level: 'ITALY', place: 'Italy', line: 'Spent a summer playing in Italy.' },
+  { level: 'THE NETHERLANDS', place: 'the Netherlands', line: 'Signed with a club in the Netherlands.' },
 ];
 
 /**
@@ -412,38 +415,11 @@ function closeOut(rows: ProYear[], id: string, level: number, endedYear: number)
 }
 
 export function proCareer(id: string, note: AlumnusNote, throughYear: number): ProYear[] {
-  if (note.reason !== 'drafted') {
-    // The undrafted senior's one line. A few sign somewhere small anyway.
-    if (throughYear <= note.year) return [];
-    const indie = hash(`${id}:indie`) % 100 < 18;
-    const where = ABROAD[hash(`${id}:abroad`) % ABROAD.length]!;
-    const major = MAJORS[hash(`${id}:major`) % MAJORS.length]!;
-    // Checked after the independent-ball roll and off its own salt, so the two
-    // are independent: a man can have a summer in Mexico and still come back
-    // to coach, which is a real career and was not reachable before.
-    const coaches = hash(`${id}:coach`) % 100 < coachingPct(0);
-    if (coaches) {
-      return [{
-        year: note.year + 1,
-        level: COACHING_LEVEL,
-        line: indie
-          ? `${where.line} Then he came home to coach.`
-          : `The baseball ended in June, and the ${major} degree with it. ${coachingLine(id, 0)}`,
-        final: true,
-      }];
-    }
-    return [{
-      year: note.year + 1,
-      level: indie ? where.level : 'HOME',
-      line: indie
-        ? `${where.line} Then he hung them up.`
-        : `The baseball ended in June. He finished the ${major} degree.`,
-      final: true,
-    }];
-  }
+  if (throughYear <= note.year) return [];
+  if (note.reason !== 'drafted') return undraftedCareer(id, note, throughYear);
 
   const round = note.round ?? 10;
-  let level = round <= 2 ? 2 : round <= 5 ? 1 : 0;
+  const level = round <= 2 ? 2 : round <= 5 ? 1 : 0;
   /*
     Centred on the drafted man the world actually produces. This read 55
     until 2026-09-15, when the generator began ageing men into their class
@@ -455,12 +431,29 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
     the top level read where the real game has it.
   */
   const talent = note.overall - TALENT_CENTRE + (3 - Math.min(3, round)) * 4;
+  return climb(id, note.year + 1, throughYear, level, talent, []);
+}
+
+/**
+ * The climb, year by year, from wherever a man starts it.
+ *
+ * The drafted man's loop, pulled out on 2026-09-16 so that a man signed out of
+ * independent ball or a winter league joins the same ladder from the bottom.
+ * `from` is his first summer on it; `before` is how many professional summers
+ * he had already played somewhere else, so the wash-out and retirement clocks
+ * count his whole career and the first-summer lines stay for the men whose
+ * first summer this is.
+ */
+function climb(
+  id: string, from: number, throughYear: number,
+  startLevel: number, talent: number, rows: ProYear[], before = 0,
+): ProYear[] {
+  let level = startLevel;
   /** Summers at the level he is standing on, so a repeat reads as one. */
   let atLevel = 1;
-  const rows: ProYear[] = [];
 
-  for (let y = note.year + 1; y <= throughYear; y++) {
-    const age = y - note.year;
+  for (let y = from; y <= throughYear; y++) {
+    const age = y - from + 1 + before;
     const h = hash(`${id}:pro:${y}`);
     // Washing out gets likelier every year a man is not advancing, and the
     // middle of the pyramid is where it happens.
@@ -570,7 +563,12 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
         level: LEVELS[level]!,
         line: called
           ? 'Called up. Everything before this was the road here.'
-          : `Moved up to ${LEVELS[level]!.toLowerCase().replace('-a', '-A')}.`,
+          : age === 1
+            // His first summer, and already moved: it started somewhere.
+            // "Moved up to single-A" about a man who began in June read as
+            // though he had come from another division (2026-09-16).
+            ? `Started at ${lower(LEVELS[level - 1]!)} and was moved up to ${lower(LEVELS[level]!)} before the summer was out.`
+            : `Moved up to ${lower(LEVELS[level]!)}.`,
         ...(called ? { debut: true } : {}),
       });
     } else {
@@ -589,4 +587,91 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
     }
   }
   return rows;
+}
+
+/**
+ * Where a man who was not drafted goes on playing, if he does.
+ *
+ * Most of them go home in June with the degree, as before. The few who sign
+ * somewhere small used to get one line and a full stop -- "Signed with a club
+ * in Venezuela. Then he hung them up." -- and the reporter asked for the rest
+ * of it (2026-09-16): "it could simply keep playing them there, move to
+ * another league in following years or climb their way to the show. Not only
+ * ending their career right there." So a summer abroad is a summer, and each
+ * one after it rolls: an affiliated club signs him and he joins the climb a
+ * drafted man makes, from the bottom, with the summers already played counted
+ * against him; or he moves on to another league; or he keeps playing where he
+ * is; or he hangs them up, and maybe coaches. Talent is read the way the
+ * draft would have read it, six points harsher, because nobody took him.
+ */
+function undraftedCareer(id: string, note: AlumnusNote, throughYear: number): ProYear[] {
+  const first = note.year + 1;
+  const indie = hash(`${id}:indie`) % 100 < 18;
+  const major = MAJORS[hash(`${id}:major`) % MAJORS.length]!;
+  // Off its own salt, independent of the summer abroad: a man can have a
+  // summer in Mexico and still come back to coach, which is a real career.
+  const coaches = hash(`${id}:coach`) % 100 < coachingPct(0);
+  if (!indie) {
+    return [{
+      year: first,
+      level: coaches ? COACHING_LEVEL : 'HOME',
+      line: coaches
+        ? `The baseball ended in June, and the ${major} degree with it. ${coachingLine(id, 0)}`
+        : `The baseball ended in June. He finished the ${major} degree.`,
+      final: true,
+    }];
+  }
+  let where = ABROAD[hash(`${id}:abroad`) % ABROAD.length]!;
+  const talent = note.overall - TALENT_CENTRE - 6;
+  const rows: ProYear[] = [{ year: first, level: where.level, line: where.line }];
+  for (let y = first + 1; y <= throughYear; y++) {
+    /** Summers already played before this one. */
+    const summers = y - first;
+    const h = hash(`${id}:abroad:${y}`);
+    // An affiliated club takes a look. Likelier for the talented, less so every year.
+    const signPct = Math.max(2, 14 + talent - summers * 3);
+    if (h % 100 < signPct) {
+      const level = talent >= 4 ? 1 : 0;
+      rows.push({
+        year: y,
+        level: LEVELS[level]!,
+        line: `Signed by an affiliated club out of ${where.place}. Assigned to ${lower(LEVELS[level]!)}.`,
+      });
+      return climb(id, y + 1, throughYear, level, talent, rows, summers + 1);
+    }
+    // Hanging them up. Likelier every year, and for the men nobody rated.
+    const quitPct = Math.min(75, 12 + summers * 11 - Math.max(0, talent));
+    if ((h >> 8) % 100 < quitPct) {
+      rows.push({
+        year: y,
+        level: where.level,
+        line: summers === 1
+          ? 'One more summer of it, and then he hung them up.'
+          : `${summers + 1} summers of it, and then he hung them up.`,
+        final: true,
+      });
+      return closeOut(rows, id, 0, y);
+    }
+    // Another league, some years.
+    if ((h >> 16) % 100 < 28) {
+      const next = ABROAD[(h >> 20) % ABROAD.length]!;
+      if (next.level !== where.level) {
+        where = next;
+        rows.push({ year: y, level: where.level, line: `Moved on. ${where.line}` });
+        continue;
+      }
+    }
+    rows.push({ year: y, level: where.level, line: abroadSummer(where.place, summers, (h >> 24) % 3) });
+  }
+  return rows;
+}
+
+/** A summer that was neither a move nor an ending. */
+function abroadSummer(place: string, summers: number, flavour: number): string {
+  if (summers >= 3) return `Still playing in ${place}. The money is thin and the baseball is real.`;
+  return [
+    `Another summer in ${place}.`,
+    `Back in ${place}, a regular there now.`,
+    `Stayed on in ${place}, and the locals know his name.`,
+  ][flavour]!;
 }

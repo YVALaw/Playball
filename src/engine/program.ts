@@ -27,6 +27,7 @@ import { DEFAULT_PHILOSOPHY, isPhilosophyId, type PhilosophyId } from './strateg
 import { cultureFor, type CultureEdge } from '../data/cultures.js';
 import type { CoachHabits } from './habits.js';
 import type { TeamRecord } from './season.js';
+import type { Finish } from './postseason.js';
 import type { Rng, Team } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -1971,6 +1972,8 @@ export interface Review {
   /** What the run cost his standing on top of the season. Zero on the first. */
   prestigePenalty: number;
   message: string;
+  /** The verdict as a headline, in words that know the year. See `boardWords`. */
+  headline?: string;
 }
 
 /**
@@ -2110,6 +2113,121 @@ export function reviewSeason(
     prestigePenalty,
     message,
   };
+}
+
+// ---------------------------------------------------------------------------
+// The board's words
+// ---------------------------------------------------------------------------
+
+/** What the board's words need to know about the years before this one. */
+export interface BoardContext {
+  /** The seasons already in the book, oldest first. This one is not in it yet. */
+  prior: readonly { finish: Finish }[];
+  /** Seasons finished before this one. */
+  tenure: number;
+  /** The season being graded. Rotates the line, so two Junes do not read the same. */
+  year: number;
+}
+
+const IN_THE_FIELD: readonly Finish[] = ['national', 'omaha', 'runner-up', 'champion'];
+
+const ORDINAL = ['', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
+const ordinal = (n: number): string => ORDINAL[n] ?? `${n}th`;
+
+/** One of a list, off the year: consecutive years walk the whole list. */
+function byYear<T>(list: readonly T[], year: number, salt: number): T {
+  const i = ((year * 7 + salt) % list.length + list.length) % list.length;
+  return list[i]!;
+}
+
+/**
+ * What the board says, in words that know what year it is.
+ *
+ * `reviewSeason` grades ninety-six chairs and its message has to work for all
+ * of them, so it is a sentence a verdict: "Nobody expected this." for every
+ * exceeded season, "Do it again." for every met one. Reported 2026-09-16:
+ * "seeing the board is delighted every year, or nobody expected this after
+ * six years in a row making it to the nationals, doesn't really make sense."
+ * This board gets these instead. The contract lines -- a renewal, an
+ * extension, the sack, a chair kept by the rule of the world -- stay the
+ * review's own, since they say a thing the generic ones cannot; everything
+ * else is chosen off the season's place in the run of seasons before it, and
+ * rotated by year so two Junes in a row do not read the same (05 §90.9).
+ */
+export function boardWords(review: Review, ctx: BoardContext): { headline: string; message: string } {
+  const { verdict, outcome, badRun, contractYears } = review;
+  const y = ctx.year;
+  // The run this June extends: consecutive years in the national field, ending now.
+  let fieldRun = outcome.madeTournament ? 1 : 0;
+  if (fieldRun > 0) {
+    for (let i = ctx.prior.length - 1; i >= 0; i--) {
+      if (!IN_THE_FIELD.includes(ctx.prior[i]!.finish)) break;
+      fieldRun++;
+    }
+  }
+  const lastJune = ctx.prior[ctx.prior.length - 1]?.finish;
+  const firstYear = ctx.tenure === 0;
+  const run = badRun >= 2
+    ? ` ${badRun === 2 ? 'Twice in a row now' : `${badRun} years running`}, and it is being noticed outside this room.`
+    : '';
+
+  let headline: string;
+  let message: string;
+  if (verdict === 'exceeded') {
+    headline = outcome.wonTitle ? 'The board is over the moon'
+      : fieldRun >= 3 ? 'The board expects nothing less'
+        : byYear(['The board is delighted', 'The board is thrilled', 'The board could not be happier'], y, 1);
+    message = outcome.wonTitle
+      ? byYear([
+          'A national title. Nobody in the room is pretending to be calm about it.',
+          'The trophy is in the building, and they have already had it photographed.',
+        ], y, 2)
+      : fieldRun >= 3
+        ? `${ordinal(fieldRun)} straight June in the national field. Nobody calls it a surprise any more; they call it the standard.`
+        : outcome.reachedOmaha
+          ? 'Omaha. There are people on this board who were not sure they would live to see it.'
+          : firstYear
+            ? 'Nobody expected this. Not in your first year.'
+            : byYear([
+                'Nobody expected this.',
+                'Better than the room dared to say out loud.',
+                'The season outran the mandate, and they noticed.',
+                'They will be asking for this every year now, which is the price of it.',
+              ], y, 3);
+  } else if (verdict === 'met') {
+    headline = byYear(['The board is satisfied', 'The board is content', 'The board nods'], y, 4);
+    message = fieldRun >= 3
+      ? `${ordinal(fieldRun)} straight June in the field. The board counts on it now, which is its own kind of pressure.`
+      : outcome.madeTournament
+        ? 'A June in the field, as asked. They would like the next one to go longer.'
+        : byYear([
+            'Do it again.',
+            'Exactly what was asked. Nothing to argue about, nothing to celebrate.',
+            'The mandate was the mandate, and it was met.',
+            'Solid. The board has seen worse, and says so.',
+          ], y, 5);
+  } else if (verdict === 'missed') {
+    headline = byYear(['The board expected more', 'The board wanted more', 'The board is not satisfied'], y, 6);
+    const left = `${contractYears} year${contractYears === 1 ? '' : 's'} left to convince them.`;
+    message = (fieldRun === 0 && lastJune !== undefined && IN_THE_FIELD.includes(lastJune)
+      ? `A June with no field to play in, a year after the last one. ${left}`
+      : byYear([
+          left,
+          `Short of the ask, and they said so. ${left}`,
+          `They expected more, and the gap has a number on it. ${left}`,
+        ], y, 7)) + run;
+  } else {
+    headline = badRun >= 2 ? 'The board is running out of patience'
+      : byYear(['The board is not happy', 'The board is unhappy', 'The board is cold'], y, 8);
+    message = byYear([
+      'Your seat is warm.',
+      'The room was quiet, which is worse than loud.',
+      'They are asking about the program now, not about the season.',
+    ], y, 9) + run;
+  }
+  // The review's own words for a year the contract moved: they say the thing that matters.
+  if (review.fired || review.spared || review.renewed || review.extended) message = review.message;
+  return { headline, message };
 }
 
 // ---------------------------------------------------------------------------

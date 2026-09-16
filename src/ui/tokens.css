@@ -695,6 +695,14 @@ html { view-transition-name: none; }
    at the same specificity and would otherwise win by coming last. */
 :root[data-nav="back"] .screen-in { animation: none; }
 
+/* And nothing else on it rises or fades in either. A layer the gesture peeled
+   -- a card, an overlay -- uncovers a screen whose sections mount with the
+   rises every screen makes, over a swipe the platform has already animated.
+   Stamped by `markBackGesture` for the length of the settle (05 §90.6). */
+:root[data-nav="back"] .fade-in,
+:root[data-nav="back"] .rise-in,
+:root[data-nav="back"] .card-in { animation: none; }
+
 /* Keyboard focus, made visible. The app is built for thumbs, but it runs in a
    browser today and every interactive element is a bare button with its
    default outline stripped by use — a keyboard user had no way to see where

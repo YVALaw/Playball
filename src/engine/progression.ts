@@ -575,7 +575,8 @@ export function departAndDevelop(
           teamAbbr: record.def.abbr,
           classYear: p.classYear,
           age: p.age,
-          overall: overallOf(p),
+          // His better half, for a two-way man: the side he was drafted for.
+          overall: isTwoWay(p) ? Math.max(overallOf(p), armValue(p)) : overallOf(p),
           reason,
         };
         if (reason === 'drafted') {
@@ -929,7 +930,7 @@ export function fillRosters(
       walkOns.push({
         id: p.id, name: p.name,
         pos: p.type === 'pitcher' ? (p as Pitcher).role : p.pos,
-        overall: overallOf(p),
+        overall: isTwoWay(p) ? Math.max(overallOf(p), armValue(p)) : overallOf(p),
       });
     }
   }

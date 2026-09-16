@@ -420,7 +420,23 @@ export function Player() {
         </>
       )}
       {active === 'legacy' && (
-        <Career id={p.id} owner={owner} isPitcher={isPitcher} isOurs={isOurs} />
+        <>
+          {/* Both halves of a two-way man's book. It printed the bat's marks
+              and dropped the arm's on the floor, the way the alumnus card once
+              did (2026-09-16: "two-way legacies only show their batting"). */}
+          {isTwoWay(p) && (
+            <Segmented<'bat' | 'arm'>
+              label="Which half of his book"
+              value={half}
+              onChange={setHalf}
+              options={[
+                { value: 'bat' as const, label: 'Batting' },
+                { value: 'arm' as const, label: 'Pitching' },
+              ]}
+            />
+          )}
+          <Career id={p.id} owner={owner} isPitcher={isTwoWay(p) ? half === 'arm' : isPitcher} isOurs={isOurs} />
+        </>
       )}
 
       {/* The classroom, where else he plays, the rest and the redshirt — behind
@@ -876,7 +892,7 @@ function Overview({ p, owner, isOurs }: { p: AnyPlayer; owner: Owner; isOurs: bo
             title={`Last project · ${c.attribute}`}
             text={last.took === false
               ? `Did not take to ${coach}'s ${PROJECT_LABEL[last.kind].toLowerCase()}, ${last.year}.`
-              : `${c.attribute} ${c.before} → ${c.after} under ${coach}, ${last.year}.`}
+              : `${c.attribute} ${Math.round(c.before)} → ${Math.round(c.after)} under ${coach}, ${last.year}.`}
           />
         );
       })()}

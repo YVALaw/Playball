@@ -24,7 +24,7 @@ import {
   HomeIcon, IdCardIcon, StarIcon,
 } from '@radix-ui/react-icons';
 import {
-  PHASES, PHASE_LABEL, stepsFor, TABS, useDynasty, useUserTeam, nextNavInstant, blockingCardUp, openerShowing,
+  PHASES, PHASE_LABEL, stepsFor, TABS, useDynasty, useUserTeam, nextNavInstant, markBackGesture, blockingCardUp, openerShowing,
   type ProgramSheet, type Tab,
 } from '../state/store.js';
 import { hasLayerToClose, Back, isNativeShell } from './backNav.js';
@@ -485,6 +485,8 @@ function AppBody(
     */
     if (guarded && now - lastBackCommit.current < 350) return 'swallowed';
     lastBackCommit.current = now;
+    // Whatever this press uncovers arrives still, not rising (05 §90.6).
+    markBackGesture();
     const s = useDynasty.getState();
     // A blocking card is the screen while it lasts: the back press is
     // swallowed rather than obeyed. These are answered on their own terms —
@@ -1656,8 +1658,26 @@ function SeasonOpener() {
   const showing = useDynasty(openerShowing);
   const openOverlay = useDynasty((s) => s.openOverlay);
   const setSheet = useDynasty((s) => s.setProgramSheet);
-  if (!opener || !showing) return null;
-  const toBoard = (): void => { setSheet('board'); openOverlay('program'); };
+  /*
+    Off the screen before the board's history entry is pushed.
+
+    A phone's back gesture previews the screenshot the browser took of the
+    entry it is returning to, and that screenshot is taken at the push --
+    which happened while this card was painted. So after the coach accepted
+    the mandate on the board and came back, the swipe showed him the card
+    for the length of the settle and then the real screen without it:
+    "it still shows the card and then after a second it goes back to normal
+    and closes the card" (2026-09-16). The card steps out of the frame, two
+    paints go by, and only then is the board opened; if he comes back without
+    accepting, `showing` turns true again and the card returns (05 §90.6).
+  */
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => { if (showing) setLeaving(false); }, [showing]);
+  if (!opener || !showing || leaving) return null;
+  const toBoard = (): void => {
+    setLeaving(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => { setSheet('board'); openOverlay('program'); }));
+  };
   const moved = (label: string, b: number, a: number) => (
     <span className="opener-row" key={label}>
       <span>{label}</span>

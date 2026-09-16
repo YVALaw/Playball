@@ -11712,3 +11712,198 @@ in the browser on 5174: the bench man's second tap puts him down and a
 mid-flight at scale 0.19 × 0.13, translated toward the button, opacity 0.22)
 and shrinks back into it; PIPELINES plus the SS need reads 2 ON; the chips;
 the park's chunk fetched at boot and the canvas up in a game with no dots.
+
+## 90. Thirteen from the phone — **September 16 2026**
+
+Thirteen reports in one message, fixed in one pass. Four are rules (the
+pen's rest, the retrain door, the draft's read of a two-way man, the board's
+words), three are screens (the dugout's pen, the regionals' boxes, the
+postseason button's beat), two are the book (the undrafted, a first summer),
+two are persistence and notice (the opener in the save, the hall's letter),
+one is a number format, and one is the back gesture, which is the only one
+this desk could not watch on the device it happens on.
+
+### 90.1 The pen in the finals
+
+"I had in this save like six bullpen arms and only two were available in
+the tournament finals." Two causes, both real. `recoveryGap` was a starter's
+table applied to relievers — two days above twenty pitches, three above
+forty — and a June bracket plays a game a night, so two nights in which four
+men threw twenty-five pitches each left two arms for the final. The short end
+moved: up to thirty pitches is the next night, thirty-one to forty-five two
+days, forty-six to sixty-five three; the long outings keep their rest, and
+the `pitcherReady` tests hold. And the dugout listed `bullpenAvailable` —
+the men on their rest — with nothing to say where the others were, which is
+what "not showing all arms" looks like from the bench. `LiveGame` exposes
+`bullpenUsed` and `pitcherNow`; the picker lists the whole pen, the resting
+men greyed with the reason: what he threw and when he is back, that he has
+already pitched tonight, or the trainer's room. Verified in a managed game
+with a forty-pitch reliever from the night before: seven rows, one greyed,
+"threw 40 last night · back in 1 day".
+
+### 90.2 The retrain door is open all year
+
+"The retrain position button is not available, it says in the winter, grayed
+out ... we should just leave this button available all year round but the
+outcome of it happening is decided when the season ends." `changePosition`
+refused outside the rail because a winter move is settled once by the roll's
+`settleIn`. Now: in the winter it moves him at once, as before; in season it
+writes the plan on the man (`Settling.retrainTo`) and the roll makes the
+move at the same point a winter move is made — before `settleIn` — so both
+get one winter of settling before opening day and AUTO fields him at the
+new spot. Choosing the planned spot again cancels the plan; so does choosing
+his own. The sheet reads AT SEASON'S END on every spot, PLANNED · CANCEL on
+the one chosen, and its line says what will happen; the inbox gets "will
+move to RF". `tests/store.test.ts` plans, cancels, plans again, rolls, and
+finds him at the new spot with the plan gone.
+
+### 90.3 The postseason button takes a beat
+
+"Once I'm out of the tournament, [simming] is instant, giving the illusion
+that nothing is actually being simmed." The pregame card has had an
+eight-hundred-millisecond beat since §66; the pinned bar did not.
+`simBracket` stays synchronous — a thousand tests call it — and the wait is
+the button's: seven hundred milliseconds of SIMULATING… or PLAYING IT OUT…,
+disabled, before the night is played. Three presses are instant because they
+open something rather than play it: BACK TO the live stage, FIX THE LINEUP,
+PLAY THIS GAME. Verified: ON TO THE NATIONALS → PLAYING IT OUT… (disabled) →
+the national stage a second later.
+
+### 90.4 Whole numbers in the training letter
+
+A rating is a float under development and the project letter printed it —
+"contact 61.4 → 63.4". `projectResultText` rounds both figures and the gain,
+and the two cards that reprint them (the player's last project, the budget's
+history) round too. The record itself stays exact: a project that did not
+take records the unchanged rating to the decimal, which its test reads.
+
+### 90.5 Both halves of a two-way man's book
+
+The live card's LEGACY printed the bat's three marks and dropped the arm's,
+the way the alumnus card once did (§89 fixed that one). The same BATTING /
+PITCHING segmented control the STATS tab uses sits above `Career` for a
+two-way man and picks which half's marks print.
+
+### 90.6 The back gesture, three things
+
+"Whenever I go back it does like a bug jump or flick, sometimes it shows the
+home tab and then goes back automatically where it was supposed to go to;
+whenever we go somewhere from one card modal like the start of the year
+board card and then try to go back it still shows the card and then after a
+second it goes back to normal and closes the card." A phone's back gesture
+previews the *screenshot the browser took of the entry it is returning to*,
+taken at the moment that entry was left, and then swaps in the live page
+when the gesture commits. Every flick is a place where that screenshot and
+the app's answer disagree. Three such places, fixed:
+
+- **`go()` with a card open** consumed the card's entry and checkpointed the
+  route in one breath. `history.go(-1)` is a traversal the browser runs
+  later and `pushState` runs now, so the route's entry was pushed first and
+  then popped: the card's entry stayed, the new route had none, and the
+  popped one sat in the *forward* list, where a forward swipe could walk into
+  it and arrive as a back press. A card that closes because the route moved
+  hands its entry to the route now — nothing pushed, nothing popped.
+- **The opener card** opened the board from its own button, so the entry's
+  screenshot had the card in it; after the coach accepted the mandate and
+  came back, the swipe showed him the card for the length of the settle and
+  then the real screen without it. The card steps out of the frame, two
+  paints go by, and only then is the board opened; if he comes back without
+  accepting, `showing` turns true again and the card returns.
+- **Whatever a back press uncovers arrived rising.** A route back was already
+  instant (`nextNavInstant`, §63), but a layer the gesture peels — a card, an
+  overlay — starts no crossfade, and the screen underneath mounts with the
+  `fade-in` / `rise-in` / `card-in` every screen makes, over a swipe the
+  platform has already animated. `markBackGesture` stamps the root for seven
+  hundred milliseconds and `tokens.css` holds those three still under it.
+
+Not verified on a device: this desk's browser has no edge swipe, and the
+whole fault lives in what the platform paints during one. `06` §AK.1 says
+what to watch for.
+
+### 90.7 The hall's letter crosses the roll
+
+"When a player is inducted to the hall of fame, we should be notified." He
+was — a letter is posted at the draft step — and the roll wiped the inbox a
+step later for a clean desk, before anybody who had not opened the inbox
+during the winter could read it. The wipe keeps the unread hall letters, and
+the opener's THE WINTER lines name the men who went in.
+
+### 90.8 The regionals open their boxes
+
+"In the regionals, I'm not able to see the box scores for the games." The
+bracket maps open a game on a tap and the series cards did not, so the
+regionals — and the championship series — were the one June stage whose
+scores were frozen. `SeriesGames` draws each game of a series as a door,
+`G1 PSC 8–7 CHS`, wired through `RegionalStage` and `NationalStage` to the
+same `openGame` the maps use. Verified: sixteen cards, thirty-six doors, a
+box score behind the first.
+
+### 90.9 The board's words
+
+"Seeing the board is delighted every year, or nobody expected this after six
+years in a row making it to the nationals, doesn't really make sense."
+`reviewSeason` speaks for ninety-six chairs and its message was a sentence a
+verdict. `boardWords(review, { prior, tenure, year })` writes this board's
+headline and paragraph off the seasons before this one — the run of Junes in
+the national field ending now, a title, Omaha, a first year, a bad run — and
+rotates the generic lines by year so two Junes do not read the same. The
+contract lines (a renewal, an extension, the sack, a chair kept by the rule
+of the world) stay the review's own. `Review` carries `headline` now;
+`settleSeason` writes both onto the user's review, the opener reads them,
+and PROGRAM and the season report print the same paragraph.
+
+### 90.10 The opener survives a save
+
+"If I go outside the app while the starting of the season board card [is
+up] and then go back in, the board card no longer shows up and doesn't give
+you the option to accept the mandate." The opener was transient by design
+("a reload before reading loses the ceremony, never the facts"); a phone
+that reloads the page when it comes back to the app made that a card nobody
+could read. It is in the file beside the ask now (`SaveExtras.seasonOpener`),
+read back through `usableOpener`, and gone from the next save once accepted.
+
+### 90.11 The undrafted go on
+
+"Those players that end up signing somewhere else always end up coming back
+to coach; it could simply keep playing them there, move to another league in
+following years or climb their way to the show." The drafted man's climb is
+its own function now (`climb`), and `undraftedCareer` sends the few who sign
+somewhere small through summers that roll: an affiliated club signs him and
+he joins the climb from the bottom with his summers counted against him; or
+he moves on to another league; or he stays, a regular there now; or he hangs
+them up, and maybe coaches. Talent is read six points harsher than the
+draft's, because nobody took him. Over 1,500 undrafted seniors about a
+fifth sign somewhere; of those a few reach the big leagues and most hang
+them up within a few summers. The men who go home in June are as they were.
+
+### 90.12 A two-way man is priced on his better half
+
+"I had one who was a killer in pitching averaging 2.4 ERA and ended with a
+39-2 career record ... in his batting side he was average, .252 and 25
+homers, but the guy went undrafted." `visibleValue` read `overallOf`, which
+is the bat of anybody typed a hitter, and `seasonForm` read his batting
+line; the arm counted for nothing. The arm is priced the way a pitcher's is
+now, off `armValue` and his pitching line, and the better half is the board's
+number — not the sum, since a club takes him as one thing. The note he
+leaves as an alumnus carries the same better half, so his professional
+career is read off the side he was drafted for.
+
+### 90.13 A first summer, moved
+
+"Comments like moved up to single-A when the player just started their pro
+career make it sound like they came from another pro division." A promotion
+in the summer after the draft reads "Started at rookie ball and was moved up
+to single-A before the summer was out."
+
+### 90.14 Verified
+
+TypeScript clean; the full suite, with a new file (`tests/from-the-phone.test.ts`:
+the rest table, the board's words, the undrafted, a first summer, the letter's
+numbers, the two-way price), a new save test (`tests/opener-save.test.ts`),
+the store's planned move, and two restatements (`legacy.test.ts`'s undrafted
+survey, `pro-career.test.ts`'s All-Star floor, 0.03 → 0.02 on a pool whose
+two-way men are priced differently). In the browser on 5174: the retrain
+sheet in February (AT SEASON'S END → PLANNED · CANCEL, the plan written on
+the man), the dugout's pen with a tired arm greyed and explained, the
+regionals' thirty-six doors and a box behind one, the beat on the pinned
+button. Not on this desk: the back gesture, which has no edge swipe here.

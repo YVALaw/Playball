@@ -126,6 +126,10 @@ export interface LiveGame {
   /** Who is available off the bench and in the pen. */
   readonly benchAvailable: readonly Hitter[];
   readonly bullpenAvailable: readonly Arm[];
+  /** The pen arms already spent tonight, so the dugout can say so. */
+  readonly bullpenUsed: readonly Arm[];
+  /** Your man on the mound right now. */
+  readonly pitcherNow: Arm;
 }
 
 export interface LiveOptions extends SimOptions {
@@ -412,6 +416,8 @@ export function createLiveGame(
         (p) => p !== mine.pitcher && !mine.usedPen.includes(p),
       );
     },
+    get bullpenUsed() { return mine.usedPen; },
+    get pitcherNow() { return mine.pitcher; },
 
     submit(tactic) {
       if (over || !current) return;

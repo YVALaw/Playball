@@ -98,7 +98,11 @@ describe('a drafted man', () => {
     */
     const rate = starred.length / Math.max(1, reached.length);
     expect(rate, `${(100 * rate).toFixed(1)}% of big-leaguers were All-Stars`).toBeLessThan(0.20);
-    expect(rate).toBeGreaterThan(0.03);
+    // 0.02, not 0.03, since 2026-09-16: the survey's pool is priced by
+    // `visibleValue`, a two-way man's price moved with his arm (05 §90.12),
+    // and the men who reach the top level are a few dozen -- one All-Star
+    // fewer is two and a half points of this rate.
+    expect(rate).toBeGreaterThan(0.02);
     expect(mean(starred.map((l) => l.stars))).toBeLessThan(2.2);
     for (const l of starred) {
       expect(l.stars / l.show, 'an entire career of All-Star summers').toBeLessThan(0.85);

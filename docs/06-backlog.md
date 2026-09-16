@@ -3940,3 +3940,41 @@ patience, a first professional summer that reads as one.
 - **The desktop app's Browser pane freezes animation frames while hidden.**
   Front it (`tabs_select`) before sampling anything animated; recorded at
   `05` §89.2 after a quarter of an hour spent on a working animation.
+
+## AK. September 16, thirteen from the phone — what it left
+
+All thirteen fixed in one pass (`05` §90). Two things to watch, one to
+measure, and one decision recorded.
+
+### AK.1 To watch
+
+- **The back gesture, on the device.** Three real faults fixed (`05` §90.6)
+  and none of them watched on a phone, because the fault lives in what the
+  platform paints during an edge swipe and this desk has no edge swipe. The
+  three reads that would settle it: a card opened from a list, closed by
+  swipe, then the next swipe — does it land on the list's previous screen
+  without a flash of HOME; the opener → board → accept → swipe — does the
+  card stay gone; and any swipe — does the uncovered screen arrive still. If
+  a flash of HOME survives, the next suspect is the root entry's screenshot,
+  which the browser took at the session's first navigation and never again.
+- **The pen's rule reaches every bench.** `recoveryGap` is the day sim's as
+  well as the dugout's, so the country's relievers throw on consecutive
+  nights a little more often than they did. The calibration goldens and the
+  seasons guard held on the day; if a re-recording ever moves the pen's share
+  of outs, this is where it came from.
+
+### AK.2 To measure
+
+- **The undrafted abroad, over a long dynasty.** A fifth of undrafted seniors
+  sign somewhere, a handful of those reach the big leagues, most hang them up
+  inside a few summers (`05` §90.11). Read `HISTORY · ALUMNI` after fifteen
+  years for men who look like they never came home; the quit odds climb
+  eleven points a summer and cap at seventy-five, which is meant to end every
+  one of them by his thirties.
+
+### AK.3 Decided
+
+- **A season-long position plan is one winter of settling, the same as a
+  rail move.** It could have been argued the other way — a man told in
+  February has a whole spring to take ground balls — and it was not, because
+  the plan is a plan and the retraining is the winter's; the sheet says so.

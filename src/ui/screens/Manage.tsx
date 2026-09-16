@@ -38,7 +38,9 @@ import { LineScore } from '../LineScore.js';
  * WebGL gets the game rather than a placeholder.
  */
 import type { BallHit } from '../Diamond3D.js';
-import { appliedStrategy } from '../../engine/season.js';
+import { appliedStrategy, currentDay, injuryClock, recoveryGap } from '../../engine/season.js';
+import { available as fitToPlay } from '../../engine/depthChart.js';
+import { whyOut } from '../Needs.js';
 
 import { usePark } from '../park.js';
 import { Diamond } from '../Diamond.js';
@@ -135,6 +137,29 @@ export function Manage() {
   const [splash, setSplash] = useState<{ tick: number; text: string } | null>(null);
   // The 2D diamond, chosen in Settings → Display; read once, on the way in.
   const [flatField] = useState(() => readPrefs().field === '2d');
+  const userTeam = useDynasty((s) => s.userTeam);
+  /** The pen arms the dugout cannot call on tonight, and why. */
+  const restingPen = (): { id: string; name: string; note: string; rating: number; disabled: true }[] => {
+    const mine = season?.teams[userTeam];
+    if (!live || !season || !mine) return [];
+    const ready = new Set(live.bullpenAvailable.map((p) => p.id));
+    const used = new Set(live.bullpenUsed.map((p) => p.id));
+    const day = currentDay(season);
+    const clock = injuryClock(season);
+    return mine.team.bullpen
+      .filter((p) => !ready.has(p.id) && p.id !== live.pitcherNow.id)
+      .map((p) => {
+        const last = season.pitcherWorkload?.get(p.id);
+        const ago = last ? day - last.day : 0;
+        const back = last ? Math.max(1, recoveryGap(last.pitches) - ago) : 1;
+        const note = used.has(p.id) ? 'already pitched tonight'
+          : !fitToPlay(p, clock) ? whyOut(p, clock)
+            : last
+              ? `threw ${last.pitches} ${ago <= 1 ? 'last night' : `${ago} days ago`} · back in ${back} day${back === 1 ? '' : 's'}`
+              : 'not on tonight\'s card';
+        return { id: p.id, name: p.name, note, rating: overallOf(p), disabled: true as const };
+      });
+  };
   // The 3D park's chunk, or the patience for it. See `park.ts`.
   const { Park, patient } = usePark(!flatField);
   /*
@@ -1077,6 +1102,17 @@ export function Manage() {
       {modal && (
         <Picker
           title={modal === 'pinch' ? 'PINCH HITTER' : 'TO THE BULLPEN'}
+          /*
+            The whole pen, not the ready half of it.
+
+            The list was `bullpenAvailable`, which is the men on their rest,
+            and in a June bracket that plays every night that was two names
+            out of six with nothing to say where the other four were.
+            Reported 2026-09-16 as the pen "not showing all arms". The rest
+            are here, greyed, each with his reason: what he threw and when
+            he is back, that he has already pitched tonight, or the trainer's
+            room. The rule itself moved too (`recoveryGap`).
+          */
           // With the overall on it.
           //
           // Picking a reliever off a list of names is picking at random, which
@@ -1086,9 +1122,12 @@ export function Manage() {
             ? live.benchAvailable.map((h: Hitter) => ({
                 id: h.id, name: h.name, note: batLine(h, season?.batting.get(h.id)), rating: overallOf(h),
               }))
-            : live.bullpenAvailable.map((p) => ({
+            : [
+              ...live.bullpenAvailable.map((p) => ({
                 id: p.id, name: p.name, note: armLine(p, season?.pitching.get(p.id)), rating: overallOf(p),
-              }))}
+              })),
+              ...restingPen(),
+            ]}
           onPick={(id) => {
             if (modal === 'pinch') {
               const h = live.benchAvailable.find((x) => x.id === id);
@@ -1199,7 +1238,7 @@ function Picker(
   { title, rows, onPick, onClose }:
   {
     title: string;
-    rows: Array<{ id: string; name: string; note: string; rating: number }>;
+    rows: Array<{ id: string; name: string; note: string; rating: number; disabled?: boolean }>;
     onPick: (id: string) => void;
     onClose: () => void;
   },
@@ -1229,7 +1268,11 @@ function Picker(
               </div>
             )}
             {rows.map((r) => (
-              <button className="game-picker-row tap" key={r.id} type="button" onClick={() => onPick(r.id)}>
+              <button
+                className={`game-picker-row tap${r.disabled ? ' is-resting' : ''}`}
+                key={r.id} type="button" disabled={r.disabled === true}
+                onClick={() => { if (!r.disabled) onPick(r.id); }}
+              >
                 <span><strong>{r.name}</strong><small>{r.note}</small></span>
                 <b>{r.rating}</b>
               </button>

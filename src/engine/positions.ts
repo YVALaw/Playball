@@ -271,6 +271,12 @@ export interface Settling {
   movedFrom?: Position;
   /** The retraining never took: the residual stays, and the card says so. */
   stuck?: boolean;
+  /**
+   * A move chosen during the season, made at the roll. The spot is his from
+   * the winter on, exactly as a move chosen on the rail would be -- see
+   * `changePosition` in the store (05 §90.2).
+   */
+  retrainTo?: Position;
 }
 
 /** What a move costs on the day it happens, before any of it decays. */

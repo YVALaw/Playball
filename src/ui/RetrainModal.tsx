@@ -5,7 +5,10 @@
 // the retrain card in the moves panel. Asked for 2026-09-10: "leave it there
 // but open, so we can tap on it and it opens a modal showing us more
 // information about the positions the player can play at." The move itself
-// is the coach's, in the winter, on his own man; everybody else reads.
+// is the coach's, on his own man, any day of the year -- made now in the
+// winter, written down for the roll during the season (2026-09-16: "leave
+// this button available all year round but the outcome of it happening is
+// decided when the season ends"); everybody else reads.
 
 import { Modal } from './Modal.js';
 import { useDynasty } from '../state/store.js';
@@ -19,6 +22,10 @@ export function RetrainModal(
 ) {
   const changePosition = useDynasty((s) => s.changePosition);
   const winter = useDynasty((s) => s.phase) !== null;
+  // A plan written on the man re-renders the sheet through the version.
+  const version = useDynasty((s) => s.version);
+  void version;
+  const planned = (p as Hitter & { retrainTo?: Hitter['pos'] }).retrainTo;
   const promise = !promiseSpent(p.recruitPromise) ? p.recruitPromise : undefined;
   const promisedPos = promise?.kind === 'keepPosition' ? promise.promisedPos : undefined;
   const spots = retrainablePositions(p);
@@ -32,7 +39,9 @@ export function RetrainModal(
       lines={[canMove
         ? (winter
           ? 'A move is permanent. He spends the winter learning the spot and opens next season there, a step behind until it takes.'
-          : 'Position moves are made on the offseason rail, after the season ends. This is what a winter could make of him.')
+          : planned
+            ? `Planned: he finishes the season at ${home} and moves to ${planned} when it ends. Tap the plan to cancel it, or another spot to change it.`
+            : 'A move is permanent. Chosen now, it is made when the season ends: he spends the winter learning the spot and opens next season there, a step behind until it takes.')
         : 'What a winter could make of him, if he were yours to move.']}
       body={(
         <div className="retrain-list">
@@ -55,21 +64,17 @@ export function RetrainModal(
                 <strong>{Math.round(odds * 100)}%</strong>
                 {canMove ? (
                   <button
-                    type="button" className="tap" disabled={!winter}
-                    onClick={() => { changePosition(p.id, spot); onClose(); }}
+                    type="button"
+                    className={`tap${planned === spot ? ' is-planned' : ''}`}
+                    // In the winter the move is made and the sheet closes; in
+                    // season the plan is written and the sheet stays, showing
+                    // it. It read IN THE WINTER, greyed, for eleven months.
+                    onClick={() => { changePosition(p.id, spot); if (winter) onClose(); }}
                   >
-                    {/*
-                      A disabled control says what it is waiting for. Reported
-                      2026-09-12: "how does the retrain position work? When you
-                      tap on it it shows the available and likely but the move
-                      button is grayed out." The gate is real and deliberate —
-                      `changePosition` refuses outside the winter because the
-                      move is settled once, by the year roll's `settleIn` — and
-                      the sheet already says so at the top. It said nothing at
-                      the control, which is where somebody with his thumb on it
-                      is looking.
-                    */}
-                    {!winter ? 'IN THE WINTER' : breaks ? 'MOVE · BREAKS PROMISE' : 'MOVE'}
+                    {winter
+                      ? (breaks ? 'MOVE · BREAKS PROMISE' : 'MOVE')
+                      : planned === spot ? 'PLANNED · CANCEL'
+                        : breaks ? 'AT SEASON\'S END · BREAKS PROMISE' : 'AT SEASON\'S END'}
                   </button>
                 ) : <i />}
               </div>

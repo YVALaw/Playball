@@ -6,7 +6,22 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 15, 2026, at the end · **Branch:** `main` · **six
+**Last session:** September 16, 2026 · **Branch:** `main` · **thirteen from
+the phone** -- one message, thirteen reports, one pass (`05` §90): a
+reliever's short outing no longer costs him the next night and the dugout
+lists the whole pen with the resting men explained; the retrain door is
+open all year, a plan written in season and made at the roll; the
+postseason's pinned button takes a beat; the training letter prints whole
+numbers; a two-way man's LEGACY has both halves; three back-gesture faults
+fixed by reasoning and none watched on a device (`06` §AK.1); the hall's
+letter crosses the roll and the opener names the men; the regionals and
+the championship series open their boxes; the board's words know the year
+(`boardWords`); the opener survives a save; the undrafted who sign
+somewhere go on from there; a two-way man is drafted on his better half;
+a first summer's promotion reads as one. **Next:** the back gesture on the
+phone, three reads listed at `06` §AK.1; then the rest of the older list.
+
+*The night before:* **six
 from the phone** -- one message, six reports, one pass (`05` §89): the
 bench's second tap no longer opens a card (the hold is the one way); the
 recruiting filter is a dialog that grows out of its button and shrinks back
