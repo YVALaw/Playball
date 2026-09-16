@@ -20,6 +20,7 @@
 // number on the right is the one the tab is *about*. The eight column version
 // was a spreadsheet on a 390 pixel screen and the columns were 26 pixels wide.
 
+import { ipText } from '../format.js';
 import { useState } from 'react';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
@@ -183,7 +184,7 @@ export function Roster() {
         .map(({ p, line }) => ({
           ...rowFor(p),
           value: line && line.outs > 0
-            ? `${era(line).toFixed(2)} · ${inningsPitched(line).toFixed(1)} IP`
+            ? `${era(line).toFixed(2)} · ${ipText(inningsPitched(line))} IP`
             : '—',
         }));
 

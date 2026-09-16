@@ -3187,6 +3187,21 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   // path synchronous removes the artificial delay globally while primary-tab
   // moves through `go()` retain the broader transition.
   setScreen: (screen) => {
+    // The lineup gate holds the sub-nav too: it held `go` and the overlays
+    // and was walked around here (15 sD, closed 2026-09-16).
+    {
+      const st = get();
+      if (st.screen === 'lineup' && screen !== 'lineup' && handles(st.depth, 'lineups')) {
+        const team = st.season?.teams[st.userTeam]?.team;
+        if (team) {
+          const gaps = cardGaps(team.lineup);
+          if (gaps.missing.length > 0 || gaps.doubled.length > 0) {
+            set({ lineupGate: st.lineupGate + 1 });
+            return;
+          }
+        }
+      }
+    }
     // Same as `go`: a card this drops hands its entry to the screen it drops
     // it for; spent only when the screen does not move (05 §90.6).
     const cardOpen = get().selectedPlayer !== null || get().coachSeat !== null;

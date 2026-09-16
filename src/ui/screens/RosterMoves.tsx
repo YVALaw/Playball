@@ -177,7 +177,10 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
     scrolling' and the stale white ghost it left behind. Outside the scroller
     there is nothing to lag.
   */
-  const host = document.querySelector('.full-overlay') ?? document.querySelector('.app-frame');
+  // The TOP overlay: a card opened off a team card sits over another
+  // `.full-overlay`, and the first one is the one underneath (15 sD).
+  const overlays = document.querySelectorAll('.full-overlay');
+  const host = overlays[overlays.length - 1] ?? document.querySelector('.app-frame');
   if (!host) return null;
 
   return createPortal(

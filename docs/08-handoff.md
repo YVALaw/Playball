@@ -6,7 +6,16 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 16, 2026, later · **Branch:** `main` · **Version:** 0.9.5 · **nine
+**Last session:** September 16, 2026, last · **Branch:** `main` · **Version:** 0.9.5 · **the
+polish pass** -- `15` §D re-read line by line, twelve lines fixed (`05` §92:
+the sub-nav's lineup gate, box-score innings everywhere, a mute that
+downloads nothing, PLAY BALL once a game, the live play-by-play, the top
+overlay, Settings' radios, the smallest type, the disabled command, focus
+substitutes), one line found stale, one not a fault, and the rest -- rules
+and design, none a coach notices in a season -- listed at `06` §AM.
+**Next:** the release process, `06` §AK.4.
+
+*Earlier the same day:* **nine
 more from the phone** -- one pass (`05` §91): the pen set by hand keeps the
 coach's order and the top man closes; the back gesture sees every sheet
 through a registry (`state/backLayers.ts`) that `useDialogFocus` feeds and

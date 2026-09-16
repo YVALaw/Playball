@@ -12073,3 +12073,18 @@ third arm, then the by-hand note; the title card in gold; the positions
 sheet over a player card peeled first by `history.back()`, the card second,
 the route never moving. Not on this desk: the cabinet's NEW marks (this
 career has no achievement yet) and the phone's own gesture.
+
+## 92. The polish pass — **September 16 2026, last**
+
+The release audit's §D re-read line by line before the release commit, as
+§AK.4 asked. Fixed in the pass: the sub-nav honours the lineup gate
+(`setScreen` checks `cardGaps` the way `go` and the overlays do); innings
+print in the box score's notation everywhere (`ipText`: 12.2, never 12.7);
+a muted game downloads no samples; PLAY BALL is called once a game rather
+than once a visit to the dugout; the play-by-play is a live region; the
+player-management button reaches the top overlay; the save's name field
+has a name; Settings' pickers are radios to a screen reader (`Segmented
+kind="radio"`); the smallest type is 6.5 px; a disabled command sits at
+opacity .6; every field that strips its outline has a `:focus-visible`
+substitute. Verdicts on every other line are in `15` §D.1, and the ones
+that remain are rules or design, listed at `06` §AM.

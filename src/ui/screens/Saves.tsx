@@ -177,6 +177,7 @@ export function Saves() {
               {team.def.school}, {year}, {team.w}-{team.l} — under a name of your own.
             </div>
             <input
+              aria-label="A name for this save"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={`${team.def.school} ${year}`}

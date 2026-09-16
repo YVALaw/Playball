@@ -43,6 +43,9 @@ import { available as fitToPlay } from '../../engine/depthChart.js';
 import { whyOut } from '../Needs.js';
 
 import { usePark } from '../park.js';
+
+/** The game PLAY BALL has been called for. */
+let announcedGame: unknown = null;
 import { Diamond } from '../Diamond.js';
 import { Boundary } from '../Boundary.js';
 import { readPrefs } from '../../state/devicePrefs.js';
@@ -492,7 +495,9 @@ export function Manage() {
   const liveOn = !!live && !live.over;
   useEffect(() => {
     if (!liveOn) { crowdStop(); return undefined; }
-    sfx('playball', { gain: 0.7 });
+    // Once a game, not once a visit: leaving the dugout for the lineup and
+    // coming back played PLAY BALL again (15 sD).
+    if (announcedGame !== live) { announcedGame = live; sfx('playball', { gain: 0.7 }); }
     crowdStart();
     return () => crowdStop();
   }, [liveOn]);
@@ -861,7 +866,7 @@ export function Manage() {
           </section>
         )}
 
-        <section className="ballpark-log" ref={logRef}>
+        <section className="ballpark-log" ref={logRef} aria-live="polite">
           <div>
             <small>PLAY-BY-PLAY</small>
             <b>{d ? 'LIVE' : 'FINAL'}</b>

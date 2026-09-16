@@ -32,3 +32,13 @@ export function seasonDate(year: number, dayOffset: number): string {
 }
 
 export const pct = (v: number): string => v.toFixed(3).replace(/^0/, '');
+
+/**
+ * Innings pitched the way a box score writes them: 12.2 is twelve and two
+ * thirds, never 12.7. The cards, the roster and the team card printed the
+ * decimal fraction against the box score's notation (15 sD).
+ */
+export function ipText(innings: number): string {
+  const outs = Math.round(innings * 3);
+  return `${Math.floor(outs / 3)}.${outs % 3}`;
+}

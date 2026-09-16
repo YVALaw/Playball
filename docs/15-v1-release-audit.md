@@ -271,6 +271,48 @@ sheet counter each sheet holds while mounted, fed into `hasLayerToClose`.
 **P3** — comments, casing, dead props, one-line tidies — is listed in the
 audit's working notes and in §62's Appendix A; none of it reaches a player.
 
+### D.1 · The pass, September 16 2026
+
+Every line above re-read against the code, and each given a verdict.
+
+**Closed, before today or by the pass** (`05` §92):
+- The back gesture's sheet counter — built, `state/backLayers.ts` (§91.2).
+- The lineup gate walked around by the sub-nav — `setScreen` holds it now.
+- The player-management FAB portalling into the first overlay — the top one.
+- Innings in decimal thirds — `ipText`, box-score notation on the cards,
+  the roster and the team card.
+- Muting still downloading the samples — `preloadSfx` reads the pref.
+- PLAY BALL on every re-entry — once a game.
+- The play-by-play with no live region — `aria-live="polite"`.
+- The save-rename field without a label; the recruiting filter button
+  without a name (§89); Settings' pickers announced as tabs — `Segmented`
+  has a `kind="radio"` and Settings uses it.
+- The smallest type at 5.5 px — 6.5 px at eleven sites; the disabled
+  command at 2.05:1 — opacity .6.
+- Three controls stripping their outline — a `:focus-visible` substitute on
+  every field that does.
+- PLAY FOR CONTACT and the sacrifice fly (§66.3); the once-a-season argument
+  and the five session fields lost by a reload — in the save since §63 and
+  §90.10; the June box overwritten — a bracket game carries its own box now.
+- `color-scheme` — was declared after all; the line was stale.
+
+**Not a fault on re-reading:** the ten god-mode selects sit inside `<label>`
+elements whose text names them, which is a label.
+
+**Open, and each a rule or a design rather than a tidy** — carried to `06`
+§AM: the HOME RUN splash inside 2.6 s and the call buttons' gate; the
+tactic explanations living in a tooltip; the marker meshes and the crowd
+texture; the computer opponent never resting a regular in a game you manage;
+`finish()` and the half-inning in progress; the double elimination's rounds
+on one night and the championship's park; the walk-off on the bunt path, the
+computer never sacrificing on defence, and the unearned run on the
+third-out play; NOBODY IS ON HIM's zero threshold, two promises that cannot
+both be kept, `MAX_PER_RECRUIT`'s ceiling and the pitch verdicts' calibration;
+the loader's scalar validation and the god-mode conference swap; the
+meters inverted in the dark theme, `--yellow` as ink and `--you`'s dark cut,
+the eight font sizes past `--ts`; and the whole of the code-health list.
+None reaches a save or a rule of baseball a coach would notice in a season.
+
 ## E. Post-1.0 backlog
 
 **Booked as stages** (`07` stages 27–30): the rules of the world (injuries,

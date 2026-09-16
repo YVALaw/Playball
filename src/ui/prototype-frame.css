@@ -716,8 +716,9 @@
   color: var(--clay);
 }
 
+/* .6, not .45: a disabled command sat at 2.05:1 against the field (15 sD). */
 .primary-command:disabled,
-.secondary-command:disabled { opacity: .45; }
+.secondary-command:disabled { opacity: .6; }
 
 .command-note {
   margin: 0 0 8px;
@@ -6563,7 +6564,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .retention-offer-board > header strong { display:block; margin-top:4px; font:700 calc(9px * var(--ts))/1.4 var(--body); }
 .retention-investment { display:grid; grid-template-columns:58px minmax(0,1fr) 58px; gap:8px; align-items:center; margin-top:10px; }
 .retention-investment span { text-align:center; }
-.retention-investment small { display:block; color:var(--dim); font:700 calc(5.5px * var(--ts)) var(--mono); }
+.retention-investment small { display:block; color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); }
 .retention-investment strong { display:block; margin-top:2px; font:800 calc(20px * var(--ts)) var(--display); }
 .retention-investment input { width:100%; accent-color:var(--clay); }
 .retention-quick-picks { display:flex; gap:5px; justify-content:center; margin-top:7px; }
@@ -6595,7 +6596,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .portal-sign-money { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:9px 10px 0; border:1px solid var(--line); background:var(--line); gap:1px; }
 .portal-sign-money span { padding:9px 6px; background:var(--paper); text-align:center; }
 .portal-sign-money small,.portal-sign-money strong,.portal-sign-money em { display:block; }
-.portal-sign-money small { color:var(--dim); font:700 calc(5.5px * var(--ts)) var(--mono); }
+.portal-sign-money small { color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); }
 .portal-sign-money strong { margin-top:2px; font:800 calc(19px * var(--ts)) var(--display); }
 .portal-sign-money em { color:var(--dim); font:500 calc(6.5px * var(--ts)) var(--body); font-style:normal; }
 .portal-sign-warning { margin:8px 10px 0; color:var(--dim); font:500 calc(8px * var(--ts))/1.4 var(--body); }
@@ -6609,7 +6610,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .recruit-card.targeted { background:var(--soft); }
 .recruit-card-rank { grid-area:rank; text-align:center; }
 .recruit-card-rank small,.recruit-card-rank strong { display:block; }
-.recruit-card-rank small { color:var(--dim); font:700 calc(5.5px * var(--ts)) var(--mono); }
+.recruit-card-rank small { color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); }
 .recruit-card-rank strong { margin-top:2px; font:800 calc(14px * var(--ts)) var(--display); }
 .recruit-card-face { grid-area:face; }
 .recruit-card-copy { grid-area:copy; min-width:0; }
@@ -6619,7 +6620,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .recruit-card-copy em { margin-top:3px; color:var(--clay); font:700 calc(8px * var(--ts)) var(--body); font-style:normal; }
 .recruit-card-read { grid-area:read; display:grid; grid-template-columns:1fr 1fr; gap:5px; }
 .recruit-card-read i { display:flex; align-items:baseline; justify-content:space-between; gap:6px; padding:5px 7px; background:var(--wash); font-style:normal; }
-.recruit-card-read small { color:var(--dim); font:700 calc(5.5px * var(--ts)) var(--mono); }
+.recruit-card-read small { color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); }
 .recruit-card-read strong { font:800 calc(10px * var(--ts)) var(--body); }
 .recruit-card-status { grid-area:status; min-width:70px; text-align:right; }
 .recruit-card-status strong,.recruit-card-status small { display:block; }
@@ -6640,13 +6641,13 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .prospect-sheet-name p { margin:4px 0 0; color:var(--dim); font:600 calc(8px * var(--ts)) var(--body); }
 .prospect-sheet-standing { min-width:0; padding:7px; background:var(--wash); text-align:center; }
 .prospect-sheet-standing small,.prospect-sheet-standing strong { display:block; }
-.prospect-sheet-standing small { color:var(--dim); font:700 calc(5.5px * var(--ts)) var(--mono); }
+.prospect-sheet-standing small { color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); }
 .prospect-sheet-standing strong { margin-top:3px; font:800 calc(7.5px * var(--ts))/1.15 var(--body); }
 .prospect-sheet-snapshot { flex:none; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border-bottom:1px solid var(--line); }
 .prospect-sheet-snapshot span { min-width:0; padding:7px 8px; }
 .prospect-sheet-snapshot span + span { border-left:1px solid var(--line); }
 .prospect-sheet-snapshot small,.prospect-sheet-snapshot strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.prospect-sheet-snapshot small { color:var(--dim); font:700 calc(5.5px * var(--ts)) var(--mono); }
+.prospect-sheet-snapshot small { color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); }
 .prospect-sheet-snapshot strong { margin-top:2px; font:800 calc(8.5px * var(--ts)) var(--body); }
 .prospect-sheet-tabs { flex:none; padding:6px 10px; border-bottom:1px solid var(--line); }
 .prospect-sheet-body { flex:1; min-height:0; overflow-y:auto; padding:10px 12px 16px; }
@@ -6778,7 +6779,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .recruit-decision-note strong { margin-top:3px; font:800 calc(11px * var(--ts)) var(--body); }
 .recruit-decision-note p { margin:4px 0 0; color:var(--dim); font:500 calc(8.5px * var(--ts))/1.4 var(--body); }
 .recruit-pipeline-badge { display:inline-flex; flex-direction:column; margin:2px 0 8px; padding:7px 9px; border:1px solid color-mix(in srgb,var(--win) 35%,var(--line)); background:color-mix(in srgb,var(--win) 7%,var(--paper)); }
-.recruit-pipeline-badge small { color:var(--dim); font:700 calc(5.5px * var(--ts)) var(--mono); letter-spacing:.1em; }
+.recruit-pipeline-badge small { color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.1em; }
 .recruit-pipeline-badge strong { margin-top:2px; color:var(--win); font:800 calc(8px * var(--ts)) var(--body); }
 .prospect-sheet-body .prospect-tool-report { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; border:0; }
 .prospect-sheet-body .prospect-tool-report > div { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:5px; min-height:72px; padding:9px; border:1px solid var(--line); background:var(--paper); }
@@ -6802,7 +6803,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
   border:1px solid var(--line); background:var(--paper); box-shadow:0 10px 22px rgba(0,0,0,.045);
 }
 .bracket-column-head { flex:none; padding:8px 9px; border-top:3px solid var(--clay); border-bottom:1px solid var(--line); background:var(--wash); }
-.bracket-column-head small { display:block; color:var(--dim); font:700 calc(5.5px * var(--ts)) var(--mono); letter-spacing:.1em; }
+.bracket-column-head small { display:block; color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.1em; }
 .bracket-column-head strong { display:block; margin-top:2px; color:var(--ink); font:800 calc(11px * var(--ts)) var(--display); text-transform:uppercase; }
 .bracket-column-slots { flex:1; display:flex; flex-direction:column; justify-content:space-around; gap:9px; padding:9px; }
 .bracket-slot-card {
@@ -6844,7 +6845,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .june-standing-seal { display:grid; place-items:center; width:40px; height:40px; border-radius:50%; background:var(--wash); color:var(--alert); font:800 calc(17px * var(--ts)) var(--display); }
 .june-standing-modern.unbeaten .june-standing-seal { color:var(--win); }
 .june-standing-copy { min-width:0; }
-.june-standing-copy small { display:block; color:var(--dim); font:700 calc(5.5px * var(--ts)) var(--mono); letter-spacing:.1em; }
+.june-standing-copy small { display:block; color:var(--dim); font:700 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.1em; }
 .june-standing-copy strong { display:block; margin-top:2px; font:800 calc(11px * var(--ts)) var(--body); }
 .june-standing-copy p { margin:3px 0 0; color:var(--dim); font:500 calc(7.5px * var(--ts))/1.35 var(--body); }
 .june-standing-record { padding:7px; background:var(--wash); text-align:center; }
@@ -7058,7 +7059,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 }
 .recruit-filter-toggle.active { border-color:var(--clay); background:var(--soft); }
 .recruit-filter-toggle span small {
-  display:block; color:var(--dim); font:800 calc(5.5px * var(--ts)) var(--mono); letter-spacing:.12em;
+  display:block; color:var(--dim); font:800 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.12em;
 }
 .recruit-filter-toggle span strong {
   display:block; margin-top:2px; font:800 calc(11px * var(--ts)) var(--body); letter-spacing:.04em;
@@ -8008,7 +8009,7 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 @media (max-width: 370px) {
   .lineup-bench .player-row { grid-template-columns: 8px 28px minmax(58px,1fr) 26px 26px 26px 8px; column-gap:4px; }
   .lineup-bench .player-name small { font-size: calc(7px * var(--ts)); }
-  .bench-season-stat small { font-size: calc(5.5px * var(--ts)); }
+  .bench-season-stat small { font-size: calc(6.5px * var(--ts)); }
   .bench-season-stat b { font-size: calc(7.5px * var(--ts)); }
 }
 
@@ -8459,3 +8460,11 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 
 /* Tonight's ball and the closer, on the rotation and the pen (Lineup). */
 .rotation-tonight { color: var(--win); font-weight: 800; }
+
+/* Every field that strips its outline gets the same substitute (15 sD). */
+.career-name-edit input:focus-visible,
+.coach-builder-name input:focus-visible,
+.search-row input:focus-visible,
+.recruit-location-filter select:focus-visible,
+.god-field input:focus-visible,
+.god-field select:focus-visible { box-shadow: inset 0 0 0 2px var(--clay); }

@@ -58,6 +58,7 @@ function Choice<T extends string | number>(
     <div className="setting-choice setting-choice-card" aria-disabled={disabled}>
       <strong>{label}</strong>
       <Segmented
+        kind="radio"
         label={label}
         value={String(value)}
         onChange={(v) => {

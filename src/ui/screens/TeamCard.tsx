@@ -41,7 +41,7 @@ import { teamReads } from '../../engine/tendencies.js';
 import {
   battingAverage, era, inningsPitched, regularRecord, rpiOrder,
 } from '../../engine/season.js';
-import { pct, seasonDate } from '../format.js';
+import { pct, seasonDate, ipText } from '../format.js';
 import type {Arm, Hitter, Pitcher } from '../../engine/types.js';
 import type { SeasonState } from '../../engine/season.js';
 
@@ -698,7 +698,7 @@ function ArmRow(
       slot={p.role}
       ovr={overallOf(p)}
       a={line && line.outs > 0 ? era(line).toFixed(2) : '—'}
-      b={line ? inningsPitched(line).toFixed(1) : '0.0'}
+      b={line ? ipText(inningsPitched(line)) : '0.0'}
       onClick={onClick}
     />
   );

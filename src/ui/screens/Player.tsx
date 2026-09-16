@@ -60,7 +60,7 @@ import {
 } from '../../engine/season.js';
 import type { BoxScore, CareerYear, SeasonState } from '../../engine/season.js';
 import type { Departure } from '../../engine/progression.js';
-import { pct, seasonDate } from '../format.js';
+import { pct, seasonDate, ipText } from '../format.js';
 import { isTwoWay } from '../../engine/types.js';
 import type {
   ClassYear, Hitter, Pitcher, PlayerId, Position, Player as AnyPlayer,
@@ -1405,7 +1405,7 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
         {isPitcher && pit ? (
           <>
             <Metric label="ERA" value={era(pit).toFixed(2)} note={`${pit.w}-${pit.l} RECORD`} />
-            <Metric label="INNINGS" value={inningsPitched(pit).toFixed(1)} note={`${pit.sv} SAVES`} />
+            <Metric label="INNINGS" value={ipText(inningsPitched(pit))} note={`${pit.sv} SAVES`} />
             <Metric label="STRIKEOUTS" value={String(pit.k)} note={`${pit.bb} WALKS`} />
           </>
         ) : bat ? (
@@ -1430,7 +1430,7 @@ function ThisSeason({ p }: { p: AnyPlayer }) {
           <SectionHeading kicker="AND ON THE MOUND" title="The same season, pitched" />
           <section className="season-line">
             <Metric label="ERA" value={era(pit).toFixed(2)} note={`${pit.w}-${pit.l} RECORD`} />
-            <Metric label="INNINGS" value={inningsPitched(pit).toFixed(1)} note={`${pit.sv} SAVES`} />
+            <Metric label="INNINGS" value={ipText(inningsPitched(pit))} note={`${pit.sv} SAVES`} />
             <Metric label="STRIKEOUTS" value={String(pit.k)} note={`${pit.bb} WALKS`} />
           </section>
         </>

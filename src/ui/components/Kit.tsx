@@ -156,7 +156,7 @@ export function Rating({ label, value }: { label: string; value: number }) {
 
 /** The tab strip. Scrolls when there are more options than there is room. */
 export function Segmented<T extends string>(
-  { value, options, onChange, label, glow, wrap = false }:
+  { value, options, onChange, label, glow, wrap = false, kind = 'tabs' }:
   {
     value: T;
     options: ReadonlyArray<{ value: T; label: string; alert?: boolean }>;
@@ -166,13 +166,15 @@ export function Segmented<T extends string>(
     glow?: T;
     /** Wrap onto more rows instead of scrolling: a strip with more options than a phone is wide. */
     wrap?: boolean;
+    /** What a screen reader is told: tabs that switch a view, or radios that set a value (15 sD). */
+    kind?: 'tabs' | 'radio';
   },
 ) {
   // The fill slides to the chosen segment rather than teleporting — see
   // slide.ts for the mechanism and the request that asked for it globally.
   const ref = useSlide<HTMLDivElement>();
   return (
-    <div ref={ref} className={wrap ? 'segmented wrap' : 'segmented'} role="tablist" aria-label={label}>
+    <div ref={ref} className={wrap ? 'segmented wrap' : 'segmented'} role={kind === 'radio' ? 'radiogroup' : 'tablist'} aria-label={label}>
       {options.map((option) => (
         <button
           className={[
@@ -181,9 +183,9 @@ export function Segmented<T extends string>(
           ].filter(Boolean).join(' ')}
           key={option.value}
           type="button"
-          role="tab"
+          role={kind === 'radio' ? 'radio' : 'tab'}
           data-guide={`seg-${String(option.value)}`}
-          aria-selected={value === option.value}
+          {...(kind === 'radio' ? { 'aria-checked': value === option.value } : { 'aria-selected': value === option.value })}
           onClick={() => onChange(option.value)}
         >{option.label}{option.alert && <i className="segmented-alert" aria-label="needs attention" />}</button>
       ))}

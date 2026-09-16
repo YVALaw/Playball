@@ -111,6 +111,9 @@ function load(name: SfxName): Promise<AudioBuffer | null> {
  * entire pack is ~750 KB and it decodes once.
  */
 export function preloadSfx(): void {
+  // A muted game fetches nothing: 820 KB of samples for a player who asked
+  // for silence (15 sD).
+  if (!readPrefs().sound) return;
   for (const name of Object.keys(FILE) as SfxName[]) void load(name);
 }
 

@@ -4043,3 +4043,31 @@ the release audit prescribed (`15` §D), which closes that audit line.
 - **The name pool moved the draws** (`05` §91.7): three seeded fixtures
   restated, the goldens re-recorded. Anybody adding names next time should
   expect the same and append at the foot.
+
+## AM. September 16, the polish pass — what stays open
+
+Re-read from `15` §D with each line given a verdict (`15` §D.1). These are
+the lines that stay open, each a rule or a design pass rather than a tidy,
+none of which reaches a save or a rule of baseball a coach would notice in
+a season:
+
+- **The dugout's edges:** the HOME RUN splash inside 2.6 s; the call buttons
+  unlocking before the field finishes drawing (`playPlan.done`); tactic
+  explanations only in a tooltip; six meshes a marker and the crowd texture
+  never disposed.
+- **The computer's game:** it never rests a regular in a game you manage;
+  `finish()` does not hand over the half-inning in progress; it never
+  sacrifices while the human is on defence.
+- **June's calendar:** two or three double-elimination rounds on one night;
+  the championship series entirely at bracket A's park.
+- **Three scorer's rules:** the walk-off on the bunt path; a run scoring on
+  the third-out play charged unearned.
+- **Recruiting's edges:** NOBODY IS ON HIM's zero threshold; two promises
+  that cannot both be kept; `MAX_PER_RECRUIT` against the real weekly
+  ceiling; the four pitch verdicts calibrated on the top sixty.
+- **Saves:** scalar validation in the loader; the god-mode conference swap
+  in the next-spring window.
+- **Theme:** three meters and the settings switches inverted in the dark
+  theme; `--yellow` as ink on light surfaces; `--you`'s dark cut; eight font
+  sizes past `--ts`.
+- **Code health:** the whole of `15` §D's last block.
