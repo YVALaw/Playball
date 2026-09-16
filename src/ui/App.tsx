@@ -12,7 +12,10 @@
 
 import { leagueLabel } from '../engine/leagueNames.js';
 import { rulesOf } from '../engine/season.js';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  backLayerCount, newestStoreLayer, peelBackLayer, stampLayer, subscribeBackLayers, topBackLayer, unstampLayer,
+} from '../state/backLayers.js';
 import { Modal } from './Modal.js';
 import { uniquePlayers } from '../engine/types.js';
 import { applyTeamAccent } from './accent.js';
@@ -137,6 +140,7 @@ export function App() {
     if (typeof window !== 'undefined' && next !== teamCardNow.current) {
       window.dispatchEvent(new CustomEvent(next === null ? 'playball:history-consume' : 'playball:history-checkpoint',
         next === null ? { detail: { count: 1 } } : undefined));
+      if (next === null) unstampLayer('teamCard'); else stampLayer('teamCard');
     }
     setTeamCardRaw(next);
   }, []);
@@ -499,6 +503,13 @@ function AppBody(
       s.nudgeCard();
       return 'swallowed';
     }
+    /*
+      A sheet the screen holds itself -- a box score, the dugout picker, a
+      prospect's file, the June lineup card, a confirm -- goes first when it
+      is newer than anything the store holds, which is the order the coach
+      opened them in (05 §91.2, `state/backLayers.ts`).
+    */
+    if (topBackLayer() > newestStoreLayer() && peelBackLayer()) return 'peeled';
     // The god-mode sheet sits over the player card it may have been opened
     // from, so it goes first.
     if (s.godStack.length > 0) { s.closeGod(); return 'peeled'; }
@@ -569,7 +580,9 @@ function AppBody(
   const coachOpen = useDynasty((s) => s.coachSeat !== null);
   const blocked = useDynasty(blockingCardUp);
   const godOpen = useDynasty((s) => s.godStack.length > 0);
+  const localLayers = useSyncExternalStore(subscribeBackLayers, backLayerCount, backLayerCount);
   const hasLayer = hasLayerToClose({
+    localLayers,
     blocked, godOpen, playerOpen: selectedPlayer !== null, coachOpen, teamCardOpen: teamCard !== null,
     overlayOpen: overlay !== null, routeBackAvailable: !atStart && routeCareer.current === loadedSlot && routeTrail.current.length > 0, tab, screen,
   });

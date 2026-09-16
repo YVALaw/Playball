@@ -154,7 +154,7 @@ night after a short outing, the retrain door open all year, the board's words
 knowing the year, the regionals' box scores, the undrafted who go on.
 
 The engine is calibrated multi-seed to the modern NCAA D1 environment — .280 /
-.384 / .438, a home run a game, 6.73 runs — and **1,566 tests across 92 files**,
+.384 / .438, a home run a game, 6.73 runs — and **1,574 tests across 93 files**,
 from 1,369 across 77 at the 0.8.0 line, guard it: determinism goldens,
 calibration as a regression test, a baseball-correctness suite for the scorer's
 rules, and a concurrency suite pinning the store's double-press guards.

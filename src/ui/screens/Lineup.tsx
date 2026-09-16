@@ -32,6 +32,7 @@ import { isTwoWay, uniquePlayers } from '../../engine/types.js';
 import { captainOf } from '../../engine/captains.js';
 import {
   battingAverage, era, inningsPitched, injuryClock, seriesGames,
+  restedFirst, closerFrom, startableSlot, currentDay, shortRest, restDays, recoveryGap,
 } from '../../engine/season.js';
 import { handles } from '../../state/depth.js';
 import { available, cardGaps } from '../../engine/depthChart.js';
@@ -90,6 +91,8 @@ export function Lineup() {
   const promoteArm = useDynasty((s) => s.promoteArm);
   const openPlayer = useDynasty((s) => s.openPlayer);
   const autoLineup = useDynasty((s) => s.autoLineup);
+  const swapPen = useDynasty((s) => s.swapPen);
+  const myBracket = useDynasty((s) => s.myBracket);
   const keepCover = useDynasty((s) => s.keepCover);
   const team = useUserTeam();
   const [picked, setPicked] = useState<number | null>(null);
@@ -362,6 +365,13 @@ export function Lineup() {
       setPickedPen(null);
       return;
     }
+    // Two pen arms trade places: the order is the coach's from then on
+    // (2026-09-16, "ability to manually change the bullpen rotation").
+    if (pickedPen !== null && pickedPen !== id) {
+      swapPen(pickedPen, id);
+      setPickedPen(null);
+      return;
+    }
     setPickedPen(pickedPen === id ? null : id);
   };
 
@@ -373,6 +383,29 @@ export function Lineup() {
     marks the row instead, and says who it is underneath, which is the question
     the rail is actually asking.
   */
+  /*
+    Tonight's ball, said on the row.
+
+    Reported 2026-09-16 from a title game: "I changed the rotation to have
+    him pitch that night but the game still picked the one it previously
+    had." Two things were true. The managed bracket game read the wrong
+    clock, which is fixed in the store; and nothing on this screen ever said
+    which slot pitches next or that an arm on short rest is walked past.
+    The nominal slot comes off the schedule in season and off the bracket's
+    appearance count in June -- the same arithmetic the game uses -- and
+    `startableSlot` says who actually gets the ball (05 §91.3).
+  */
+  const dayNow = currentDay(season);
+  const clockNow = injuryClock(season);
+  const nominalSlot: number | null = myBracket
+    ? ((myBracket.state as { appearances?: Map<number, number> }).appearances?.get(team.index) ?? 0) % 3
+    : season.schedule[season.dayIndex]?.games
+      .find((g) => g.home === team.index || g.away === team.index)?.slot ?? null;
+  const tonightSlot = nominalSlot === null ? null
+    : startableSlot(season, team.team, nominalSlot, dayNow, clockNow);
+  const penTonight = restedFirst(season, team);
+  const closerTonight = closerFrom(penTonight, team.team.penByHand);
+
   const atSpot = spot === null ? -1 : order.findIndex((p) => p.pos === spot);
   const manAtSpot = atSpot >= 0 ? order[atSpot] : null;
 
@@ -675,6 +708,14 @@ export function Lineup() {
                   {armValue(p)} OVR
                   {line && line.outs > 0 ? ` · ${era(line).toFixed(2)}` : ''}
                   {hurt && <b className="bench-out"> · ✚ {whyOut(p, injuryClock(season))}</b>}
+                  {!hurt && tonightSlot === i && (
+                    <b className="rotation-tonight"> · TONIGHT{shortRest(season, p, dayNow) ? ', ON SHORT REST' : ''}</b>
+                  )}
+                  {!hurt && nominalSlot === i && tonightSlot !== i && (() => {
+                    const last = season.pitcherWorkload?.get(p.id);
+                    const back = last ? Math.max(1, recoveryGap(last.pitches) - restDays(season, p, dayNow)) : 1;
+                    return <b className="bench-out"> · his slot tonight, walked past on short rest · back in {back} day{back === 1 ? '' : 's'}</b>;
+                  })()}
                 </small>
                 <i className="drag">{on ? <SewingPinIcon /> : null}</i>
               </button>
@@ -684,6 +725,11 @@ export function Lineup() {
         <p className="selection-note">
           <SewingPinIcon /> Friday opens every series; MID takes the twelve
           midweeks — {midweekInnings.toFixed(0)} innings so far.
+        </p>
+        <p className="selection-note">
+          {team.team.rotationByHand
+            ? 'Your order stands: the slot\'s man starts if he is fit and has had two nights, short rest or not, with fewer pitches in him. AUTO LINEUP hands the walk back.'
+            : 'An arm on short rest is walked past for the next fit one. Move a man by hand and your order stands, short rest and all.'}
         </p>
 
         {/* The pen. Who comes IN tonight stays a game-night decision on the
@@ -707,11 +753,13 @@ export function Lineup() {
           title={pickedArm !== null
             ? 'Tap an arm to hand him the ball'
             : pickedPen !== null
-              ? 'Now tap the day he starts'
-              : 'The rest of the staff'}
+              ? 'Tap a day he starts, or an arm to swap places'
+              : team.team.penByHand
+                ? 'Your order: the top man closes'
+                : 'Rested first; tap two arms to set your own order'}
         />
         <section className="rotation-list">
-          {team.team.bullpen.map((p) => {
+          {team.team.bullpen.map((p, idx) => {
             const line = season.pitching.get(p.id);
             const ip = line ? inningsPitched(line) : 0;
             const hurt = !available(p, injuryClock(season));
@@ -731,6 +779,9 @@ export function Lineup() {
                 <span>{p.role}</span>
                 <strong>{p.name}</strong>
                 <small>
+                  {closerTonight?.id === p.id
+                    ? <b className="rotation-tonight">CLOSER · </b>
+                    : team.team.penByHand ? `#${idx + 1} · ` : ''}
                   {armValue(p)} OVR
                   {line && line.outs > 0
                     ? ` · ${era(line).toFixed(2)} · ${ip.toFixed(0)} IP`
@@ -742,6 +793,11 @@ export function Lineup() {
             );
           })}
         </section>
+        <p className="selection-note">
+          {team.team.penByHand
+            ? 'Your order. The top man is held for the ninth; the rest come in from the top, the tired and the hurt skipped. AUTO LINEUP hands the order back to rest.'
+            : 'Tonight\'s order is by rest, the best rested arm held for the ninth. Tap one arm and then another to set your own.'}
+        </p>
 
         {/*
           THE TRAINER'S ROOM.

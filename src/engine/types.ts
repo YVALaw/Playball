@@ -387,6 +387,17 @@ export interface Team {
   rotation: Arm[];
   bullpen: Arm[];
   bench: Hitter[];
+  /**
+   * The coach set the pen's order by hand (2026-09-16): the top man closes
+   * and the rest come in from the top, the tired and the hurt filtered out
+   * but nobody re-sorted. AUTO clears it and the rest order returns.
+   */
+  penByHand?: boolean;
+  /**
+   * The coach set the rotation by hand: the slot's man starts if he is fit
+   * and has had two nights, short rest or not. AUTO clears it.
+   */
+  rotationByHand?: boolean;
   quality: number;
 }
 

@@ -525,7 +525,7 @@ The release process, stage 19 (`07`):
 
 ### K.1 · Re-read September 16 2026
 
-The suite stands at 92 files and 1,566 tests, from 66 and 1,242 at this
+The suite stands at 93 files and 1,574 tests, from 66 and 1,242 at this
 audit; the type check is clean; the version is 0.9.5. §D was not re-audited
 line by line since September 8, and it should be before the release commit;
 two of its lines are known closed on the way (the once-a-season argument with

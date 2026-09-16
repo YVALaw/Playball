@@ -342,6 +342,16 @@ const ABROAD: readonly { level: string; place: string; line: string }[] = [
 export const COACHING_LEVEL = 'COACHING';
 
 /**
+ * The seasons a man actually played for money. The rows a career holds
+ * include the one that says he went home and the one that says he coaches;
+ * a card that counted them read "1 pro year" for a man who never played a
+ * professional game (2026-09-16).
+ */
+export function proSeasons(rows: readonly { level: string }[]): number {
+  return rows.filter((r) => r.level !== 'HOME' && r.level !== COACHING_LEVEL).length;
+}
+
+/**
  * What he does once he is the one teaching it.
  *
  * Split by how far he got, because that is what somebody is hiring: the man
@@ -451,6 +461,13 @@ function climb(
   let level = startLevel;
   /** Summers at the level he is standing on, so a repeat reads as one. */
   let atLevel = 1;
+  /**
+   * Last summer was an All-Star's, an MVP's or a Gold Glove's. Nobody is
+   * released off that -- reported 2026-09-16, "an alumni became an all star
+   * the previous year and released on the next" -- so the wash-out roll
+   * skips the year after one.
+   */
+  let starred = false;
 
   for (let y = from; y <= throughYear; y++) {
     const age = y - from + 1 + before;
@@ -469,7 +486,7 @@ function climb(
       knobs are coupled and have to move together. See `settled`.
     */
     const washPct = Math.max(4, 16 + age * 3.2 - talent - level * 4);
-    if (h % 100 < washPct) {
+    if (!starred && h % 100 < washPct) {
       rows.push({
         year: y,
         level: LEVELS[level]!,
@@ -557,6 +574,7 @@ function climb(
     if (level < LEVELS.length - 1 && (h >> 8) % 100 < movePct) {
       level++;
       atLevel = 1;
+      starred = false;
       const called = level === LEVELS.length - 1;
       rows.push({
         year: y,
@@ -577,13 +595,11 @@ function climb(
       // already spoken for above, and a fifth read of the same number is how
       // the frozen-roll fault got in.
       const flavour = hash(`${id}:pro:${y}:summer`);
-      rows.push({
-        year: y,
-        level: LEVELS[level]!,
-        line: level === LEVELS.length - 1
-          ? bigLeagueSummer(flavour, talent, age)
-          : minorSummer(LEVELS[level]!, atLevel, age === 1),
-      });
+      const line = level === LEVELS.length - 1
+        ? bigLeagueSummer(flavour, talent, age)
+        : minorSummer(LEVELS[level]!, atLevel, age === 1);
+      rows.push({ year: y, level: LEVELS[level]!, line });
+      starred = /All-Star|MVP|Gold Glove/.test(line);
     }
   }
   return rows;

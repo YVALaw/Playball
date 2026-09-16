@@ -2042,6 +2042,16 @@ export function startableSlot(
 ): number {
   const rot = team.rotation;
   if (rot.length === 0) return slot;
+  /*
+    A rotation set by hand is the coach's call (2026-09-16: "I changed the
+    rotation to have him pitch that night but the game still picked the one
+    it previously had"): the slot's man starts if he is fit and has had two
+    nights, short rest or not -- a title game is exactly when a manager
+    starts his ace on three days. The game charges him for it (`shortRest`,
+    05 §91.3). AUTO clears the flag and the walk below returns.
+  */
+  const named = rot[slot];
+  if (team.rotationByHand && named && available(named, clock) && restDays(season, named, day) >= 2) return slot;
   for (let i = 0; i < rot.length; i++) {
     const at = (slot + i) % rot.length;
     const arm = rot[at];
@@ -2061,6 +2071,19 @@ export function startableSlot(
   return best;
 }
 
+/** Days since an arm's last outing, or a large number for an arm without one. */
+export function restDays(season: SeasonState, arm: Arm, day: number): number {
+  const last = season.pitcherWorkload?.get(arm.id);
+  return last ? day - last.day : 999;
+}
+
+/** True when an arm starts before the rest his last outing asked for. */
+export function shortRest(season: SeasonState, arm: Arm | undefined, day: number): boolean {
+  if (!arm) return false;
+  const last = season.pitcherWorkload?.get(arm.id);
+  return last !== undefined && day - last.day < recoveryGap(last.pitches);
+}
+
 /**
  * The best arm a pen has available tonight, for the ninth.
  *
@@ -2069,8 +2092,10 @@ export function startableSlot(
  * ninth of a one-run game is the one time a manager does not care who is
  * rested, and the rest order below already spreads the ordinary innings.
  */
-export function closerFrom(pen: readonly Arm[]): Arm | undefined {
+export function closerFrom(pen: readonly Arm[], byHand = false): Arm | undefined {
   if (pen.length < 2) return undefined;
+  // A pen set by hand names its own closer: the top man (05 §91.1).
+  if (byHand) return pen[0];
   return [...pen].sort((a, b) => armValue(b) - armValue(a))[0];
 }
 
@@ -2085,6 +2110,13 @@ export function restedFirst(season: SeasonState, team: TeamRecord): Arm[] {
   const pen = ready.length > 0
     ? ready
     : [...team.team.bullpen].filter((p) => available(p, clock));
+  /*
+    The coach's order, when he set one (2026-09-16, "ability to manually
+    change the bullpen rotation"): the top man closes and the rest come in
+    from the top, the tired and the hurt filtered out but nobody re-sorted.
+    AUTO clears the flag and the rest order below returns (05 §91.1).
+  */
+  if (team.team.penByHand) return pen;
   return pen.sort((a, b) => {
     const wa = season.pitcherWorkload?.get(a.id);
     const wb = season.pitcherWorkload?.get(b.id);
@@ -2191,15 +2223,20 @@ export function playGame(
   // cannot disagree about who is even available tonight.
   const homePen = restedFirst(season, home);
   const awayPen = restedFirst(season, away);
-  const homeClose = closerFrom(homePen);
-  const awayClose = closerFrom(awayPen);
+  const homeClose = closerFrom(homePen, home.team.penByHand);
+  const awayClose = closerFrom(awayPen, away.team.penByHand);
 
   const keepReplay = opts.capture === true
     || season.captureBoxFor === homeIndex || season.captureBoxFor === awayIndex;
+  const homeStart = startableSlot(season, home.team, opts.homeSlot ?? slot, currentDay(season), injuryClock(season));
+  const awayStart = startableSlot(season, away.team, opts.awaySlot ?? slot, currentDay(season), injuryClock(season));
   const result = simGame(home.team, away.team, season.rng, {
     engine: season.config.engine,
-    homeStarter: startableSlot(season, home.team, opts.homeSlot ?? slot, currentDay(season), injuryClock(season)),
-    awayStarter: startableSlot(season, away.team, opts.awaySlot ?? slot, currentDay(season), injuryClock(season)),
+    homeStarter: homeStart,
+    awayStarter: awayStart,
+    // A by-hand starter on short rest tires sooner; the walk never sends one.
+    homeShortRest: shortRest(season, home.team.rotation[homeStart], currentDay(season)),
+    awayShortRest: shortRest(season, away.team.rotation[awayStart], currentDay(season)),
     ...(homeLineup ? { homeLineup } : {}),
     ...(awayLineup ? { awayLineup } : {}),
     homeBench: fitBench(home.team, injuryClock(season)),

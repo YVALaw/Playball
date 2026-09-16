@@ -4018,3 +4018,28 @@ hand is the honest last step before 1.0.
 **After 1.0**, booked and not owed: the creator kit (stage 28), called to
 the majors (stage 29), an account and a record book everybody is in (stage
 30), and §C's depth systems, each of which wants its own design pass.
+
+## AL. September 16, nine more from the phone — what it left
+
+All nine fixed in one pass (`05` §91). The back gesture got the registry
+the release audit prescribed (`15` §D), which closes that audit line.
+
+### AL.1 To watch
+
+- **The back gesture, on the phone, one more time.** The registry is
+  verified in the desktop browser (a sheet over a card, peeled in order);
+  the phone's edge swipe is the thing it was built for and has still not
+  been watched. `__backLayers` is on the dev console for the next report.
+- **A starter on short rest, by the coach's hand.** The seventy-percent
+  budget is charged only when a by-hand rotation sends a man out early; the
+  day sim never does, so the harness has not measured it. If a coach who
+  rides his ace through June finds him gone by the fifth, that is the
+  charge working.
+- **The pen by hand and the closer.** The top man closes whoever he is; a
+  coach who puts his worst arm first has named his closer. The note says so.
+
+### AL.2 Small
+
+- **The name pool moved the draws** (`05` §91.7): three seeded fixtures
+  restated, the goldens re-recorded. Anybody adding names next time should
+  expect the same and append at the foot.

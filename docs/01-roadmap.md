@@ -77,7 +77,7 @@ game at a time on a full-screen field with a defense on it, hand out awards,
 spend coaching points, read a recruiting board that is honest about being
 vague, argue the draft out of taking your junior, and start again in February —
 against ninety-five rival programs run by men with careers of their own.
-Ninety-two test files and 1,566 tests cover it, calibration among them and
+Ninety-three test files and 1,574 tests cover it, calibration among them and
 since September 11 a guard on what the league scores season over season, so
 the engine cannot drift without something failing.
 

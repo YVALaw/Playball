@@ -262,6 +262,8 @@ export function createLiveGame(
     awayTeam, false, opts.awayStarter ?? 0, opts.awayBullpen, opts.awayLineup, opts.awayStrategy,
     opts.awayCoachMods, opts.awayBench, opts.awayCloser,
   );
+  if (opts.homeShortRest) home.shortRest = true;
+  if (opts.awayShortRest) away.shortRest = true;
   const mine = opts.managing === 'home' ? home : away;
   // June, stamped the way simGame stamps it, so the badge layer's BIG STAGE
   // fires in the one bracket game a coach ever manages — his own (05 §62.1).

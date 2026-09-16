@@ -8411,3 +8411,51 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 
 /* The spot a season-long plan points at (RetrainModal). */
 .retrain-row button.is-planned { background: var(--command); border-color: var(--command); color: var(--cream); }
+
+/* A national title, and nothing else, wears gold (BigMoment, 05 §91.4). */
+.big-moment.title .big-moment-card {
+  border-color: #d9b44a;
+  background: rgba(242, 207, 107, .08);
+  box-shadow: 0 0 0 1px rgba(217, 180, 74, .35), 0 30px 80px rgba(0, 0, 0, .7);
+  animation: momentIn 900ms cubic-bezier(.2, .9, .25, 1.12) both, titleGlow 2.6s ease-in-out 1.2s infinite alternate;
+}
+.big-moment.title .big-moment-card small { color: #f2cf6b; font-size: calc(12px * var(--ts)); letter-spacing: .3em; opacity: 1; }
+.big-moment.title .big-moment-card h1 { font-size: calc(36px * var(--ts)); }
+.big-moment.title .big-moment-card b { color: #f2cf6b; opacity: .9; }
+.big-moment.title > button { border-color: #d9b44a; color: #f2cf6b; }
+.title-trophy {
+  width: 64px; height: 64px; margin-bottom: 6px;
+  color: #f2cf6b;
+  filter: drop-shadow(0 0 18px rgba(242, 207, 107, .55));
+  animation: trophyRise 900ms cubic-bezier(.2, .9, .25, 1.2) .2s both;
+}
+.title-year {
+  margin-top: 8px;
+  font: 800 calc(30px * var(--ts))/1 var(--display);
+  color: #f2cf6b;
+  letter-spacing: .04em;
+  font-style: normal;
+}
+@keyframes titleGlow {
+  from { box-shadow: 0 0 0 1px rgba(217, 180, 74, .35), 0 30px 80px rgba(0, 0, 0, .7); }
+  to { box-shadow: 0 0 0 1px rgba(242, 207, 107, .8), 0 0 48px rgba(242, 207, 107, .35), 0 30px 80px rgba(0, 0, 0, .7); }
+}
+@keyframes trophyRise {
+  from { transform: translateY(18px) scale(.6); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .big-moment.title .big-moment-card { animation: none; }
+  .title-trophy { animation: none; }
+}
+
+/* The dot's end of the line: a new achievement in the cabinet (Program). */
+.coach-achievement-grid article.is-new { border-color: var(--clay); box-shadow: inset 0 0 0 1px var(--clay); }
+.new-tag {
+  display: inline-block; margin-right: 6px; padding: 1px 5px;
+  background: var(--clay); color: var(--cream);
+  font: 800 calc(6px * var(--ts)) var(--mono); letter-spacing: .1em;
+}
+
+/* Tonight's ball and the closer, on the rotation and the pen (Lineup). */
+.rotation-tonight { color: var(--win); font-weight: 800; }

@@ -7,7 +7,7 @@ import { RECRUITING_WEEKS } from '../../engine/recruiting.js';
 // Overview groups everyday management separately from career destinations. The coach profile remains a focused subpage, while season-by-season
 // history stays in the adjacent History screen so there is only one record book.
 import { leagueLabel } from '../../engine/leagueNames.js';
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ACHIEVEMENTS, ACHIEVEMENT_IDS } from '../../engine/achievements.js';
 import {
   useDynasty, useUserTeam, useConferenceTable,
@@ -1210,6 +1210,16 @@ const SKILL_NOTE: Record<string, string> = {
 };
 
 function CoachSheet({ team }: { team: Owner }) {
+  /*
+    The dot led here and stopped. Reported 2026-09-16: "there are achievements
+    notifications in my profile, I go there but I don't know where else to
+    look." Captured before the hub's effect clears the dot, so the new ones
+    wear NEW in the cabinet and the sheet opens on the first of them.
+  */
+  const unseenNow = useDynasty((s) => s.unseenTrophies);
+  const [freshTrophies] = useState(() => new Set(unseenNow));
+  const firstNew = useRef<HTMLElement | null>(null);
+  useEffect(() => { firstNew.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, []);
   const coach = useDynasty((s) => s.coach);
   const history = useDynasty((s) => s.history);
   const tree = useDynasty((s) => s.economy.tree ?? []);
@@ -1400,13 +1410,21 @@ function CoachSheet({ team }: { team: Owner }) {
 
           {cabinet.length > 0 && (
             <section className="coach-achievement-case">
-              <header><small>CAREER MILESTONES</small><strong>Achievements</strong></header>
+              <header>
+                <small>CAREER MILESTONES</small>
+                <strong>Achievements{freshTrophies.size > 0 ? ` · ${freshTrophies.size} new` : ''}</strong>
+              </header>
               <div className="coach-achievement-grid">
                 {cabinet.map((id) => {
                   const row = coach.achievements[id];
+                  const fresh = freshTrophies.has(id);
                   return (
-                    <article key={id}>
-                      <span><strong>{ACHIEVEMENTS[id].name}</strong><small>{row?.team} {row?.year}</small></span>
+                    <article
+                      key={id}
+                      className={fresh ? 'is-new' : undefined}
+                      ref={fresh && firstNew.current === null ? (el) => { if (el && firstNew.current === null) firstNew.current = el; } : undefined}
+                    >
+                      <span><strong>{ACHIEVEMENTS[id].name}</strong><small>{fresh && <b className="new-tag">NEW</b>}{row?.team} {row?.year}</small></span>
                       <p>{row?.detail ?? ACHIEVEMENTS[id].note}</p>
                     </article>
                   );

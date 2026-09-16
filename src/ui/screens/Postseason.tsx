@@ -19,6 +19,7 @@ import { leagueLabel } from '../../engine/leagueNames.js';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useDynasty, useUserTeam, type NationalProgress } from '../../state/store.js';
 import { FloatingAction } from '../Sticky.js';
+import { useBackLayer } from '../useBackLayer.js';
 import { Modal } from '../Modal.js';
 import { IdCardIcon } from '@radix-ui/react-icons';
 import { ModuleIntro } from '../components/Kit.js';
@@ -146,6 +147,10 @@ export function Postseason() {
     setBeat(label.startsWith('SIM') ? 'SIMULATING…' : 'PLAYING IT OUT…');
     beatTimer.current = setTimeout(() => { beatTimer.current = null; setBeat(null); run(); }, 700);
   };
+  // The June lineup card and a stage under review are layers the gesture
+  // peels, like every sheet (05 §91.2).
+  useBackLayer(showLineup, () => setShowLineup(false));
+  useBackLayer(reviewing !== null, () => setReviewing(null));
   const setJuneTab = (v: JuneTab): void => { juneTabMemo = v; setJuneTab0(v); };
   // Null until the reader picks one; the default is whichever half is yours.
   const [natHalf, setNatHalf0] = useState<NatHalf | null>(natHalfMemo);

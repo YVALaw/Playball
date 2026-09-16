@@ -30,6 +30,8 @@ export interface BackState {
   godOpen?: boolean;
   /** True when the in-session route trail has a real previous destination. */
   routeBackAvailable?: boolean;
+  /** Sheets a screen holds in its own state, registered in `state/backLayers.ts`. */
+  localLayers?: number;
   tab: Tab;
   screen: string;
 }
@@ -37,6 +39,7 @@ export interface BackState {
 /** True while a back press has something to do — including swallowing it. */
 export function hasLayerToClose(s: BackState): boolean {
   if (s.blocked) return true;
+  if ((s.localLayers ?? 0) > 0) return true;
   if (s.godOpen || s.playerOpen || s.coachOpen || s.teamCardOpen || s.overlayOpen) return true;
   if (s.routeBackAvailable) return true;
   const first = TABS.find((t) => t.id === s.tab)?.screens[0]?.id;

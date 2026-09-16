@@ -16,6 +16,7 @@
 // element that opened it.
 
 import { useEffect, useRef, type RefObject } from 'react';
+import { registerBackLayer, releaseBackLayer } from '../state/backLayers.js';
 
 const TABBABLE = [
   'a[href]', 'button:not([disabled])', 'input:not([disabled])',
@@ -33,15 +34,23 @@ export function useDialogFocus(
     initial?: RefObject<HTMLElement | null>;
     /** For a dialog rendered inline behind a flag rather than mounted on its own. */
     active?: boolean;
+    /**
+     * Whether the dialog is a layer the back gesture peels (default), spending
+     * one history entry while it is up. False for the layers the store holds
+     * itself -- the overlay, a blocking card, the tutorial -- which spend their
+     * own (05 §91.2, `state/backLayers.ts`).
+     */
+    layer?: boolean;
   } = {},
 ): void {
-  const { initial, active = true } = opts;
+  const { initial, active = true, layer = true } = opts;
   const dismissRef = useRef(dismiss);
   dismissRef.current = dismiss;
   useEffect(() => {
     if (!active) return undefined;
     const token = Symbol('dialog');
     open.push(token);
+    const layerId = layer ? registerBackLayer(() => dismissRef.current()) : 0;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const first = initial?.current
       ?? dialog.current?.querySelector<HTMLElement>(TABBABLE)
@@ -71,6 +80,7 @@ export function useDialogFocus(
     return () => {
       document.removeEventListener('keydown', onKey);
       open.splice(open.indexOf(token), 1);
+      if (layerId) releaseBackLayer(layerId);
       opener?.focus();
     };
     // The refs are stable boxes; `active` is the only input that changes.

@@ -61,7 +61,9 @@ export function Modal(
   const dismiss = cancel ? cancel.onClick : onClose;
   const firstButton = useRef<HTMLButtonElement | null>(null);
   const card = useRef<HTMLElement | null>(null);
-  useDialogFocus(card, dismiss, { initial: firstButton });
+  // A blocking card (one that carries `nudge`) swallows the press itself and
+  // holds no entry; every other modal is a layer the gesture peels.
+  useDialogFocus(card, dismiss, { initial: firstButton, layer: nudge === undefined });
 
   /*
     The refused back press, made visible.

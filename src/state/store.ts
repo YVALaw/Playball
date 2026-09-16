@@ -15,7 +15,7 @@ import { recruitingPlan, programRecruitingPitch, delegateEffort } from '../engin
 import { create } from 'zustand';
 import {
   appliedStrategy,
-  injuryClock, currentDay, startableSlot, dayInTheLegs, seasonInTheArm, fitBench,
+  injuryClock, currentDay, startableSlot, shortRest, dayInTheLegs, seasonInTheArm, fitBench,
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
   seasonLength, regularRecord, archiveSeason, recordSeasonMarks,
   recordCareerMarks, recordResult, restedFirst, closerFrom, seedTeams,
@@ -360,6 +360,7 @@ import {
   canRedshirt, redshirt, unRedshirt, redshirtCount, MAX_REDSHIRTS, staffRedshirts,
 } from '../engine/redshirt.js';
 import { movePosition, settleIn, secondaryPositions } from '../engine/positions.js';
+import { stampLayer, unstampLayer } from './backLayers.js';
 import { healUp, isHurt, prognosis } from '../engine/injury.js';
 import { resetWorkload, legWeariness } from '../engine/workload.js';
 import {
@@ -1592,6 +1593,11 @@ export interface DynastyStore {
    */
   promoteArm: (penId: PlayerId, slot: number) => boolean;
   /**
+   * Two pen arms trade places. The order is the coach's from then on:
+   * the top man closes and the rest come in from the top (05 §91.1).
+   */
+  swapPen: (a: PlayerId, b: PlayerId) => boolean;
+  /**
    * Deal the current nine into a sound batting order in one tap.
    *
    * Reorders only — the same men, every position intact — through the engine's
@@ -2543,6 +2549,9 @@ function dealLikeAuto(team: TeamRecord['team'], day: number): void {
   for (const a of bullpen) { a.homeRole = trade(a); a.role = trade(a); }
   team.rotation.splice(0, team.rotation.length, ...rotation);
   team.bullpen.splice(0, team.bullpen.length, ...bullpen);
+  // AUTO's order is rest's order again, and the walk past short rest returns.
+  delete team.penByHand;
+  delete team.rotationByHand;
 }
 
 function staffSetsTheCard(season: SeasonState, userTeam: number): void {
@@ -3114,6 +3123,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     */
     if (cardOpen && !routeMoves) browserHistoryConsume();
     else if (!cardOpen && routeMoves) browserHistoryCheckpoint();
+    if (cardOpen) { unstampLayer('player'); unstampLayer('coach'); }
     crossfade(() => set({
       tab,
       screen: nextScreen,
@@ -3183,6 +3193,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const screenMoves = get().screen !== screen;
     if (cardOpen && !screenMoves) browserHistoryConsume();
     else if (!cardOpen && screenMoves) browserHistoryCheckpoint();
+    if (cardOpen) { unstampLayer('player'); unstampLayer('coach'); }
     navMark(false);
     set({ selectedPlayer: null, coachSeat: null, focusPlayer: null, screen });
   },
@@ -5831,6 +5842,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
       Session state, never saved: it describes a layer that is open right now.
     */
+    stampLayer('overlay');
     set(o === 'settings'
       ? { overlay: o, settingsPage: 'index', overlayEntrySheet: get().programSheet }
       : { overlay: o, overlayEntrySheet: get().programSheet });
@@ -5840,7 +5852,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (st.overlay === null) return;
     browserHistoryConsume();
     const below = st.overlayStack[st.overlayStack.length - 1];
-    if (!below) { set({ overlay: null }); return; }
+    if (!below) { unstampLayer('overlay'); set({ overlay: null }); return; }
     // The layer underneath comes back exactly as it was left: a Program
     // layer on the sheet the coach was reading, not on whatever sheet the
     // letter above it had set.
@@ -5905,6 +5917,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   openPlayer: (id, section = 'overview') => {
     if (get().selectedPlayer !== id) browserHistoryCheckpoint();
+    stampLayer('player');
     set({ selectedPlayer: id, playerCardSection: section });
   },
 
@@ -5912,15 +5925,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   // player's card would be teaching the wrong errand.
   closePlayer: () => {
     if (get().selectedPlayer !== null) browserHistoryConsume();
+    unstampLayer('player');
+    unstampLayer('coach');
     set({ selectedPlayer: null, coachSeat: null, playerCardSection: 'overview', guide: null });
   },
 
   openCoach: (seat) => {
     if (get().coachSeat !== seat) browserHistoryCheckpoint();
+    stampLayer('coach');
     set({ coachSeat: seat });
   },
   closeCoach: () => {
     if (get().coachSeat !== null) browserHistoryConsume();
+    unstampLayer('coach');
     set({ coachSeat: null });
   },
 
@@ -6339,8 +6356,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const clock = injuryClock(season);
     const hSlot = (myBracket.state.appearances.get(h) ?? 0) % 3;
     const aSlot = (myBracket.state.appearances.get(a) ?? 0) % 3;
-    const homeStarter = startableSlot(season, home.team, hSlot, season.dayIndex, clock);
-    const awayStarter = startableSlot(season, away.team, aSlot, season.dayIndex, clock);
+    /*
+      The calendar, not the schedule index. `pitcherReady` compares the day
+      it is handed against the day an outing was written on, and outings are
+      written on the calendar (`currentDay`); in June the schedule index is
+      frozen at the season's length while the calendar runs on past it, so
+      every arm read as owed rest for ever and the walk fell to its fallback
+      -- the longest-rested arm, whatever slot the coach had set. Reported
+      2026-09-16 from a title game: "I changed the rotation to have him pitch
+      that night but the game still picked the one it previously had."
+      The day sim's bracket games already read the calendar (05 §91.3).
+    */
+    const homeStarter = startableSlot(season, home.team, hSlot, currentDay(season), clock);
+    const awayStarter = startableSlot(season, away.team, aSlot, currentDay(season), clock);
     const homeLineup = coverFor(home.team, home.team.lineup, clock);
     const awayLineup = coverFor(away.team, away.team.lineup, clock);
     const homeBench = fitBench(home.team, clock);
@@ -6403,6 +6431,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         postseason: true,
         homeStarter,
         awayStarter,
+        // A by-hand starter on short rest tires sooner (05 §91.3).
+        homeShortRest: shortRest(season, home.team.rotation[homeStarter], currentDay(season)),
+        awayShortRest: shortRest(season, away.team.rotation[awayStarter], currentDay(season)),
         homeLineup,
         awayLineup,
         homeBench,
@@ -6414,8 +6445,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         homeBullpen: restedFirst(season, home),
         awayBullpen: restedFirst(season, away),
         // The other dugout keeps a man for the ninth in a game you manage too.
-        ...(closerFrom(restedFirst(season, home)) ? { homeCloser: closerFrom(restedFirst(season, home)) } : {}),
-        ...(closerFrom(restedFirst(season, away)) ? { awayCloser: closerFrom(restedFirst(season, away)) } : {}),
+        ...(closerFrom(restedFirst(season, home), home.team.penByHand) ? { homeCloser: closerFrom(restedFirst(season, home), home.team.penByHand) } : {}),
+        ...(closerFrom(restedFirst(season, away), away.team.penByHand) ? { awayCloser: closerFrom(restedFirst(season, away), away.team.penByHand) } : {}),
         // And the coach-skill nudge, so a managed game and a simmed one play
         // to the same odds.
         ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
@@ -6775,10 +6806,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       });
       // The whole thing, or the longest June that ends without it — stage 14.
       // You were in the final either way; both are the biggest screen owed.
+      // The card says the season and the final, not just the word: a title
+      // is the biggest thing the game can hand over (05 §91.4).
+      const rec = get().season?.teams[userTeam];
+      const other = mine.seeds.find((t) => t !== userTeam);
+      const otherName = other !== undefined ? get().season?.teams[other]?.def.school ?? 'the other bracket' : 'the field';
       get().offerBigMoment(mine.champion === userTeam
         ? {
           kind: 'title', team: userTeam, year: get().year,
-          line: 'National champions',
+          line: `${rec?.w ?? 0}–${rec?.l ?? 0} · over ${otherName} in the final`,
         }
         : {
           kind: 'runner-up', team: userTeam, year: get().year,
@@ -6840,6 +6876,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       ...(j.postseason ? { postseason: true } : {}),
       homeStarter: j.homeStarter,
       awayStarter: j.awayStarter,
+      // The same flag the interrupted game ran with: the workload it is read
+      // off has not moved, so the replay is the same game (05 §62.1).
+      homeShortRest: shortRest(season, home.team.rotation[j.homeStarter], currentDay(season)),
+      awayShortRest: shortRest(season, away.team.rotation[j.awayStarter], currentDay(season)),
       homeLineup: coverFor(home.team, home.team.lineup, clock),
       awayLineup: coverFor(away.team, away.team.lineup, clock),
       homeBench: fitBench(home.team, clock),
@@ -6849,8 +6889,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       homeBullpen: restedFirst(season, home),
       awayBullpen: restedFirst(season, away),
       // The other dugout keeps a man for the ninth in a game you manage too.
-      ...(closerFrom(restedFirst(season, home)) ? { homeCloser: closerFrom(restedFirst(season, home)) } : {}),
-      ...(closerFrom(restedFirst(season, away)) ? { awayCloser: closerFrom(restedFirst(season, away)) } : {}),
+      ...(closerFrom(restedFirst(season, home), home.team.penByHand) ? { homeCloser: closerFrom(restedFirst(season, home), home.team.penByHand) } : {}),
+      ...(closerFrom(restedFirst(season, away), away.team.penByHand) ? { awayCloser: closerFrom(restedFirst(season, away), away.team.penByHand) } : {}),
       ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
       ...(away.coachMods ? { awayCoachMods: away.coachMods } : {}),
     });
@@ -7006,6 +7046,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         engine: season.config.engine,
         homeStarter,
         awayStarter,
+        // A by-hand starter on short rest tires sooner (05 §91.3).
+        homeShortRest: shortRest(season, home.team.rotation[homeStarter], currentDay(season)),
+        awayShortRest: shortRest(season, away.team.rotation[awayStarter], currentDay(season)),
         homeLineup,
         awayLineup,
         homeBench,
@@ -7017,8 +7060,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         homeBullpen: restedFirst(season, home),
         awayBullpen: restedFirst(season, away),
         // The other dugout keeps a man for the ninth in a game you manage too.
-        ...(closerFrom(restedFirst(season, home)) ? { homeCloser: closerFrom(restedFirst(season, home)) } : {}),
-        ...(closerFrom(restedFirst(season, away)) ? { awayCloser: closerFrom(restedFirst(season, away)) } : {}),
+        ...(closerFrom(restedFirst(season, home), home.team.penByHand) ? { homeCloser: closerFrom(restedFirst(season, home), home.team.penByHand) } : {}),
+        ...(closerFrom(restedFirst(season, away), away.team.penByHand) ? { awayCloser: closerFrom(restedFirst(season, away), away.team.penByHand) } : {}),
         // And the coach-skill nudge, so a managed game and a simmed one play
         // to the same odds.
         ...(home.coachMods ? { homeCoachMods: home.coachMods } : {}),
@@ -7364,7 +7407,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     down.homeRole = downHome;
     down.role = downHome;
     team.rotation[slot] = up;
-    team.bullpen = [down, ...team.bullpen.filter((p) => p.id !== penId)];
+    // The man coming down takes the promoted arm's place in the pen's order,
+    // which is a swap the way every other move on the screen is a swap.
+    team.bullpen = team.bullpen.map((p) => (p.id === penId ? down : p));
+    // Both lists are his now (05 §91.1, §91.3).
+    team.rotationByHand = true;
+    team.penByHand = true;
     set({ version: version + 1 });
     void get().saveNow();
     return true;
@@ -7382,8 +7430,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (!x || !y) return;
     rot[index] = y;
     rot[to] = x;
+    // His order: tonight's slot starts if the man is fit and has had two
+    // nights, short rest or not (05 §91.3).
+    team.rotationByHand = true;
     set({ version: version + 1 });
     void get().saveNow();
+  },
+
+  swapPen: (a, b) => {
+    const { season, userTeam, version } = get();
+    const team = season?.teams[userTeam]?.team;
+    if (!team || get().busy || a === b) return false;
+    const i = team.bullpen.findIndex((p) => p.id === a);
+    const j = team.bullpen.findIndex((p) => p.id === b);
+    if (i < 0 || j < 0) return false;
+    const x = team.bullpen[i]!;
+    team.bullpen[i] = team.bullpen[j]!;
+    team.bullpen[j] = x;
+    team.penByHand = true;
+    set({ version: version + 1 });
+    void get().saveNow();
+    return true;
   },
 
   autoLineup: () => {
@@ -8141,15 +8208,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     */
     if (stack.some((t) => sameGodTarget(t, target)) || stack.length >= 8) return;
     browserHistoryCheckpoint();
+    stampLayer('god');
     set({ godStack: [...stack, target] });
   },
   closeGod: () => {
     if (get().godStack.length > 0) browserHistoryConsume();
-    set({ godStack: get().godStack.slice(0, -1) });
+    const rest = get().godStack.slice(0, -1);
+    if (rest.length === 0) unstampLayer('god');
+    set({ godStack: rest });
   },
   closeGodAll: () => {
     // One entry per sheet, because `openGod` pushed one per sheet.
     if (get().godStack.length > 0) browserHistoryConsume(get().godStack.length);
+    unstampLayer('god');
     set({ godStack: [] });
   },
 

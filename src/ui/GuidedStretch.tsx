@@ -188,7 +188,7 @@ function TourLesson({ step, card, assistant, leaving, onSkip, onSkipStep, onCont
   const titleId = useId();
   const bodyId = useId();
   const progress = guideProgress(step);
-  useDialogFocus(dialog, onSkip, { initial: primary });
+  useDialogFocus(dialog, onSkip, { initial: primary, layer: false });
   return <div ref={dialog} className={`tutorial-scrim guide-scrim${leaving ? ' leaving' : ' fade-in'}`}
     role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={bodyId}>
     <section className={`tutorial-card${leaving ? '' : ' rise-in'}`}>

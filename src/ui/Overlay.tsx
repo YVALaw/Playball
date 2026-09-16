@@ -39,7 +39,8 @@ export function Overlay(
   // opaque page over a still-tabbable screen; without the hook the keyboard
   // walked straight out into the screen underneath (05 §62.6).
   const ref = useRef<HTMLElement | null>(null);
-  useDialogFocus(ref, onClose);
+  // The store's own layer: it spent its entry in `openOverlay`.
+  useDialogFocus(ref, onClose, { layer: false });
   return (
     <section
       ref={ref}

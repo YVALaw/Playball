@@ -18,7 +18,17 @@ import type { Hitter, Position, Team } from '../src/engine/types.js';
 
 const fresh = (): Team => {
   const world = createSeason(makeRng(4242), undefined, CONFERENCES);
-  return world.teams[11]!.team;
+  const team = world.teams[11]!.team;
+  /*
+    A catcher by trade on the card, whatever the draws did to this roster.
+    The name pool grew on 2026-09-16 and the draws moved (05 §91.7); this
+    team came up with a first baseman covering the plate and no catcher
+    anywhere, and two tests below are about the man who IS a catcher keeping
+    his spot. He is made one here: his own spot is the plate.
+  */
+  const atC = team.lineup.find((p) => p.pos === 'C');
+  if (atC && (atC.homePos ?? atC.pos) !== 'C') delete atC.homePos;
+  return team;
 };
 
 /** Make him the best, or the worst, position player on the roster by a mile. */
@@ -120,8 +130,11 @@ describe('the best nine', () => {
     const team = fresh();
     const weak2b = team.lineup.find((p) => p.pos === '2B')!;
     // A bench third baseman — a natural cover at second — far better than
-    // the man standing there. Third itself stays with its own man.
-    const third = team.bench[0]!;
+    // the man standing there. Third itself stays with its own man. Not a
+    // catcher by trade: the name pool grew on 2026-09-16 and the draws moved
+    // (05 §91.7), and `bench[0]` came up a catcher whose tools put him behind
+    // the plate whatever label the test wrote on him.
+    const third = team.bench.find((p) => (p.homePos ?? p.pos) !== 'C')!;
     third.pos = '3B';
     delete third.homePos;
     rate(third, 70);
@@ -138,7 +151,8 @@ describe('the best nine', () => {
   it('does not put a big bat behind the plate', () => {
     const team = fresh();
     const catcher = team.lineup.find((p) => p.pos === 'C')!;
-    const kid = team.bench[0]!;
+    // A big bat who is not a catcher by trade; see the note two tests up.
+    const kid = team.bench.find((p) => (p.homePos ?? p.pos) !== 'C')!;
     kid.pos = '1B';
     delete kid.homePos;
     rate(kid, 80);

@@ -11917,3 +11917,159 @@ major × 10000 + minor × 100 + patch off the package version, so a release
 candidate would have carried the release's own code, and the Console refuses
 a second upload at the same one (§62.3). What v1.0 is still missing is one
 list, `06` §AK.4.
+
+## 91. Nine more from the phone — **September 16 2026, later**
+
+Nine reports, one pass. Two of them turned out to be one fault seen from
+two sides (the pen and the rotation are the same "the game ignored what I
+set" complaint), one was a wrong clock that had been hiding behind the walk
+past short rest, and one -- the back gesture, again -- got the mechanism the
+release audit had prescribed and nobody had built.
+
+### 91.1 The pen, by hand
+
+"Ability to manually change the bullpen rotation as well." The pen's order
+in `team.bullpen` meant nothing: `restedFirst` sorted the rested arms by
+rest, then pitches, then quality, and `closerFrom` named the best arm. Both
+stay for the ninety-five and for a coach who has not touched the pen. Tap
+one pen arm and then another on the lineup screen and they trade places
+(`swapPen`), the team carries `penByHand`, and from then on `restedFirst`
+keeps the coach's order among the arms that can pitch tonight -- the tired
+and the hurt filtered out, nobody re-sorted -- and the closer is the top
+man, whoever he is. The row says CLOSER on him and `#n` on the rest; the
+note under the list says which order is in force. Promoting a pen arm into
+the rotation swaps the two in place now rather than putting the demoted
+starter at the front, and marks both lists his. AUTO LINEUP clears the flag
+and rest's order returns.
+
+### 91.2 The back gesture sees every sheet
+
+"I got a hurt player card, tapped on fix the lineup, auto fixed it, then
+went into one of the players' profile, then back gesture, and there it
+showed me the home menu with the hurt card, then after a split second it
+went back to lineup on its own." The June lineup card is a takeover the
+Postseason screen holds in its own state; the release audit filed the
+mechanism in September (`15` §D, "a store-level sheet counter each sheet
+holds while mounted") and it was never built. Every sheet a screen held --
+a box score, the dugout picker, a prospect's file, a confirm, the lineup
+card -- was invisible to the gesture, so a press with one up popped a
+history entry and changed the screen underneath, and the browser previewed
+the screenshot of an entry the app then did not produce.
+
+`state/backLayers.ts` is the counter, with a dismiss on each entry.
+`useDialogFocus` -- the contract every sheet already carries -- registers a
+layer on open and releases it on close, so a sheet spends one history entry
+the way a store layer does and the gesture peels it by calling its own
+dismiss; the two takeovers that are not dialogs use `useBackLayer`. The
+store's layers stamp themselves as they open (`stampLayer` in `openPlayer`,
+`openCoach`, `openOverlay`, `openGod`, the team card), so a sheet and a card
+peel in the order they were opened, whichever holds which. The overlay, the
+blocking cards, the tutorial and the guide opt out (`layer: false`); a
+`Modal` that carries `nudge` is a blocking card and opts out by that.
+`hasLayerToClose` counts the local layers, so Android arms the gesture for
+them. Verified in the browser: a player card open, the positions sheet over
+it, `history.back()` closed the sheet and kept the card; a second closed the
+card; the route never moved. The dev console carries `__backLayers` --
+`count()`, `top()`, `store()`, `stamps()` -- for the next phone report.
+
+### 91.3 Tonight's ball
+
+"I was in the nationals finals, my ace was not the one who had to pitch, so
+I changed the rotation to have him pitch that night, but the game still
+picked the one it previously had." Two faults. The managed bracket game
+handed `startableSlot` the schedule index as the day, and `pitcherReady`
+compares that day against the calendar day an outing was written on: in
+June the index is frozen at the season's length while the calendar runs on
+past it, so every arm read as owed rest for ever and the walk fell to its
+fallback, the longest-rested fit arm, whatever slot the coach had set. The
+day sim's bracket games read the calendar; the managed one does now too.
+And the screen never said which slot pitches next or that an arm on short
+rest is walked past. The row says TONIGHT on the man who gets the ball, and
+on the nominal man walked past: "his slot tonight, walked past on short
+rest · back in N days".
+
+Then the coach's hand. A rotation moved by hand carries `rotationByHand`,
+and `startableSlot` starts the slot's man if he is fit and has had two
+nights, short rest or not -- a title game is exactly when a manager starts
+his ace on three days. The game charges him for it: `shortRest` is passed to
+`simGame` and the starter's pitch budget is seventy percent (`TeamState.
+shortRest`, `maybeChangePitcher`). Two nights is the floor, and a hurt arm
+never. AUTO clears the flag. The note under the rotation says which rule is
+in force. Reproduced on the desk's June save: the ace's row read "walked
+past on short rest · back in 2 days" with the third slot wearing TONIGHT --
+the very shape of the report.
+
+### 91.4 A title wears gold
+
+"We have to make winning the nationals championship a big thing; right now
+it feels the same winning the conference, regionals or nationals." The
+takeover was one card for every moment. A title's is the same card in gold:
+a radial ground in the school's shade, a trophy, the kicker in gold, the
+year at thirty points, a card that breathes light, gold in the confetti and
+a second and third wave of it, the crowd up, the second clap, and the
+longest buzz the app sends. The line says the season and the final --
+"39–21 · over Coastal Carolina in the final" -- rather than the word. The
+runner-up card and the rest are as they were.
+
+### 91.5 The dot's end of the line
+
+"The notification red dot still isn't really guiding me ... there are
+achievements notifications in my profile, I go there but I don't know where
+else to look." The dot led to the Program tab and its attention strip led to
+the coach sheet, and the cabinet there looked exactly as it had. The sheet
+captures the unseen ids before the hub's effect clears them, marks each new
+achievement NEW with a clay border, says "· N new" in the cabinet's head,
+and scrolls the first new one into view on open. The book already did all of
+this (§62's record book: the room with the mark opens first and wears the
+dot, the row says NEW), which is the pattern the cabinet now follows.
+
+### 91.6 An alumnus's moments sit with his seasons
+
+"Move their signature moments to the college tab, not their pro tab." They
+sat under LIFE AFTER COLLEGE, between the professional rows and the fold.
+They are on COLLEGE SEASONS now, above the season table.
+
+### 91.7 The names
+
+"Add more names to the pool, I've noticed they are repeating. Add more
+Hispanic names." 356 first names and 738 surnames became 496 and 915,
+appended at the foot of each list per the file's own rule, the additions
+Hispanic-heavy with a spread of others. The generator picks by index off a
+seeded draw, so a bigger pool moves every draw after the first name -- the
+determinism goldens were re-recorded (runs 6.678, the sweep 6.805 against
+6.730; worst deviation three percent, as before) and three seeded-fixture
+files restated: `best-nine` came up with a team whose plate was covered by
+a first baseman and no catcher anywhere, and now makes the man at C a
+catcher by trade before it asks who keeps the spot; `potential-forecast`'s
+"a five-star does not own the grade" bound went 0.4 to 0.6 with the top of
+the ladder raised (§88) and the draws moved; `recruit-ladder` counts four
+stars as "not five" in the majority it guards, which is what its sentence
+had always said.
+
+### 91.8 An All-Star nobody releases
+
+"Had an alumni become an all star the previous year and released on the
+next." `climb` remembers a starred summer -- All-Star, MVP, Gold Glove --
+and skips the wash-out roll the year after one. Retirement is untouched.
+
+### 91.9 The alumni list's tiles
+
+"It says HERE and PRO YEARS. Don't know what HERE stands for, cause there
+are some that say 8 H and others 160 K; also it is counting pro years for
+players who went home." PRO SEASONS counts the seasons a man played for
+money (`proSeasons`: neither the row that says he went home nor the one that
+says he coaches), and shows a dash for none. HERE is AT {the school}, and the
+figure says what it is: "8 hits", "160 strikeouts".
+
+### 91.10 Verified
+
+TypeScript clean; the full suite, with a new file (`tests/nine-more.test.ts`:
+the pen by hand and its closer, the rotation by hand and short rest, the
+registry's order, the All-Star's next year, the name pools, the seasons
+played) and three fixture files restated; the goldens re-recorded. In the
+browser on 5174: the pen swapped by hand with CLOSER on the top man and the
+order note; the ace's row walked past on short rest with TONIGHT on the
+third arm, then the by-hand note; the title card in gold; the positions
+sheet over a player card peeled first by `history.back()`, the card second,
+the route never moving. Not on this desk: the cabinet's NEW marks (this
+career has no achievement yet) and the phone's own gesture.

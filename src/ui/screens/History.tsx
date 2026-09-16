@@ -21,7 +21,7 @@ import { RecordBook } from './RecordBook.js';
 import { FINISH_LABEL, type Finish } from '../../engine/postseason.js';
 import type { SchoolSeason } from '../../engine/season.js';
 import type { PlayerId } from '../../engine/types.js';
-import { proCareer, COACHING_LEVEL, type AlumnusNote } from '../../engine/legacy.js';
+import { proCareer, proSeasons, COACHING_LEVEL, type AlumnusNote } from '../../engine/legacy.js';
 import { ChevronRightIcon, MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { Avatar } from '../Avatar.js';
 import { collegeSummary } from '../ProgramBits.js';
@@ -430,9 +430,14 @@ function Alumni({ notes, teamAbbr }: { notes: Record<string, AlumnusNote>; teamA
                         </span>
                         <div className="alumni-status-grid">
                           <span><small>HIGHEST LEVEL</small><strong>{highest}</strong></span>
-                          <span><small>PRO YEARS</small><strong>{pro.length}</strong></span>
-                          <span><small>HERE</small><strong>{college.pitching && !college.hitting
-                            ? `${college.k} K` : college.hitting ? `${college.h} H` : '—'}</strong></span>
+                          {/* Seasons he played for money -- the row that says he
+                              went home is not one -- and his college line named
+                              for what it is (2026-09-16: "don't know what HERE
+                              stands for ... counting pro years for players who
+                              went home"). */}
+                          <span><small>PRO SEASONS</small><strong>{proSeasons(pro) || '—'}</strong></span>
+                          <span><small>AT {teamAbbr}</small><strong>{college.pitching && !college.hitting
+                            ? `${college.k} strikeouts` : college.hitting ? `${college.h} hits` : '—'}</strong></span>
                         </div>
                         {/* The legacy engine's own sentence about his last
                             summer. The status word beside it is a second

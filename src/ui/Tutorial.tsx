@@ -31,7 +31,7 @@ export function FirstVisit({ id }: { id: string }) {
   const primary = useRef<HTMLButtonElement | null>(null);
   const dialog = useRef<HTMLDivElement | null>(null);
   const close = (): void => { markSeen(id); setPage(0); };
-  useDialogFocus(dialog, close, { initial: primary, active: show && frame !== null });
+  useDialogFocus(dialog, close, { initial: primary, active: show && frame !== null, layer: false });
   useEffect(() => { setPage(0); }, [id]);
 
   if (!pages?.length || touring) return null;

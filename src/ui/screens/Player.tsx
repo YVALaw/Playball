@@ -665,8 +665,6 @@ function Alumnus(
           </section>
           {pro.length > 0 && <ProYears id={id} heading={false} />}
 
-          <SignatureMoments id={id} />
-
           <details className="alumnus-fold">
             <summary>Player background</summary>
             <div className="program-record-line"><span>LAST CLASS</span><strong>{classYear in CLASS_NAME
@@ -698,6 +696,10 @@ function Alumnus(
               options={[{ value: 'bat', label: 'BATTING' }, { value: 'arm', label: 'PITCHING' }]}
             />
           )}
+          {/* His nights here belong with his seasons here, not under the
+              professional rows (2026-09-16: "move their signature moments to
+              the college tab, not their pro tab"). */}
+          <SignatureMoments id={id} />
           <AlumnusYears years={career} isPitcher={twoWay ? half === 'arm' : wasPitcher} />
         </>
       )}

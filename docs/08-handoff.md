@@ -6,7 +6,23 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 16, 2026 · **Branch:** `main` · **Version:** 0.9.5 · **thirteen from
+**Last session:** September 16, 2026, later · **Branch:** `main` · **Version:** 0.9.5 · **nine
+more from the phone** -- one pass (`05` §91): the pen set by hand keeps the
+coach's order and the top man closes; the back gesture sees every sheet
+through a registry (`state/backLayers.ts`) that `useDialogFocus` feeds and
+the store's layers stamp, peeled in the order opened; the managed bracket
+game read the schedule index as its day and walked past every arm, which
+was the ace not starting the final -- fixed, the rows say TONIGHT and
+"walked past on short rest", and a rotation moved by hand starts its man
+on two nights' rest at seventy percent of his pitches; a title wears gold;
+new achievements are marked NEW and scrolled to; an alumnus's moments sit
+with his college seasons; 140 first names and 177 surnames, Hispanic-heavy,
+with the goldens re-recorded; nobody is released the year after an All-Star
+summer; PRO SEASONS and AT {school} on the alumni list. **Next:** v1.0 --
+`06` §AK.4, plus the phone's gesture with `__backLayers` on the console
+(`06` §AL.1).
+
+*Earlier the same day:* **thirteen from
 the phone** -- one message, thirteen reports, one pass (`05` §90): a
 reliever's short outing no longer costs him the next night and the dugout
 lists the whole pen with the resting men explained; the retrain door is

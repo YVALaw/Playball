@@ -11,6 +11,14 @@
 // Order is load bearing. The generator picks by index from a seeded draw, so
 // reordering, inserting, or removing a name changes every subsequent draw and
 // moves the calibration fixtures. APPEND ONLY.
+//
+// Grown 2026-09-16 -- "add more names to the pool, I've noticed they are
+// repeating; add more Hispanic names" -- by appending at the foot of each
+// list: the 96-team world with its 720-man classes was using enough of the
+// 262,000 combinations that a dynasty of ten years met a name twice, and the
+// Hispanic share of the pool was short of the sport's. Appended only, per
+// the rule above; the draws shift with the pool's size and the goldens were
+// re-recorded for it (05 §91.7).
 
 export const FIRST: readonly string[] = [
   'Jake','Cole','Tyler','Brady','Mason','Owen','Luke','Gavin','Reese','Chase','Drew','Kade',
@@ -43,6 +51,18 @@ export const FIRST: readonly string[] = [
   'Sylas','Tadeo','Talon','Terrance','Theo','Thomas','Timothy','Tobias','Todd','Tomas','Travis','Tristan',
   'Tucker','Turner','Ulises','Uriah','Valentin','Vance','Vaughn','Victor','Vincent','Wade','Walker','Wallace',
   'Warren','Watson','Weston','Whitman','Wilder','William','Wilson','Winston','Xavier','Yosef','Zachary','Zander',
+  'Alejandro','Alonso','Amado','Anselmo','Arturo','Aurelio','Baltazar','Benicio','Bernardo','Braulio','Cesar','Cristobal',
+  'Dario','Efrain','Eloy','Emilio','Enrique','Esteban','Eugenio','Ezequiel','Facundo','Faustino','Federico','Felipe',
+  'Fidel','Florencio','Gerardo','German','Gonzalo','Guillermo','Gustavo','Heriberto','Hilario','Horacio','Humberto','Isidro',
+  'Israel','Jaime','Jesus','Jonas','Josue','Juan','Julio','Lazaro','Leandro','Leopoldo','Lisandro','Luis',
+  'Marcelo','Matias','Mauricio','Maximiliano','Nestor','Nicolas','Orlando','Osvaldo','Pablo','Pascual','Patricio','Ramiro',
+  'Reinaldo','Renato','Reynaldo','Roberto','Rodolfo','Rogelio','Rolando','Silvio','Teodoro','Vicente','Wilfredo','Yadier',
+  'Yandel','Yoel','Adolfo','Agustin','Alfonso','Alvaro','Anibal','Armando','Bartolo','Damaso','Elvis','Erick',
+  'Eusebio','Franco','Genaro','Gilberto','Ismael','Jairo','Jhonny','Lucio','Manny','Nelson','Neftali','Randy',
+  'Rey','Rigoberto','Rony','Santos','Tito','Wander','Wilmer','Yasiel','Yordan','Amos','Cyrus','Ellis',
+  'Hollis','Ira','Jubal','Lyman','Merle','Odell','Rufus','Thaddeus','Virgil','Wendell','Zeke','Alistair',
+  'Callan','Denzel','Idris','Jalil','Kwame','Lamar','Marquise','Nasir','Omari','Tariq','Xavion','Zaire',
+  'Hiroshi','Kenji','Takeshi','Minh','Anh','Ravi','Arjun','Dev',
 ];
 
 export const LAST: readonly string[] = [
@@ -108,4 +128,19 @@ export const LAST: readonly string[] = [
   'Wheatley','Whipple','Whitcomb','Whittaker','Wickersham','Widmark','Wilburn','Wilkerson','Willoughby','Winchester','Windsor','Wingfield',
   'Winterbourne','Witherspoon','Wolfram','Woodbury','Woolsey','Worthington','Wrenfield','Wyckoff','Yarborough','Yeardley','Yorke','Youngblood',
   'Zabriskie','Zaragoza','Zellweger','Zimmerman','Zuniga','Zwingli',
+  'Acosta','Aguilar','Alvarez','Arias','Arroyo','Avila','Ayala','Baez','Barajas','Batista','Bautista','Beltran',
+  'Benitez','Bonilla','Caballero','Cabrera','Calderon','Campos','Cano','Carrillo','Castaneda','Castillo','Castro','Cervantes',
+  'Chavez','Colon','Cruz','Cuevas','De la Cruz','Diaz','Dominguez','Duarte','Duran','Esparza','Estrada','Fuentes',
+  'Galindo','Gallegos','Garcia','Garza','Gomez','Gonzalez','Guerra','Gutierrez','Guzman','Hernandez','Herrera','Huerta',
+  'Juarez','Lara','Leal','Ledesma','Leon','Lopez','Lozano','Luna','Macias','Marin','Martinez','Medina',
+  'Mejia','Melendez','Mendez','Mendoza','Meza','Miranda','Molina','Monroy','Montes','Mora','Moreno','Murillo',
+  'Najera','Nieves','Nunez','Ochoa','Ojeda','Orozco','Ortiz','Osorio','Pacheco','Padilla','Palacios','Paredes',
+  'Pena','Peralta','Perez','Pineda','Ponce','Quinones','Ramirez','Ramos','Rangel','Reyes','Rios','Rivas',
+  'Rivera','Robles','Rocha','Rodriguez','Rojas','Romero','Rosario','Ruiz','Saenz','Salas','Salinas','Sanchez',
+  'Santana','Santiago','Santos','Serrano','Sierra','Solis','Soto','Suarez','Tapia','Tellez','Torres','Trejo',
+  'Urbina','Uribe','Valenzuela','Vega','Velasquez','Velez','Vera','Villarreal','Zapata','Zavala','Zepeda','Abernathy',
+  'Ackerman','Applewhite','Arbogast','Ballard','Barringer','Beasley','Bledsoe','Boudreaux','Brannon','Buckley','Caldwell','Carmichael',
+  'Crenshaw','Dabney','Dempsey','Fairweather','Fitzgerald','Hatcher','Hensley','Lattimore','MacAllister','McCallister','Nakagawa','Oyelaran',
+  'Schaefer','Sorensen','Underwood','Vandenberg','Whitlock','Okonkwo','Adebayo','Mensah','Nguyen','Tran','Patel','Singh',
+  'Kim','Park','Sato','Cohen','Levin','Rossi','Bianchi','Fischer','Weber',
 ];

@@ -124,6 +124,9 @@ export interface SimOptions {
    */
   homeStarter?: number;
   awayStarter?: number;
+  /** The starter is going on less rest than his last outing asked for; he tires sooner. */
+  homeShortRest?: boolean;
+  awayShortRest?: boolean;
   /**
    * The order to bring relievers in, most rested first. Without it every game
    * reaches for bullpen[0], who then throws ninety innings while five team-mates
@@ -227,6 +230,8 @@ export class TeamState {
   readonly lineScore: number[] = [];
   pitcher: Arm;
   penIndex = 0;
+  /** Starting on short rest: the budget is seventy percent (05 §91.3). */
+  shortRest = false;
   pitcherPitches = 0;
   /**
    * How the man on the mound is carrying himself, 0 to 1, half being level.
@@ -701,6 +706,8 @@ export function simGame(
     opts.awayCoachMods, opts.awayBench, opts.awayCloser,
   );
   if (opts.postseason) { home.postseason = true; away.postseason = true; }
+  if (opts.homeShortRest) home.shortRest = true;
+  if (opts.awayShortRest) away.shortRest = true;
   const playEvents: PlayEvent[] | null = opts.playEvents ? [] : null;
 
   // Updated every time the lead changes hands. Whatever is here when the game
@@ -2627,7 +2634,9 @@ function saveSituation(fld: TeamState, bat: TeamState): boolean {
 
 function maybeChangePitcher(fld: TeamState, bat: TeamState, bases: Bases, say: Say): void {
   const p = fld.pitcher;
-  const budget = 30 + p.stamina * 0.85;
+  // A starter sent out on short rest (his coach's call, `startableSlot`)
+  // has seventy percent of his pitches in him tonight.
+  const budget = (30 + p.stamina * 0.85) * (fld.shortRest && p === fld.starter ? 0.7 : 1);
   const line = fld.pitchLine(p);
   /*
     Three ways a bench goes and gets him, where there used to be two slow ones.

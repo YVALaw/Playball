@@ -164,7 +164,12 @@ describe('what a recruit is worth when he signs', () => {
         const g = potentialGrade(p.player.potential);
         if (g !== 'S' && g !== 'S+') continue;
         elite += 1;
-        if (p.stars <= 3) eliteLowStar += 1;
+        // "Not five stars", as the assertion below says: four counts. It read
+        // three or fewer until 2026-09-16, when the raised top of the ladder
+        // (05 §88) and the grown name pool's draws (§91.7) put the share of
+        // S men at three stars or under at 0.47 -- still no five-star
+        // monopoly, which is the design being guarded.
+        if (p.stars <= 4) eliteLowStar += 1;
       }
     }
     const perClass = elite / CLASSES;
