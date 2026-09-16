@@ -6,7 +6,21 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 15, 2026, last of all · **Branch:** `main` · **a
+**Last session:** September 15, 2026, at the end · **Branch:** `main` · **six
+from the phone** -- one message, six reports, one pass (`05` §89): the
+bench's second tap no longer opens a card (the hold is the one way); the
+recruiting filter is a dialog that grows out of its button and shrinks back
+into it, the toggles survive a need's tap, and EFFORT THIS WEEK is four
+chips; opening day's card is dealt at the roll the way AUTO deals it
+(`dealLikeAuto`, the engine's own rule untouched and restated at §66.1);
+the 3D park is fetched at boot and its wait has a six-second patience
+before the 2D diamond takes the seat (`ui/park.ts`); a first professional
+summer reads as one. Two tests new, the suite at 1,555. **Next:** watch the
+park on the phone with the server up (`06` §AJ.1); the day-one roster in
+the app, the climb probe and the hall probe are still unmeasured on this
+engine; the one-star tier carries the walk-ons.
+
+*Earlier the same night:* **a
 five-star is a seventy-three, so that a blue blood can stay one** -- the top
 of the ladder went up by the reporter's word, prestige staying as it is:
 five-star band 68–80 at five percent of the class, four-star 60–70 at ten,

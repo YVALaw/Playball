@@ -131,9 +131,28 @@ describe('a drafted man', () => {
     expect(distinct, 'the professional career has too few things to say').toBeGreaterThan(20);
     for (const phrase of [
       'everyday player', 'part-time role', 'training room', 'Repeated',
+      'straight out of the draft',
     ]) {
       expect(all.some((l) => l.includes(phrase)), `nobody ever: ${phrase}`).toBe(true);
     }
+  });
+
+  it('reads a first professional summer as a first one', () => {
+    // Reported 2026-09-15: "there are comments that make it feel like they
+    // have been in the pros for years when they just left the team." `atLevel`
+    // starts at one for the drafted level, so a first summer without a
+    // promotion read "Repeated double-A. Not everybody moves every year."
+    // The roll is untouched; the line is the summer's.
+    let firsts = 0;
+    for (const l of lives) {
+      const first = l.lines[0];
+      if (!first) continue;
+      expect(first, first).not.toMatch(/^Repeated|^A third year|^Another summer/);
+      if (first.includes('straight out of the draft')) firsts++;
+    }
+    // Most first summers are a summer at the drafted level: no promotion,
+    // no release, and the line that says so.
+    expect(firsts / lives.length).toBeGreaterThan(0.4);
   });
 
   it('does not spend every minor-league year being promoted', () => {

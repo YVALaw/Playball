@@ -2438,6 +2438,78 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
  * is that it does not, unless you go and look — and the card is right there on
  * the LINEUP screen, correct and current, whenever you do.
  */
+/**
+ * The AUTO press, as a function: the best nine, the order, the rotation.
+ *
+ * Pulled out of the action on 2026-09-15 so the roll can make the same deal
+ * -- "every start of the season the app should automatically set the best
+ * lineup just like if we went into lineup and tapped auto lineup" -- while
+ * the store is busy and the button would refuse. The comments are the
+ * button's; every report that shaped it applies to opening day as well.
+ */
+function dealLikeAuto(team: TeamRecord['team'], day: number): void {
+  /*
+    Bench the men who cannot play, THEN order the card.
+
+    Reported: "the auto button doesn't move hurt players out." It called a
+    helper whose contract is a pure reorder, so it never could, and a fit
+    pass went above it that swapped every unavailable starter out.
+
+    Then, 2026-09-10: "it kept two freshmen at 50 overall on the bench and
+    two juniors at 25 overall starting." The fit pass only ever moved a man
+    who could not play. `bestNine` picks the card from the whole squad by
+    merit, the unavailable skipped, so AUTO fields the best nine it has.
+  */
+  const best = bestNine(team, day);
+  team.lineup.splice(0, team.lineup.length, ...best.lineup);
+  team.bench.splice(0, team.bench.length, ...best.bench);
+  // AUTO is the button that promises a sound card, so it repairs the set as
+  // part of the deal — and it is the ONLY automation allowed to touch a
+  // label, per the report that reversed the manual adoption. It also sends
+  // every bench man home: the bench is where a man is himself again.
+  healPositions(team.lineup);
+  for (const b of team.bench) restoreHome(b);
+  // AUTO is a decision too: whoever it fielded is back on purpose.
+  for (const m of team.lineup) settleReturn(m);
+  const dealt = autoBattingOrder(team.lineup);
+  // Same nine or nothing. The helper only reorders, but the invariant is
+  // cheap to hold at the door and a corrupted lineup is a corrupted season.
+  if (dealt.length !== team.lineup.length) return;
+  team.lineup.splice(0, team.lineup.length, ...dealt);
+  /*
+    And the rotation, in the same press — asked for directly: "when hitting
+    auto lineup it should also automatically rework the pitching rotation."
+    Best arm takes Friday, the weekend follows in order, and the fourth-best
+    gets the midweek start, which is what the slot labels have always meant.
+    Available arms first, so a hurt ace does not hold Friday from the bench.
+  */
+  /*
+    Rebuilt from every arm, not reordered. Reported 2026-09-10: "I have a
+    lot of better freshman SP in the bullpen but they are not being brought
+    to the starting position." Available arms first, then starters by
+    trade — the role he was drawn with, or the one he keeps under a
+    borrowed label — then the better arm; relievers fill the back of the
+    rotation only when there are not four starters. The same labels
+    promoteArm writes, so a reliever who takes Friday is an SP tonight and
+    an RP again on the way back down, and a surplus starter in the pen
+    stays an SP by trade.
+  */
+  const arms = uniquePlayers([...team.rotation, ...team.bullpen]) as Arm[];
+  const trade = (a: Arm): 'SP' | 'RP' => a.homeRole ?? a.role;
+  const ranked = [...arms].sort((a, b) =>
+    (Number(available(b, day)) - Number(available(a, day)))
+    || (Number(trade(b) === 'SP') - Number(trade(a) === 'SP'))
+    // armValue: a two-way man's slot in the rotation is his arm's.
+    || armValue(b) - armValue(a));
+  const size = Math.max(1, team.rotation.length);
+  const rotation = ranked.slice(0, size);
+  const bullpen = ranked.slice(size);
+  for (const a of rotation) { a.homeRole = trade(a); a.role = 'SP'; settleReturn(a); }
+  for (const a of bullpen) { a.homeRole = trade(a); a.role = trade(a); }
+  team.rotation.splice(0, team.rotation.length, ...rotation);
+  team.bullpen.splice(0, team.bullpen.length, ...bullpen);
+}
+
 function staffSetsTheCard(season: SeasonState, userTeam: number): void {
   const team = season.teams[userTeam]?.team;
   if (!team) return;
@@ -4923,6 +4995,22 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       */
       applyCoachMods(rolled, get().userTeam, coach, rolledEconomy);
 
+      /*
+        Opening day's card, dealt the way AUTO deals it.
+
+        Reported 2026-09-15: "every start of the season the app should
+        automatically set the best lineup just like if we went into lineup
+        and tapped auto lineup ... it just keeps playing the previous year
+        players even if they are worse than the freshmen." The engine's roll
+        leaves the coached card alone by design (05 §62.4): graduation takes
+        men off it, the class lands on the bench, and nothing dealt it again
+        until the coach did. Once, here, the same press as AUTO -- the best
+        nine, the order, the rotation -- and what he changes after this is
+        his. A delegated card is dealt again before every day regardless.
+      */
+      const opening = rolled.teams[get().userTeam]?.team;
+      if (opening) dealLikeAuto(opening, rolled.dayIndex);
+
       set({
         season: rolled,
         year: year + 1,
@@ -7192,70 +7280,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   autoLineup: () => {
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
-    if (!team || get().busy) return;
-    /*
-      Bench the men who cannot play, THEN order the card.
-
-      Reported: "the auto button doesn't move hurt players out." It called a
-      helper whose contract is a pure reorder, so it never could, and a fit
-      pass went above it that swapped every unavailable starter out.
-
-      Then, 2026-09-10: "it kept two freshmen at 50 overall on the bench and
-      two juniors at 25 overall starting." The fit pass only ever moved a man
-      who could not play. `bestNine` picks the card from the whole squad by
-      merit, the unavailable skipped, so AUTO fields the best nine it has.
-    */
-    if (season) {
-      const best = bestNine(team, season.dayIndex);
-      team.lineup.splice(0, team.lineup.length, ...best.lineup);
-      team.bench.splice(0, team.bench.length, ...best.bench);
-    }
-    // AUTO is the button that promises a sound card, so it repairs the set as
-    // part of the deal — and it is the ONLY automation allowed to touch a
-    // label, per the report that reversed the manual adoption. It also sends
-    // every bench man home: the bench is where a man is himself again.
-    healPositions(team.lineup);
-    for (const b of team.bench) restoreHome(b);
-    // AUTO is a decision too: whoever it fielded is back on purpose.
-    for (const m of team.lineup) settleReturn(m);
-    const dealt = autoBattingOrder(team.lineup);
-    // Same nine or nothing. The helper only reorders, but the invariant is
-    // cheap to hold at the door and a corrupted lineup is a corrupted season.
-    if (dealt.length !== team.lineup.length) return;
-    team.lineup.splice(0, team.lineup.length, ...dealt);
-    /*
-      And the rotation, in the same press — asked for directly: "when hitting
-      auto lineup it should also automatically rework the pitching rotation."
-      Best arm takes Friday, the weekend follows in order, and the fourth-best
-      gets the midweek start, which is what the slot labels have always meant.
-      Available arms first, so a hurt ace does not hold Friday from the bench.
-    */
-    const day = season?.dayIndex ?? 0;
-    /*
-      Rebuilt from every arm, not reordered. Reported 2026-09-10: "I have a
-      lot of better freshman SP in the bullpen but they are not being brought
-      to the starting position." Available arms first, then starters by
-      trade — the role he was drawn with, or the one he keeps under a
-      borrowed label — then the better arm; relievers fill the back of the
-      rotation only when there are not four starters. The same labels
-      promoteArm writes, so a reliever who takes Friday is an SP tonight and
-      an RP again on the way back down, and a surplus starter in the pen
-      stays an SP by trade.
-    */
-    const arms = uniquePlayers([...team.rotation, ...team.bullpen]) as Arm[];
-    const trade = (a: Arm): 'SP' | 'RP' => a.homeRole ?? a.role;
-    const ranked = [...arms].sort((a, b) =>
-      (Number(available(b, day)) - Number(available(a, day)))
-      || (Number(trade(b) === 'SP') - Number(trade(a) === 'SP'))
-      // armValue: a two-way man's slot in the rotation is his arm's.
-      || armValue(b) - armValue(a));
-    const size = Math.max(1, team.rotation.length);
-    const rotation = ranked.slice(0, size);
-    const bullpen = ranked.slice(size);
-    for (const a of rotation) { a.homeRole = trade(a); a.role = 'SP'; settleReturn(a); }
-    for (const a of bullpen) { a.homeRole = trade(a); a.role = trade(a); }
-    team.rotation.splice(0, team.rotation.length, ...rotation);
-    team.bullpen.splice(0, team.bullpen.length, ...bullpen);
+    if (!team || !season || get().busy) return;
+    dealLikeAuto(team, season.dayIndex);
     set({ version: version + 1 });
     void get().saveNow();
   },

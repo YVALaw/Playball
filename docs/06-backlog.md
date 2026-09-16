@@ -3908,3 +3908,35 @@ the D1 target from year one. What the measurement turned up and did not fix:
 - **A day-one roster carries about half the walk-ons a June leaves** (1.6
   against 2.4), because the tail is the starved tier above and a thinness
   that has a history. Recorded at `05` §85.4 as the residual, not tuned.
+
+## AJ. September 15, six from the phone — what it left
+
+All six reports fixed in one pass (`05` §89): the bench's second tap, the
+filter as a box that grows from its button, the toggles surviving a need, the
+effort chips, opening day's card dealt the way AUTO deals it, the park's
+patience, a first professional summer that reads as one.
+
+### AJ.1 To watch
+
+- **The park's hang was not reproduced.** Localhost answers in under a
+  second; the report's shape is a phone on wifi whose dev server had gone
+  away, and the fix — the chunk fetched at boot, six seconds of dots and
+  then the 2D diamond, the park taking the seat back when the chunk lands —
+  is right either way. If the dots ever show for the full six seconds on the
+  phone *with the server up*, the chunk is genuinely slow on that link and
+  the patience is doing its job; if they never show again, the server was
+  down. Either reading is fine; a third would be news.
+- **Opening day's deal is the store's, not the engine's** (`05` §89.5). The
+  engine's roll still leaves the coached card alone, so a headless world
+  (`tests/headlessYear.ts`, the census) plays the coached program on last
+  year's survivors unless it deals the card itself. The census reads every
+  programme through `setTheCard`, so it is unaffected; anybody adding a
+  coached-team probe should know.
+
+### AJ.2 Small
+
+- **`.recruit-plan-summary` lost its element** and its selector went with it;
+  the shared rule keeps `.postseason-outcome p`.
+- **The desktop app's Browser pane freezes animation frames while hidden.**
+  Front it (`tabs_select`) before sampling anything animated; recorded at
+  `05` §89.2 after a quarter of an hour spent on a working animation.

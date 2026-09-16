@@ -26,7 +26,6 @@ import { handles } from '../../state/depth.js';
 import {
   buzz, crowdLeverage, crowdStart, crowdStop, crowdSwell, sfx,
 } from '../sound.js';
-import { lazy, Suspense } from 'react';
 import { LineScore } from '../LineScore.js';
 
 /**
@@ -41,8 +40,7 @@ import { LineScore } from '../LineScore.js';
 import type { BallHit } from '../Diamond3D.js';
 import { appliedStrategy } from '../../engine/season.js';
 
-const Diamond3D = lazy(() =>
-  import('../Diamond3D.js').then((m) => ({ default: m.Diamond3D })));
+import { usePark } from '../park.js';
 import { Diamond } from '../Diamond.js';
 import { Boundary } from '../Boundary.js';
 import { readPrefs } from '../../state/devicePrefs.js';
@@ -137,6 +135,8 @@ export function Manage() {
   const [splash, setSplash] = useState<{ tick: number; text: string } | null>(null);
   // The 2D diamond, chosen in Settings → Display; read once, on the way in.
   const [flatField] = useState(() => readPrefs().field === '2d');
+  // The 3D park's chunk, or the patience for it. See `park.ts`.
+  const { Park, patient } = usePark(!flatField);
   /*
     Which side is in the field, as the PARK is showing it — which lags the
     scoreboard by however long the last play takes to finish.
@@ -740,22 +740,17 @@ export function Manage() {
             <div style={{ width: '100%', height: 250, position: 'relative', display: 'grid', placeItems: 'center' }}>
               <Diamond runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick} size={132} />
             </div>
-          ) : (
-            /* A chunk that fails to arrive rejects rather than suspends, and
-               Suspense never sees a rejection; the fence falls back to the
-               2D diamond rather than blanking the app mid-game (05 §62.6). */
+          ) : Park ? (
+            /* The fence is for a throw at render -- a device without WebGL --
+               and its fallback is the 2D diamond rather than a blank app
+               mid-game (05 §62.6). The wait for the chunk is `usePark`'s,
+               and it has a patience. */
             <Boundary fallback={() => (
               <div style={{ width: '100%', height: 250, position: 'relative', display: 'grid', placeItems: 'center' }}>
                 <Diamond runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick} size={132} />
               </div>
             )}>
-            <Suspense fallback={
-              <div className="park-loading" style={{ height: 250 }} aria-hidden>
-                <span>THE PARK</span>
-                <div><i /><i /><i /></div>
-              </div>
-            }>
-              <Diamond3D
+              <Park
                 runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick}
                 ball={ball} scored={{ runners: scoredRunners, tick: scoreTick }} height={250}
                 // Midweek plays in the afternoon; the weekend series and all
@@ -778,8 +773,18 @@ export function Manage() {
                   : undefined}
                 positioning={positioning}
               />
-            </Suspense>
             </Boundary>
+          ) : patient ? (
+            <div className="park-loading" style={{ height: 250 }} aria-hidden>
+              <span>THE PARK</span>
+              <div><i /><i /><i /></div>
+            </div>
+          ) : (
+            /* The chunk is late or the server is gone: the diamond takes the
+               seat, and the park takes it back if the chunk ever lands. */
+            <div style={{ width: '100%', height: 250, position: 'relative', display: 'grid', placeItems: 'center' }}>
+              <Diamond runners={d?.runners ?? runnersHeld.current} scoreTick={scoreTick} size={132} />
+            </div>
           )}
           {d && (
             <div className="ballpark-situation">

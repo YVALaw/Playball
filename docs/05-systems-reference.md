@@ -8328,7 +8328,9 @@ The same class of gap, closed the same way:
   never fire — `onError` is not a Canvas prop and was spread onto a div — so
   a device without WebGL rethrew out of the screen; a real boundary catches
   it. The 2D field the settings copy advertised has its control back
-  (Display → The field), and picking it never fetches three.js.
+  (Display → The field), and picking it never fetches three.js. (Since §89.6
+  the chunk is fetched at boot rather than at the first pitch, and the wait
+  for it has a patience; the choice of the 2D field still fetches nothing.)
 - **AUTO.** The handover the docs promised never fired: `worthManaging`
   was dead code and AUTO played to the last out. It hands the dugout back
   the moment something worth managing arrives, never on the situation it
@@ -8936,7 +8938,9 @@ screen already made, now available to anybody. `createSeason` deals ninety-six
 cards on day one and `fillRosters` deals them again after every roll, skipping
 the coached program — his card is his, and the lineup screen or his own staff
 writes it. Neither call draws, so a league dealt this way is the same world it
-would otherwise have been.
+would otherwise have been. (Since §89.5 the store deals the coached card once
+at the roll, the way AUTO does, on the reporter's word; the engine's rule
+here has not moved.)
 
 The calibration sweep held without re-recording, which the stage-8 note (`06`
 §L, "correct and ruinous") would not have predicted. It is the own-spot edge
@@ -11561,3 +11565,150 @@ raised bands and once on the finished engine; the harness read after the
 lift; the goldens recorded by the script that refuses a sweep off by ten;
 the twelve test files fitted to the top of the population run on the raised
 ladder before anything else was touched.
+
+## 89. Six from the phone: the hold, the filter box, the chips, opening day's card, the park's patience, a first summer — **September 15 2026, at the end**
+
+Six reports in one message, fixed in one pass. None touches the engine's
+numbers; two of them touch a rule this reference had written down the other
+way, and both are restated where they were written (§66.1, §62.6) as well as
+here.
+
+### 89.1 The card is a hold, on the bench too
+
+"In lineup, I thought we agreed to remove the double tap to access the
+player's profile and instead kept the hold." The order's second tap had
+already gone; the bench's had not — `tapBench` still opened the card when the
+man you had picked was tapped again, on the argument that it read as "show me
+him". It reads as a double tap, and it is the one gesture this screen had
+agreed not to have. A second tap on a picked bench man puts him down now, the
+same as the order. The hold (`useHold`, `holdStats`) is the one way to a card
+from any row; the trainer's-room list keeps its plain tap, because a man who
+cannot play has nothing else a tap could mean.
+
+### 89.2 The filter is a box that grows out of its button
+
+"I'd prefer if it opens like a modal, not inside the page; right now it is
+almost impossible to see how it opens in small screens ... this modal has to
+open with a nice transition animation like the box getting bigger from the
+button." It had been a mode: the panel replaced the body, for the reason the
+note in `Board.tsx` records (a panel at the top of a list you had scrolled
+was invisible, and scroll anchoring held the view still). The mode's own
+failure is the same one from the other side — a body that becomes a panel
+reads as the screen changing under you.
+
+`FilterModal` now: a card over the whole frame (`InFrame`, the `modal-scrim`
+shell, centred), a fixed head with the count and CLOSE, a scrolling body of
+the same four sections, a fixed foot with CLEAR EVERY FILTER above the way
+out. The way out's label still comes from `pinnedAction` with `filtersOpen:
+true` — SHOW THE TOP 50 OF 720, SHOW 3 RECRUITS, NOBODY MATCHES · BACK TO
+THE BOARD — so the frame's END WEEK stays under the scrim, the function that
+decides the label has not changed, and its tests hold as written. The trip:
+the card is laid out at full size, and before the first paint a Web Animation
+runs it from the button's rectangle (translated to its centre, scaled to its
+width and height) to where it lies, 300ms; closing runs the trip backwards and
+unmounts when it lands, with a timer behind `finished` for a tab in the
+background, where animations stop. Both boxes are read from the DOM, so the
+button can sit wherever the header puts it. Reduced motion gets the box and
+no trip. The dialog contract (`useDialogFocus`): focus lands on CLOSE, Escape
+closes, Tab stays inside.
+
+Two things learned on the way, kept here so nobody relearns them. A CSS
+transition juggled through inline styles — set the start, force a reflow,
+clear — did not survive React's dev-mode double effect: the second pass
+measured the card already on its way and set the trip from there.
+`Element.animate` starts from its first keyframe whatever the element's style
+was a moment ago, and the mount effect is guarded to run once. And the
+desktop app's Browser pane stops animation frames while it is hidden, so a
+sampled animation reads as frozen until the pane is fronted; a transition's
+computed values advance regardless, which is how a stuck open read as a
+working close for a quarter of an hour.
+
+### 89.3 The toggles survive a need
+
+"If I toggle pipelines and then go to needs and tap on one of the needs, it
+only looks for needs but drops the toggle." The need's tap wrote `{
+...NO_FILTERS, pos }`. It writes `{ ...filters, pos }`: a need names a
+position; the toggles are the coach's standing view of the board. Verified:
+PIPELINES on, the SS need tapped, the box reopens at 2 ON with SS and
+PIPELINES and the three shortstops in the pipeline.
+
+### 89.4 EFFORT THIS WEEK is four chips
+
+"Remove some of the text we have in effort this week, it is too long." The
+paragraph — total plan, interest from-to, the coordinator bonus, the weeks
+remaining, "Other schools also act when the week ends. Interest does not
+guarantee a commitment." — is four chips: `12 RP`, `INTEREST 41 → 58`, `+15%
+COORDINATOR` when there is one, `11 WEEKS LEFT` or `SIGNING DAY NEXT`. The
+two sentences of caveat are gone: the board teaches the first the first time
+a week ends, and the second is what the interest number is.
+
+### 89.5 Opening day's card is dealt
+
+"Every start of the season the app should automatically set the best lineup
+just like if we went into lineup and tapped auto lineup ... it just keeps
+playing the previous year players even if they are worse than the freshmen."
+True, and by a rule this reference had written down: §66.1 has the engine's
+roll skip the coached program — his card is his, the lineup screen or his
+staff writes it. Graduation took men off it, the class landed on the bench,
+and a hands-on coach who did not press AUTO opened the season with last
+year's survivors in the order they were left in.
+
+The engine's rule stands. The store's `rollYear` deals the card once, after
+`applyCoachMods` and before the season is set, by `dealLikeAuto` — the AUTO
+press pulled out of its action so the roll can make the same deal while the
+store is busy: `bestNine` with the unavailable benched, `healPositions`,
+every bench man home, `autoBattingOrder`, and the rotation rebuilt from every
+arm with the ace on Friday. What he changes after this is his; a delegated
+card is dealt again before every day regardless (`staffSetsTheCard`). The
+doc-sweep test is restated to say which roll it pins; `tests/store.test.ts`
+"opening day" scrambles the card, rolls, and reads the dealt order, the best
+nine, and a rotation of starters.
+
+### 89.6 The park has a patience
+
+"The park isn't loading, it just shows the park and the loading dots." The
+park was `React.lazy` behind a `Suspense` (§62.6) whose fallback was THE PARK
+and three dots, and Suspense waits for as long as the import takes. On the
+desktop over localhost that is under a second. On a phone over wifi to a dev
+server that has stopped answering — the app keeps working from memory, and
+three.js is the one chunk it had never asked for — a fetch does not fail
+quickly; it hangs until the connection times out, and the dots hold the seat
+for the wait. A rejection reached the fence and the 2D diamond (§62.6); a
+wait reached nobody. Not reproduced here, because localhost answers; the
+shape fits the report, and the fix is right either way.
+
+`ui/park.ts`: `loadPark` fetches the chunk once and forgets a failure so the
+next game asks again; `usePark(want)` returns the component when it is here
+and a `patient` flag that runs out after six seconds or on failure; `Manage`
+renders the park, else the dots while patient, else the 2D diamond, and the
+park takes the seat back whenever the chunk lands. `main.tsx` asks for the
+chunk three seconds after the first paint unless the field is the 2D diamond
+by choice, so it is in memory before the first pitch and a server that dies
+later does not matter to it. Verified on the start screen: `Diamond3D.tsx`,
+`three` and `@react-three/fiber` fetched with no game started; a game then
+rendered its canvas in 350ms with no dots at all.
+
+### 89.7 A first summer reads as one
+
+"The alumni, there are comments that make it feel like they have been in the
+pros for years when they just left the team." `proCareer` starts `atLevel` at
+one for the level a man is drafted to — a fiction the promotion roll needs;
+`settled` damps a first summer — and the flavour line was read after the
+increment, so a man's first summer without a promotion read "Repeated
+double-A. Not everybody moves every year." about a man who had been a
+professional for ten months. The roll is untouched. `minorSummer` takes a
+`first` flag for the summer after the draft: "Assigned to double-A straight
+out of the draft. A first summer as a professional." The release line
+("Released in the spring. It ends that quickly for most.") and the promotion
+line were already right for a first year. `tests/pro-career.test.ts` reads
+every life's first line, refuses a repeat, a third year or another summer,
+and asks that most first summers be the new line.
+
+### 89.8 Verified
+
+TypeScript clean; the full suite, 90 files and 1,555 tests, two of them new;
+in the browser on 5174: the bench man's second tap puts him down and a
+700ms hold opens his card; the filter box grows from the button (sampled
+mid-flight at scale 0.19 × 0.13, translated toward the button, opacity 0.22)
+and shrinks back into it; PIPELINES plus the SS need reads 2 ON; the chips;
+the park's chunk fetched at boot and the canvas up in a game with no dots.

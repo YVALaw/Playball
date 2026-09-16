@@ -255,9 +255,21 @@ function bigLeagueSummer(flavour: number, talent: number, proYears: number): str
     : 'A bench summer. Being there at all is the achievement.';
 }
 
-/** And a summer that was not in the big leagues. */
-function minorSummer(level: string, yearsThere: number): string {
+/**
+ * And a summer that was not in the big leagues.
+ *
+ * `first` is the summer after the draft, and it gets its own line. `atLevel`
+ * starts at one for the level a man is drafted to -- a fiction the promotion
+ * roll needs, see `settled` -- so his first summer arrived here reading as
+ * his second: "Repeated double-A. Not everybody moves every year", about a
+ * man who had been a professional for ten months. Reported 2026-09-15:
+ * "there are comments that make it feel like they have been in the pros for
+ * years when they just left the team." The roll is untouched; the line says
+ * what the summer was.
+ */
+function minorSummer(level: string, yearsThere: number, first = false): string {
   const where = level.toLowerCase().replace('-a', '-A');
+  if (first) return `Assigned to ${where} straight out of the draft. A first summer as a professional.`;
   if (yearsThere >= 3) return `A third year at ${where}. The clock is loud now.`;
   if (yearsThere === 2) return `Repeated ${where}. Not everybody moves every year.`;
   return `Another summer at ${where}.`;
@@ -572,7 +584,7 @@ export function proCareer(id: string, note: AlumnusNote, throughYear: number): P
         level: LEVELS[level]!,
         line: level === LEVELS.length - 1
           ? bigLeagueSummer(flavour, talent, age)
-          : minorSummer(LEVELS[level]!, atLevel),
+          : minorSummer(LEVELS[level]!, atLevel, age === 1),
       });
     }
   }

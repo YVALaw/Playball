@@ -71,7 +71,11 @@ describe('every program in the country', () => {
   });
 
   it('leaves the coached program his own card at the roll', () => {
-    // His card is his: the lineup screen writes it, or his staff does.
+    // His card is his at the ENGINE's roll: the lineup screen writes it, or
+    // his staff does -- and since 2026-09-15 the store's `rollYear` deals it
+    // once, on opening day, the way AUTO does (05 §89), which is the app's
+    // decision and not this function's. What this pins is that nothing in
+    // here re-deals it behind him; the store's own test covers the deal.
     const season = world();
     const mine = season.teams[0]!;
     const before = mine.team.lineup.map((p) => p.id);

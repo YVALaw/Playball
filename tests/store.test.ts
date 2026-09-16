@@ -17,6 +17,7 @@ import { pipelineStrength } from '../src/engine/economy.js';
 import { prestigeStars } from '../src/engine/program.js';
 import type { DraftBoard } from '../src/engine/draft.js';
 import { createSeason, simSeason, seasonComplete } from '../src/engine/season.js';
+import { bestNine } from '../src/engine/depthChart.js';
 import type { SeasonState, TeamRecord } from '../src/engine/season.js';
 import type { OffseasonReport } from '../src/engine/progression.js';
 import type { Player, PlayerId } from '../src/engine/types.js';
@@ -31,7 +32,7 @@ import {
 } from '../src/engine/program.js';
 import {
   strategyFor, strategyForPhilosophy, philosophyOf, PHILOSOPHIES,
-  DEFAULT_PHILOSOPHY, DEFAULT_STRATEGY,
+  DEFAULT_PHILOSOPHY, DEFAULT_STRATEGY, autoBattingOrder,
 } from '../src/engine/strategy.js';
 import {
   COACH_SKIN, COACH_HAIR, CUT_LABEL, BEARD_LABEL,
@@ -1389,5 +1390,41 @@ describe("the week's points go where the coach puts them", () => {
     // him nothing at all here.
     useDynasty.getState().recruit(target.id, 12);
     expect(target.spent[s.userTeam]).toBe(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Opening day's card
+// ---------------------------------------------------------------------------
+
+describe('opening day', () => {
+  it('deals the coached card at the roll, the way AUTO does', async () => {
+    /*
+      Reported 2026-09-15: "every start of the season the app should
+      automatically set the best lineup just like if we went into lineup and
+      tapped auto lineup ... it just keeps playing the previous year players
+      even if they are worse than the freshmen." The engine leaves the coached
+      card alone at its roll (05 §62.4, the doc-sweep test); the store deals
+      it once here, best nine and order and rotation, and the class that just
+      arrived is on it if it belongs there.
+    */
+    useDynasty.getState().start(4242, 0);
+    const before = useDynasty.getState().season!.teams[0]!.team;
+    // A card no coach would field: the catcher leading off.
+    before.lineup.reverse();
+    useDynasty.getState().settleSeason();
+    await useDynasty.getState().rollYear();
+
+    const s = useDynasty.getState();
+    const team = s.season!.teams[s.userTeam]!.team;
+    const ids = (ps: readonly { id: PlayerId }[]): string[] => ps.map((p) => String(p.id));
+    // The order is the dealt one...
+    expect(ids(team.lineup)).toEqual(ids(autoBattingOrder(team.lineup)));
+    // ...and the nine is the best nine the squad has, the class included.
+    const best = bestNine(team, s.season!.dayIndex);
+    expect(new Set(ids(team.lineup))).toEqual(new Set(ids(best.lineup)));
+    // And the rotation is the best four arms, the ace on Friday.
+    expect(team.rotation.length).toBeGreaterThan(0);
+    expect(team.rotation.every((a) => a.role === 'SP')).toBe(true);
   });
 });

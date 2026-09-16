@@ -22,7 +22,7 @@ import { recruitingPlan, programRecruitingPitch } from '../../engine/recruitingP
 // quietly discounted, because a button that works and achieves nothing reads as
 // a bug.
 
-import { useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { useDialogFocus } from '../dialogFocus.js';
 import { boardBudget, PHASES, useDynasty, useUserTeam } from '../../state/store.js';
 import {
@@ -47,7 +47,7 @@ import { InFrame } from '../Overlay.js';
 import { GodBolt, GodIntroRow } from '../god/GodBolt.js';
 import { FirstVisit } from '../Tutorial.js';
 import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { MixerHorizontalIcon } from '@radix-ui/react-icons';
+import { Cross2Icon, MixerHorizontalIcon } from '@radix-ui/react-icons';
 import { withStaff, pipelineStrength, pipelineLabel, PIPELINE_MIN } from '../../engine/economy.js';
 import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { handles } from '../../state/depth.js';
@@ -172,6 +172,11 @@ export type PinnedKind = 'close-filter' | 'end-week' | 'signing-day' | null;
  * like the roster tab and the button still belonged to the filter. The tabs
  * leave the mode now, and the label is computed here, once, from state rather
  * than assembled at two branches of the JSX.
+ *
+ * Since the filter became a dialog (2026-09-15) the `filtersOpen` branch is
+ * the dialog's own button rather than the frame's: the board underneath keeps
+ * END WEEK, the box over it says what closing it will show, and both labels
+ * still come from here.
  */
 export function pinnedAction(
   s: {
@@ -300,6 +305,8 @@ export function Board() {
     setFiltersState(next);
   };
   const [filtersOpen, setFiltersOpen] = useState(false);
+  /** The FILTER button, which the dialog grows out of and shrinks back into. */
+  const filterButton = useRef<HTMLButtonElement | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [warnHoles, setWarnHoles] = useState(false);
   const holesSheet = useRef<HTMLDivElement | null>(null);
@@ -448,9 +455,14 @@ export function Board() {
   const full = commits.length >= SCHOLARSHIPS;
   const activeFilters = anyFilter(filters);
   const pinned = pinnedAction({
-    filtersOpen, live: live && !seasonMode, week, matches, shown: list.length,
+    filtersOpen: false, live: live && !seasonMode, week, matches, shown: list.length,
     byHand: worksBoard,
   });
+  // The dialog's own button, off the same function: it says what the board
+  // will show when the box closes.
+  const filterLabel = pinnedAction({
+    filtersOpen: true, live: live && !seasonMode, week, matches, shown: list.length,
+  }).label;
   const activeTargetCount = (pos: string): number => targets.filter((p) => {
     if (p.signedBy !== null) return false;
     if (pos === 'BENCH') return p.player.type === 'hitter';
@@ -476,17 +488,13 @@ export function Board() {
         <FloatingAction
           label={pinned.label}
           onClick={() => {
-            if (pinned.kind === 'close-filter') setFiltersOpen(false);
-            else if (pinned.kind === 'signing-day') { advanceWeek(); void nextPhase('recruiting'); }
+            if (pinned.kind === 'signing-day') { advanceWeek(); void nextPhase('recruiting'); }
             // Not when the staff picked the board: the warning exists to stop a
             // coach ending week one with nothing on it, and his coordinator
             // cannot make that mistake.
             else if (pinned.kind === 'end-week' && worksBoard && week === 1 && uncoveredBoardNeeds.length > 0) setWarnHoles(true);
             else advanceWeek();
           }}
-          secondary={pinned.kind === 'close-filter' && activeFilters
-            ? { label: 'CLEAR EVERY FILTER', onClick: () => setFilters(NO_FILTERS) }
-            : null}
         />
       )}
       header={
@@ -501,30 +509,33 @@ export function Board() {
           />
         </GodIntroRow>
         {/*
-          Filtering is a mode, not a drawer.
+          Filtering is a dialog that grows out of this button.
 
-          Reported from testing: "if we scrolled to the players and try to tab on
-          the filter it would not work". It worked perfectly — it opened the
-          panel at the top of the list, fourteen hundred pixels above where you
-          were reading, and the browser's scroll anchoring then held the view
-          exactly still so that nothing whatsoever appeared to happen. That is
-          what pinning the header cost: the control used to be reachable only
-          from the top of the list, where the thing it opened was also visible.
-          Entering a mode instead means the panel is the only thing in the body,
-          so there is nowhere for it to hide.
+          It was a mode. Reported first: "if we scrolled to the players and try
+          to tap on the filter it would not work" -- it opened a panel at the
+          top of the list, fourteen hundred pixels above where you were
+          reading, and scroll anchoring held the view still so that nothing
+          appeared to happen. Swapping the body for the panel fixed that and
+          brought its own report: "right now it is almost impossible to see
+          how it opens in small screens" -- a body that becomes a panel reads
+          as the screen changing under you. So it is a box over the board now,
+          opened from this button by growing out of it and put back the same
+          way; see `FilterModal` for the motion.
         */}
         <button
+          ref={filterButton}
           className={`filter-button tap${filtersOpen || activeFilters ? ' active' : ''}`}
           type="button"
           aria-label={activeFilters ? 'Filter recruits, filters on' : 'Filter recruits'}
+          aria-haspopup="dialog"
           aria-expanded={filtersOpen}
           onClick={() => {
             setOpenId(null);
-            // Filters only shape the recruits list, so opening them from the
-            // roster tab and landing back on the roster would be a control that
+            // Filters only shape the recruits list, so a box opened from the
+            // roster tab and closed onto the roster would be a control that
             // changed a screen you were not looking at.
-            if (!filtersOpen) setView('recruits');
-            setFiltersOpen((v) => !v);
+            setView('recruits');
+            setFiltersOpen(true);
           }}
         ><MixerHorizontalIcon /><span>{activeFilters ? 'Filter on' : 'Filter'}</span></button>
       </div>
@@ -587,22 +598,6 @@ export function Board() {
       </div>
     )}
     <div className="offseason-recruiting" style={{ padding: '10px 14px 20px' }}>
-      {/* Filtering replaces the body rather than pushing it down. The rest of
-          this branch is the board itself; see the note on the FILTER button. */}
-      {filtersOpen ? (
-        /* The panel arrives instead of appearing — the same rise every sheet
-           in the app makes, because that is what it is: a mode laid over the
-           board. Asked for: "it should do an opening animation instead of
-           simply appearing." */
-        <div className="rise-in">
-          <FilterPanel
-            filters={filters}
-            onChange={setFilters}
-            homeState={homeState}
-            myStars={myStars}
-          />
-        </div>
-      ) : <>
       {live && lastWeek && (
         <div style={{
           marginBottom: 10, border: '1px solid var(--clay)',
@@ -635,7 +630,11 @@ export function Board() {
 
       {view === 'needs' ? (
         <NeedsView short={shortfall} thin={thin} covered={covered} leaving={leaving} targeted={activeTargetCount} onPick={(pos) => {
-          setFilters({ ...NO_FILTERS, pos });
+          // On top of what is already set, not instead of it. Reported: "if I
+          // toggle pipelines and then go to needs and tap on one of the needs,
+          // it only looks for needs but drops the toggle." A need names a
+          // position; the toggles are the coach's standing view of the board.
+          setFilters({ ...filters, pos });
           setView('recruits');
         }} />
       ) : view === 'roster' ? (
@@ -723,6 +722,19 @@ export function Board() {
         </>
       )}
 
+      {filtersOpen && (
+        <FilterModal
+          from={filterButton}
+          filters={filters}
+          onChange={setFilters}
+          onClear={() => setFilters(NO_FILTERS)}
+          onClose={() => setFiltersOpen(false)}
+          label={filterLabel}
+          homeState={homeState}
+          myStars={myStars}
+        />
+      )}
+
       {warnHoles && (
         <InFrame>
           <div ref={holesSheet} className="prospect-sheet-scrim fade-in" onClick={() => setWarnHoles(false)} role="dialog" aria-modal="true" aria-label="Your board still has holes">
@@ -760,7 +772,6 @@ export function Board() {
           onClose={() => setOpenId(null)}
         />
       )}
-      </>}
 
       {/*
         The pinned button says what you are actually doing.
@@ -769,12 +780,13 @@ export function Board() {
         instead of the end week one, that causes confusion." Ending the week is
         the one irreversible act on this screen — recruits come off the board and
         the budget resets — and leaving it under the thumb while somebody is
-        tuning a position filter is a trap rather than a convenience. While the
-        filter is open the only thing the button can do is close it, and it says
-        how many recruits are waiting on the other side.
+        tuning a position filter is a trap rather than a convenience. The filter
+        is a dialog over the whole frame now, so END WEEK is under its scrim
+        rather than under the thumb, and the dialog's own button says how many
+        recruits are waiting on the other side.
 
         One button and one label, decided by `pinnedAction`. It was two branches
-        of this ternary each writing their own, which is how the label and the
+        of a ternary each writing their own, which is how the label and the
         state it described came apart.
       */}
     </div>
@@ -866,12 +878,94 @@ function CapButton({ label, onClick }: { label: string; onClick: () => void }) {
  * so they are gone and the star rating — the one measure on this board that is
  * a single value and not a window — carries the quality filter instead.
  */
-function FilterPanel({
-  filters, onChange, homeState, myStars,
+/** The box's trip, out of the button and back into it. */
+const GROW_MS = 300;
+
+/**
+ * The filter, as a box that grows out of its button.
+ *
+ * Asked for: "a modal ... but this modal has to open with a nice transition
+ * animation like the box getting bigger from the button." The card is laid
+ * out at its full size and, before the first frame is painted, animated from
+ * the button's rectangle -- translated to its centre, scaled to its width and
+ * height -- to where it lies, so what plays is the button's box growing into
+ * the dialog. Closing runs the same trip backwards and unmounts when it
+ * lands. Nothing is measured by hand: both boxes are read from the DOM, so
+ * the button can sit wherever the header puts it, and a phone that has asked
+ * for less motion gets the box and none of the trip.
+ *
+ * Web Animations rather than a transition juggled through inline styles: an
+ * animation starts from its first keyframe whatever the element's style was
+ * a moment ago, so it does not care that React's dev-mode double effect runs
+ * the mount twice, and a close that lands mid-open cancels the trip and
+ * measures the box at rest.
+ *
+ * It carries the dialog contract every sheet does (`useDialogFocus`): focus
+ * lands on CLOSE, Escape closes, Tab stays inside.
+ */
+function FilterModal({
+  from, filters, onChange, onClear, onClose, label, homeState, myStars,
 }: {
+  from: RefObject<HTMLButtonElement | null>;
   filters: Filters; onChange: (f: Filters) => void;
+  onClear: () => void; onClose: () => void;
+  /** The primary button's label: what the board shows once the box closes. */
+  label: string;
   homeState: string; myStars: number;
 }) {
+  const card = useRef<HTMLElement | null>(null);
+  const closeButton = useRef<HTMLButtonElement | null>(null);
+  const [closing, setClosing] = useState(false);
+  const still = (): boolean =>
+    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /**
+   * The transform that lays the card over the button, or null without one.
+   * Any trip in flight is cancelled first, so the card is measured at rest.
+   */
+  const ontoButton = (): string | null => {
+    const el = card.current;
+    const b = from.current?.getBoundingClientRect();
+    if (!el || !b || b.width === 0 || b.height === 0) return null;
+    for (const a of el.getAnimations()) a.cancel();
+    const c = el.getBoundingClientRect();
+    if (c.width === 0 || c.height === 0) return null;
+    const dx = b.left + b.width / 2 - (c.left + c.width / 2);
+    const dy = b.top + b.height / 2 - (c.top + c.height / 2);
+    return `translate(${dx}px, ${dy}px) scale(${b.width / c.width}, ${b.height / c.height})`;
+  };
+  const grown = useRef(false);
+  useLayoutEffect(() => {
+    // Once. Dev mode mounts twice, and the second pass would find the card
+    // already on its way and measure it there.
+    if (grown.current) return;
+    grown.current = true;
+    const el = card.current;
+    if (!el || still()) return;
+    const start = ontoButton();
+    if (!start) return;
+    // `backwards` so the first painted frame is the button's box, not a
+    // flash of the whole card before the trip begins.
+    el.animate(
+      [{ transform: start, opacity: 0.15 }, { transform: 'none', opacity: 1 }],
+      { duration: GROW_MS, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'backwards' },
+    );
+  }, []);
+  const close = (): void => {
+    if (closing) return;
+    const el = card.current;
+    const end = el && !still() ? ontoButton() : null;
+    if (!el || !end) { onClose(); return; }
+    setClosing(true);
+    const trip = el.animate(
+      [{ transform: 'none', opacity: 1 }, { transform: end, opacity: 0.15 }],
+      { duration: GROW_MS, easing: 'cubic-bezier(.4, 0, .6, 1)', fill: 'forwards' },
+    );
+    trip.finished.then(onClose, onClose);
+    // A tab in the background stops animating and `finished` waits with it;
+    // the box must not still be closing when the coach comes back to it.
+    setTimeout(onClose, GROW_MS + 100);
+  };
+  useDialogFocus(card, close, { initial: closeButton });
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) =>
     onChange({ ...filters, [k]: v });
   const toggleStar = (n: number) =>
@@ -884,7 +978,15 @@ function FilterPanel({
   ].filter(Boolean).length;
 
   return (
-    <section className="recruit-filter-room">
+    <InFrame>
+      <div
+        className={`modal-scrim filter-scrim${closing ? ' is-closing' : ' fade-in'}`}
+        onClick={close}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Board filters"
+      >
+      <section ref={card} className="filter-modal" onClick={(e) => e.stopPropagation()}>
       <header className="recruit-filter-head">
         <span>
           <small>BOARD FILTERS</small>
@@ -892,8 +994,12 @@ function FilterPanel({
           <p>Keep the country broad, or narrow it to the players worth a call.</p>
         </span>
         <b>{active > 0 ? `${active} ON` : 'ALL'}</b>
+        <button ref={closeButton} type="button" className="filter-modal-close tap" aria-label="Close the filters" onClick={close}>
+          <Cross2Icon />
+        </button>
       </header>
 
+      <div className="filter-modal-body recruit-filter-room">
       <div className="recruit-filter-section">
         <div className="recruit-filter-label">
           <span><small>POSITION</small><strong>{filters.pos ?? 'Any position'}</strong></span>
@@ -973,7 +1079,19 @@ function FilterPanel({
           />
         </div>
       </div>
-    </section>
+      </div>
+
+      {/* The way out says what it leads to, off `pinnedAction`, and the
+          clear sits above it the way every secondary in the app does. */}
+      <footer className="filter-modal-foot">
+        {active > 0 && (
+          <button type="button" className="secondary-command tap" onClick={onClear}>CLEAR EVERY FILTER</button>
+        )}
+        <button type="button" className="primary-command tap" onClick={close}>{label}</button>
+      </footer>
+      </section>
+      </div>
+    </InFrame>
   );
 }
 
@@ -1549,12 +1667,20 @@ function Overview({
             </span>
             <b>{plan.gain >= 0 ? '+' : ''}{Math.round(plan.gain)} interest</b>
           </div>
-          <p className="recruit-plan-summary" aria-live="polite">
-            Total plan: {plan.rp} RP · Interest: {Math.round(plan.current)} → {Math.round(plan.projected)}.
-            {plan.multiplier > 1 ? ` Includes a ${Math.round((plan.multiplier - 1) * 100)}% coordinator focus bonus.` : ''}
-            {week >= RECRUITING_WEEKS ? ' Signing Day follows this week.' : ` ${RECRUITING_WEEKS - week} weeks remain after this one.`}
-            {' '}Other schools also act when the week ends. Interest does not guarantee a commitment.
-          </p>
+          {/*
+            Four facts as chips, not a paragraph. Reported: "remove some of the
+            text we have in effort this week, it is too long." The two
+            sentences of caveat it carried -- other schools act too, interest
+            is not a commitment -- the board teaches the first time a week
+            ends, and a coach setting an offer is reading the numbers.
+          */}
+          <div className="recruit-plan-chips" aria-live="polite">
+            <b>{plan.rp} RP</b>
+            <b>INTEREST {Math.round(plan.current)} → {Math.round(plan.projected)}</b>
+            {plan.multiplier > 1 && <b>+{Math.round((plan.multiplier - 1) * 100)}% COORDINATOR</b>}
+            <b>{week >= RECRUITING_WEEKS ? 'SIGNING DAY NEXT'
+              : `${RECRUITING_WEEKS - week} WEEK${RECRUITING_WEEKS - week === 1 ? '' : 'S'} LEFT`}</b>
+          </div>
           {/*
             Pips, not a track. A range input on a phone is a drag that has to
             beat the scroller for the gesture — "the bar works fine to add

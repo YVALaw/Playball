@@ -284,14 +284,7 @@ export function Lineup() {
       return;
     }
     if (picked === null) { setPicked(i); return; }
-    /*
-      The second tap on the same man opens his card — approved with one
-      condition, that BACK puts you where you were: it does by
-      construction, because the card is an overlay and the lineup never
-      unmounts beneath it. The pick clears so closing the card leaves no
-      row armed.
-    */
-    // Tapping him again puts him down. The card is a HOLD now.
+    // Tapping him again puts him down. The card is a HOLD, never a second tap.
     if (picked === i) { setPicked(null); return; }
     swapLineup(picked, i);
     setPicked(null);
@@ -324,13 +317,14 @@ export function Lineup() {
       setPickedBench(null);
       return;
     }
-    // The same second-tap grammar as the order: tapping the man you already
-    // picked reads as "show me him", not as a shrug.
-    if (pickedBench === id) {
-      setPickedBench(null);
-      openPlayer(id);
-      return;
-    }
+    /*
+      Tapping him again puts him down, the same as the order. The card is a
+      HOLD, on the bench as everywhere on this screen: this was a second-tap
+      open, the order's had already gone, and the reversal was reported
+      twice -- "I thought we agreed to remove the double tap to access the
+      player's profile and instead kept the hold." A pick is a pick.
+    */
+    if (pickedBench === id) { setPickedBench(null); return; }
     setPickedBench(id);
   };
 
