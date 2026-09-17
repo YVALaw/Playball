@@ -368,7 +368,18 @@ html, body, #root {
  * list should have. Every screen declares its own scroller inline — one per
  * screen, one per sheet — so the rule is stated once here rather than in the
  * thirty style objects that would each have to remember it. */
-.app-frame * { overscroll-behavior: contain; }
+/* Scoped to the boxes that actually scroll, not `*`. Reported from the phone
+   (September 17): a drag that began on any card -- NEEDS YOU, a schedule box,
+   a settings row -- went nowhere, while the same drag from bare background
+   scrolled fine. Every card list is `overflow: hidden`, and a hidden box is a
+   scroll container that cannot move; stamping `contain` on it told Android the
+   gesture ended there. Only a real scroller may claim the end of a drag: the
+   class scrollers below, and the sheets that declare `overflow: auto` inline. */
+.app-frame :is(
+  .screen-scroll, .fixed-header-body, .overlay-scroll,
+  .playball-app > main, .offseason-app > main, .live-game > main,
+  [style*="overflow-y: auto"], [style*="overflow: auto"], [style*="overflow-x: auto"]
+) { overscroll-behavior: contain; }
 
 /* Only lift the frame off the backdrop when there is actually a backdrop to lift
    it off — on a phone it is edge to edge and a shadow would be invisible anyway. */
@@ -579,10 +590,13 @@ button {
    both on screen for the length of this animation — see the long note there.
 
    Deliberately quieter than the rise it replaces. The outgoing screen fades
-   without moving and the incoming one comes up four pixels, which is enough to
-   say "this is a new screen" and little enough that somebody moving through
-   four tabs in three seconds is not watching choreography. The old snapshot
-   leaves first so the two are never both at full strength.
+   without moving and the incoming one fades in over it -- in place. It used
+   to come up four pixels as well, until the phone reported every tab change
+   as "a quick flick, the content moves up and down a bit" (September 17):
+   on an Android WebView the arriving page rose here, and the instant the
+   transition ended `.screen-surface` was handed its own lift (`pageSoftIn`)
+   and rose again -- a drop and a rise after the swap. Nothing moves vertically during
+   a swap now; the fade alone says "this is a new screen".
    --------------------------------------------------------------------------- */
 /* While a transition is running, the frame's own arrival animation stands down
    — otherwise the screen rises 14px inside a snapshot that is already rising
@@ -615,8 +629,8 @@ button {
 }
 
 @keyframes screenArrive {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* Navigation view transitions are scoped to the scrollable page, not the
@@ -627,8 +641,8 @@ html { view-transition-name: none; }
   animation: playballPageArrive 170ms cubic-bezier(.2, .8, .3, 1) both;
 }
 @keyframes playballPageArrive {
-  from { opacity: .55; transform: translateY(3px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: .55; }
+  to { opacity: 1; }
 }
 
 /* The store already declines to start a transition under reduced motion, so

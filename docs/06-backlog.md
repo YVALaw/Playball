@@ -4113,3 +4113,23 @@ disagrees, the suspects are where §AK.1 and §AL.1 left them.
 
 **Polish (`15` §D / §AM)** stays open and blocks nothing; a phone pass over it
 is the honest tidy after 1.0 is live, not a gate before it.
+
+## AO. September 17, two from the phone on the current build -- what it left
+
+Both fixed in CSS (`08` September 17). What to watch:
+
+- **Every card scrolls the page now.** `overscroll-behavior: contain` is scoped
+  to real scrollers (`tokens.css`). If a sheet ever pulls the screen beneath it
+  again, that sheet declares its scroller some way other than `overflow: auto`
+  inline or the listed classes -- add it to the selector, do not widen it back
+  to `*`.
+- **The rails pass a vertical drag through** (`pan-x pan-y`). The sub-nav and
+  segmented strips got the same value; a vertical drag on a tab now scrolls the
+  page under the header, which is what a thumb expects.
+- **Tab changes are fades.** No page-level animation moves content on the Y
+  axis any more. If a screen still wobbles on a swap, it wears an animation of
+  its own; `.screen-in`/`riseIn` (14px) is the non-view-transition fallback and
+  was left alone.
+- **1.0.1.** These are not in the bundle in review. Once the phone confirms
+  them, bump and upload to the same closed track; the review of 1.0.0 need not
+  finish first.

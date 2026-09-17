@@ -6,8 +6,26 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 16, 2026, last · **Branch:** `main` · **Version:** 1.0.0 · **the
-release commit** -- the two code items the checklist was still waiting on,
+**Last session:** September 17, 2026 · **Branch:** `main` · **Version:** 1.0.0 (closed test in
+Google review) · **two from the phone, on the current build** -- a drag that
+began on any card (NEEDS YOU, a schedule box, a settings row) went nowhere, and
+every tab change did "a quick flick, the content moves up and down a bit."
+Both CSS, neither in the audit. **The scroll:** `tokens.css` stamped
+`overscroll-behavior: contain` on `.app-frame *`; every card list is
+`overflow: hidden`, a hidden box is a scroll container that cannot move, and
+`contain` told Android the gesture ended there -- scoped now to the boxes that
+actually scroll (the class scrollers and the sheets that say `overflow: auto`
+inline). The horizontal rails were `touch-action: pan-x` alone, which refuses a
+vertical drag -- `pan-x pan-y` on all four, the fix Club Pulse had on its own.
+**The flick:** the page arrivals (`playballPageArrive`, `screenArrive`,
+`pageSoftIn`) lifted the content 3--4px, and `.screen-surface` stood its lift
+down under `[data-vt]` only to START it when the attribute came off, a drop and
+rise after the swap -- all three are fades now and the stand-down is gone.
+Debug APK rebuilt and sent; the closed test is untouched (a store bundle wants
+a version bump). **Next:** watch both on the phone; then 1.0.1 to the closed
+track if the fixes hold.
+
+*The day before:* **the release commit** -- the two code items the checklist was still waiting on,
 then the number. The **Freesound credits** (commit `324cde8`): every sample's
 licence read off its freesound page -- crack (93136) and play-ball (101137)
 by CGEffex CC-BY 4.0, crowd (197285) by Adrian_Gomar CC-BY 3.0, the other

@@ -1057,12 +1057,17 @@
   max-width: 100%;
 }
 
-/* The exceptions, which are horizontal on purpose. */
+/* The exceptions, which are horizontal on purpose -- and vertical as well.
+   `pan-x` alone told the browser a drag that begins on one of these rails may
+   not pan the page, so a thumb landing on a schedule box was stuck (the
+   Club Pulse rail was patched for this on its own, below; the fix belongs to
+   every rail). `pan-x pan-y` keeps the sideways scroll and lets the vertical
+   drag through to the screen underneath. */
 .context-nav,
 .segmented,
 .schedule-rail,
 .scroller {
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
   overflow-x: auto;
 }
 
@@ -4431,10 +4436,16 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
    element's own base style, so `forwards` was buying nothing visually and paying
    for it with the containing block. */
 .screen-surface { min-height: 100%; animation: pageSoftIn 170ms cubic-bezier(.2,.8,.3,1) backwards; }
-:root[data-vt] .screen-surface { animation: none; }
+/* No [data-vt] stand-down here, on purpose. Reported from the phone (September 17):
+   every tab change did "a quick flick, the content moves up and down a bit."
+   Standing this animation down during the view transition and handing it
+   back when `data-vt` came off meant it STARTED then, on a screen already in
+   place -- a 3px drop and rise after the swap had finished. The keyframe is a
+   fade now and simply runs alongside the transition's own fade: no lift, no
+   replay, nothing on the page moves vertically when a tab changes. */
 :root[data-motion="reduced"] .screen-surface { animation: none; }
 @media (prefers-reduced-motion: reduce) { .screen-surface { animation: none; } }
-@keyframes pageSoftIn { from { opacity: .72; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@keyframes pageSoftIn { from { opacity: .72; } to { opacity: 1; } }
 
 /* Tonight: long school/series names must never escape the phone frame. */
 .next-game { overflow: hidden; }
