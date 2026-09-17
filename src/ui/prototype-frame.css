@@ -7478,6 +7478,21 @@ button.player-secondary-line { display: block; width: 100%; padding: 6px 0; bord
 .settings-god-footnote b { display:grid; place-items:center; width:22px; height:22px; border:1px solid var(--clay); color:var(--clay); font:800 calc(7px * var(--ts)) var(--mono); }
 .settings-god-footnote p { margin:0; color:var(--dim); font:500 calc(8px * var(--ts))/1.35 var(--body); }
 
+/*
+  Sound credits (stage 19). A compact ledger: what you hear, who made it, its
+  licence as a chip, and the freesound id underneath. Attribution samples must
+  carry their author in the shipped app; this is where they do.
+*/
+.settings-credits { display:grid; gap:1px; margin-top:12px; border:1px solid var(--line); background:var(--line); }
+.settings-credits > small { padding:8px 10px; background:var(--wash); color:var(--clay); font:800 calc(6.3px * var(--ts)) var(--mono); letter-spacing:.1em; }
+.settings-credits > span { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"heard licence" "author licence" "src src"; gap:2px 8px; align-items:center; padding:8px 10px; background:var(--paper); }
+.settings-credits b { grid-area:heard; color:var(--ink); font:700 calc(9px * var(--ts)) var(--body); }
+.settings-credits em { grid-area:author; color:var(--dim); font:500 calc(8px * var(--ts)) var(--body); font-style:normal; }
+.settings-credits i { grid-area:licence; align-self:center; padding:2px 6px; border:1px solid var(--clay); color:var(--clay); font:800 calc(6.5px * var(--ts)) var(--mono); letter-spacing:.05em; white-space:nowrap; font-style:normal; }
+.settings-credits i.cc0 { border-color:var(--line); color:var(--dim); }
+.settings-credits u { grid-area:src; margin-top:2px; color:var(--dim); font:500 calc(7px * var(--ts)) var(--mono); text-decoration:none; }
+.settings-credits p { margin:0; padding:8px 10px; background:var(--wash); color:var(--dim); font:500 calc(8px * var(--ts))/1.35 var(--body); }
+
 /* The sandbox opens as one of Playball's modern full overlays. */
 .god-sheet > header {
   border-top:4px solid var(--clay);

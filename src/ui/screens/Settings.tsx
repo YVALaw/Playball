@@ -71,6 +71,29 @@ function Choice<T extends string | number>(
   );
 }
 
+/*
+  Sound credits, shipped in the app (stage 19).
+
+  Every sample was pulled from freesound.org and processed by
+  `scripts/prep-sfx.mjs`; the manifest and each sound's licence live in
+  `public/sfx/CREDITS.md`. Three of the eight are Creative Commons
+  Attribution, which *requires* the author credited wherever the app ships —
+  so the credit rides the build, here, and not only in the repo. The five
+  CC0 samples ask for nothing, but a name costs nothing and they get one too.
+  Licences verified against each sound's freesound page, September 16 2026.
+*/
+type SoundCredit = { heard: string; author: string; licence: string; id: string };
+const SOUND_CREDITS: readonly SoundCredit[] = [
+  { heard: 'The crack of the bat', author: 'CGEffex', licence: 'CC BY 4.0', id: '93136' },
+  { heard: 'A second bat', author: 'Urkki69', licence: 'CC0', id: '628352' },
+  { heard: 'Ball into the glove', author: 'Luisa_Sanchez', licence: 'CC0', id: '816984' },
+  { heard: 'A second glove', author: 'keus92', licence: 'CC0', id: '432502' },
+  { heard: '“Play ball!”', author: 'CGEffex', licence: 'CC BY 4.0', id: '101137' },
+  { heard: 'The crowd', author: 'Adrian_Gomar', licence: 'CC BY 3.0', id: '197285' },
+  { heard: 'Applause', author: 'jasinski', licence: 'CC0', id: '18364' },
+  { heard: 'The umpire', author: 'jcookvoice', licence: 'CC0', id: '625473' },
+];
+
 /** The four pages, and the index that lists them. */
 type Page = SettingsPage;
 
@@ -293,6 +316,19 @@ export function Settings() {
             on={prefs.haptics}
             onToggle={() => put({ haptics: !prefs.haptics })}
           />
+        </section>
+        <SectionHeading kicker="SETTINGS" title="Sound credits" />
+        <section className="settings-credits">
+          <small>FREESOUND.ORG</small>
+          {SOUND_CREDITS.map((c) => (
+            <span key={c.id}>
+              <b>{c.heard}</b>
+              <em>{c.author}</em>
+              <i className={c.licence === 'CC0' ? 'cc0' : ''}>{c.licence}</i>
+              <u>freesound.org/s/{c.id}</u>
+            </span>
+          ))}
+          <p>Samples from freesound.org, trimmed and downsampled for the game. Thank you to the authors.</p>
         </section>
       </Frame>
     );
