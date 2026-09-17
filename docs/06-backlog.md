@@ -4071,3 +4071,45 @@ a season:
   theme; `--yellow` as ink on light surfaces; `--you`'s dark cut; eight font
   sizes past `--ts`.
 - **Code health:** the whole of `15` §D's last block.
+
+## AN. September 16, the release commit — what v1.0 is still missing
+
+Supersedes §AK.4's list. The two code items that list still carried are done,
+and the version is **1.0.0**. What is left is the Play Console alone.
+
+**Done, this session:**
+
+- **The Freesound credits** (commit `324cde8`). Every sample's licence read
+  off its freesound page: crack (93136) and play-ball (101137) by CGEffex
+  **CC-BY 4.0**, crowd (197285) by Adrian_Gomar **CC-BY 3.0**, the other five
+  (crack2 628352, glove 816984, glove2 432502, clap 18364, ump 625473) **CC0**.
+  **None is NonCommercial**, so all eight ship with the paid god-mode IAP and
+  nothing had to be replaced. The three Attribution names now ride the build —
+  Settings → Sound → Sound credits, `SOUND_CREDITS` in `Settings.tsx`, watched
+  in light and dark on a phone — and `public/sfx/CREDITS.md` records the
+  verified table. `15` §K checked.
+- **The a11y focus subset** was already closed by the §D.1 pass; `15` §K
+  checked, the rest of §D's a11y lines are the theme decisions at §AM.
+- **The release commit, 1.0.0** (commit `3bb65b2`). `versionCode 10000`,
+  monotonic over the Console's 704. Suite green at 93 / 1,574; both pushed.
+
+**The Play Console, the reporter's — the only thing between here and live:**
+
+- Upload the signed **1.0.0 AAB** (`npm run aab`; keystore and JDK are on this
+  machine) to a **closed test**. It is the release build, so production
+  promotes this same bundle.
+- **Twelve testers opted in, fourteen days** on the track — the gate a
+  personal developer account requires before it may request production.
+- The **payments profile** (the "there is a problem with your payments
+  profile" error), and the **`god_mode`** one-time product it gates, with a
+  **licence tester** for the purchase flow.
+- Promote to production: closed → open beta → live.
+
+**Unwatched, now watched (the reporter, this session's word):** the back
+gesture's three fixes, the 3D park's patience, the day-one roster and the
+climb/hall probes, and the two-way LEGACY switch — all reported working. §AK.4's
+"unwatched, not unbuilt" block is closed on that word; if a device ever
+disagrees, the suspects are where §AK.1 and §AL.1 left them.
+
+**Polish (`15` §D / §AM)** stays open and blocks nothing; a phone pass over it
+is the honest tidy after 1.0 is live, not a gate before it.

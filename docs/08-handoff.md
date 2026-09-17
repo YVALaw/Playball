@@ -6,14 +6,30 @@ This file is the running answer to two questions: *what was just done* and
 *what happens next*. It is rewritten at the end of every working session, so
 the top of it is always current. Everything older lives in git.
 
-**Last session:** September 16, 2026, last · **Branch:** `main` · **Version:** 0.9.5 · **the
-polish pass** -- `15` §D re-read line by line, twelve lines fixed (`05` §92:
-the sub-nav's lineup gate, box-score innings everywhere, a mute that
-downloads nothing, PLAY BALL once a game, the live play-by-play, the top
-overlay, Settings' radios, the smallest type, the disabled command, focus
-substitutes), one line found stale, one not a fault, and the rest -- rules
-and design, none a coach notices in a season -- listed at `06` §AM.
-**Next:** the release process, `06` §AK.4.
+**Last session:** September 16, 2026, last · **Branch:** `main` · **Version:** 1.0.0 · **the
+release commit** -- the two code items the checklist was still waiting on,
+then the number. The **Freesound credits** (commit `324cde8`): every sample's
+licence read off its freesound page -- crack (93136) and play-ball (101137)
+by CGEffex CC-BY 4.0, crowd (197285) by Adrian_Gomar CC-BY 3.0, the other
+five CC0, **none NonCommercial**, so all eight ship with the paid IAP; the
+three Attribution names now ride the build on Settings → Sound → Sound
+credits (`SOUND_CREDITS`), watched in both themes on a phone, `public/sfx/CREDITS.md`
+brought current. The **a11y focus subset** was already closed by the §D.1
+pass. Then **1.0.0** (commit `3bb65b2`): `versionCode 10000`, monotonic over
+the Console's 704, so `npm run aab` is the release bundle. Suite green at 93
+files / 1,574 tests; type check clean; both commits pushed.
+**Next:** the Play Console, the reporter's -- the signed 1.0.0 AAB uploaded
+to a closed test (twelve testers, fourteen days), the payments profile and
+the `god_mode` product with a licence tester, then production. `06` §AK.4,
+now down to the Console alone.
+
+*Earlier the same day:* **the polish pass** -- `15` §D re-read line by line,
+twelve lines fixed (`05` §92: the sub-nav's lineup gate, box-score innings
+everywhere, a mute that downloads nothing, PLAY BALL once a game, the live
+play-by-play, the top overlay, Settings' radios, the smallest type, the
+disabled command, focus substitutes), one line found stale, one not a fault,
+and the rest -- rules and design, none a coach notices in a season -- listed
+at `06` §AM.
 
 *Earlier the same day:* **nine
 more from the phone** -- one pass (`05` §91): the pen set by hand keeps the

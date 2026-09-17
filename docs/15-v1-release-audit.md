@@ -534,13 +534,17 @@ Code and content, from this audit:
 - [x] Docs reconciled (§I); the balance decisions written down (§62.7,
       §62.8) rather than made.
 - [x] §C's eight minor fixes.
-- [ ] The a11y block of §D, or the subset stage 19 chooses.
+- [x] The a11y block of §D — the focus-state subset stage 19 chose, closed by
+      the September 16 §D.1 pass (a `:focus-visible` substitute on every field
+      that stripped its outline); the rest of §D's a11y lines carried to `06`
+      §AM as design/theme decisions, none a coach notices in a season.
 
 The release process, stage 19 (`07`):
 
-- [ ] Bump `package.json` to 1.0.0 (the release commit). *0.9.5 on September
-      16, the last pre-release number; the shell's `versionCode` comes off
-      it, which is why there is no `-rc` suffix (`07` stage 19).*
+- [x] Bump `package.json` to 1.0.0 (the release commit) — **September 16**,
+      commit `3bb65b2`. `scripts/apk.cjs` writes `versionName 1.0.0` and
+      `versionCode 10000` (major×10000+minor×100+patch), monotonic over the
+      Console's 704 / 0.7.4, so `npm run aab` is the release bundle.
 - [x] Play Billing replaces the Settings UNLOCK stand-in
       (`DevicePrefs.godMode` set by purchase and restore only) — code and
       tests in, September 7; the Play Console product and a licence tester
@@ -555,7 +559,13 @@ The release process, stage 19 (`07`):
       ID last.
 - [x] Onboarding for the first ten minutes (the guided first stretch) —
       September 9, `05` §64.
-- [ ] The Freesound credits for the seven samples without a stated licence.
+- [x] The Freesound credits — **September 16**, commit `324cde8`. Every
+      sample's licence read off its freesound page: crack (93136) and
+      play-ball (101137) by CGEffex CC-BY 4.0, crowd (197285) by Adrian_Gomar
+      CC-BY 3.0, the other five CC0. **None NonCommercial**, so all eight ship
+      with the paid IAP; the three Attribution names ride the build on
+      Settings → Sound → Sound credits (`SOUND_CREDITS`), `public/sfx/CREDITS.md`
+      updated to match.
 - [ ] The payments profile ("there is a problem with your payments profile"
       on the one-time products page) and the `god_mode` product itself —
       neither exists yet; parked September 9 by the reporter.
