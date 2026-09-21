@@ -1,20 +1,25 @@
 // RecordBook.tsx
-// The national record book, grouped like an archive rather than a settings list.
+// The national record book, in six rooms.
+//
+// Single game, feats, single season, career, team and coaching. Each record is
+// a row: what it is, who holds it with their school and year, and the mark.
+// Your program's records carry a Yours tag, marks carried over from real life
+// carry a Real-life record tag, and one set since your last visit is New; the
+// room holding a new mark opens first and wears a dot until it is looked at.
 
 import { useEffect, useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import {
-  RECORDS, recordsIn, type RecordGroup, type RecordKey, type RecordMark,
-} from '../../engine/records.js';
+import { RECORDS, recordsIn, type RecordGroup, type RecordKey, type RecordMark } from '../../engine/records.js';
 import { pct } from '../format.js';
 import type { PlayerId } from '../../engine/types.js';
-import { ChevronRightIcon } from '@radix-ui/react-icons';
+import { Card, Chip, Chips, List, ListRow, Sheet, StatGroup, Tag } from '../components/ui/index.js';
+import { capsWords, schoolNamesIn } from '../words.js';
 
 const SECTIONS: Array<{ group: RecordGroup; title: string; note: string }> = [
-  { group: 'game', title: 'Single game', note: 'One-night marks.' },
-  { group: 'feat', title: 'Feats', note: 'Counts, not records — the name is the last man to do it.' },
-  { group: 'season', title: 'Single season', note: 'Rate marks use leaderboard minimums.' },
-  { group: 'career', title: 'Career', note: 'Rate marks require two qualifying seasons.' },
+  { group: 'game', title: 'Single game', note: 'The best one-night marks.' },
+  { group: 'feat', title: 'Feats', note: 'Counts rather than records: the name is the last player to do it.' },
+  { group: 'season', title: 'Single season', note: 'Rate records need the leaderboard minimums.' },
+  { group: 'career', title: 'Career', note: 'Rate records need two qualifying seasons.' },
   { group: 'team', title: 'Team', note: 'Programs, not players.' },
   { group: 'coach', title: 'Coaching', note: 'Every head coach in the country.' },
 ];
@@ -27,14 +32,19 @@ export function RecordBook() {
   const unseenRecords = useDynasty((s) => s.unseenRecords);
   const clearUnseenRecords = useDynasty((s) => s.clearUnseenRecords);
   const [fresh] = useState(() => new Set(unseenRecords));
-  // The dot leads all the way down: the room with a new mark opens first, and
-  // wears the dot until it is looked at — asked for 2026-09-10: "if it was a
-  // rare feat, then rare feat gets a red dot."
   const [room, setRoom] = useState<RecordGroup>(() =>
     SECTIONS.find((s) => recordsIn(s.group).some((key) => fresh.has(key)))?.group ?? 'game');
   const [seenRooms, setSeenRooms] = useState<Set<RecordGroup>>(() => new Set([room]));
+  // Reported 2026-09-20: "if i click on your program holds, it should show a
+  // modal with the details of the records we hold". The number was the only
+  // place the game said how many, and the only place it would not say which.
+  const [holdings, setHoldings] = useState(false);
+  // The sheet steps aside while a player's card is up — see `Legacy.tsx` for
+  // why the two layers cannot simply be ordered.
+  const playerOpen = useDynasty((s) => s.selectedPlayer !== null);
   useEffect(() => { clearUnseenRecords(); }, [clearUnseenRecords]);
 
+  // Only a player the save still knows can be opened.
   const known = useMemo(() => {
     const ids = new Set<string>();
     if (!season) return ids;
@@ -47,105 +57,113 @@ export function RecordBook() {
 
   if (!season || !team) return null;
   const book = season.records ?? {};
-  const ours = Object.values(book).filter((mark) => mark && !mark.ncaa && mark.team === team.def.abbr).length;
+  const ours = Object.values(book).filter((m) => m && !m.ncaa && m.team === team.def.abbr).length;
   const set = Object.values(book).filter(Boolean).length;
+  const section = SECTIONS.find((s) => s.group === room)!;
+  const schoolOf = (abbr: string): string => season.teams.find((t) => t.def.abbr === abbr)?.def.school ?? abbr;
+  const words = (text: string): string => schoolNamesIn(text, season.teams);
 
   return (
-    <section className="record-book-modern">
-      <div className="record-book-summary">
-        <span><small>YOUR PROGRAM HOLDS</small><strong>{ours}</strong><em>all-time mark{ours === 1 ? '' : 's'}</em></span>
-        <span><small>BOOK FILLED</small><strong>{set}</strong><em>records currently set</em></span>
-      </div>
-      <div className="record-book-key" aria-label="Record book legend">
-        <span><i className="record-key-mine" /> YOUR PROGRAM</span>
-        <span><Tag /> NCAA SEED</span>
-        <span><b>NEW</b> SINCE LAST VISIT</span>
-      </div>
-
-      <nav className="record-room-selector" aria-label="Record book rooms">
-        {SECTIONS.map((section) => {
-          const active = room === section.group;
-          const marks = recordsIn(section.group).filter((key) => book[key]).length;
-          const news = !seenRooms.has(section.group) && recordsIn(section.group).some((key) => fresh.has(key));
+    <>
+      <StatGroup
+        size="sm"
+        items={[
+          {
+            label: 'Your program holds',
+            value: ours,
+            note: ours === 1 ? 'record' : 'records',
+            ...(ours > 0 ? { onClick: () => setHoldings(true) } : {}),
+          },
+          { label: 'Records set', value: set, note: 'across the book' },
+        ]}
+      />
+      {holdings && !playerOpen && (
+        <Sheet
+          eyebrow={team.def.school}
+          title={`${ours === 1 ? 'The record' : 'The records'} you hold`}
+          onClose={() => setHoldings(false)}
+        >
+          <List label="Records your program holds">
+            {(Object.keys(book) as RecordKey[])
+              .filter((key) => { const m = book[key]; return m && !m.ncaa && m.team === team.def.abbr; })
+              .sort((a, b) => (book[b]!.year - book[a]!.year) || a.localeCompare(b))
+              .map((key) => (
+                <RecordRow
+                  key={key}
+                  rkey={key}
+                  mark={book[key]}
+                  mine={team.def.abbr}
+                  school={schoolOf}
+                  words={words}
+                  known={known}
+                  isNew={fresh.has(key)}
+                  onPick={openPlayer}
+                />
+              ))}
+          </List>
+        </Sheet>
+      )}
+      <Chips label="Record book rooms">
+        {SECTIONS.map((s) => {
+          const news = !seenRooms.has(s.group) && recordsIn(s.group).some((key) => fresh.has(key));
           return (
-            <button
-              key={section.group}
-              type="button"
-              className={`${active ? 'active' : ''}${news ? ' has-news' : ''}`}
-              onClick={() => { setRoom(section.group); setSeenRooms((s) => new Set([...s, section.group])); }}
+            <Chip
+              key={s.group}
+              selected={room === s.group}
+              icon={news ? 'dot' : undefined}
+              onClick={() => { setRoom(s.group); setSeenRooms((prev) => new Set([...prev, s.group])); }}
             >
-              {news && <i className="room-dot" aria-label="New record" />}
-              <small>{section.group === 'game' ? 'ONE NIGHT' : section.group === 'feat' ? 'RARE' : section.group.toUpperCase()}</small>
-              <strong>{section.title}</strong>
-              <span>{marks} set</span>
-            </button>
+              {s.title}{news ? ' · new' : ''}
+            </Chip>
           );
         })}
-      </nav>
-
-      {SECTIONS.filter((section) => section.group === room).map((section) => (
-        <Section
-          key={section.group}
-          title={section.title}
-          note={section.note}
-          keys={recordsIn(section.group)}
-          book={book}
-          mine={team.def.abbr}
-          known={known}
-          fresh={fresh}
-          onPick={openPlayer}
-        />
-      ))}
-    </section>
+      </Chips>
+      <Card title={section.title} eyebrow={section.note} flush>
+        <List className="pb-list--inset" label={section.title}>
+          {recordsIn(section.group).map((key) => (
+            <RecordRow
+              key={key}
+              rkey={key}
+              mark={book[key]}
+              mine={team.def.abbr}
+              school={schoolOf}
+              words={words}
+              known={known}
+              isNew={fresh.has(key)}
+              onPick={openPlayer}
+            />
+          ))}
+        </List>
+      </Card>
+    </>
   );
 }
 
-function Section({ title, note, keys, book, mine, known, fresh, onPick }: {
-  title: string; note: string; keys: RecordKey[];
-  book: Partial<Record<RecordKey, RecordMark>>; mine: string;
-  known: Set<string>; fresh: Set<string>; onPick: (id: PlayerId) => void;
-}) {
-  return (
-    <section className="record-group-card">
-      <header><span><small>ALL-TIME RECORDS</small><strong>{title}</strong></span><p>{note}</p></header>
-      <div className="record-group-rows">
-        {keys.map((key) => <Row key={key} rkey={key} mark={book[key]} mine={mine} known={known} fresh={fresh} onPick={onPick} />)}
-      </div>
-    </section>
-  );
-}
-
-function Row({ rkey, mark, mine, known, fresh, onPick }: {
-  rkey: RecordKey; mark: RecordMark | undefined; mine: string;
-  known: Set<string>; fresh: Set<string>; onPick: (id: PlayerId) => void;
+function RecordRow({ rkey, mark, mine, school, words, known, isNew, onPick }: {
+  rkey: RecordKey; mark: RecordMark | undefined; mine: string; school: (abbr: string) => string; words: (text: string) => string;
+  known: Set<string>; isNew: boolean; onPick: (id: PlayerId) => void;
 }) {
   const spec = RECORDS[rkey];
   const ours = mark !== undefined && !mark.ncaa && mark.team === mine;
-  const isNew = fresh.has(rkey);
   const tappable = mark?.id !== undefined && known.has(mark.id);
-  const className = `record-modern-row${ours ? ' ours' : ''}${isNew ? ' is-new' : ''}${tappable ? ' tappable' : ''}`;
-  const body = (
-    <>
-      <span className="record-modern-copy">
-        <small>{isNew && <b>NEW</b>}{spec.label}</small>
-        <strong>{mark?.holder ?? 'Not set'}</strong>
-        {mark && <em>{mark.team} · {mark.year}{mark.ncaa ? ' · NCAA' : ''}</em>}
-        {mark?.detail && <p>{mark.detail}</p>}
-        {spec.frozen && <p>{spec.frozen}</p>}
-      </span>
-      <span className="record-modern-value">
-        <strong>{mark ? format(mark.value, rkey) : '—'}</strong>
-        {mark?.ncaa && <Tag />}
-      </span>
-      {tappable && <ChevronRightIcon />}
-    </>
+  return (
+    <ListRow
+      title={capsWords(spec.label)}
+      subtitle={mark
+        ? `${mark.holder} · ${school(mark.team)} · ${mark.year}${mark.detail ? ` · ${words(mark.detail)}` : ''}${spec.frozen ? ` · ${spec.frozen}` : ''}`
+        : spec.frozen ?? 'Not set yet'}
+      value={mark ? format(mark.value, rkey) : '—'}
+      status={ours || isNew || mark?.ncaa ? (
+        <>
+          {isNew && <Tag tone="warning">New</Tag>}
+          {ours && <Tag tone="you">Yours</Tag>}
+          {mark?.ncaa && <Tag>Real-life record</Tag>}
+        </>
+      ) : undefined}
+      onClick={tappable ? () => onPick(mark!.id as PlayerId) : undefined}
+    />
   );
-  return tappable
-    ? <button className={className} type="button" onClick={() => onPick(mark!.id as PlayerId)}>{body}</button>
-    : <div className={className}>{body}</div>;
 }
-
-function Tag() { return <span className="ncaa-tag">NCAA</span>; }
 
 function format(v: number, key: RecordKey): string {
   switch (RECORDS[key].shape) {

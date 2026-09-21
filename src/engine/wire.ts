@@ -43,6 +43,16 @@ export interface WireItem {
   against?: number;
   /** Higher sorts first. */
   weight: number;
+  /**
+   * The day of the season it happened on, where it happened on a day.
+   *
+   * The front page does not need it -- it is a page about now, and everything
+   * on it is from the last fortnight. A programme's own season needs nothing
+   * else: "what has happened to us this year" is a diary, and a diary is in
+   * order. Absent on the stories that are about a standing rather than a game
+   * (a streak, the conference race), which are true as of today.
+   */
+  at?: number;
 }
 
 /** How far apart two teams have to be before a win counts as an upset. */
@@ -77,7 +87,16 @@ function vary(seed: number, count: number): number {
  * from season state each time rather than accumulated, so it cannot drift out of
  * step with the standings it describes.
  */
-export function wire(season: SeasonState, limit = 24): WireItem[] {
+export function wire(
+  season: SeasonState,
+  limit = 24,
+  /**
+   * One programme's season instead of the country's fortnight. Every story
+   * that touches the team, oldest at the bottom, with none of the front
+   * page's trimming — no one-story-per-club, no cap per kind, no limit.
+   */
+  opts: { focus?: number } = {},
+): WireItem[] {
   const items: WireItem[] = [];
   const rpi = rpiOrder(season);
   const top25 = new Set(rpi.slice(0, 25).map((r) => r.team.index));
@@ -91,8 +110,14 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
     return t ? `${t.w}-${t.l}` : '?';
   };
 
-  // Recent games first — the wire is about now, not about February.
-  const recent = season.results.slice(-140);
+  /*
+    Recent games first — the wire is about now, not about February.
+
+    Unless it is being asked about one programme, in which case February is
+    exactly the point: the season is the unit, and it resets when the season
+    does because `season.results` does.
+  */
+  const recent = opts.focus === undefined ? season.results.slice(-140) : season.results;
 
   for (const g of recent) {
     const home = season.teams[g.home];
@@ -117,6 +142,7 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
     const lDef = season.teams[loser]?.def;
     if (wDef && lDef && wDef.rival === lDef.abbr) {
       items.push({
+        at: g.day,
         kind: 'rivalry',
         team: winner,
         against: loser,
@@ -147,6 +173,7 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
           `${name(loser)} caught cold by ${name(winner)}, ${hi}-${lo}`,
         ][v]!;
       items.push({
+        at: g.day,
         kind: 'upset',
         team: winner,
         against: loser,
@@ -157,6 +184,7 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
       });
     } else if (margin >= 11) {
       items.push({
+        at: g.day,
         kind: 'rout',
         team: winner,
         against: loser,
@@ -174,6 +202,7 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
       // The long ones. A one-run game that needed extra innings is the story
       // a reader tells somebody else, whoever it happened to.
       items.push({
+        at: g.day,
         kind: 'close',
         team: winner,
         against: loser,
@@ -208,6 +237,7 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
     const other = first === g.home ? g.away : g.home;
     const v = vary(g.day * 31 + first, 3);
     items.push({
+      at: g.day,
       kind: 'sweep',
       team: first,
       against: other,
@@ -302,6 +332,19 @@ export function wire(season: SeasonState, limit = 24): WireItem[] {
   // consecutive headlines about that team losing. And no single kind may take
   // more than a third of the feed, because upsets carry the highest weights and
   // a straight sort produced eleven of them before anything else appeared.
+  /*
+    A programme's own season skips every rule below. The trimming exists to
+    make a front page readable; this is not a front page, it is the year as it
+    happened to one club, and a year with the duplicates taken out of it is a
+    year with holes in it.
+  */
+  if (opts.focus !== undefined) {
+    const today = season.schedule[season.dayIndex]?.day ?? Number.MAX_SAFE_INTEGER;
+    return items
+      .filter((i) => i.team === opts.focus || i.against === opts.focus)
+      .sort((a, b) => (b.at ?? today) - (a.at ?? today) || b.weight - a.weight);
+  }
+
   const seenTeams = new Set<number>();
   const perKind = new Map<WireKind, number>();
   const kindCap = Math.max(3, Math.ceil(limit / 3));

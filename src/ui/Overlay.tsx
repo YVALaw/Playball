@@ -1,13 +1,10 @@
 // Overlay.tsx
-// The shell every full-frame page in the game wears: a back arrow, an eyebrow,
-// a title, and one scrolling body under them.
+// The shell every full-frame page in the game wears (a player's card, a
+// school's page): a bar with the way back, and one scrolling body under it.
 //
-// The proposal's `.full-overlay`, and the reason it is worth having as a
-// component rather than a class is the header. Before the port, a player card
-// drew its own name inside its own scroller and the table overlays drew a bar
-// with the word BACK on it — two different objects to the player, and the card's
-// title scrolled away while the bar's did not. One shell, so the thing you
-// opened is named in the same place whatever it was.
+// The bar stays put while the page scrolls under it, and it looks the same
+// whatever was opened, so the way back is always in the same place. The page
+// names what it is in its own header; the bar does not repeat it.
 //
 // It covers the frame rather than replacing it, which is what makes the screen
 // underneath survive: a roster keeps its tab and its scroll position, and a step
@@ -15,57 +12,47 @@
 
 import { useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeftIcon } from '@radix-ui/react-icons';
 import { useDialogFocus } from './dialogFocus.js';
+import { Icon, cx } from './components/ui/index.js';
 
 export function Overlay(
-  { eyebrow, title, onClose, children, floating, className }:
+  { eyebrow, title, onClose, children, floating, className, backLabel = 'Back' }:
   {
-    eyebrow: string;
+    /** What kind of page this is ("Player card"), for a screen reader. */
+    eyebrow?: string;
+    /** The name of what was opened. The page prints it once, in its own header. */
     title: string;
     onClose: () => void;
     children: ReactNode;
-    /**
-     * The action button, which sits outside the scroller so it cannot be
-     * scrolled away from the thing it acts on.
-     */
+    /** A control for the bar's right end, such as god mode's bolt. */
     floating?: ReactNode;
-    /** Optional motion/surface variant for a specific overlay kind. */
     className?: string;
+    /** The way back, named when it is known. */
+    backLabel?: string;
   },
 ) {
-  // The dialog contract every sheet carries — focus trapped inside, Escape
-  // closes, focus returns to what opened it. A full-frame overlay is an
-  // opaque page over a still-tabbable screen; without the hook the keyboard
-  // walked straight out into the screen underneath (05 §62.6).
+  // The dialog contract every sheet carries: focus held inside, Escape
+  // closes, focus returns to what opened it. The store spent this layer's
+  // history entry when it opened the overlay.
   const ref = useRef<HTMLElement | null>(null);
-  // The store's own layer: it spent its entry in `openOverlay`.
   useDialogFocus(ref, onClose, { layer: false });
   return (
     <section
       ref={ref}
       role="dialog"
       aria-modal="true"
-      aria-label={title}
-      className={`full-overlay${className ? ` ${className}` : ''}`}
+      aria-label={eyebrow ? `${eyebrow}: ${title}` : title}
+      className={cx('pb-fulloverlay', className)}
     >
-      <header>
-        <button className="tap" type="button" aria-label="Back" data-guide="overlay-back" onClick={onClose}>
-          <ArrowLeftIcon />
+      <div className="pb-overlaybar">
+        <button type="button" className="pb-back" data-guide="overlay-back" onClick={onClose}>
+          <Icon name="arrow-left" size={16} />{backLabel}
         </button>
-        <div>
-          <small>{eyebrow}</small>
-          <h1>{title}</h1>
-        </div>
-      </header>
-      {/* The scroller. A div rather than a <main>, because what it wraps is
-          already a screen with its own <main> in it. */}
-      {/* The rise moved to `.full-overlay` itself. It was on this wrapper, so
-          the panel appeared instantly and its contents climbed inside it —
-          which reads as the card assembling rather than as the card arriving.
-          One motion, on the thing that is actually new. */}
-      <div className="overlay-scroll">{children}</div>
-      {floating}
+        {floating && <span className="pb-overlaybar__trailing">{floating}</span>}
+      </div>
+      {/* The scroller. A div rather than a <main>: what it wraps is already a
+          page with its own <main>. */}
+      <div className="pb-fulloverlay__scroll">{children}</div>
     </section>
   );
 }

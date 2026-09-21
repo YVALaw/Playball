@@ -1,26 +1,22 @@
 // Colleges.tsx
-// The directory. Ninety six programs, and a search box over them.
+// The national directory: every program, one tap from its page.
 //
-// Every other route to a rival's page runs through a table that happens to
-// mention them — the standings, the rankings, a wire story. This screen is the
-// front door: any program, any time, one tap to its full card.
-//
-// The proposal's directory, with its search row and its region filter. This
-// world has eight conferences rather than four regions, so the filter carries
-// conferences — and the alphabetised list the proposal implies is replaced by
-// prestige order, because nobody thinks of a college baseball team by its
-// initial and the strongest programme in a conference is the one you were
-// looking for.
+// A search box, the conferences by their full names, and every school with
+// its crest, nickname, record and prestige. Sorted by prestige, the stars,
+// because the strongest program in a conference is usually the one you were
+// looking for; the list says so.
 
-import { leagueLabel } from '../../engine/leagueNames.js';
 import { useState } from 'react';
-import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Crest } from '../Crest.js';
 import { prestigeStars } from '../../engine/program.js';
+import { regularRecord } from '../../engine/season.js';
 import { useOpenTeam } from './TeamCard.js';
 import { CONFERENCES } from '../../data/schools.js';
-import { DataTable, ModuleIntro, Segmented, type Row } from '../components/Kit.js';
+import {
+  Chip, Chips, EmptyState, List, ListRow, Marquee, SearchField, SectionHeader, Stars, Tag,
+} from '../components/ui/index.js';
+import { conferenceName, recordText } from '../words.js';
 
 export function Colleges() {
   const season = useDynasty((s) => s.season);
@@ -33,75 +29,61 @@ export function Colleges() {
 
   if (!season || !team) return null;
 
-  // Matched on `id`, not `name`. A team record carries `conf.id` — 'GULF' —
-  // and the first version of this screen filtered on 'Gulf Coast Conference',
-  // which matched nothing and rendered a directory of no schools at all.
+  // Matched on the conference id a team record carries, not its name.
   const present = CONFERENCES.filter((c) => season.teams.some((t) => t.conference === c.id));
-
   const needle = query.trim().toLowerCase();
-  const rows: Row[] = season.teams
+  const rows = season.teams
     .map((t, i) => ({ t, i }))
-    .filter(({ t }) => (conf === 'all' || t.conference === conf))
+    .filter(({ t }) => conf === 'all' || t.conference === conf)
     .filter(({ t }) => needle === ''
       || t.def.school.toLowerCase().includes(needle)
       || t.def.nickname.toLowerCase().includes(needle)
       || t.def.abbr.toLowerCase().includes(needle))
-    .sort((a, b) => b.t.prestige - a.t.prestige)
-    .map(({ t, i }) => ({
-      key: String(i),
-      title: t.def.school,
-      detail: `${t.def.nickname} · ${leagueLabel(t.conference)} · ${t.w}-${t.l} · ${'★'.repeat(prestigeStars(t.prestige))}`,
-      // The school's letters in its own colour — a school is a mark, not a
-      // man. Reported: "the colleges have avatar pictures in the list instead
-      // of their school letters." The generated face implied a person nobody
-      // in this game is.
-      face: (
-        <span className="team-mark small"><Crest abbr={t.def.abbr} size={30} /></span>
-      ),
-    }));
+    .sort((a, b) => b.t.prestige - a.t.prestige);
 
   return (
-    <main className="module-workspace">
-      <ModuleIntro
-        kicker="NATIONAL DIRECTORY"
-        title="College programs"
-        text="Every program in the country, one tap deep."
+    <main className="pb-page">
+      <Marquee
+        eyebrow={`${season.teams.length} programs · ${present.length} conferences`}
+        title="Colleges"
       />
-
-      <label className="search-row">
-        <MagnifyingGlassIcon />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search programs"
-          aria-label="Search programs"
-        />
-      </label>
-
-      <Segmented
-        label="Conference"
-        value={conf}
-        onChange={setConf}
-        options={[
-          { value: 'all', label: 'All' },
-          ...present.map((c) => ({ value: c.id, label: c.id })),
-        ]}
+      <SearchField
+        label="Search programs"
+        placeholder={`Search ${season.teams.length} programs`}
+        value={query}
+        onChange={(e) => setQuery(e.currentTarget.value)}
       />
-
-      <div className="directory-status">
-        <span>{rows.length} {rows.length === 1 ? 'program' : 'programs'}</span>
-        <b>{present.length} CONFERENCES</b>
-      </div>
-
-      {rows.length > 0 ? (
-        <DataTable rows={rows} onOpen={(k) => openTeam(Number(k))} />
-      ) : (
-        <section className="watchlist-empty">
-          <MagnifyingGlassIcon />
-          <strong>No program found</strong>
-          <p>Try another name, or clear the conference filter.</p>
-        </section>
-      )}
+      <Chips label="Conference">
+        <Chip selected={conf === 'all'} onClick={() => setConf('all')}>All</Chip>
+        {present.map((c) => (
+          <Chip key={c.id} selected={conf === c.id} onClick={() => setConf(conf === c.id ? 'all' : c.id)}>
+            {conferenceName(c.id)}
+          </Chip>
+        ))}
+      </Chips>
+      <section>
+        <SectionHeader title={conf === 'all' ? 'All programs' : `${conferenceName(conf)} programs`} count={rows.length} />
+        {rows.length === 0 ? (
+          <EmptyState icon="search" title="No program found" text="Try another name, or clear the conference filter." />
+        ) : (
+          <List label="Programs">
+            {rows.map(({ t, i }) => {
+              const rec = regularRecord(t);
+              const you = i === team.index;
+              return (
+                <ListRow
+                  key={t.def.abbr}
+                  lead={<Crest abbr={t.def.abbr} size={36} />}
+                  title={<>{t.def.school}{you && <> <Tag tone="you">You</Tag></>}</>}
+                  subtitle={`${t.def.nickname} · ${conferenceName(t.conference)} · ${recordText(rec.w, rec.l)}${you ? ' · your program' : ''}`}
+                  status={<Stars value={prestigeStars(t.prestige)} label="Prestige" />}
+                  onClick={() => openTeam(i)}
+                />
+              );
+            })}
+          </List>
+        )}
+      </section>
     </main>
   );
 }

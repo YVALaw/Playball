@@ -12,21 +12,21 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
   "today": [
     {
       title: "Your next game",
-      body: "Today brings together games, messages, and team decisions.",
-      action: "Clear required items, then tap PLAY BALL.",
+      body: "Today shows tonight\u2019s game, anything that blocks it, and how the week is going.",
+      action: "Settle anything marked Blocks tonight\u2019s game, then tap Play ball.",
     },
   ],
   "wire": [
     {
-      title: "Around the league",
-      body: "Results, standout players, and news from other programs.",
-      action: "Tap a story to read more.",
+      title: "Around the country",
+      body: "Results, standout players and news from other programs, with yours first.",
+      action: "Tap a story to open that program.",
     },
   ],
   "roster": [
     {
       title: "Meet your team",
-      body: "OVR is current ability. POT is potential for growth.",
+      body: "Each player’s rating is how good he is now, out of 100. His ceiling is how good he can become.",
       action: "Tap a player for ratings, health, and stats.",
     },
   ],
@@ -53,73 +53,73 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
     {
       title: "Follow the season",
       body: `The top ${CONF_FIELD} teams in each conference reach its tournament.`,
-      action: "Tap a game for details or check the standings.",
+      action: "Tap a played game for its box score, or a game to come to see the opponent.",
     },
   ],
   "program": [
     {
-      title: "Board goals",
-      body: "Your season review checks these goals and decides your job’s future.",
-      action: "Check required goals and their progress.",
+      title: "The board’s goals",
+      body: "At the end of the season the board checks these goals and decides your job’s future.",
+      action: "Required goals are the job. Stretch goals are a bonus.",
     },
   ],
   "program-overview": [
     {
-      title: "Around the program",
-      body: "Manage your budget, staff, facilities, and board goals here.",
-      action: "Choose a section to get started.",
+      title: "Your program",
+      body: "Each row is one part of the program, with its state and its number.",
+      action: "Open a row to see it in full.",
     },
   ],
   "budget": [
     {
-      title: "Program funds",
-      body: "Cash pays for staff, facilities, and scouting. Recruiting uses separate points.",
-      action: "Check the cost and cash left before buying.",
+      title: "Your budget",
+      body: "Money pays for staff, buildings and scouting reports. Recruiting uses its own weekly points.",
+      action: "Every price shows what you would have left after.",
     },
   ],
   "staff": [
     {
       title: "Your coaching staff",
-      body: "Each coach has an ongoing focus and one project at a time.",
-      action: "Open a role to hire, assign work, or review the contract.",
+      body: "Each coach has a focus that is always on, and one project at a time.",
+      action: "Tap a coach to set the focus or assign a project.",
     },
   ],
   "facilities": [
     {
-      title: "Upgrade your facilities",
-      body: "Each facility supports a staff role and unlocks its projects.",
-      action: "Compare the benefit, price, and cash left.",
+      title: "Your buildings",
+      body: "Each building makes players better and unlocks one coach’s projects.",
+      action: "Each card shows what the next level adds, and its price.",
     },
   ],
   "coach": [
     {
       title: "Your career",
-      body: "Your record, skills, and coach prestige follow you between schools.",
-      action: "Check your skills and contract.",
+      body: "Your record, skills and prestige follow you from school to school.",
+      action: "Skills grow with points you earn each June.",
     },
   ],
   "network": [
     {
       title: "Recruiting pipelines",
-      body: "Pipelines are state relationships that improve recruiting. Signings and coordinator projects strengthen them.",
-      action: "Choose a state to view your network.",
+      body: "A pipeline is a state where recruits already know you. Signings and your coordinator’s projects make it stronger.",
+      action: "Tap a state to see what its strength does.",
     },
     {
-      title: "Opponent scouting",
-      body: "Reports reveal opponent tendencies and expire after the shown period.",
-      action: "Open a program profile to buy a report.",
+      title: "Scouting reports",
+      body: "A report shows an opponent’s habits for a few days, and your playbook counters them.",
+      action: "Buy one from a college’s profile.",
     },
   ],
   "manage": [
     {
       title: "Your call",
-      body: "SWING AWAY and PITCH are standard plays. Other choices depend on the situation.",
-      action: "Choose a call, then read the result.",
+      body: "Swing away and Pitch are the standard calls. A call you can\u2019t make right now says why.",
+      action: "Choose a call, then read what happened.",
     },
     {
-      title: "Dugout tools",
-      body: "The round dugout button opens substitutions, pitching changes, and simulation.",
-      action: "After the game, tap RECORD THE GAME to advance.",
+      title: "The dugout",
+      body: "Dugout, at the bottom, has pinch hitters, the bullpen, mound visits and the bench coach.",
+      action: "After the last out, tap Record the game.",
     },
   ],
   "postseason": [
@@ -130,7 +130,7 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
     },
     {
       title: "2. Regional series",
-      body: `Best of ${SERIES.regional}. The ${NATIONAL_BIDS - PROTECTED_BIDS} series winners reach nationals.`,
+      body: `Best of ${SERIES.regional}. The ${NATIONAL_BIDS - PROTECTED_BIDS} series winners reach the national tournament.`,
       action: "Win two games to advance.",
     },
     {
@@ -139,9 +139,9 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
       action: `Win the best-of-${SERIES.final} final to become champion.`,
     },
     {
-      title: "Protected national places",
-      body: `The regular season’s top ${PROTECTED_BIDS} are guaranteed entry. Remaining places go to the best eligible teams.`,
-      action: "Check your qualification status after each round.",
+      title: "Guaranteed a place",
+      body: `The regular season’s top ${PROTECTED_BIDS} are guaranteed a place in the national tournament. The rest of the field is picked from the best teams still in it.`,
+      action: "Check where you stand after each round.",
     },
   ],
   "awards": [
@@ -182,13 +182,13 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
   "recruiting": [
     {
       title: "Recruit for next season",
-      body: `Recruiting lasts ${RECRUITING_WEEKS} weeks. Weekly recruiting points (RP) expire when the week advances.`,
-      action: "Check Needs, then choose your targets.",
+      body: `Recruiting lasts ${RECRUITING_WEEKS} weeks. Your points refresh every week, and points you leave unspent are lost.`,
+      action: "Check Positions needed, then plan a week on the prospects you want.",
     },
     {
       title: "Make your pitch",
-      body: "Recruit priorities shape each pitch. Promises become obligations if they sign.",
-      action: "Compare actions and RP costs. Promise only what you can deliver.",
+      body: "Pitch what a prospect cares about most, where your program backs it up. A promise becomes a duty if he signs.",
+      action: "Compare the point costs, and only promise what you can keep.",
     },
   ],
   "signing": [

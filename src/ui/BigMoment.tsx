@@ -15,31 +15,32 @@ import { teamColour } from './Avatar.js';
 import { burstConfetti } from './celebrate.js';
 import { sfx, buzz, crowdSwell } from './sound.js';
 import { useDialogFocus } from './dialogFocus.js';
+import { schoolNamesIn } from './words.js';
 
 const KICKER: Record<string, string> = {
-  walkoff: 'WALK-OFF',
-  'walkoff-against': 'WALKED OFF',
-  cup: 'CONFERENCE CHAMPIONS',
-  regional: 'REGIONAL CHAMPIONS',
-  final4: 'THE SHOWDOWN IS YOURS',
-  title: 'NATIONAL CHAMPIONS',
-  'runner-up': 'RUNNER-UP',
+  walkoff: 'Walk-off',
+  'walkoff-against': 'Walked off',
+  cup: 'Conference champions',
+  regional: 'Regional champions',
+  final4: 'Bracket champions',
+  title: 'National champions',
+  'runner-up': 'Runners-up',
 };
 
 const SENTENCE: Record<string, string> = {
   walkoff: 'wins it in the last at-bat.',
   'walkoff-against': 'ends it. There was no next at-bat.',
   cup: 'The banner goes up in your building.',
-  regional: 'A ticket to the national twenty, punched on the field.',
+  regional: 'A place in the national tournament, won on the field.',
   final4: 'Two teams left in the country. Yours is one.',
   title: 'Everything the program is for, and it happened this June.',
   'runner-up': 'The last series of the year went the other way.',
 };
 
 const BUTTON: Record<string, string> = {
-  title: 'TAKE THE TROPHY',
-  'walkoff-against': 'WALK IT OFF',
-  'runner-up': 'CARRY IT HOME',
+  title: 'Take the trophy',
+  'walkoff-against': 'Walk it off',
+  'runner-up': 'Carry it home',
 };
 
 export function BigMomentCard() {
@@ -129,10 +130,10 @@ export function BigMomentCard() {
           <h1>{moment.name ?? school}</h1>
           <p>{SENTENCE[moment.kind]}</p>
           {moment.kind === 'title' && <em className="title-year">{moment.year}</em>}
-          <b>{moment.line}{moment.kind === 'title' ? '' : ` · ${moment.year}`}</b>
+          <b>{season ? schoolNamesIn(moment.line, season.teams) : moment.line}{moment.kind === 'title' ? '' : ` · ${moment.year}`}</b>
         </div>
         <button type="button" onClick={clear}>
-          {BUTTON[moment.kind] ?? 'CARRY ON'}
+          {BUTTON[moment.kind] ?? 'Carry on'}
         </button>
       </div>
     </InFrame>

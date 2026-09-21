@@ -1,6 +1,13 @@
-import { useState } from 'react';
-import { CheckIcon, ChevronRightIcon, GlobeIcon, LockClosedIcon } from '@radix-ui/react-icons';
-import { Avatar } from './Avatar.js';
+// StaffWorkPanel.tsx
+// What an assistant coach is working on, and how to give him the next thing.
+//
+// Two layers, as the design system's coach sheet draws them: the coaching
+// focus, which is always on, and one time-limited project. A project is set up
+// in three numbered steps (the skill, the player, then the review) with the
+// start button pinned in the sheet's footer, so the panel returns its body and
+// its footer separately for the sheet to place.
+
+import { useState, type ReactNode } from 'react';
 import { ALL_STATES } from '../data/schools.js';
 import {
   BUILDINGS, DIRECTIVE_LABEL, PROJECT_LABEL, PIPELINE_MIN, dollars, facilityLevel,
@@ -15,49 +22,93 @@ import {
 } from '../engine/staffProjects.js';
 import { handles } from '../state/depth.js';
 import { useDynasty } from '../state/store.js';
-import { Confirmable } from './components/Kit.js';
+import {
+  Button, Callout, ConfirmButton, Face, List, ListRow, Meter, Monogram, OptionCard, OptionGroup,
+  ProjectProgress, SearchField, SectionHeader, StatGroup, StatusBadge, Step,
+} from './components/ui/index.js';
+import { CLASS_NAME, FACILITY_NAME, POSITION_NAME, firstName, plural, stateName } from './words.js';
 
 const FOCUSES: Record<StaffSeat, StaffDirective[]> = {
   hitting: ['balanced', 'contact', 'power', 'discipline'],
   pitching: ['balanced', 'command', 'velocity', 'armCare'],
   recruiting: ['balanced', 'pipeline', 'stars', 'sleepers', 'needs'],
 };
+
+/** What each focus buys, in a sentence the option card can carry. */
 const FOCUS_HINT: Record<StaffDirective, string> = {
-  balanced: 'General support', contact: 'Contact projects', power: 'Power projects',
-  // Hand-written rather than read off PROJECT_ATTRIBUTE, so it has to be
-  // renamed in step with it or the two lines disagree on one screen.
-  discipline: 'Discipline projects', command: 'Control projects', velocity: 'K/9 projects',
-  armCare: 'Stamina projects', pipeline: '+4% recruiting interest', stars: '4–5★ prospects',
-  sleepers: '1–3★ prospects', needs: 'Missing positions',
+  balanced: 'General support, no project bonus',
+  contact: 'Contact projects earn the bonus',
+  power: 'Power projects earn the bonus',
+  discipline: 'Discipline projects earn the bonus',
+  command: 'Control projects earn the bonus',
+  velocity: 'Strikeout stuff projects earn the bonus',
+  armCare: 'Stamina projects earn the bonus',
+  pipeline: 'Pipeline projects earn the bonus; recruiting points go 4% further',
+  stars: 'Points go 10% further with 4 and 5 star recruits',
+  sleepers: 'Points go 10% further with 1 to 3 star recruits',
+  needs: 'Points go 10% further at positions you need',
 };
+
+const PIPELINE_HINT: Partial<Record<StaffProjectKind, string>> = {
+  'pipeline-build': 'Start a relationship in a new state',
+  'pipeline-deepen': 'Make a pipeline stronger',
+  'pipeline-maintain': 'Keep a pipeline from cooling',
+};
+
 const TRAINING: Record<'hitting' | 'pitching', StaffProjectKind[]> = {
   hitting: ['hitting-contact', 'hitting-power', 'hitting-discipline'],
   pitching: ['pitching-command', 'pitching-velocity', 'pitching-arm-care'],
 };
 
-/** The same status on the roster and in the profile, including paused saves. */
+/** How many of a project's weeks have to be on the matching focus. */
+export const focusWeeksNeeded = (weeks: number): number => Math.ceil(weeks * 0.6);
+
+export type WorkState = 'locked' | 'ready' | 'active' | 'paused' | 'waiting';
+
+/**
+ * The same status on the staff card and in the coach's sheet.
+ *
+ * `label` and `detail` are the legacy words, still read by the needs list and
+ * the tour; `state` is the design system's.
+ */
 export function staffWorkStatus(economy: Economy, seat: StaffSeat, weeksAvailable: number) {
   const project = staffPlan(economy, seat).project;
   const facility = BUILDINGS.find((b) => b.key === projectFacility(seat))!;
   const level = facilityLevel(economy, facility.key);
-  if (!project) return {
-    label: level < 1 ? 'PROJECTS LOCKED' : weeksAvailable === 0 ? 'NEXT SEASON' : 'NO PROJECT',
-    detail: level < 1 ? facility.label : weeksAvailable === 0 ? 'Calendar closed' : 'Ready to assign',
-    progress: 0,
-  };
+  if (!project) {
+    const state: WorkState = level < 1 ? 'locked' : weeksAvailable === 0 ? 'waiting' : 'ready';
+    return {
+      state,
+      label: level < 1 ? 'Projects locked' : weeksAvailable === 0 ? 'Opens next season' : 'No project',
+      detail: level < 1 ? FACILITY_NAME[facility.key] : weeksAvailable === 0 ? 'Calendar closed' : 'Ready to assign',
+      progress: 0,
+      facility: facility.key,
+      level,
+    };
+  }
+  const paused = level < 1 || weeksAvailable === 0;
   return {
-    label: level < 1 || weeksAvailable === 0 ? 'PAUSED' : 'IN PROGRESS',
-    detail: `${PROJECT_LABEL[project.kind]} · ${project.weeksLeft}w left`,
+    state: (paused ? 'paused' : 'active') as WorkState,
+    label: paused ? 'Paused' : 'In progress',
+    detail: `${PROJECT_LABEL[project.kind]} · ${plural(project.weeksLeft, 'week')} left`,
     progress: Math.max(0, Math.min(100, Math.round((1 - project.weeksLeft / Math.max(1, project.weeksTotal)) * 100))),
+    facility: facility.key,
+    level,
   };
 }
 
-export function StaffWorkPanel({ team, seat, initialState, onFacility }: {
+export interface StaffWork { body: ReactNode; footer: ReactNode }
+
+/**
+ * The coach's work, as a body and a footer for the sheet that holds it.
+ * A hook rather than a component so the sheet can pin the footer.
+ */
+export function useStaffWork({ team, seat, initialState, onFacility }: {
   team: SeasonState['teams'][number];
   seat: StaffSeat;
   initialState?: string;
   onFacility: (facility: Building) => void;
-}) {
+}): StaffWork {
   const economy = useDynasty((s) => s.economy);
   const week = useDynasty((s) => s.season?.recruiting.week ?? 0);
   const canManage = useDynasty((s) => handles(s.depth, 'assistants'));
@@ -67,21 +118,22 @@ export function StaffWorkPanel({ team, seat, initialState, onFacility }: {
   const [state, setState] = useState(initialState ?? team.def.state);
   const [selectedKind, setSelectedKind] = useState<StaffProjectKind | null>(null);
   const [playerId, setPlayerId] = useState('');
-  const [pickingPlayer, setPickingPlayer] = useState(false);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
+
+  const man = economy.staff[seat];
   const plan = staffPlan(economy, seat);
   const facility = BUILDINGS.find((b) => b.key === projectFacility(seat))!;
+  const facilityName = FACILITY_NAME[facility.key];
   const level = facilityLevel(economy, facility.key);
   const weeksAvailable = week >= 1 ? Math.max(0, RECRUITING_WEEKS - week + 1) : 0;
-  const status = staffWorkStatus(economy, seat, weeksAvailable);
   const strength = pipelineStrength(economy, state, team.def.state);
   const projects: StaffProjectKind[] = seat === 'recruiting'
     ? strength >= PIPELINE_MIN ? ['pipeline-deepen', 'pipeline-maintain'] : ['pipeline-build']
     : TRAINING[seat];
   const kind = selectedKind && projects.includes(selectedKind) ? selectedKind : projects[0]!;
   const pool = projectCandidates(team.team, seat, kind);
-  // No implicit player selection: the coach must choose a named target.
+  // No implicit player selection: the coach chooses a named target.
   const chosen = pool.find((p) => String(p.id) === playerId);
   const visiblePlayers = pool.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase()));
   const weeks = staffProjectWeeks(economy, seat, kind);
@@ -94,132 +146,305 @@ export function StaffWorkPanel({ team, seat, initialState, onFacility }: {
   const activeTarget = project?.playerId
     ? projectCandidates(team.team, seat, project.kind).find((p) => String(p.id) === project.playerId) : undefined;
   const activeOdds = project ? project.odds ?? (activeTarget ? projectOdds(economy, seat, activeTarget, project.kind) : null) : null;
-  const alignedWeeks = project ? project.alignedWeeks ?? (PROJECT_FOCUS[project.kind] === plan.directive ? project.weeksTotal - project.weeksLeft : 0) : 0;
+  const alignedWeeks = project
+    ? project.alignedWeeks ?? (PROJECT_FOCUS[project.kind] === plan.directive ? project.weeksTotal - project.weeksLeft : 0)
+    : 0;
+  const who = man ? firstName(man.name) : 'your coach';
 
-  return <div className="staff-workspace">
-    {!canManage && <p className="staff-work-note" role="status">Managed by your athletic director.</p>}
-    <section className="staff-work-section">
-      <header className="staff-section-title"><span><small>ONGOING</small><h3>Coaching focus</h3></span><span className="staff-status-tag">{DIRECTIVE_LABEL[plan.directive]}</span></header>
-      <div className="staff-focus-picker" data-guide={seat === 'hitting' && canManage ? 'directive' : undefined} aria-label="Coaching focus">
-        {FOCUSES[seat].map((focus) => <button key={focus} className={`tap${plan.directive === focus ? ' selected' : ''}`} type="button"
-          aria-pressed={plan.directive === focus} disabled={!canManage} onClick={() => setFocus(seat, focus)}>
-          <span><strong>{DIRECTIVE_LABEL[focus]}</strong><small>{FOCUS_HINT[focus]}</small></span>
-          {plan.directive === focus && <CheckIcon aria-hidden="true" />}
-        </button>)}
-      </div>
-      {seat === 'recruiting' && ['stars', 'sleepers', 'needs'].includes(plan.directive) && <p className="staff-work-note">About +10% RP effectiveness on matching prospects.</p>}
+  /* ------------------------------------------------------------- focus */
+  const focusSection = (
+    <section className="pb-stack">
+      <SectionHeader
+        level={3}
+        title="Coaching focus"
+        description="Matching projects gain more"
+      />
+      <OptionGroup label="Coaching focus" columns={2} guide={seat === 'hitting' && canManage ? 'directive' : undefined}>
+        {FOCUSES[seat].map((focus) => (
+          <OptionCard
+            key={focus}
+            title={DIRECTIVE_LABEL[focus]}
+            hint={FOCUS_HINT[focus]}
+            selected={plan.directive === focus}
+            disabled={!canManage}
+            onSelect={() => setFocus(seat, focus)}
+          />
+        ))}
+      </OptionGroup>
     </section>
+  );
 
-    <section className="staff-work-section">
-      <header className="staff-section-title"><span><small>TIME-LIMITED</small><h3>{project ? 'Current project' : 'Assign a project'}</h3></span><span className="staff-status-tag">{project ? status.label : `${weeksAvailable}w available`}</span></header>
-      {project ? (() => {
-        /*
-          A project is about a man, or about a state — so the subject leads and
-          the kind of work is the eyebrow under it.
-        */
-        const subject = project.state ?? (project.playerId
-          ? activeTarget?.name ?? 'Player left the roster'
-          : `${project.targetIds?.length ?? project.targetCount ?? 0} players`);
-        const kindLine = project.state ? `${PROJECT_LABEL[project.kind]} · recruiting territory`
-          : project.playerId ? PROJECT_LABEL[project.kind]
-            : `${PROJECT_LABEL[project.kind]} · group project`;
-        const focusNeeded = Math.ceil(project.weeksTotal * .6);
-        /*
-          Once the weeks left cannot carry alignedWeeks to the threshold, the
-          focus bonus is arithmetically gone — the engine decides it with
-          `alignedWeeks >= ceil(weeksTotal * 0.6)` and alignedWeeks only moves
-          on a matching week. Advertising the high end after that point is a
-          number the card cannot deliver, sitting next to a FOCUS WEEKS tile
-          that already says so.
-        */
-        const focusReachable = alignedWeeks + project.weeksLeft >= focusNeeded;
-        const liveStrength = project.state
-          ? pipelineStrength(economy, project.state, team.def.state) : 0;
-        const lo = seat === 'recruiting'
-          ? pipelineProjectGain(economy, project.kind, liveStrength, false) : PROJECT_GAIN;
-        const hi = seat === 'recruiting'
-          ? pipelineProjectGain(economy, project.kind, liveStrength, true) : PROJECT_FOCUS_GAIN;
-        const top = focusReachable ? hi : lo;
-        // A stateless legacy recruiting project earns nothing at all in the
-        // engine, so it gets no promise here either.
-        const showGain = seat !== 'recruiting' || !!project.state;
-        return <>
-        <div className="staff-active-project" role="status">
-          <div className="staff-project-person">
-            {project.playerId ? <Avatar id={project.playerId} team={team.def.abbr} size={40} />
-              : project.state ? <GlobeIcon aria-hidden="true" /> : null}
-            <span><strong>{subject}</strong><small>{kindLine}</small></span>
-          </div>
-          <div className="staff-live-progress"><div role="progressbar" aria-label="Project progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={status.progress}><i style={{ width: `${status.progress}%` }} /></div><b>{project.weeksLeft}w left</b></div>
-          <div className="staff-project-facts">
-            {showGain && <span><small>POTENTIAL GAIN</small><b>+{lo === top ? lo : `${lo}–${top}`}<em>{PROJECT_ATTRIBUTE[project.kind]}{seat === 'recruiting'
-              ? ` · ${liveStrength}/100 now` : ' · on success, up to 99'}</em></b></span>}
-            <span><small>FOCUS WEEKS</small><b>{alignedWeeks} / {focusNeeded}</b></span>
-            {project.playerId && <span><small>SUCCESS CHANCE</small><b>{activeOdds === null ? '—' : `${Math.round(activeOdds * 100)}%`}</b></span>}
-          </div>
-          <p className="staff-work-note">{level < 1 ? `${facility.label} required to resume.` : weeksAvailable === 0 ? 'Resumes next recruiting season.' : 'Advances after each recruiting week.'}</p>
-          <details className="staff-work-details">
-            <summary>Focus bonus · {DIRECTIVE_LABEL[PROJECT_FOCUS[project.kind]]}</summary>
-            <p className="staff-work-note">Keep {DIRECTIVE_LABEL[PROJECT_FOCUS[project.kind]]} focus for {focusNeeded} of {project.weeksTotal} weeks to earn the higher gain.{focusReachable ? '' : ` Only ${project.weeksLeft} week${project.weeksLeft === 1 ? '' : 's'} remain, so the bonus is out of reach for this project.`}</p>
-          </details>
-        </div>
-        {level < 1 && <button type="button" className="secondary-command tap" onClick={() => onFacility(facility.key)}>Open {facility.label}</button>}
-        {canManage && <Confirmable className="staff-cancel-project tap" idle="Cancel project" armed="Confirm cancel · progress will be lost" onConfirm={() => cancel(seat)} />}
-        </>;
-      })() : level < 1 ? <button type="button" className="staff-facility-door tap" onClick={() => onFacility(facility.key)}>
-        <LockClosedIcon aria-hidden="true" /><span><small>UNLOCK PROJECTS</small><strong>Build {facility.label}</strong><small>{dollars(facilityUpgradeCost(facility.key, 1))}</small></span><ChevronRightIcon aria-hidden="true" />
-      </button> : <>
-        {seat === 'recruiting' && <label className="staff-state-select"><span><b>1. Choose a state</b><small>{strength}/100 strength</small></span>
-          <select value={state} disabled={!canManage} onChange={(e) => { setState(e.currentTarget.value); setError(''); }}>
-            {ALL_STATES.map((value) => <option key={value} value={value}>{value}</option>)}
-          </select>
-        </label>}
-        <h4 className="staff-step-title">{seat === 'recruiting' ? '2. Choose the project' : '1. Choose a skill'}</h4>
-        <div className="staff-project-picker" aria-label="Project goal">
-          {projects.map((option) => <button type="button" key={option} disabled={!canManage} aria-pressed={kind === option}
-            className={`tap${kind === option ? ' selected' : ''}`} onClick={() => { setSelectedKind(option); setError(''); }}>
-            <strong>{seat === 'recruiting' ? PROJECT_LABEL[option] : PROJECT_ATTRIBUTE[option]}</strong>
-            <small>{staffProjectWeeks(economy, seat, option)} weeks</small>{kind === option && <CheckIcon aria-hidden="true" />}
-          </button>)}
-        </div>
+  /* ------------------------------------------------------------ project */
+  let projectSection: ReactNode;
+  let footer: ReactNode = null;
 
-        {seat !== 'recruiting' && <>
-          <h4 className="staff-step-title">2. Choose a player</h4>
-          <button type="button" className="staff-player-select tap" disabled={!canManage || pool.length === 0} aria-expanded={pickingPlayer}
-            onClick={() => { setPickingPlayer((open) => !open); setQuery(''); }}>
-            <span><strong>{chosen?.name ?? (pool.length ? 'Select a player' : 'No eligible players')}</strong><small>{chosen ? `${chosen.pos} · ${chosen.classYear}` : 'One player per project'}</small></span><span>{chosen ? 'Change' : 'Choose'} <ChevronRightIcon aria-hidden="true" /></span>
-          </button>
-          {pickingPlayer && <div className="staff-player-picker">
-            <input type="search" aria-label="Search eligible players" placeholder="Search players" value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
-            <div className="staff-player-options" aria-label="Eligible players">
-              {visiblePlayers.map((p) => <button type="button" className="tap" key={String(p.id)} aria-pressed={String(p.id) === playerId}
-                onClick={() => { setPlayerId(String(p.id)); setPickingPlayer(false); setError(''); }}>
-                <span><strong>{p.name}</strong><small>{p.pos} · {p.classYear}</small></span><b>{Math.round(projectOdds(economy, seat, p, kind) * 100)}%<small>chance</small></b>
-              </button>)}
-              {visiblePlayers.length === 0 && <p className="staff-work-note">No players match that name.</p>}
-            </div>
-          </div>}
-        </>}
-
-        <div className="staff-assignment-preview" aria-label="Project preview" aria-live="polite">
-          <div className="staff-project-facts">
-            <span><small>{seat === 'recruiting' ? 'STRENGTH' : PROJECT_ATTRIBUTE[kind].toUpperCase()}</small><b>{seat === 'recruiting' ? `${strength} → ${strength + gain}` : `+${gain}`}<em>{seat === 'recruiting' ? `up to ${strength + focusedGain} with focus` : `up to +${focusedGain} with focus`}</em></b></span>
-            <span><small>{seat === 'recruiting' ? 'DURATION' : 'SUCCESS CHANCE'}</small><b>{seat === 'recruiting' ? `${weeks}w` : odds === null ? '—' : `${odds}%`}</b></span>
+  if (project) {
+    const subjectName = project.state ? stateName(project.state)
+      : project.playerId ? activeTarget?.name ?? 'Player left the roster'
+        : plural(project.targetIds?.length ?? project.targetCount ?? 0, 'player');
+    const kindLine = project.state ? `${PROJECT_LABEL[project.kind]} · Recruiting territory`
+      : project.playerId ? PROJECT_LABEL[project.kind]
+        : `${PROJECT_LABEL[project.kind]} · Group project`;
+    const focusNeeded = focusWeeksNeeded(project.weeksTotal);
+    /*
+      Once the weeks left cannot carry the aligned weeks to the threshold, the
+      focus bonus is arithmetically gone (the engine decides it with
+      `alignedWeeks >= ceil(weeksTotal * 0.6)`), so the card stops promising it.
+    */
+    const focusReachable = alignedWeeks + project.weeksLeft >= focusNeeded;
+    const liveStrength = project.state ? pipelineStrength(economy, project.state, team.def.state) : 0;
+    const lo = seat === 'recruiting' ? pipelineProjectGain(economy, project.kind, liveStrength, false) : PROJECT_GAIN;
+    const hi = seat === 'recruiting' ? pipelineProjectGain(economy, project.kind, liveStrength, true) : PROJECT_FOCUS_GAIN;
+    // A stateless legacy recruiting project earns nothing, so it promises nothing.
+    const showGain = seat !== 'recruiting' || !!project.state;
+    const paused = level < 1 || weeksAvailable === 0;
+    projectSection = (
+      <section className="pb-stack">
+        <SectionHeader level={3} title="Current project" />
+        <ProjectProgress
+          subject={{
+            name: subjectName,
+            meta: activeTarget ? `${POSITION_NAME[activeTarget.pos]} · ${CLASS_NAME[activeTarget.classYear]}` : undefined,
+            lead: project.playerId
+              ? <Face id={project.playerId} team={team.def.abbr} size={44} />
+              : <Monogram icon="globe" tone="info" size={44} />,
+          }}
+          kind={kindLine}
+          done={project.weeksTotal - project.weeksLeft}
+          total={project.weeksTotal}
+          status={paused ? { tone: 'warning', icon: 'pause', label: 'Paused' } : undefined}
+          gain={showGain ? {
+            lo, hi: focusReachable ? hi : lo,
+            attribute: seat === 'recruiting' ? `Strength · ${liveStrength} now` : PROJECT_ATTRIBUTE[project.kind],
+          } : undefined}
+          chance={project.playerId && activeOdds !== null ? Math.round(activeOdds * 100) : undefined}
+          chanceNote="Set at the start"
+          focus={{
+            label: DIRECTIVE_LABEL[PROJECT_FOCUS[project.kind]],
+            matched: alignedWeeks,
+            needed: focusNeeded,
+            reachable: focusReachable,
+          }}
+          note={level < 1 ? `The ${facilityName} is needed to resume.`
+            : weeksAvailable === 0 ? 'Resumes when the next recruiting season opens.'
+              : 'Moves on after each recruiting week. Gains apply only if it works, up to 99.'}
+        >
+          {level < 1 && (
+            <Button variant="tonal" block onClick={() => onFacility(facility.key)} iconAfter="chevron-right">
+              Build the {facilityName}
+            </Button>
+          )}
+        </ProjectProgress>
+      </section>
+    );
+    if (canManage) {
+      footer = (
+        <ConfirmButton
+          variant="secondary"
+          block
+          idle="Cancel project"
+          armed="Tap again to cancel"
+          armedMeta="Progress is lost"
+          onConfirm={() => cancel(seat)}
+        />
+      );
+    }
+  } else if (level < 1) {
+    projectSection = (
+      <section className="pb-stack">
+        <SectionHeader level={3} title="Projects" />
+        <Callout
+          tone="neutral"
+          icon="lock"
+          title="Projects locked"
+          action={{
+            label: `See the ${facilityName}`,
+            meta: dollars(facilityUpgradeCost(facility.key, 1)),
+            variant: 'tonal',
+            onClick: () => onFacility(facility.key),
+          }}
+        >
+          Build the {facilityName} to give {who} projects.
+        </Callout>
+      </section>
+    );
+  } else {
+    const noTime = !enoughTime;
+    const attr = PROJECT_ATTRIBUTE[kind];
+    const steps = seat === 'recruiting' ? (
+      <>
+        <Step number={1} state="done" title="Choose a state" summary={stateName(state)}>
+          <div className="pb-stack">
+            <label className="pb-field">
+              <span className="pb-field__label">State</span>
+              <select
+                className="pb-field__input pb-select"
+                value={state}
+                disabled={!canManage}
+                onChange={(e) => { setState(e.currentTarget.value); setError(''); }}
+              >
+                {ALL_STATES.map((value) => <option key={value} value={value}>{stateName(value)}</option>)}
+              </select>
+            </label>
+            <Meter
+              size="sm"
+              label="Strength now"
+              valueText={`${strength} / 100`}
+              value={strength}
+              markers={[{ at: PIPELINE_MIN }, { at: 60 }]}
+            />
           </div>
-          <p className={`staff-bonus-note${matched ? ' matched' : ''}`}>{matched && <CheckIcon aria-hidden="true" />} {DIRECTIVE_LABEL[PROJECT_FOCUS[kind]]} focus for {Math.ceil(weeks * .6)}/{weeks} weeks earns the bonus.</p>
-          {seat !== 'recruiting' && <small className="staff-work-note">Gains apply on success, up to 99.</small>}
-        </div>
-        {!enoughTime && <p className="staff-work-note" role="status">{weeksAvailable === 0 ? 'Projects reopen next recruiting season.' : `Needs ${weeks} weeks; ${weeksAvailable} remain this season.`}</p>}
-        {error && <p className="staff-work-error" role="alert">{error}</p>}
-        <button type="button" className="primary-command staff-start-project tap" disabled={!canManage || !enoughTime || (seat !== 'recruiting' && !chosen)}
-          onClick={() => {
-            if (!start(seat, kind, seat === 'recruiting' ? state : undefined, seat === 'recruiting' ? undefined : playerId)) {
-              setError('Could not start. Check the player, facility, and time remaining.');
-            } else setError('');
-          }}>
-          {!canManage ? 'Managed by athletic director' : seat !== 'recruiting' && !chosen ? 'Choose a player to continue' : !enoughTime ? 'Not enough weeks' : `Start project · ${weeks} weeks`}
-        </button>
-      </>}
-    </section>
-  </div>;
+        </Step>
+        <Step number={2} state="done" title="Choose the project" summary={PROJECT_LABEL[kind]}>
+          <OptionGroup label="Project">
+            {projects.map((option) => (
+              <OptionCard
+                key={option}
+                title={PROJECT_LABEL[option]}
+                hint={PIPELINE_HINT[option]}
+                meta={plural(staffProjectWeeks(economy, seat, option), 'week')}
+                badge={PROJECT_FOCUS[option] === plan.directive ? 'Matches focus' : undefined}
+                selected={kind === option}
+                disabled={!canManage}
+                onSelect={() => { setSelectedKind(option); setError(''); }}
+              />
+            ))}
+          </OptionGroup>
+        </Step>
+        <Step number={3} state="current" title="Review and start">
+          <div className="pb-stack">
+            <StatGroup
+              size="sm"
+              items={[
+                { label: 'Strength', value: `${strength}→${Math.min(100, strength + gain)}`, note: `Up to ${Math.min(100, strength + focusedGain)} with the focus` },
+                { label: 'Takes', value: weeks, unit: 'wk', note: `of ${weeksAvailable} left` },
+              ]}
+            />
+            <FocusNote matched={matched} kind={kind} weeks={weeks} bonus={`${Math.min(100, strength + focusedGain)} strength`} />
+          </div>
+        </Step>
+      </>
+    ) : (
+      <>
+        <Step number={1} state="done" title="Choose a skill" summary={attr}>
+          <OptionGroup label="Project skill" columns={3}>
+            {projects.map((option) => (
+              <OptionCard
+                key={option}
+                title={PROJECT_ATTRIBUTE[option]}
+                meta={`${staffProjectWeeks(economy, seat, option)} wk`}
+                badge={PROJECT_FOCUS[option] === plan.directive ? 'Matches focus' : undefined}
+                selected={kind === option}
+                disabled={!canManage}
+                onSelect={() => { setSelectedKind(option); setError(''); }}
+              />
+            ))}
+          </OptionGroup>
+        </Step>
+        <Step number={2} state={chosen ? 'done' : 'current'} title="Choose a player" summary={chosen?.name}>
+          <div className="pb-stack">
+            {pool.length > 8 && (
+              <SearchField label="Search eligible players" placeholder="Search players" value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
+            )}
+            {pool.length === 0 ? (
+              <Callout tone="neutral">No player on the roster is eligible for this project.</Callout>
+            ) : (
+              <>
+              <p className="pb-list-caption"><span>Player</span><span>Chance it works</span></p>
+              <List label="Eligible players" role="radiogroup">
+                {visiblePlayers.map((p) => {
+                  const on = String(p.id) === playerId;
+                  return (
+                    <ListRow
+                      key={String(p.id)}
+                      lead={<Face id={String(p.id)} team={team.def.abbr} size={36} />}
+                      title={p.name}
+                      subtitle={`${POSITION_NAME[p.pos]} · ${CLASS_NAME[p.classYear]}`}
+                      value={`${Math.round(projectOdds(economy, seat, p, kind) * 100)}%`}
+                      selected={on}
+                      chevron={false}
+                      disabled={!canManage}
+                      status={on ? <StatusBadge tone="accent" icon="check">Selected</StatusBadge> : undefined}
+                      onClick={() => { setPlayerId(String(p.id)); setError(''); }}
+                    />
+                  );
+                })}
+                {visiblePlayers.length === 0 && <ListRow title="No players match that name" />}
+              </List>
+              </>
+            )}
+          </div>
+        </Step>
+        <Step number={3} state={chosen ? 'current' : 'upcoming'} title="Review and start">
+          <div className="pb-stack">
+            <StatGroup
+              size="sm"
+              items={[
+                { label: 'If it works', value: `+${gain} to +${focusedGain}`, note: attr },
+                { label: 'Chance', value: odds === null ? '—' : `${odds}%`, note: 'Set at the start' },
+                { label: 'Takes', value: weeks, unit: 'wk', note: `of ${weeksAvailable} left` },
+              ]}
+            />
+            <FocusNote matched={matched} kind={kind} weeks={weeks} bonus={`+${focusedGain} ${attr}`} />
+          </div>
+        </Step>
+      </>
+    );
+    projectSection = (
+      <section className="pb-stack">
+        <SectionHeader level={3} title="Assign a project" description={`${plural(weeksAvailable, 'week')} left · one at a time`} />
+        <div className="pb-steps">{steps}</div>
+        {noTime && (
+          <Callout tone="warning" title={weeksAvailable === 0 ? 'Projects open when recruiting starts' : 'Not enough weeks left'}>
+            {weeksAvailable === 0 ? undefined : `It takes ${plural(weeks, 'week')}; ${weeksAvailable} left.`}
+          </Callout>
+        )}
+        {error && <Callout tone="negative" role="alert">{error}</Callout>}
+      </section>
+    );
+    const label = !canManage ? 'Managed by your athletic director'
+      : seat !== 'recruiting' && !chosen ? 'Choose a player to continue'
+        : noTime ? 'Not enough weeks left'
+          : seat === 'recruiting' ? `Start: ${PROJECT_LABEL[kind].toLowerCase()}`
+            : `Start ${attr.toLowerCase()} project`;
+    footer = (
+      <Button
+        variant="primary"
+        block
+        meta={canManage && !noTime && (seat === 'recruiting' || chosen) ? plural(weeks, 'week') : undefined}
+        disabled={!canManage || noTime || (seat !== 'recruiting' && !chosen)}
+        onClick={() => {
+          if (!start(seat, kind, seat === 'recruiting' ? state : undefined, seat === 'recruiting' ? undefined : playerId)) {
+            setError('The project could not start. Check the player, the building and the weeks left.');
+          } else setError('');
+        }}
+      >{label}</Button>
+    );
+  }
+
+  const body = (
+    <>
+      {!canManage && (
+        <Callout tone="info" title="Managed by your athletic director" />
+      )}
+      {focusSection}
+      {projectSection}
+    </>
+  );
+  return { body, footer };
+}
+
+/** Whether the project will earn the focus bonus, said before it starts. */
+function FocusNote({ matched, kind, weeks, bonus }: { matched: boolean; kind: StaffProjectKind; weeks: number; bonus: string }) {
+  const focus = DIRECTIVE_LABEL[PROJECT_FOCUS[kind]];
+  const need = focusWeeksNeeded(weeks);
+  return matched ? (
+    <Callout tone="positive" icon="check-circled" title={`Matches the ${focus} focus`}>
+      Keep the focus for {need} of the {weeks} weeks to earn {bonus}.
+    </Callout>
+  ) : (
+    <Callout tone="neutral" title="No focus bonus yet">
+      Set the focus to {focus} for {need} of the {weeks} weeks to earn {bonus}.
+    </Callout>
+  );
 }

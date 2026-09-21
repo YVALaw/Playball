@@ -28,11 +28,11 @@ const FIELDS = {
 } as const;
 export const PROJECT_ATTRIBUTE: Record<StaffProjectKind, string> = {
   'hitting-contact': 'Contact', 'hitting-power': 'Power', 'hitting-discipline': 'Discipline',
-  // 'K/9', not 'Stuff'. The key stays `stuff` — this map is display only — and
-  // the player card renamed it on its own screens long ago for the reason
-  // reported again on 2026-09-12: "what even is stuff in pitching?" The staff
-  // room was the last place still using the scouting word.
-  'pitching-command': 'Control', 'pitching-velocity': 'K/9', 'pitching-arm-care': 'Stamina',
+  // Words, not the scouting shorthand. The key stays `stuff` — this map is
+  // display only — and "what even is stuff in pitching?" (2026-09-12) is why
+  // neither the scouting word nor K/9 is printed: the design system names it
+  // Strikeout stuff everywhere.
+  'pitching-command': 'Control', 'pitching-velocity': 'Strikeout stuff', 'pitching-arm-care': 'Stamina',
   'pipeline-build': 'Pipeline strength', 'pipeline-deepen': 'Pipeline strength', 'pipeline-maintain': 'Pipeline strength',
 };
 /** What a project is worth to its man: two points, three with the matching focus. */

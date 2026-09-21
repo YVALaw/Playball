@@ -1,29 +1,63 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
 // Schedule.tsx
-// The forty-five game calendar. Played games carry their result; the rest is what is
-// coming. Weekend series are grouped, because that is how a college season is
-// actually experienced — three games against one opponent, then a week.
+// The season calendar: how the year is going, what is next, and how each
+// series went.
+//
+// Three numbers at the top, each with its scale: the regular-season record,
+// the conference record and the run difference with its parts. Then the next
+// games, tonight's tinted, and the results grouped the way a college season is
+// lived: a weekend series against one opponent, a midweek game. A played game
+// opens its box score; one still to come opens the opponent.
 
-import { leagueLabel } from '../../engine/leagueNames.js';
+import { useEffect, useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { GodIntroRow } from '../god/GodBolt.js';
-import { teamColour } from '../Avatar.js';
-import { ChevronRightIcon } from '@radix-ui/react-icons';
+import { GodBolt } from '../god/GodBolt.js';
 import { useOpenTeam } from './TeamCard.js';
-import {
-  FieldNote, Metric, MetricStrip, ModuleIntro, SectionHeading, Segmented,
-} from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
-import { InFrame } from '../Overlay.js';
-import { useDialogFocus } from '../dialogFocus.js';
-import { LineScore } from '../LineScore.js';
 import { regularRecord } from '../../engine/season.js';
 import type { BoxScore, BoxLine, SeasonState } from '../../engine/season.js';
-import { seasonDate } from '../format.js';
+import { cleanPlay, longDate, shortDate } from '../format.js';
 import { buildFrames } from '../replay.js';
+import { Crest } from '../Crest.js';
+import {
+  BaseState, Button, Callout, Card, EmptyState, GameRow, LineScore, List, Marquee, SectionHeader,
+  SegmentedControl, Sheet, StatusBadge, Table, type TableColumn,
+} from '../components/ui/index.js';
+import { boxSlotWords, conferenceName, ordinal, plural, recordText } from '../words.js';
+
+type Row = {
+  day: SeasonState['schedule'][number];
+  home: boolean;
+  opponent: SeasonState['teams'][number] | undefined;
+  result: SeasonState['results'][number] | undefined;
+};
+
+/** Our runs and theirs in a played game. */
+function score(r: Row): { us: number; them: number; won: boolean } | null {
+  if (!r.result) return null;
+  const us = r.home ? r.result.homeRuns : r.result.awayRuns;
+  const them = r.home ? r.result.awayRuns : r.result.homeRuns;
+  return { us, them, won: us > them };
+}
+
+/** Consecutive games against one opponent in one series, or a single midweek game. */
+function groupSeries(rows: Row[]): Row[][] {
+  const out: Row[][] = [];
+  for (const r of rows) {
+    const last = out[out.length - 1];
+    const prev = last?.[last.length - 1];
+    if (last && prev && r.day.kind === 'series' && prev.day.kind === 'series'
+      && prev.opponent?.index === r.opponent?.index && r.day.day - prev.day.day <= 2) {
+      last.push(r);
+    } else {
+      out.push([r]);
+    }
+  }
+  return out;
+}
 
 export function Schedule() {
   const [openDay, setOpenDay] = useState<number | null>(null);
+  const [allAhead, setAllAhead] = useState(false);
   const season = useDynasty((s) => s.season);
   const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
@@ -33,8 +67,8 @@ export function Schedule() {
 
   if (!season || !team) return null;
 
-  // Every date this program plays, in order, with the result if it has happened.
-  const rows = season.schedule.flatMap((day) => {
+  // Every date this program plays, in order, with the result once it happens.
+  const rows: Row[] = season.schedule.flatMap((day) => {
     const g = day.games.find((x) => x.home === team.index || x.away === team.index);
     if (!g) return [];
     const home = g.home === team.index;
@@ -42,126 +76,129 @@ export function Schedule() {
     const result = season.results.find(
       (r) => r.day === day.day && (r.home === team.index || r.away === team.index),
     );
-    return [{ day, g, home, opponent, result }];
+    return [{ day, home, opponent, result }];
   });
 
-  /*
-    The next four dates, across the top.
-
-    The proposal calls this the schedule rail and fills it with a week. A week
-    is not the unit this calendar thinks in — the season plays Friday to Sunday
-    against one opponent and one midweek game — so the rail carries the next
-    four things that actually happen, played or not, which is the same idea with
-    the right grain.
-  */
-  const played = rows.filter((r) => r.result).length;
-  const rail = rows.slice(Math.max(0, played - 1), Math.max(0, played - 1) + 4);
-
+  const played = rows.filter((r) => r.result);
+  const ahead = rows.filter((r) => !r.result);
+  const shownAhead = allAhead ? ahead : ahead.slice(0, 5);
   const reg = regularRecord(team);
   const diff = team.rs - team.ra;
 
+  // A played game opens its box score; one still to come opens the opponent.
+  const open = (r: Row): (() => void) | undefined => {
+    if (r.result && season.boxScores?.[r.day.day]) return () => setOpenDay(r.day.day);
+    if (r.opponent) { const i = r.opponent.index; return () => openTeam(i); }
+    return undefined;
+  };
+  const kindWord = (r: Row): string => (r.day.kind === 'series' ? 'Conference series' : 'Midweek');
+
+  const series = groupSeries(played).reverse();
+
   return (
     <>
-      <main className="module-workspace">
+      <main className="pb-page">
         <FirstVisit id="season" />
+        <Marquee
+          mark={<Crest abbr={team.def.abbr} size={44} />}
+          eyebrow={`${year} season · ${played.length} of ${rows.length} played`}
+          title="Schedule"
+          trailing={<GodBolt target={{ kind: 'time' }} label="Reshuffle or sim the season in god mode" />}
+          numbers={[
+            { label: 'Record', value: recordText(reg.w, reg.l), note: 'Regular season' },
+            { label: 'Conference', value: recordText(team.cw, team.cl), note: conferenceName(team.conference) },
+            {
+              label: 'Run diff',
+              value: `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${Math.abs(diff)}`,
+              note: `${team.rs} for, ${team.ra} against`,
+            },
+          ]}
+        />
 
-        <div className="screen-title-row">
-          <GodIntroRow target={{ kind: 'time' }} label="Reshuffle or sim the season in god mode">
-            <ModuleIntro
-              kicker={`${year} SEASON`}
-              title={played === rows.length ? 'The year, in full' : 'The road ahead'}
+        {ahead.length > 0 && (
+          <section>
+            <SectionHeader
+              title="Coming up"
+              count={ahead.length}
             />
-          </GodIntroRow>
-          <span className="month-button">{reg.w}-{reg.l}</span>
-        </div>
+            <List label="Coming up">
+              {shownAhead.map((r, i) => {
+                const when = shortDate(year, r.day.day);
+                return (
+                  <GameRow
+                    key={r.day.day}
+                    day={when.weekday}
+                    date={when.date}
+                    opponent={r.opponent?.def.school ?? '—'}
+                    abbr={r.opponent?.def.abbr ?? ''}
+                    home={r.home}
+                    kind={i === 0 ? `Next · ${kindWord(r)}` : kindWord(r)}
+                    current={i === 0}
+                    onClick={open(r)}
+                  />
+                );
+              })}
+            </List>
+            {ahead.length > shownAhead.length && (
+              <Button variant="quiet" size="sm" iconAfter="chevron-down" onClick={() => setAllAhead(true)}>
+                Show all {ahead.length} games left
+              </Button>
+            )}
+          </section>
+        )}
 
-        <section className="schedule-rail">
-          {rail.map(({ day, home, opponent, result }) => {
-            const box = season.boxScores?.[day.day];
-            const us = result ? (home ? result.homeRuns : result.awayRuns) : null;
-            const them = result ? (home ? result.awayRuns : result.homeRuns) : null;
-            const won = result ? us! > them! : null;
+        <section className="pb-stack">
+          <SectionHeader
+            title="Results"
+          />
+          {series.length === 0 ? (
+            <EmptyState icon="calendar" title="No games played yet" text="Results appear here, series by series, once the season starts." />
+          ) : series.map((games) => {
+            const first = games[0]!;
+            const lines = games.map(score);
+            const w = lines.filter((s) => s?.won).length;
+            const l = games.length - w;
+            const midweek = first.day.kind !== 'series';
+            const status = midweek
+              ? (w ? <StatusBadge tone="positive">Won</StatusBadge> : <StatusBadge tone="negative">Lost</StatusBadge>)
+              : games.length >= 3 && l === 0 ? <StatusBadge tone="positive">Swept {w}–0</StatusBadge>
+                : games.length >= 3 && w === 0 ? <StatusBadge tone="negative">Swept 0–{l}</StatusBadge>
+                  : w > l ? <StatusBadge tone="positive">Won {w}–{l}</StatusBadge>
+                    : w < l ? <StatusBadge tone="negative">Lost {w}–{l}</StatusBadge>
+                      : <StatusBadge tone="neutral">Split {w}–{l}</StatusBadge>;
             return (
-              <button
-                key={day.day}
-                type="button"
-                onClick={() => (box
-                  ? setOpenDay(day.day)
-                  : opponent && openTeam(opponent.index))}
+              <Card
+                key={first.day.day}
+                eyebrow={midweek ? 'Midweek' : `Series · ${plural(games.length, 'game')}`}
+                title={`${first.home ? 'vs' : 'at'} ${first.opponent?.def.school ?? '—'}`}
+                trailing={status}
+                flush
               >
-                <small>{seasonDate(year, day.day).split(' ').slice(1).join(' ')}</small>
-                <strong>{home ? '' : '@ '}{opponent?.def.abbr ?? '—'}</strong>
-                {/* A played date carries its result; one still to come carries
-                    what kind of game it is, which is the only thing known about
-                    it. Red is reserved for a loss — the proposal spends it on
-                    an off day, and a fixture you have not played yet is not an
-                    alarm. */}
-                <i className={won === null ? '' : won ? 'won' : 'lost'}>
-                  {won === null
-                    ? (day.kind === 'series' ? 'series' : 'midweek')
-                    : `${won ? 'W' : 'L'} ${us}-${them}`}
-                </i>
-              </button>
+                <List className="pb-list--inset" label={`Games against ${first.opponent?.def.school ?? 'this opponent'}`}>
+                  {games.map((r) => {
+                    const s = score(r)!;
+                    const when = shortDate(year, r.day.day);
+                    return (
+                      <GameRow
+                        key={r.day.day}
+                        day={when.weekday}
+                        date={when.date}
+                        opponent={r.opponent?.def.school ?? '—'}
+                        abbr={r.opponent?.def.abbr ?? ''}
+                        home={r.home}
+                        kind="Final"
+                        result={{ win: s.won, score: `${s.us}–${s.them}` }}
+                        onClick={open(r)}
+                      />
+                    );
+                  })}
+                </List>
+              </Card>
             );
           })}
         </section>
-
-        {/* The program's vitals, moved off the dashboard. The season tab is
-            where you come to ask how the year is going, so the year's three
-            numbers live here. */}
-        <MetricStrip>
-          <Metric label="OVERALL" value={`${team.w}-${team.l}`} note={`${played} PLAYED`} />
-          <Metric label="CONFERENCE" value={`${team.cw}-${team.cl}`} note={leagueLabel(team.conference).toUpperCase()} />
-          <Metric label="RUN DIFF" value={`${diff > 0 ? '+' : ''}${diff}`} note={`${team.rs} FOR`} />
-        </MetricStrip>
-
-        <SectionHeading kicker="SERIES BY SERIES" title="Full schedule" />
-        <section className="series-list">
-          {rows.map(({ day, home, opponent, result }, i) => {
-            const won = result
-              ? (home ? result.homeRuns > result.awayRuns : result.awayRuns > result.homeRuns)
-              : null;
-            const us = result ? (home ? result.homeRuns : result.awayRuns) : null;
-            const them = result ? (home ? result.awayRuns : result.homeRuns) : null;
-            // A played game opens its box score. An unplayed one has nothing to
-            // show, so it opens the other program instead of offering a tap
-            // that does nothing.
-            const box = season.boxScores?.[day.day];
-            const next = won === null && i === played;
-            return (
-              <button
-                className={`series-match${next ? ' is-yours' : ''}`}
-                key={`${day.day}-${i}`}
-                type="button"
-                onClick={() => (box
-                  ? setOpenDay(day.day)
-                  : opponent && openTeam(opponent.index))}
-              >
-                <span>
-                  <b>{home ? 'vs ' : 'at '}{opponent?.def.school ?? '—'}</b>
-                  <strong>{result ? `${us}-${them}` : ''}</strong>
-                  <em className={won === null ? '' : won ? 'won' : 'lost'}>
-                    {won === null ? '' : won ? 'W' : 'L'}
-                  </em>
-                  <small>
-                    {seasonDate(year, day.day)} · {day.kind === 'series' ? 'conference series' : 'midweek'}
-                    {next ? ' · next up' : ''}
-                  </small>
-                </span>
-                <ChevronRightIcon />
-              </button>
-            );
-          })}
-        </section>
-
       </main>
 
-      {/*
-        The sheet is a sibling of the screen rather than a child of its scroller.
-        It covers the frame, and a full-screen cover that lives inside the box it
-        is covering is one that scrolls with it — the header would ride out from
-        under the sheet the first time you dragged a long box score.
-      */}
       {openDay !== null && season.boxScores?.[openDay] && (
         <BoxScoreSheet
           box={season.boxScores[openDay]}
@@ -173,32 +210,73 @@ export function Schedule() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// The box score
+// ---------------------------------------------------------------------------
+
+/** A box score line, split into its columns: "2-4, 1 HR, 3 RBI" to { H: 2, AB: 4, HR: 1, RBI: 3 }. */
+function columnsOf(line: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of line.split(', ')) {
+    const hits = part.match(/^(\d+)-(\d+)$/);
+    if (hits) { out.H = hits[1]!; out.AB = hits[2]!; continue; }
+    const m = part.match(/^([\d.]+) ([A-Z0-9]+)$/);
+    if (m) out[m[2]!] = m[1]!;
+  }
+  return out;
+}
+
+/** Innings in thirds, the way a box score means them: 6.2 is 6⅔. */
+function thirds(ip: string | undefined): string {
+  if (!ip) return '0';
+  const [whole = '0', part = '0'] = ip.split('.');
+  const frac = part === '1' ? '⅓' : part === '2' ? '⅔' : '';
+  if (!frac) return whole;
+  return whole === '0' ? frac : `${whole}${frac}`;
+}
+
+const BAT_COLUMNS: TableColumn[] = [
+  { label: 'Batting', grow: true },
+  { label: 'AB', title: 'At-bats', width: '28px', align: 'right' },
+  { label: 'H', title: 'Hits', width: '26px', align: 'right', strong: true },
+  { label: 'HR', title: 'Home runs', width: '28px', align: 'right' },
+  { label: 'RBI', title: 'Runs batted in', width: '32px', align: 'right' },
+  { label: 'BB', title: 'Walks', width: '28px', align: 'right' },
+  { label: 'K', title: 'Strikeouts', width: '24px', align: 'right' },
+];
+const ARM_COLUMNS: TableColumn[] = [
+  { label: 'Pitching', grow: true },
+  { label: 'IP', title: 'Innings pitched', width: '34px', align: 'right', strong: true },
+  { label: 'H', title: 'Hits allowed', width: '26px', align: 'right' },
+  { label: 'R', title: 'Runs allowed', width: '26px', align: 'right' },
+  { label: 'ER', title: 'Earned runs', width: '28px', align: 'right' },
+  { label: 'BB', title: 'Walks', width: '28px', align: 'right' },
+  { label: 'K', title: 'Strikeouts', width: '24px', align: 'right' },
+];
 
 /**
- * One game, in full.
- *
- * Both sides, batting and pitching, with every name tappable. A schedule that
- * only carries a final score answers "did we win" and nothing else — the reason
- * to look back at a game in March is to find out who did it.
+ * One game, in full: the line score, then either side's batting and pitching
+ * with every column named, and every name opening that player's card. When
+ * the game was recorded play by play, a replay steps through it.
  */
 export function BoxScoreSheet(
   { box, season, onClose }:
   { box: BoxScore; season: SeasonState; onClose: () => void },
 ) {
   const openPlayer = useDynasty((s) => s.openPlayer);
+  const year = useDynasty((s) => s.year);
+  const userTeam = useDynasty((s) => s.userTeam);
   const home = season.teams[box.home];
   const away = season.teams[box.away];
-  const frames = useMemo(() => box.replay ? buildFrames(box.replay) : [], [box.replay]);
+  const frames = useMemo(() => (box.replay ? buildFrames(box.replay) : []), [box.replay]);
   const hasReplay = frames.length > 1;
   const [view, setView] = useState<'box' | 'replay'>('box');
+  const [side, setSide] = useState<'away' | 'home'>(box.home === userTeam ? 'home' : 'away');
   const [frameIndex, setFrameIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
-  // The same contract every other sheet carries: focus in, Tab kept, Escape out.
-  const card = useRef<HTMLDivElement>(null);
-  useDialogFocus(card, onClose);
 
   useEffect(() => {
-    if (!playing || view !== 'replay' || frames.length < 2) return;
+    if (!playing || view !== 'replay' || frames.length < 2) return undefined;
     const id = window.setInterval(() => {
       setFrameIndex((current) => {
         if (current >= frames.length - 1) {
@@ -216,48 +294,16 @@ export function BoxScoreSheet(
   }, [view]);
 
   const current = frames[Math.min(frameIndex, Math.max(0, frames.length - 1))];
+  const homeWon = box.homeRuns > box.awayRuns;
+  const [winner, loser] = homeWon ? [home, away] : [away, home];
+  const [wr, lr] = homeWon ? [box.homeRuns, box.awayRuns] : [box.awayRuns, box.homeRuns];
+  const nameOf = (t: typeof home): string => t?.def.school ?? '—';
 
-  const Side = (
-    { label, abbr, runs, batting, pitching }:
-    { label: string; abbr: string; runs: number; batting: BoxLine[]; pitching: BoxLine[] },
-  ) => (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-        padding: '6px 0', borderBottom: '2px solid var(--ink)',
-      }}>
-        <span style={{
-          font: "700 calc(14px * var(--ts)) var(--display)", textTransform: 'uppercase',
-          color: teamColour(abbr),
-        }}>{label}</span>
-        <span style={{ font: "800 calc(20px * var(--ts))/1 var(--display)" }}>{runs}</span>
-      </div>
-      {[...batting, ...pitching].map((l) => (
-        <button
-          key={l.id}
-          onClick={() => openPlayer(l.id)}
-          style={{
-            width: '100%', textAlign: 'left', display: 'flex', gap: 8,
-            alignItems: 'baseline', padding: '6px 0',
-            borderBottom: '1px solid var(--hairline)', background: 'transparent',
-          }}
-        >
-          <span style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", color: 'var(--dim)', minWidth: 26,
-          }}>{l.slot}</span>
-          <span style={{
-            flex: 1, font: "400 calc(12px * var(--ts)) var(--body)",
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>{l.name}</span>
-          <span style={{
-            font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)', whiteSpace: 'nowrap',
-          }}>{l.line}</span>
-        </button>
-      ))}
-    </div>
-  );
+  // A name opens that player's card. The card is a page, not a sheet, so the
+  // box score steps aside for it.
+  const openMan = (id: BoxLine['id']): void => { onClose(); openPlayer(id); };
 
-  const seekScore = (dir: -1 | 1) => {
+  const seekScore = (dir: -1 | 1): void => {
     let i = frameIndex + dir;
     while (i >= 0 && i < frames.length) {
       if (frames[i]?.scored) {
@@ -269,153 +315,156 @@ export function BoxScoreSheet(
     }
   };
 
+  const batting = side === 'away' ? box.awayBatting : box.homeBatting;
+  const pitching = side === 'away' ? box.awayPitching : box.homePitching;
+  const nameCell = (l: BoxLine) => (
+    <span className="pb-teamcell">
+      <span className="pb-teamcell__text">
+        <span className="pb-teamcell__name"><span className="pb-ellipsis">{l.name}</span></span>
+        <span className="pb-teamcell__sub">{boxSlotWords(l.slot)}</span>
+      </span>
+    </span>
+  );
+
   return (
-    <InFrame>
-    <div
-      onClick={onClose}
-      style={{
-        position: 'absolute', inset: 0, background: 'rgba(var(--scrim-rgb), .6)',
-        display: 'flex', alignItems: 'flex-end', zIndex: 20,
-      }}
+    <Sheet
+      eyebrow={longDate(year, box.day)}
+      title={`${nameOf(winner)} ${wr}, ${nameOf(loser)} ${lr}`}
+      subtitle={box.innings !== 9 ? `Final · ${box.innings} innings` : 'Final'}
+      onClose={onClose}
+      tall
     >
-      <div
-        ref={card}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Box score"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: '100%', height: '80%',
-          display: 'flex', flexDirection: 'column',
-          background: 'var(--paper)', borderTop: '3px solid var(--clay)',
-        }}
-      >
-        <div style={{
-          flex: 'none', padding: '7px 12px', background: 'var(--clay)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
-          }}>{view === 'replay' ? 'GAME REPLAY' : `BOX SCORE · ${box.innings} INNINGS`}</span>
-          <button onClick={onClose} style={{
-            font: "600 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'rgba(var(--cream-rgb), .8)',
-          }}>CLOSE</button>
-        </div>
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px' }}>
-          {hasReplay && (
-            <div style={{ marginBottom: 12 }}>
-              <Segmented<'box' | 'replay'>
-                label="Game view"
-                value={view}
-                options={[
-                  { value: 'box' as const, label: 'Box score' },
-                  { value: 'replay' as const, label: 'Replay' },
-                ]}
-                onChange={setView}
-              />
-            </div>
+      {hasReplay && (
+        <SegmentedControl<'box' | 'replay'>
+          label="Game view"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: 'box', label: 'Box score' },
+            { value: 'replay', label: 'Replay' },
+          ]}
+        />
+      )}
+
+      {view === 'replay' && current ? (
+        <section className="pb-replay" aria-label="Game replay">
+          <div className="pb-replay__board">
+            <span className="pb-replay__team">
+              <Crest abbr={away?.def.abbr ?? ''} size={28} />
+              <span>{away?.def.nickname ?? away?.def.school}</span>
+              <b>{current.awayRuns}</b>
+            </span>
+            <span className="pb-replay__inning">
+              {current.half === 'top' ? 'Top' : 'Bottom'} of the {ordinal(current.inning)}
+            </span>
+            <span className="pb-replay__team">
+              <Crest abbr={home?.def.abbr ?? ''} size={28} />
+              <span>{home?.def.nickname ?? home?.def.school}</span>
+              <b>{current.homeRuns}</b>
+            </span>
+          </div>
+          <BaseState bases={current.bases} outs={Math.min(3, current.outs)} showText />
+          <Callout
+            tone={current.scored ? 'positive' : 'neutral'}
+            icon={false}
+            eyebrow={`Play ${frameIndex + 1} of ${frames.length}${current.text ? (cleanPlay(current.text).count ? ` · ${cleanPlay(current.text).count}` : '') : ''}`}
+          >
+            {current.text ? cleanPlay(current.text).text : 'The game is under way.'}
+          </Callout>
+          <input
+            className="pb-range"
+            aria-label="Replay position"
+            type="range"
+            min={0}
+            max={frames.length - 1}
+            value={frameIndex}
+            onChange={(e) => {
+              setPlaying(false);
+              setFrameIndex(Number(e.target.value));
+            }}
+          />
+          <div className="pb-replay__controls">
+            <Button size="sm" variant="secondary" icon="arrow-left" onClick={() => seekScore(-1)}>Last run</Button>
+            <Button
+              size="sm"
+              variant="primary"
+              icon={playing ? 'pause' : 'play'}
+              onClick={() => {
+                if (frameIndex >= frames.length - 1) setFrameIndex(0);
+                setPlaying((v) => !v);
+              }}
+            >{playing ? 'Pause' : 'Play'}</Button>
+            <Button size="sm" variant="secondary" iconAfter="arrow-right" onClick={() => seekScore(1)}>Next run</Button>
+          </div>
+          <div className="pb-replay__controls">
+            <Button size="sm" variant="quiet" onClick={() => { setPlaying(false); setFrameIndex(0); }}>Start</Button>
+            <Button size="sm" variant="quiet" icon="chevron-left" onClick={() => { setPlaying(false); setFrameIndex((i) => Math.max(0, i - 1)); }}>Back a play</Button>
+            <Button size="sm" variant="quiet" iconAfter="chevron-right" onClick={() => { setPlaying(false); setFrameIndex((i) => Math.min(frames.length - 1, i + 1)); }}>Next play</Button>
+            <Button size="sm" variant="quiet" onClick={() => { setPlaying(false); setFrameIndex(frames.length - 1); }}>End</Button>
+          </div>
+        </section>
+      ) : (
+        <>
+          {box.awayLine && box.homeLine && (
+            <LineScore
+              status="Final"
+              innings={Math.max(box.awayLine.length, box.homeLine.length)}
+              teams={[
+                {
+                  abbr: away?.def.abbr ?? 'AWY',
+                  innings: box.awayLine,
+                  r: box.awayRuns, h: box.awayHits ?? 0, e: box.awayErrors ?? 0,
+                  you: box.away === userTeam,
+                },
+                {
+                  abbr: home?.def.abbr ?? 'HOM',
+                  // The home side does not bat in the ninth when it is already ahead.
+                  innings: [...box.homeLine, ...(box.homeLine.length < box.awayLine.length ? ['X'] : [])],
+                  r: box.homeRuns, h: box.homeHits ?? 0, e: box.homeErrors ?? 0,
+                  you: box.home === userTeam,
+                },
+              ]}
+            />
           )}
-
-          {view === 'replay' && current ? (
-            <section className="game-replay" aria-label="Game replay">
-              <div className="replay-scoreboard">
-                <div>
-                  <small>{away?.def.abbr ?? 'AWY'}</small>
-                  <strong>{current.awayRuns}</strong>
-                </div>
-                <span>
-                  <b>{current.half === 'top' ? '▲' : '▼'} {current.inning}</b>
-                  <small>{Math.min(3, current.outs)} OUT{current.outs === 1 ? '' : 'S'}</small>
-                </span>
-                <div>
-                  <small>{home?.def.abbr ?? 'HOM'}</small>
-                  <strong>{current.homeRuns}</strong>
-                </div>
-              </div>
-
-              <div className="replay-diamond" aria-label={`${current.bases.filter(Boolean).length} runners on base`}>
-                <i className={current.bases[1] ? 'on second' : 'second'} />
-                <i className={current.bases[2] ? 'on third' : 'third'} />
-                <i className={current.bases[0] ? 'on first' : 'first'} />
-              </div>
-
-              <div className={current.scored ? 'replay-call scored' : 'replay-call'}>
-                <small>PLAY {frameIndex + 1} OF {frames.length}</small>
-                <p>{current.text || 'Game underway.'}</p>
-              </div>
-
-              <input
-                className="replay-scrubber"
-                aria-label="Replay position"
-                type="range"
-                min={0}
-                max={frames.length - 1}
-                value={frameIndex}
-                onChange={(e) => {
-                  setPlaying(false);
-                  setFrameIndex(Number(e.target.value));
-                }}
-              />
-
-              <div className="replay-controls">
-                <button type="button" onClick={() => seekScore(-1)}>PREV RUN</button>
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={() => {
-                    if (frameIndex >= frames.length - 1) setFrameIndex(0);
-                    setPlaying((v) => !v);
-                  }}
-                >{playing ? 'PAUSE' : 'PLAY'}</button>
-                <button type="button" onClick={() => seekScore(1)}>NEXT RUN</button>
-              </div>
-              <div className="replay-step-controls">
-                <button type="button" onClick={() => { setPlaying(false); setFrameIndex(0); }}>START</button>
-                <button type="button" onClick={() => { setPlaying(false); setFrameIndex((i) => Math.max(0, i - 1)); }}>‹</button>
-                <button type="button" onClick={() => { setPlaying(false); setFrameIndex((i) => Math.min(frames.length - 1, i + 1)); }}>›</button>
-                <button type="button" onClick={() => { setPlaying(false); setFrameIndex(frames.length - 1); }}>END</button>
-              </div>
-            </section>
-          ) : (
-            <>
-              {box.awayLine && box.homeLine && (
-                <div style={{
-                  marginBottom: 14, padding: '6px 8px',
-                  border: '1px solid var(--faint)', background: 'var(--paper)',
-                }}>
-                  <LineScore
-                    innings={Math.max(box.awayLine.length, box.homeLine.length)}
-                    rows={[
-                      {
-                        abbr: away?.def.abbr ?? 'AWY',
-                        cells: box.awayLine.map((n) => n),
-                        r: box.awayRuns, h: box.awayHits ?? 0, e: box.awayErrors ?? 0,
-                      },
-                      {
-                        abbr: home?.def.abbr ?? 'HOM',
-                        cells: [
-                          ...box.homeLine,
-                          ...(box.homeLine.length < box.awayLine.length ? ['X'] : []),
-                        ],
-                        r: box.homeRuns, h: box.homeHits ?? 0, e: box.homeErrors ?? 0,
-                      },
-                    ]}
-                  />
-                </div>
-              )}
-              <Side
-                label={away?.def.school ?? 'Away'} abbr={away?.def.abbr ?? ''}
-                runs={box.awayRuns} batting={box.awayBatting} pitching={box.awayPitching}
-              />
-              <Side
-                label={home?.def.school ?? 'Home'} abbr={home?.def.abbr ?? ''}
-                runs={box.homeRuns} batting={box.homeBatting} pitching={box.homePitching}
-              />
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-    </InFrame>
+          <SegmentedControl<'away' | 'home'>
+            label="Which team"
+            value={side}
+            onChange={setSide}
+            options={[
+              { value: 'away', label: away?.def.nickname ?? away?.def.school ?? 'Away' },
+              { value: 'home', label: home?.def.nickname ?? home?.def.school ?? 'Home' },
+            ]}
+          />
+          <Table
+            dense
+            label="Batting"
+            columns={BAT_COLUMNS}
+            rows={batting.map((l) => {
+              const c = columnsOf(l.line);
+              return {
+                key: `${l.id}-${l.slot}`,
+                onClick: () => openMan(l.id),
+                cells: [nameCell(l), c.AB ?? '0', c.H ?? '0', c.HR ?? '0', c.RBI ?? '0', c.BB ?? '0', c.K ?? '0'],
+              };
+            })}
+            caption="AB at-bats · H hits · HR home runs · RBI runs batted in · BB walks · K strikeouts. Tap a name for his card."
+          />
+          <Table
+            dense
+            label="Pitching"
+            columns={ARM_COLUMNS}
+            rows={pitching.map((l) => {
+              const c = columnsOf(l.line);
+              return {
+                key: `${l.id}-arm`,
+                onClick: () => openMan(l.id),
+                cells: [nameCell(l), thirds(c.IP), c.H ?? '0', c.R ?? '0', c.ER ?? '0', c.BB ?? '0', c.K ?? '0'],
+              };
+            })}
+            caption="IP innings pitched, in thirds (6⅔ is six and two thirds) · H hits · R runs · ER earned runs · BB walks · K strikeouts."
+          />
+        </>
+      )}
+    </Sheet>
   );
 }

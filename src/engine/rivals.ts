@@ -56,6 +56,7 @@ import { conferenceField, type PostseasonSummary } from './postseason.js';
 import { rulesOf } from './season.js';
 import type { SeasonState, TeamRecord } from './season.js';
 import { CULTURES, cultureFor, driftCulture } from '../data/cultures.js';
+import { legendFromRival } from './retirement.js';
 import type { Assistant } from './economy.js';
 
 /**
@@ -122,6 +123,16 @@ export interface RivalCoach {
   conferenceTitles: number;
   regionalTitles: number;
   tournaments: number;
+  /**
+   * Seasons coached, anywhere.
+   *
+   * Career length is a ranking input once a finished career is written into
+   * the world's book (`engine/retirement.ts`), and nothing else on him could
+   * answer it: `tenure` is this chair only, and wins over a season count is a
+   * guess. Optional because a save written before this has none; a legend
+   * reconstructs it from the games played rather than pretending to know.
+   */
+  seasons?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -761,6 +772,10 @@ export function runRivalYear(
     if (outcome.madeTournament) coach.tournaments += 1;
     spendPoints(coach, skillPoints(outcome));
     coach.age += 1;
+    coach.seasons = (coach.seasons ?? 0) + 1;
+    // Seasons in this chair, this one counted -- read before the line below
+    // resets it, because a man can be sacked and retire in the same meeting.
+    const heldFor = coach.tenure + 1;
     coach.tenure = review.fired ? 0 : coach.tenure + 1;
 
     const line = `${coach.careerWins}-${coach.careerLosses}`;
@@ -770,6 +785,28 @@ export function runRivalYear(
     // reporting it the other way round would have the market carrying candidates
     // who are never going to work again.
     if (coach.age >= retireAge(coach.name)) {
+      /*
+        Into the world's book on the way out, so the hall and the all-time
+        ranking are the whole country rather than the player's own past
+        selves. Written here because this is the last moment anybody holds
+        the man: the next line drops him.
+
+        A coach who never coached a game is not a finished career -- a poached
+        assistant can enter the pool and never be seated -- so he is not
+        written down.
+      */
+      if (coach.careerWins + coach.careerLosses > 0) {
+        (season.legends ??= []).push(legendFromRival(coach, {
+          year,
+          school: record.def.school,
+          abbr: record.def.abbr,
+          built: coach.bestBuild ?? 0,
+          heldFor,
+          // A save from before `seasons` existed reconstructs it from the
+          // games he has played, which is the only honest answer left.
+          seasons: coach.seasons ?? Math.max(1, Math.round((coach.careerWins + coach.careerLosses) / games)),
+        }));
+      }
       delete record.coach;
       moves.push({
         kind: 'retired', coach: coach.name, team: record.index,

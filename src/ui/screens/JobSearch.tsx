@@ -5,20 +5,16 @@
 // should not be prompted to the team recruiting — we should go back to picking
 // a team, while maintaining in history my coach statistics and achievements."
 //
-// Which was exactly true: being fired set a flag, printed a verdict, and then
-// handed you back the keys to a program that had just dismissed you. Getting
-// fired has to actually take the job away, and the only thing that survives is
-// what you did — the record, the rings, the tournaments.
-//
-// The offers themselves are the job market — the same screen a mid-career
-// offer opens, so the game has exactly one place where a chair is accepted and
-// exactly one two-press confirmation guarding it. This file only adds what
-// being between jobs changes: the career strip at the top, because the one
-// thing you still have is what you did.
+// Being fired takes the job away, and the only thing that survives is what you
+// did: the record, the rings, the tournaments. The offers themselves are the
+// job market, the same screen a mid-career offer opens, so the game has one
+// place where a job is accepted and one two-press confirmation guarding it.
+// This file only adds the career you carry, because it is the one thing you
+// still have.
 
 import { useDynasty } from '../../state/store.js';
-import { FixedHeader } from '../Sticky.js';
-import { Metric, MetricStrip, ModuleIntro } from '../components/Kit.js';
+import { Card, StatGroup } from '../components/ui/index.js';
+import { recordText, stateName } from '../words.js';
 import { JobMarket } from './JobMarket.js';
 
 export function JobSearch() {
@@ -32,27 +28,31 @@ export function JobSearch() {
 
   const titles = history.filter((h) => h.finish === 'champion').length;
   const rings = history.filter((h) => h.wonConference).length;
+  /*
+    Two men see this screen now. One has been let go and has a career behind
+    him; the other has never had a chair at all — the successor to a coach who
+    retired, who arrives here the moment he is made. "Out of a job" is wrong
+    for the second, and a row of zeroes needs a sentence that expects them.
+  */
+  const first = coach.careerWins + coach.careerLosses === 0;
 
   return (
-    <FixedHeader header={
-      <div style={{ padding: '16px 14px 10px' }}>
-        {/*
-          Where the profile made at the start of the career shows up: this is
-          the one screen that is about the man rather than the program.
-        */}
-        <ModuleIntro
-          kicker="OUT OF A JOB"
-          title={coach.name}
-          text={`${coach.age} · ${coach.homeState} · coach prestige ${coach.prestige}`}
-        />
-        <MetricStrip>
-          <Metric label="RECORD" value={`${coach.careerWins}-${coach.careerLosses}`} note="CAREER" />
-          <Metric label="TITLES" value={String(titles)} note="NATIONAL" />
-          <Metric label="CONFERENCE" value={String(rings)} note="RINGS" />
-        </MetricStrip>
-      </div>
-    }>
-      <JobMarket />
-    </FixedHeader>
+    <JobMarket
+      lead={(
+        <Card eyebrow={first ? 'Looking for a first job' : 'Out of a job'} title={coach.name}>
+          <p className="pb-text-muted">
+            Age {coach.age} · from {stateName(coach.homeState)} · coach prestige {coach.prestige} of 100
+          </p>
+          <StatGroup
+            size="sm"
+            items={[
+              { label: 'Career record', value: recordText(coach.careerWins, coach.careerLosses) },
+              { label: 'National titles', value: titles },
+              { label: 'Conference titles', value: rings },
+            ]}
+          />
+        </Card>
+      )}
+    />
   );
 }

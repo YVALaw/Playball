@@ -1,20 +1,24 @@
 // Rankings.tsx
 // The whole country, in one table.
 //
-// The proposal's rankings screen: an intro, a poll switch, and the table as
-// rows. Its poll switch offers Media and Coaches; this world has one poll and it
-// is arithmetic — RPI — so the switch does the job it can actually do here and
-// chooses between the country and the twenty five deep enough to be a Top 25.
+// One ranking, and it says what it measures every visit: RPI weighs wins by
+// the strength of who you beat. In the opening weeks, before there are enough
+// games for that to mean anything, the country is ranked on a preseason
+// projection instead, and the header says so. Your own row is tinted; when it
+// is outside the view, a row at the bottom says where you are and shows you.
 
-import { leagueLabel } from '../../engine/leagueNames.js';
+import { leagueName } from '../../engine/leagueNames.js';
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { rpiOrder, regularRecord, nationalOrder, pollIsProjected } from '../../engine/season.js';
 import { rosterStrength } from '../../engine/program.js';
 import { useOpenTeam } from './TeamCard.js';
 import { pct } from '../format.js';
-import { FieldNote, ModuleIntro, Segmented } from '../components/Kit.js';
-import { ChevronRightIcon } from '@radix-ui/react-icons';
+import {
+  Button, Card, Marquee, SegmentedControl, Table, TeamCell,
+} from '../components/ui/index.js';
+import { Crest } from '../Crest.js';
+import { ordinal, recordText } from '../words.js';
 
 type Depth = 'top25' | 'all';
 
@@ -27,33 +31,22 @@ export function Rankings() {
   void version;
   if (!season || !team) return null;
 
-  /*
-    Opening week gets a projection, the way the polls do it.
-
-    RPI is arithmetic over games, and over no games it is a coin sorted by the
-    tiebreak — the table used to open the season in an order nothing could
-    explain. Until the average program has around four games behind it, the
-    country is ranked on what the rosters are worth (with a thumb of prestige,
-    which is the benefit of the doubt a name brand actually gets in a poll).
-    The moment there are enough results to mean something, the real table takes
-    over and the projection is never seen again.
-  */
-  // The order itself lives in the engine (`nationalOrder`), because the desk
-  // chip on Today prints a rank off the same table and the two disagreed:
-  // one said #1 in the country while the other said the poll had not started.
+  // Until the average program has a few games behind it, RPI is a coin toss
+  // sorted by the tiebreak, so the country is ranked on what the rosters are
+  // worth (with a little reputation). The order lives in the engine so the
+  // rank on Today and this table can never disagree.
   const preseason = pollIsProjected(season);
 
   const rows = preseason
-    ? nationalOrder(season)
-      .map(({ team: t, value }) => ({
-        index: t.index,
-        abbr: t.def.abbr,
-        school: t.def.school,
-        conference: t.conference,
-        record: `${t.w}-${t.l}`,
-        value: value.toFixed(1),
-        detail: `roster ${rosterStrength(t.team)}`,
-      }))
+    ? nationalOrder(season).map(({ team: t, value }) => ({
+      index: t.index,
+      abbr: t.def.abbr,
+      school: t.def.school,
+      conference: t.conference,
+      record: recordText(t.w, t.l),
+      value: value.toFixed(1),
+      detail: `Roster ${rosterStrength(t.team)}`,
+    }))
     : rpiOrder(season).map((r) => {
       const rec = regularRecord(r.team);
       return {
@@ -61,27 +54,36 @@ export function Rankings() {
         abbr: r.team.def.abbr,
         school: r.team.def.school,
         conference: r.team.conference,
-        record: `${rec.w}-${rec.l}`,
-        // From the same games as the record beside it. winPct counts
-        // tournament games, so a team could show 26-7 and .818.
+        record: recordText(rec.w, rec.l),
+        // From the same games as the record beside it.
         value: r.rpi.toFixed(3).replace(/^0/, ''),
-        detail: pct(rec.w + rec.l > 0 ? rec.w / (rec.w + rec.l) : 0),
+        detail: `${pct(rec.w + rec.l > 0 ? rec.w / (rec.w + rec.l) : 0)} win rate`,
       };
     });
 
   const shown = depth === 'top25' ? rows.slice(0, 25) : rows;
   const mineAt = rows.findIndex((r) => r.index === team.index);
+  const outside = depth === 'top25' && mineAt >= 25;
 
   return (
-    <main className="module-workspace">
-      <ModuleIntro
-        kicker={preseason ? 'PRESEASON · PROJECTED' : 'NATIONAL · RPI'}
-        title={depth === 'top25' ? 'Top 25' : 'The country'}
-        text="Who is beating whom, weighted by whom they beat."
+    <main className="pb-page">
+      <Marquee
+        mark={<Crest abbr={team.def.abbr} size={44} />}
+        eyebrow={`The country · ${rows.length} programs`}
+        title={preseason ? 'Preseason ranking' : 'National ranking'}
+        numbers={[
+          { label: 'You sit', value: mineAt >= 0 ? ordinal(mineAt + 1) : '—' },
+          {
+            label: preseason ? 'Power' : 'RPI',
+            value: mineAt >= 0 ? rows[mineAt]!.value : '—',
+            note: mineAt >= 0 ? rows[mineAt]!.detail : undefined,
+          },
+          { label: 'Record', value: mineAt >= 0 ? rows[mineAt]!.record : '—' },
+        ]}
       />
 
-      <Segmented<Depth>
-        label="Ranking depth"
+      <SegmentedControl<Depth>
+        label="How many teams"
         value={depth}
         onChange={setDepth}
         options={[
@@ -90,43 +92,69 @@ export function Rankings() {
         ]}
       />
 
-      <section className="standings-table">
-        <div className="table-head">
-          <span>PROGRAM</span>
-          <span>W-L</span>
-          <span>{preseason ? 'PWR' : 'RPI'}</span>
-        </div>
-        {shown.map((r, i) => (
-          <button
-            className={r.index === team.index ? 'is-yours' : ''}
-            key={r.abbr}
-            type="button"
-            /*
-              Every row opens that program's page, your own included.
-
-              Your row used to be the only one that did anything, and what it did
-              was jump to your schedule. That made the one row you look for first
-              behave unlike the ninety five around it — and the page it now opens
-              carries your results anyway, on its own tab.
-            */
-            onClick={() => openTeam(r.index)}
-          >
-            <b>{i + 1}</b>
-            <strong>{r.school}<em>{leagueLabel(r.conference)} · {r.detail}</em></strong>
-            <span>{r.record}</span>
-            <span>{r.value}</span>
-            <ChevronRightIcon />
-          </button>
-        ))}
-      </section>
-
-      {(preseason || (depth === 'top25' && mineAt >= 25)) && (
-        <FieldNote
-          title={preseason ? 'The preseason poll' : `You are ranked #${mineAt + 1}`}
-          text={preseason
-            ? 'Three parts roster, one part reputation. After the opening games the RPI takes over.'
-            : 'Outside the twenty five. Switch to the full table to see the company you are keeping.'}
+      <Card flush>
+        <Table
+          label={preseason ? 'Preseason ranking' : 'National ranking'}
+          columns={[
+            { label: '#', width: '28px', align: 'right' },
+            { label: 'Team', grow: true },
+            { label: 'W–L', title: 'Regular-season record', width: '48px', align: 'right' },
+            {
+              label: preseason ? 'Power' : 'RPI',
+              title: preseason ? 'Preseason power: roster and reputation' : 'Rating percentage index',
+              width: '52px',
+              align: 'right',
+              strong: true,
+            },
+          ]}
+          rows={[
+            ...shown.map((r, i) => ({
+              key: r.abbr,
+              you: r.index === team.index,
+              onClick: () => openTeam(r.index),
+              cells: [
+                <b key="r" className="pb-rank">{i + 1}</b>,
+                <TeamCell
+                  key="t"
+                  abbr={r.abbr}
+                  name={r.school}
+                  you={r.index === team.index}
+                  sub={`${leagueName(r.conference).replace(/\s+Conference$/i, '')} · ${r.detail}`}
+                />,
+                r.record,
+                r.value,
+              ],
+            })),
+            // You, when the top 25 leaves you out: your row, under a line.
+            ...(outside && mineAt >= 0 ? [{
+              key: 'you',
+              you: true,
+              divider: true,
+              onClick: () => openTeam(team.index),
+              cells: [
+                <b key="r" className="pb-rank">{mineAt + 1}</b>,
+                <TeamCell
+                  key="t"
+                  abbr={rows[mineAt]!.abbr}
+                  name={rows[mineAt]!.school}
+                  you
+                  sub={`${leagueName(rows[mineAt]!.conference).replace(/\s+Conference$/i, '')} · ${rows[mineAt]!.detail}`}
+                />,
+                rows[mineAt]!.record,
+                rows[mineAt]!.value,
+              ],
+            }] : []),
+          ]}
+          caption={preseason
+            ? 'W–L is the regular-season record. Power is the preseason projection: roster strength with a little reputation.'
+            : 'W–L is the regular-season record. RPI is the rating percentage index: your winning rate, your opponents’, and theirs.'}
         />
+      </Card>
+
+      {outside && (
+        <Button variant="secondary" block onClick={() => setDepth('all')}>
+          You are #{mineAt + 1}. Show all {rows.length} teams
+        </Button>
       )}
     </main>
   );

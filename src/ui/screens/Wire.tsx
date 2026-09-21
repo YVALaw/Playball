@@ -1,80 +1,45 @@
 // Wire.tsx
-// What the rest of the country is doing, set like a paper.
+// News: what the rest of the country is doing, with your program first.
 //
-// You play one team's schedule and the other ninety five programs move in the
-// standings overnight for reasons you never see. The wire is where those reasons
-// go — and it reads as a morning sports page rather than a list of event cards:
-// a masthead, a lead story with a deck, a two-column well, and briefs. Same
-// tokens and faces as the rest of the app; the newspaper is an arrangement,
-// not a second design.
+// You play one team's schedule while ninety five programs move in the
+// standings for reasons you never see; this is where those reasons go. Filter
+// chips narrow it to your program or your conference, the strongest story
+// leads as a card, and the rest run as a list. Every story opens the program it
+// is about, so "tap a story" is a promise the screen keeps.
 //
 // Everything printed is derived from the live season by `engine/wire.ts`.
 // Nothing here invents a fact, and reading the page consumes no dice.
 
-import { leagueLabel } from '../../engine/leagueNames.js';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { FixedHeader } from '../Sticky.js';
 import { FirstVisit } from '../Tutorial.js';
-import { seasonDate } from '../format.js';
 import { wire, type WireItem, type WireKind } from '../../engine/wire.js';
 import { Crest } from '../Crest.js';
+import { useOpenTeam } from './TeamCard.js';
+import {
+  Button, Card, Chip, Chips, EmptyState, FeedItem, List, Marquee, SectionHeader, StatusBadge,
+} from '../components/ui/index.js';
+import { conferenceName } from '../words.js';
+import { longDate } from '../format.js';
 
 const KIND_LABEL: Record<WireKind, string> = {
-  upset: 'UPSET',
-  streak: 'STREAK',
-  rout: 'ROUT',
-  ranking: 'POLL',
-  milestone: 'AT THE PLATE',
-  race: 'RACE',
-  close: 'EXTRA INNINGS',
-  sweep: 'SWEEP',
-  gem: 'ON THE MOUND',
-  power: 'POWER',
-  rivalry: 'THE RIVALRY',
-  chase: 'RECORD WATCH',
-  realign: 'REALIGNMENT',
-  moves: 'COACHING MOVES',
+  upset: 'Upset',
+  streak: 'Streak',
+  rout: 'Rout',
+  ranking: 'Rankings',
+  milestone: 'At the plate',
+  race: 'Conference race',
+  close: 'Extra innings',
+  sweep: 'Sweep',
+  gem: 'On the mound',
+  power: 'Power',
+  rivalry: 'The rivalry',
+  chase: 'Record watch',
+  realign: 'Realignment',
+  moves: 'Coaching moves',
 };
 
-const KIND_TONE: Record<WireKind, string> = {
-  upset: 'var(--clay)',
-  streak: 'var(--win)',
-  rout: 'var(--dim)',
-  ranking: 'var(--band)',
-  milestone: 'var(--band)',
-  race: 'var(--clay)',
-  close: 'var(--navy)',
-  sweep: 'var(--win)',
-  gem: 'var(--navy)',
-  power: 'var(--clay)',
-  rivalry: 'var(--alert)',
-  chase: 'var(--clay)',
-  realign: 'var(--band)',
-  moves: 'var(--dim)',
-};
-
-/** The category chip + YOU marker row every story opens with. */
-function Kicker({ item, mine, abbr }: { item: WireItem; mine: boolean; abbr?: string }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4,
-    }}>
-      <span style={{
-        font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-        padding: '2px 6px 3px',
-        background: KIND_TONE[item.kind], color: 'var(--cream)',
-      }}>{KIND_LABEL[item.kind]}</span>
-      {abbr && <Crest abbr={abbr} size={13} />}
-      <span style={{ flex: 1, borderTop: '1px solid var(--faint)' }} />
-      {mine && (
-        <span style={{
-          font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.12em', color: 'var(--clay)',
-        }}>■ YOUR PROGRAM</span>
-      )}
-    </div>
-  );
-}
+type Filter = 'all' | 'you' | 'conference' | 'following';
 
 export function Wire() {
   const season = useDynasty((s) => s.season);
@@ -83,6 +48,21 @@ export function Wire() {
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
   const programs = useDynasty((s) => s.watch.programs);
+  const openTeam = useOpenTeam();
+  const [filter, setFilter] = useState<Filter>('all');
+
+  /*
+    Your programme's own season, kept whole. Reported 2026-09-20: "when tapping
+    on your program, i would prefer if it keeps track of everything related to
+    the team for the season, next season it gets reset and so on" — the filter
+    read off the same fortnight the front page does, so a story from April was
+    gone by May. This is derived from `season.results`, which is emptied at the
+    year roll, so the resetting is the season's own.
+  */
+  const mySeason = useMemo(
+    () => (season ? wire(season, 400, { focus: userTeam }) : []),
+    [season, version, userTeam],
+  );
 
   const items = useMemo(() => {
     if (!season) return [];
@@ -100,15 +80,9 @@ export function Wire() {
   }, [season, version, userTeam, programs]);
 
   /*
-    That he came and read it.
-
-    One of the two habits that reward *engaging* with the game rather than
-    optimising it -- a coach who keeps up with the country is a recognisable
-    kind of coach, and the badge for it should not be earnable by anybody who
-    never opens this screen.
-
-    Counted once per visit rather than per story, and only when there is
-    something to read: opening an empty wire in February is not keeping up.
+    That the coach came and read it: one of the habits that reward engaging
+    with the game. Counted once per visit, and only when there is something to
+    read, so opening an empty page in February is not keeping up.
   */
   const noteHabit = useDynasty((s) => s.noteHabit);
   useEffect(() => {
@@ -117,151 +91,93 @@ export function Wire() {
 
   if (!season || !team) return null;
 
-  // The page's parts, dealt mechanically: the strongest story leads, the next
-  // three fill the well, the rest run as briefs.
-  const lead = items[0];
-  const well = items.slice(1, 4);
-  const briefs = items.slice(4, 10);
+  const watched = new Set(programs);
+  const involves = (item: WireItem, test: (i: number) => boolean): boolean =>
+    test(item.team) || (item.against !== undefined && test(item.against));
+  const mine = (item: WireItem): boolean => involves(item, (i) => i === userTeam);
+  const shown = filter === 'you' ? mySeason : items.filter((item) => (
+    filter === 'all' ? true
+      : filter === 'conference' ? involves(item, (i) => season.teams[i]?.conference === team.conference)
+        : involves(item, (i) => watched.has(season.teams[i]?.def.abbr ?? ''))
+  )).slice(0, 14);
+  const lead = shown[0];
+  const rest = shown.slice(1);
   const day = season.schedule[season.dayIndex]?.day ?? 0;
-  const played = season.results.length;
+  const abbrOf = (i: number): string => season.teams[i]?.def.abbr ?? '';
+  /** Words, not codes: the engine's headlines name schools by their letters. */
+  const words = (text: string | undefined, item: WireItem): string | undefined => {
+    if (!text) return text;
+    let out = text;
+    for (const i of [item.team, item.against]) {
+      const t = i !== undefined ? season.teams[i] : undefined;
+      if (t) out = out.replace(new RegExp(`\\b${t.def.abbr}\\b`, 'g'), t.def.school);
+    }
+    return out;
+  };
 
   return (
-    <FixedHeader
-      header={
-        <div style={{ padding: '10px 14px 8px' }}>
-          {/* Folio, masthead, edition line — the furniture that makes it a
-              paper. The volume number is the dynasty's own age. */}
-          <div style={{
-            display: 'flex', justifyContent: 'space-between',
-            font: "500 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.18em', color: 'var(--dim)',
-          }}>
-            <span>VOL. {year - 2026} · THE COUNTRY'S GAME</span>
-            <span>{leagueLabel(team.conference)} EDITION</span>
-          </div>
-          <div style={{
-            marginTop: 4, borderTop: '3px solid var(--ink)', borderBottom: '1px solid var(--ink)',
-            textAlign: 'center', padding: '2px 0 3px',
-          }}>
-            <span style={{
-              font: "800 calc(34px * var(--ts))/1 var(--display)", textTransform: 'uppercase', letterSpacing: '.02em',
-            }}>The Wire</span>
-          </div>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            borderBottom: '3px double var(--ink)', padding: '3px 0 4px',
-            font: "500 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'var(--dim)',
-          }}>
-            <span>{seasonDate(year, day).toUpperCase()} · {year}</span>
-            <span>{played > 0 ? 'LATE EDITION' : 'FIRST EDITION'}</span>
-            <span>{items.length === 1 ? 'ONE ITEM' : `${Math.min(items.length, 10)} ITEMS`}</span>
-          </div>
-        </div>
-      }
-    >
-    <div style={{ padding: '2px 14px 20px' }}>
+    <main className="pb-page">
       <FirstVisit id="wire" />
-      {items.length === 0 && (
-        <div style={{
-          marginTop: 16, padding: '18px 12px', border: '1px solid var(--faint)',
-          background: 'var(--paper)', textAlign: 'center',
-          font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
-        }}>
-          Nothing on the wire yet. Play some games and the country will start
-          making noise.
-        </div>
+      <Marquee
+        eyebrow={`The wire · ${longDate(year, day)}`}
+        title="News"
+      />
+      <Chips label="Show stories about">
+        <Chip selected={filter === 'all'} onClick={() => setFilter('all')}>All</Chip>
+        <Chip selected={filter === 'you'} onClick={() => setFilter('you')}>Your program</Chip>
+        <Chip selected={filter === 'conference'} onClick={() => setFilter('conference')}>{conferenceName(team.conference)}</Chip>
+        {programs.length > 0 && <Chip selected={filter === 'following'} onClick={() => setFilter('following')}>Following</Chip>}
+      </Chips>
+
+      {shown.length === 0 && (
+        <EmptyState
+          icon="reader"
+          title={items.length === 0 ? 'No news yet' : 'Nothing here yet'}
+          text={items.length === 0
+            ? 'Play some games and the country will start making noise.'
+            : 'No stories match this filter right now.'}
+          action={filter !== 'all' ? { label: 'Show all stories', onClick: () => setFilter('all') } : undefined}
+        />
       )}
 
-      {/* The lead story: kicker, a headline set big, and the deck under it. */}
       {lead && (
-        <div style={{
-          marginTop: 12, padding: '12px 12px 13px',
-          background: 'var(--paper)', border: '1px solid var(--faint)',
-        }}>
-          <Kicker
-            item={lead} abbr={season.teams[lead.team]?.def.abbr}
-            mine={lead.team === userTeam || lead.against === userTeam}
-          />
-          <div style={{
-            font: "800 calc(26px * var(--ts))/1.02 var(--display)", textTransform: 'uppercase',
-          }}>{lead.text}</div>
-          {lead.detail && (
-            <div style={{
-              marginTop: 7, font: "italic 400 calc(13px * var(--ts))/1.5 var(--body)", color: 'var(--ink)',
-            }}>{lead.detail}</div>
+        <Card
+          eyebrow={`${mine(lead) ? 'Your program · ' : ''}${KIND_LABEL[lead.kind]}`}
+          title={words(lead.text, lead)}
+          trailing={abbrOf(lead.team) ? <Crest abbr={abbrOf(lead.team)} size={40} /> : undefined}
+          footer={(
+            <Button variant="quiet" iconAfter="chevron-right" onClick={() => openTeam(lead.team)}>
+              Open {season.teams[lead.team]?.def.school ?? 'the program'}
+            </Button>
           )}
-          <div style={{
-            marginTop: 8, paddingTop: 5, borderTop: '1px solid var(--hairline)',
-            font: "500 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--dim)',
-          }}>BY THE {leagueLabel(team.conference)} DESK</div>
-        </div>
+        >
+          {lead.detail && <p className="pb-text">{words(lead.detail, lead)}</p>}
+        </Card>
       )}
 
-      {/* Around the country: the second-tier stories. */}
-      {well.length > 0 && (
-        <>
-          <div style={{
-            marginTop: 14, display: 'flex', alignItems: 'center', gap: 10,
-          }}>
-            <span style={{ flex: 1, borderTop: '1px solid var(--faint)' }} />
-            <span className="label">AROUND THE COUNTRY</span>
-            <span style={{ flex: 1, borderTop: '1px solid var(--faint)' }} />
-          </div>
-          <div style={{ marginTop: 8 }}>
-            {well.map((item, i) => {
-              const mine = item.team === userTeam || item.against === userTeam;
-              return (
-                <div key={`${item.kind}-${item.team}-${i}`} style={{
-                  padding: '10px 12px', marginBottom: 6,
-                  background: 'var(--paper)',
-                  border: mine ? '1px solid var(--clay)' : '1px solid var(--faint)',
-                }}>
-                  <Kicker item={item} abbr={season.teams[item.team]?.def.abbr} mine={mine} />
-                  <div style={{
-                    font: "800 calc(17px * var(--ts))/1.1 var(--display)", textTransform: 'uppercase',
-                  }}>{item.text}</div>
-                  {item.detail && (
-                    <div style={{
-                      marginTop: 4, font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-                    }}>{item.detail}</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
+      {rest.length > 0 && (
+        <section>
+          <SectionHeader
+            title={filter === 'you' ? `Your ${year} season` : 'Around the country'}
+            count={rest.length}
+            description={filter === 'you' ? 'Every story about you this year. It starts again in February.' : undefined}
+          />
+          <List label="Stories">
+            {rest.map((item, i) => (
+              <FeedItem
+                key={`${item.kind}-${item.team}-${i}`}
+                lead={abbrOf(item.team) ? <Crest abbr={abbrOf(item.team)} size={32} /> : undefined}
+                meta={filter === 'you'
+                  ? <>{KIND_LABEL[item.kind]}{item.at !== undefined ? ` · ${longDate(year, item.at)}` : ''}</>
+                  : mine(item) ? <>{KIND_LABEL[item.kind]} <StatusBadge tone="info" icon={false}>Your program</StatusBadge></> : KIND_LABEL[item.kind]}
+                title={words(item.text, item)}
+                text={words(item.detail, item)}
+                onClick={() => openTeam(item.team)}
+              />
+            ))}
+          </List>
+        </section>
       )}
-
-      {/* In brief: a run-in headline, a period, the rest of the sentence. */}
-      {briefs.length > 0 && (
-        <div style={{
-          marginTop: 12, padding: '9px 12px 11px',
-          borderTop: '3px double var(--ink)', borderBottom: '3px double var(--ink)',
-          background: 'var(--paper)',
-        }}>
-          <div className="label" style={{ marginBottom: 6 }}>IN BRIEF</div>
-          {briefs.map((item, i) => {
-            const mine = item.team === userTeam || item.against === userTeam;
-            return (
-              <div key={`${item.kind}-${item.team}-${i}`} style={{
-                display: 'flex', gap: 7, alignItems: 'baseline',
-                padding: '5px 0',
-                borderTop: i > 0 ? '1px solid var(--hairline)' : 'none',
-              }}>
-                <span aria-hidden style={{
-                  flex: 'none', width: 6, height: 6, transform: 'rotate(45deg)',
-                  background: mine ? 'var(--clay)' : KIND_TONE[item.kind],
-                  position: 'relative', top: -1,
-                }} />
-                <span style={{ font: "400 calc(12px * var(--ts))/1.5 var(--body)" }}>
-                  <b style={{ font: "700 calc(12px * var(--ts))/1.5 var(--body)" }}>{item.text}.</b>
-                  {item.detail ? ` ${item.detail}` : ''}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-    </FixedHeader>
+    </main>
   );
 }

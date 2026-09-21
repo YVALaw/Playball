@@ -98,6 +98,9 @@ const onScreen = (v: GuideView): boolean => !v.live && v.overlay === null && !v.
 const onField = (v: GuideView): boolean => v.live && v.screen === 'box';
 const onMoney = (v: GuideView): boolean =>
   onScreen(v) && v.tab === 'program' && v.screen === 'records' && ['money', 'staff', 'facilities', 'network'].includes(v.programSheet);
+/** Anywhere in the Program overview: the hub or one of its rooms. */
+const onProgram = (v: GuideView): boolean =>
+  onScreen(v) && v.tab === 'program' && v.screen === 'records';
 
 export const GUIDE_STEPS: readonly GuideStep[] = [
   {
@@ -106,11 +109,11 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     card: {
       title: "Welcome to Playball",
       body: "Play an inning, meet your staff, and set your lineup. Skip anytime.",
-      action: "Clear required items, then tap PLAY BALL.",
+      action: "Clear anything that needs you, then tap Play ball.",
     },
     target: ['play-ball', 'need-must'],
     caption: {
-      "play-ball": "Choose PLAY BALL to start the game.",
+      "play-ball": "Tap Play ball to start the game.",
       "need-must": "Open this required item before you play.",
     },
     done: (v) => v.live,
@@ -123,12 +126,12 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     card: {
       title: "Help with classes",
       body: "Academic trouble can sideline a player. Conversations are limited each season.",
-      action: "Open MANAGE, then tap HAVE A WORD.",
+      action: "Under Decisions on his card, tap Have a word, then tap again.",
     },
     target: ['have-a-word', 'player-actions'],
     caption: {
-      "player-actions": "Open MANAGE to see this player’s available actions.",
-      "have-a-word": "Choose HAVE A WORD. This uses a season conversation.",
+      "player-actions": "Open Overview. His Decisions are at the bottom.",
+      "have-a-word": "Tap Have a word, then tap again. It uses one of this season’s four talks.",
     },
     // Stamped by the errand itself, the moment the word is had.
     done: (v) => v.wordSeen,
@@ -140,11 +143,11 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     card: {
       title: "Conversation complete",
       body: "Check the player’s academic standing and conversations left.",
-      action: "Tap BACK to return to Today.",
+      action: "Tap Back to return to Today.",
     },
     target: ['overlay-back'],
     caption: {
-      "overlay-back": "Use BACK to return to Today.",
+      "overlay-back": "Tap Back to return to Today.",
     },
     // Not merely "the card is closed": that holds before the word was ever
     // had, and would stamp this aside away at the tour's first breath.
@@ -156,17 +159,17 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     card: (v) => (v.batting
       ? {
         title: "Your call",
-        body: 'Your team is batting. SWING AWAY is the standard play.',
-        action: 'Tap SWING AWAY, then read the result.',
+        body: 'Your team is batting. Swing away is the standard call.',
+        action: 'Tap Swing away, then read what happened.',
       }
       : {
         title: "Your pitch",
-        body: 'Your team is pitching. PITCH is the standard play.',
-        action: 'Tap PITCH, then read the result.',
+        body: 'Your team is pitching. Pitch is the standard call.',
+        action: 'Tap Pitch, then read what happened.',
       }),
     target: ['call-default'],
     caption: {
-      "call-default": "Choose the standard call, then read the result.",
+      "call-default": "Choose the standard call, then read what happened.",
     },
     done: (v) => v.playedSinceLit || (v.live && (v.over || v.inning > 1 || v.half === 'bottom'))
       || (!v.live && !v.pending && (v.gamesPlayed ?? 0) > 0),
@@ -178,17 +181,17 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     card: (v) => (v.batting
       ? {
         title: "Now you are batting",
-        body: 'Your team is batting. SWING AWAY is the standard play.',
-        action: 'Tap SWING AWAY, then read the result.',
+        body: 'Your team is batting. Swing away is the standard call.',
+        action: 'Tap Swing away, then read what happened.',
       }
       : {
         title: "Now you are pitching",
-        body: 'Your team is pitching. PITCH is the standard play.',
-        action: 'Tap PITCH, then read the result.',
+        body: 'Your team is pitching. Pitch is the standard call.',
+        action: 'Tap Pitch, then read what happened.',
       }),
     target: ['call-default'],
     caption: {
-      "call-default": "Choose the standard call, then read the result.",
+      "call-default": "Choose the standard call, then read what happened.",
     },
     done: (v) => v.playedSinceLit || (v.live && (v.over || v.inning > 1))
       || (!v.live && !v.pending && (v.gamesPlayed ?? 0) > 0),
@@ -198,13 +201,13 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     where: (v) => onField(v) && !v.over && v.inning >= 2,
     card: {
       title: "Open the dugout",
-      body: "Find substitutions, pitching changes, and simulation here.",
-      action: "Tap SIM THE REST, or skip to keep managing.",
+      body: "Pinch hitters, the bullpen, mound visits and the bench coach are all in the dugout.",
+      action: "Tap Sim the rest twice, or skip to keep managing.",
     },
     target: ['sim-rest', 'dugout'],
     caption: {
-      "dugout": "Open the dugout tools.",
-      "sim-rest": "SIM THE REST completes this game for you.",
+      "dugout": "Open the dugout.",
+      "sim-rest": "Tap once, then again: the rest of the game is played out.",
     },
     done: (v) => v.over || (!v.live && !v.pending && (v.gamesPlayed ?? 0) > 0),
   },
@@ -213,8 +216,8 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     where: (v) => onField(v) && v.over,
     card: {
       title: "Record the result",
-      body: "This saves the result and advances your season.",
-      action: "Tap RECORD THE GAME.",
+      body: "This saves the result and moves your season on.",
+      action: "Tap Record the game.",
     },
     target: ['record-game'],
     caption: {
@@ -227,12 +230,12 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     where: (v) => onScreen(v) && v.tab !== 'program',
     card: {
       title: "Your program",
-      body: "Find board goals, budget, staff, and facilities here.",
-      action: "Tap PROGRAM below.",
+      body: "Your board's goals, budget, staff and facilities live here.",
+      action: "Tap Program below.",
     },
     target: ['tab-program'],
     caption: {
-      "tab-program": "Open PROGRAM.",
+      "tab-program": "Open Program.",
     },
     done: (v) => v.tab === 'program',
   },
@@ -241,12 +244,12 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     where: (v) => onScreen(v) && v.tab === 'program',
     card: {
       title: "Your budget",
-      body: "Cash pays for staff, facilities, and scouting. Recruiting uses separate points.",
-      action: "Open BUDGET.",
+      body: "Money pays for staff, buildings and scouting reports. Recruiting uses its own weekly points.",
+      action: "Open Budget.",
     },
     target: ['budget'],
     caption: {
-      "budget": "Open BUDGET to review your funds.",
+      "budget": "Open Budget to see what you can spend.",
     },
     done: (v) => onMoney(v),
     covers: ['program'],
@@ -257,12 +260,12 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     card: {
       title: "Your coaching staff",
       body: "Hire a hitting coach, pitching coach, and recruiting coordinator.",
-      action: "Open STAFF.",
+      action: "Open Staff.",
     },
     target: ['money-staff', 'seg-staff'],
     caption: {
-      "money-staff": "Open STAFF.",
-      "seg-staff": "Open STAFF.",
+      "money-staff": "Open Staff.",
+      "seg-staff": "Open Staff.",
     },
     done: (v) => v.has('seat-hitting'),
   },
@@ -271,14 +274,14 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     where: (v) => onMoney(v) && v.has('seat-hitting'),
     card: {
       title: "Choose a hitting coach",
-      body: "Compare skills and annual wages. Hiring uses your real budget.",
-      action: "Tap a candidate for details. Hire or skip.",
+      body: "Compare skills and wages. Hiring spends your real budget.",
+      action: "Tap a candidate to see what they add. Hire or skip.",
     },
     target: ['hire-detail', 'hire-options', 'seat-hitting'],
     caption: {
-      "hire-detail": "Check skills and cost. Hire or close to compare another coach.",
-      "hire-options": "Tap a candidate to compare skills and cost.",
-      "seat-hitting": "Open the hitting coach’s role.",
+      "hire-detail": "Check what they add and what is left after. Hire, or close to compare.",
+      "hire-options": "Tap a candidate to see their skills and cost.",
+      "seat-hitting": "Open the hitting coach’s seat.",
     },
     done: (v) => v.hittingHired || v.has('hire-blocked') || v.has('staff-delegated'),
   },
@@ -298,17 +301,25 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
   },
   {
     id: 'facilities',
-    where: (v) => onMoney(v) && (v.has('money-facilities') || v.has('seg-facilities')),
+    /*
+      Rooms have no strip between them now: from the staff room the way to the
+      buildings is back to Program, then Facilities. So the light walks that
+      route: the coach's close button while the sheet is up, then the back
+      link, then the Facilities row on the hub (or on the Budget room).
+    */
+    where: (v) => onProgram(v) && v.programSheet !== 'facilities'
+      && ['overlay-back', 'money-facilities', 'hub-facilities', 'room-back'].some((n) => v.has(n)),
     card: {
       title: "Your facilities",
-      body: "Facilities improve development and unlock staff projects.",
-      action: "Open FACILITIES from the staff screen.",
+      body: "Facilities make players better and unlock staff projects.",
+      action: "Go back to Program, then open Facilities.",
     },
-    target: ['overlay-back', 'money-facilities', 'seg-facilities'],
+    target: ['overlay-back', 'money-facilities', 'hub-facilities', 'room-back'],
     caption: {
-      "overlay-back": "Back to Staff, then open FACILITIES.",
-      "money-facilities": "Open FACILITIES.",
-      "seg-facilities": "Open FACILITIES.",
+      "overlay-back": "Close the coach first.",
+      "money-facilities": "Open Facilities.",
+      "hub-facilities": "Open Facilities.",
+      "room-back": "Back to Program, then open Facilities.",
     },
     done: (v) => v.has('facility-cta') || v.has('facility-blocked') || v.has('facility-delegated'),
   },
@@ -317,13 +328,13 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     where: (v) => onMoney(v) && (v.has('facility-cta') || v.has('facility-blocked') || v.has('facility-delegated')),
     card: {
       title: "The Hitting Barn",
-      body: "Supports batting development and hitting projects. Building spends cash immediately.",
-      action: "Check the price. Build or skip.",
+      body: "Hitters grow more each offseason, and your hitting coach can run projects. Building spends the money now.",
+      action: "Check the price and what it adds. Build, or skip.",
     },
     target: ['facility-cta', 'facility-cage'],
     caption: {
-      "facility-cta": "Review the price, then build if it fits your budget.",
-      "facility-cage": "Select the Hitting Barn.",
+      "facility-cta": "Tap once to see what is left after, again to build.",
+      "facility-cage": "The Hitting Barn.",
     },
     done: (v) => v.cageLevel > 0 || v.has('facility-blocked') || v.has('facility-delegated'),
   },
@@ -333,11 +344,11 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     card: {
       title: "Meet your team",
       body: "Review players, lineups, and performance here.",
-      action: "Tap TEAM below.",
+      action: "Tap Team below.",
     },
     target: ['tab-team'],
     caption: {
-      "tab-team": "Open TEAM.",
+      "tab-team": "Open Team.",
     },
     done: (v) => v.tab === 'team',
   },
@@ -346,12 +357,12 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     where: (v) => onScreen(v) && v.tab === 'team' && v.screen !== 'lineup',
     card: {
       title: "Read the roster",
-      body: "OVR is current ability. POT is potential for growth.",
-      action: "Open LINEUP to choose your starters.",
+      body: "Each player’s rating is how good he is now, out of 100. His ceiling is how good he can become.",
+      action: "Open Lineup to choose your starters.",
     },
     target: ['screen-lineup'],
     caption: {
-      "screen-lineup": "Open LINEUP.",
+      "screen-lineup": "Open Lineup.",
     },
     done: (v) => v.tab === 'team' && v.screen === 'lineup',
     covers: ['roster'],

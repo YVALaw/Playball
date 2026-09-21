@@ -130,6 +130,12 @@ export interface LiveGame {
   readonly bullpenUsed: readonly Arm[];
   /** Your man on the mound right now. */
   readonly pitcherNow: Arm;
+  /**
+   * Hand your pitching to the bench coach, or take it back. While on, your
+   * pitching changes and mound visits are made the way the computer makes its
+   * own; the calls at the plate are still answered one at a time.
+   */
+  setBenchCoach: (on: boolean) => void;
 }
 
 export interface LiveOptions extends SimOptions {
@@ -294,6 +300,8 @@ export function createLiveGame(
   let current: ReturnType<typeof createHalfInning> | null = null;
   let over = false;
   let auto = false;
+  /** The bench coach's switch, read by the half-inning on every plate appearance. */
+  const benchCoach = { pitching: false };
 
   const bat = (): TeamState => (half === 'top' ? away : home);
   const fld = (): TeamState => (half === 'top' ? home : away);
@@ -310,6 +318,7 @@ export function createLiveGame(
       !auto && bat() === mine,
       !auto && fld() === mine && !opts.autoPitching,
       !auto && fld() === mine && !opts.autoVisits,
+      benchCoach,
     );
   };
 
@@ -420,6 +429,8 @@ export function createLiveGame(
     },
     get bullpenUsed() { return mine.usedPen; },
     get pitcherNow() { return mine.pitcher; },
+
+    setBenchCoach(on) { benchCoach.pitching = on; },
 
     submit(tactic) {
       if (over || !current) return;

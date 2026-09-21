@@ -1,48 +1,40 @@
 // Today.tsx
-// The hub. Where you are in the season, how the program is doing, and the one
-// button that moves the year forward.
+// The screen that moves time.
 //
-// The proposal's dashboard, class for class: a masthead with the date and the
-// headline, the next game as a bordered card with its own label bar and two
-// rows of actions, a three-up pulse grid, and the decision stack under it.
-// There are no style objects in this file — every rule it needs is already in
-// prototype.css, and a second opinion here would be a rule fighting a rule.
-//
-// Where the proposal shows something this game does not have, the slot keeps
-// its shape and takes something true instead. The weather block is the clearest
-// case: there is no weather in the sim, and an invented 72° would be the one
-// dishonest number on the screen. It carries the national rank, which is what a
-// coach actually looks up at that moment.
+// It answers three questions, in this order: what is tonight, what stops me
+// from playing it, and how is the week going. At most one warning sits above
+// the game when something blocks play, with its fix as the action; the game
+// card says both starters and every way to play the night, and the sims say how
+// far they go. Below that: what needs you, the recruiting week, the games
+// around tonight and three season numbers.
 
-import { leagueLabel } from '../../engine/leagueNames.js';
 import { useEffect, useRef, useState } from 'react';
-import { PlayIcon, SewingPinIcon, StopwatchIcon, StarFilledIcon,
-} from '@radix-ui/react-icons';
 import { FINISH_LABEL, conferenceField } from '../../engine/postseason.js';
 import { RECRUITING_WEEKS, totalWeekSpend } from '../../engine/recruiting.js';
-import { boardBudget, useDynasty, useUserTeam } from '../../state/store.js';
+import { boardBudget, useConferenceTable, useDynasty, useUserTeam } from '../../state/store.js';
 import {
-  seasonComplete, nationalRank, pollIsProjected, seasonLength, era, startableSlot, injuryClock, currentDay,
+  seasonComplete, nationalRank, pollIsProjected, era, startableSlot, injuryClock, currentDay,
   type SeasonState, type TeamRecord, type GameSummary,
 } from '../../engine/season.js';
+import { SCOUT_COST, dollars } from '../../engine/economy.js';
 import { FirstVisit } from '../Tutorial.js';
 import { useOpenTeam } from './TeamCard.js';
 import { BoxScoreSheet } from './Schedule.js';
-import { seasonDate } from '../format.js';
+import { seasonDate, pct, longDate, shortDate } from '../format.js';
 import { NeedsYou, useNeeds } from '../Needs.js';
 import { seriesStake } from '../../engine/world.js';
 import { teamReads } from '../../engine/tendencies.js';
-import { SectionHeading } from '../components/Kit.js';
+import {
+  Button, Callout, Card, GameCard, GameRow, Icon, List, Marquee, Meter, SectionHeader,
+  StatusBadge,
+} from '../components/ui/index.js';
 import { Crest } from '../Crest.js';
-import type {Arm, Pitcher } from '../../engine/types.js';
+import { conferenceName, ordinal, plural, recordText } from '../words.js';
+import type { Arm } from '../../engine/types.js';
 
-/**
- * A team's collective batting average, straight off the season books.
- *
- * Walked over the roster rather than kept as a running counter, because the
- * only honest team average is the sum of its player lines — the audit found
- * what happens to a second copy of a number.
- */
+export { longDate, shortDate } from '../format.js';
+
+/** A team's collective batting average, off the season books. */
 function teamAverage(season: SeasonState, t: TeamRecord): number | null {
   let h = 0, ab = 0;
   for (const p of [...t.team.lineup, ...t.team.bench]) {
@@ -68,6 +60,9 @@ export function Today() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const year = useDynasty((s) => s.year);
+  // A season a coach has announced as his last reads differently all the way
+  // through, starting with the line at the top of the screen he opens daily.
+  const farewellYear = useDynasty((s) => s.coach.farewellYear);
   const advanceDay = useDynasty((s) => s.advanceDay);
   const simWeek = useDynasty((s) => s.simWeek);
   const startManagedGame = useDynasty((s) => s.startManagedGame);
@@ -86,28 +81,22 @@ export function Today() {
   const setPlaybookFocus = useDynasty((s) => s.setPlaybookFocus);
   const openPlayer = useDynasty((s) => s.openPlayer);
   /*
-    The desk does not advance past a decision only you can make.
-
-    Asked for directly: "when someone gets injured or needs to be talked to
-    about their grades, we should not be able to continue playing until
-    resolved." The red needs — a starter who cannot play, the press waiting, a
-    failing man you still have a word for — freeze the four ways time moves.
-    Everything else on the screen stays live, because reading the wire is not
-    playing on.
+    The desk does not advance past a decision only you can make: a starter who
+    cannot play, a failing player you still have a talk for. Those freeze the
+    ways time moves; everything else on the screen stays live.
   */
-  const musts = useNeeds().filter((n) => n.must).length;
-  const held = musts > 0;
+  const needs = useNeeds();
+  const musts = needs.filter((n) => n.must);
+  const held = musts.length > 0;
   const openTeam = useOpenTeam();
   const team = useUserTeam();
-  void version;                         // in-place mutation: see store.ts
+  const table = useConferenceTable();
+  void version;
 
   /*
-    The 0.8 second breath before a sim resolves.
-
-    A day sims in a couple of milliseconds, and a result that appears the same
-    frame the thumb lands reads as though nothing was played. The pause is
-    honest about what it is — a beat, in the button itself, with a ring — and
-    it doubles as the rapid-fire guard for these two controls.
+    A beat before a sim resolves. A day sims in milliseconds, and a result that
+    lands the frame the thumb does reads as though nothing was played. It
+    doubles as the double-tap guard for these two controls.
   */
   const [thinking, setThinking] = useState<'game' | 'week' | null>(null);
   const thinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -120,21 +109,16 @@ export function Today() {
       run();
     }, 800);
   };
-  // A beat must not land on a screen that has gone.
   useEffect(() => () => { if (thinkTimer.current) clearTimeout(thinkTimer.current); }, []);
 
-  /** A finished game, opened off the results strip. */
+  /** A finished game, opened off the week's list. */
   const [openGame, setOpenGame] = useState<GameSummary | null>(null);
 
   if (!season || !team) return null;
 
   const done = seasonComplete(season);
+  const farewell = farewellYear === year;
   const day = season.schedule[season.dayIndex];
-
-  // Where the program sits nationally, from the same table the rankings screen
-  // draws (`nationalOrder`): a projection until the country has a fortnight of
-  // results, RPI after that. Read directly rather than cached — 96 teams is
-  // cheap and a stale rank on the hub screen is worse than the work.
   const rank = nationalRank(season, team.index);
   const projected = pollIsProjected(season);
 
@@ -149,424 +133,273 @@ export function Today() {
   const activePlaybook = opponent ? season.playbooks?.[opponent.def.abbr] : undefined;
   const prepRead = opponent && activePlaybook ? teamReads(opponent.team)[0] : undefined;
 
-  // Tonight's probable arms, exactly the way the engine will pick them: the
-  // scheduled rotation slot on both sides, walked forward past an arm on
-  // short rest or on the shelf — the same `startableSlot` the game uses.
+  // Tonight's probable starters, picked exactly the way the engine will.
   const slot = todayGame?.slot ?? 0;
   const clock = injuryClock(season);
   const today = currentDay(season);
-  const ourArm = team.team.rotation[startableSlot(season, team.team, slot, today, clock)]
-    ?? team.team.rotation[0];
+  const ourArm = team.team.rotation[startableSlot(season, team.team, slot, today, clock)] ?? team.team.rotation[0];
   const theirArm = opponent
-    ? opponent.team.rotation[startableSlot(season, opponent.team, slot, today, clock)]
-      ?? opponent.team.rotation[0]
+    ? opponent.team.rotation[startableSlot(season, opponent.team, slot, today, clock)] ?? opponent.team.rotation[0]
     : null;
-  /*
-    Probable starters get their own row now. The old half-row had to fit a
-    crest, record and name in the same ~130px and inevitably hid the arm on
-    smaller phones. With a dedicated half-width line we can show the actual
-    name and still ellipsize safely when somebody has a very long one.
-  */
-  const armShort = (p: Arm | null | undefined): string => {
-    if (!p) return '—';
+  const armEra = (p: Arm | null | undefined): string | undefined => {
+    if (!p) return undefined;
     const line = season.pitching.get(p.id);
-    const e = line && line.outs >= 9 ? ` · ${era(line).toFixed(2)}` : '';
-    return `${p.name}${e}`;
+    return line && line.outs >= 9 ? `${era(line).toFixed(2)} ERA` : 'No innings yet';
   };
 
-  // Where the series stands, when tonight is part of one. The schedule plays
-  // Friday–Sunday against one opponent; games already played against them this
-  // week are the series so far.
+  // Where the series stands, when tonight is part of one.
   const seriesSoFar = todayGame && opponent && day?.kind === 'series'
     ? season.results.filter((r) =>
       Math.abs(r.day - day.day) <= 3
       && ((r.home === team.index && r.away === opponent.index)
         || (r.away === team.index && r.home === opponent.index)))
     : [];
-  const seriesWins = seriesSoFar.filter((r) =>
-    (r.home === team.index) === (r.homeRuns > r.awayRuns)).length;
-
-  /*
-    What tonight settles — stage 12, the other half of R8. The game number and
-    the lead shipped with stage 4; the stake did not.
-  */
+  const seriesWins = seriesSoFar.filter((r) => (r.home === team.index) === (r.homeRuns > r.awayRuns)).length;
   const stake = day?.kind === 'series' ? seriesStake(seriesSoFar.length, seriesWins) : null;
-  const seriesTag = seriesSoFar.length === 0
-    ? `${atHome ? 'HOME' : 'ROAD'} SERIES · GAME 1 OF 3`
-    : seriesWins * 2 > seriesSoFar.length
-      ? `GAME ${seriesSoFar.length + 1} · YOU LEAD ${seriesWins}-${seriesSoFar.length - seriesWins}`
-      : seriesWins * 2 < seriesSoFar.length
-        ? `GAME ${seriesSoFar.length + 1} · THEY LEAD ${seriesSoFar.length - seriesWins}-${seriesWins}`
-        : `GAME ${seriesSoFar.length + 1} · SERIES LEVEL`;
+  const seriesName = opponent && opponent.conference === team.conference ? 'Conference series' : 'Weekend series';
+  const gameNo = seriesSoFar.length + 1;
+  const kind = day?.kind === 'series'
+    ? seriesSoFar.length === 0 ? `${seriesName} · Game 1 of 3`
+      : seriesWins * 2 > seriesSoFar.length ? `Game ${gameNo} · You lead ${recordText(seriesWins, seriesSoFar.length - seriesWins)}`
+        : seriesWins * 2 < seriesSoFar.length ? `Game ${gameNo} · They lead ${recordText(seriesSoFar.length - seriesWins, seriesWins)}`
+          : `Game ${gameNo} · Series level`
+    : 'Midweek';
 
   const ourAvg = teamAverage(season, team);
   const ourEra = teamEra(season, team);
+  const confRank = table.findIndex((t) => t.index === team.index) + 1;
+
+  const playLocked = held && !live;
+  const firstMust = musts[0];
+  const busyNow = busy || liveStarting;
 
   return (
     <>
-      <main className="dashboard-workspace" aria-label="Today">
+      <main className="pb-page" aria-label="Today">
         <FirstVisit id="today" />
+        <Marquee
+          mark={<Crest abbr={team.def.abbr} size={44} />}
+          eyebrow={farewell
+            ? `${done ? 'The last one is over' : longDate(year, day?.day ?? 0)} · Your last season`
+            : done ? `${year} · The regular season is over` : `${longDate(year, day?.day ?? 0)} · Week ${day?.week ?? 1}`}
+          title="Today"
+          trailing={rank ? (
+            <StatusBadge tone="neutral" size="lg" icon={false}>
+              #{rank} {projected ? 'projected' : 'nationally'}
+            </StatusBadge>
+          ) : undefined}
+          numbers={[
+            {
+              label: 'Record',
+              value: recordText(team.w, team.l),
+              note: team.cw + team.cl > 0
+                ? `${ordinal(confRank)} in ${conferenceName(team.conference)}`
+                : conferenceName(team.conference),
+            },
+            {
+              label: 'Team AVG',
+              value: ourAvg === null ? '—' : pct(ourAvg),
+              note: ourAvg === null ? (team.gp === 0 ? 'No games yet' : 'Too few at-bats') : `${plural(team.rs, 'run')} scored`,
+            },
+            {
+              label: 'Team ERA',
+              value: ourEra === null ? '—' : ourEra.toFixed(2),
+              note: ourEra === null ? (team.gp === 0 ? 'No innings' : 'Too few innings') : `${plural(team.ra, 'run')} allowed`,
+            },
+          ]}
+        />
 
-        <header className="today-date-row">
-          <p>{done ? `${year} FINAL` : seasonDate(year, day?.day ?? 0).toUpperCase()}</p>
-          <span>{rank ? `#${rank} ${projected ? 'PROJ' : 'RPI'} · ` : ''}{leagueLabel(team.conference)}</span>
-        </header>
+        {firstMust && !done && (
+          <Callout
+            tone="warning"
+            eyebrow="Before you play"
+            title={firstMust.title}
+            action={{ label: firstMust.cta, variant: 'secondary', onClick: firstMust.go }}
+          >
+            {firstMust.note}{musts.length > 1 ? ` ${plural(musts.length - 1, 'more')} below.` : ''}
+          </Callout>
+        )}
 
         {/*
-          The game a phone call took away, offered back.
-
-          Above the card for tonight, because it is the only thing on this
-          screen that is already in progress — and offered rather than restored,
-          because being teleported into the seventh inning of a game you had
-          forgotten is its own kind of disorienting. Declining does not un-play
-          the day: the bench coach finishes it, which is what happens to a
-          manager who walks out of a dugout anyway.
+          The game a phone call took away, offered back rather than restored:
+          being dropped into the seventh inning of a game you forgot is its own
+          kind of lost. Declining lets the bench coach finish it.
         */}
         {pendingGame && (
-          <section className="next-game rise-in">
-            <div className="match-label">
-              <span>GAME IN PROGRESS</span><b>YOU LEFT THIS ONE ON THE FIELD</b>
-            </div>
-            <p><StopwatchIcon /> {pendingGame.line}</p>
-            <div className="match-actions">
-              <button type="button" onClick={() => void resumeGame(false)}>Let them finish</button>
-              <button type="button" onClick={() => void resumeGame(true)}><PlayIcon /> Pick it up</button>
-            </div>
-          </section>
+          <Card
+            eyebrow="Game in progress"
+            title="You left this one on the field"
+            footer={(
+              <div className="pb-buttons-2">
+                <Button variant="secondary" onClick={() => void resumeGame(false)}>Let them finish</Button>
+                <Button variant="primary" icon="play" onClick={() => void resumeGame(true)}>Pick it up</Button>
+              </div>
+            )}
+          >
+            <p className="pb-text">{pendingGame.line}</p>
+          </Card>
         )}
 
         {todayGame && opponent && (
-          <section className="next-game">
-            <button
-              className="match-label match-label-tap tap"
-              type="button"
-              onClick={() => openTeam(opponent.index)}
-            >
-              <span>
-                {atHome ? 'TONIGHT VS' : 'TONIGHT AT'} {opponent.def.school.toUpperCase()}
-              </span>
-              <b>{day?.kind === 'series' ? seriesTag : 'MIDWEEK'}</b>
-            </button>
-            {/*
-              Crests rather than the abbreviation in 39px display type, and the
-              second draft of the row. The first stacked crest over record in
-              the letters' old slots, which grew the card — reported the same
-              day it shipped: "the tonight card should not change its size, I
-              just noticed how it expanded" — and left the space either side of
-              the shields carrying nothing but air.
-
-              So the row works sideways now, the way the report sketched it:
-              each pitcher rides the empty side next to his crest, the crests
-              pull in toward the AT, and the line that used to spell the arms
-              out underneath is gone — which is what buys the height back. A
-              first initial rather than the full name, because "Giovanni
-              Galvan · 3.42" has to fit half a 320-wide phone.
-            */}
-            <div className="matchup">
-              <button className="match-team" type="button" onClick={() => openTeam(team.index)}>
-                <Crest abbr={team.def.abbr} size={48} />
-                <span className="matchup-record">{team.w}-{team.l}</span>
-              </button>
-              <span className="versus">{atHome ? 'VS' : 'AT'}</span>
-              <button className="match-team" type="button" onClick={() => openTeam(opponent.index)}>
-                <Crest abbr={opponent.def.abbr} size={48} />
-                <span className="matchup-record">{opponent.w}-{opponent.l}</span>
-              </button>
-            </div>
-            <div className="probable-arms" aria-label="Probable pitchers">
-              <button type="button" onClick={() => ourArm && openPlayer(ourArm.id, 'stats')}>
-                <small>YOUR PROBABLE</small><strong>{armShort(ourArm)}</strong>
-              </button>
-              <button type="button" onClick={() => theirArm && openPlayer(theirArm.id, 'stats')}>
-                <small>THEIR PROBABLE</small><strong>{armShort(theirArm)}</strong>
-              </button>
-            </div>
-            {/*
-              Always rendered, hidden when there is nothing to say.
-
-              `seriesStake` is deliberately silent on game one, on game two
-              after a loss, and on every midweek — so the row appeared and
-              vanished as each night resolved, and the whole card jumped
-              28.4px under the coach's thumb. Reported 2026-09-12: "the tonight
-              card changes its size when text comes in and it is not supposed
-              to; nothing in the app should make those quick resizings."
-              `visibility` rather than a height, so the box is reserved at
-              whatever `--ts` the coach has chosen and the empty row stays out
-              of the accessibility tree.
-            */}
-            <p className={`stake-line${stake ? '' : ' is-empty'}`}>
-              <SewingPinIcon /> {stake ?? '\u00a0'}
-            </p>
-            {/*
-              The warnings, in one red strip where the pitchers' line used to
-              be — asked for in the same report: "the warnings make them more
-              visible and in a red strip." The rivalry and the held desk were
-              two quiet grey lines a scroll apart; anything on this card that
-              is a warning rather than a fact now shares the one band, and the
-              band only exists on a night that has one.
-            */}
-            {/*
-              Always mounted, and opened rather than inserted.
-
-              The stake line above reserves its own 28.4px because it is always
-              exactly one line. This band cannot do that — it holds one, two or
-              three warnings — so reserving its tallest state would leave about
-              seventy pixels of dead red nothing on the great majority of
-              nights. Instead the slot is a grid that animates from 0fr to 1fr,
-              which grows to whatever the content actually is without anybody
-              having to know its height in advance.
-
-              It matters because the trigger fires mid-sim. `held` is
-              `musts > 0`, and a must arrives the moment a man in the nine goes
-              unavailable and clears the moment somebody covers him — so on a
-              day advance this band was appearing and vanishing under the
-              coach's thumb, 35.3px at a time, which is the larger half of the
-              report the stake line answered: "the tonight card changes its
-              size when text comes in and it is not supposed to; nothing in the
-              app should make those quick resizings." A jump is now a reveal.
-            */}
-            <div
-              className={`match-warnings-slot${
-                opponent.def.abbr === team.def.rival || held || formerAssistant ? ' is-open' : ''
-              }`}
-            >
-              <div className="match-warnings">
+          <GameCard
+            label="Tonight's game"
+            when="Tonight"
+            kind={kind}
+            away={atHome
+              ? { abbr: opponent.def.abbr, name: opponent.def.school, record: recordText(opponent.w, opponent.l), onClick: () => openTeam(opponent.index) }
+              : { abbr: team.def.abbr, name: team.def.school, record: recordText(team.w, team.l), you: true, onClick: () => openTeam(team.index) }}
+            home={atHome
+              ? { abbr: team.def.abbr, name: team.def.school, record: recordText(team.w, team.l), you: true, onClick: () => openTeam(team.index) }
+              : { abbr: opponent.def.abbr, name: opponent.def.school, record: recordText(opponent.w, opponent.l), onClick: () => openTeam(opponent.index) }}
+            facts={[
+              { label: 'Your starter', value: <button type="button" className="pb-inline-link" onClick={() => ourArm && openPlayer(ourArm.id, 'stats')}>{ourArm?.name ?? '—'}</button>, note: armEra(ourArm) },
+              { label: 'Their starter', value: <button type="button" className="pb-inline-link" onClick={() => theirArm && openPlayer(theirArm.id, 'stats')}>{theirArm?.name ?? '—'}</button>, note: armEra(theirArm) },
+            ]}
+            actions={(
+              <>
+                <Button variant="secondary" icon="rows" onClick={() => go('team', 'lineup')}>Set lineup</Button>
+                <Button
+                  variant="primary"
+                  icon={playLocked ? 'lock' : 'play'}
+                  data-guide="play-ball"
+                  disabled={busyNow || thinking !== null || playLocked || pendingGame !== null}
+                  onClick={() => void startManagedGame()}
+                >{live ? 'Back to the game' : 'Play ball'}</Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={busyNow || !!live || held || pendingGame !== null || thinking === 'week'}
+                  onClick={() => think('game', advanceDay)}
+                >{thinking === 'game' ? <span className="pb-spinner" aria-label="Simulating" /> : 'Sim tonight'}</Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={busyNow || !!live || held || pendingGame !== null || thinking === 'game'}
+                  onClick={() => think('week', simWeek)}
+                >{thinking === 'week' ? <span className="pb-spinner" aria-label="Simulating" /> : 'Sim to Sunday'}</Button>
+              </>
+            )}
+            actionsNote={pendingGame !== null
+              ? 'Finish the game in progress first.'
+              : held && !live
+                ? 'Settle what needs you first.'
+                : undefined}
+          >
+            {(stake || opponent.def.abbr === team.def.rival || formerAssistant) && (
+              <ul className="pb-game__notes">
+                {stake && <li><Icon name="target" size={16} />{stake}</li>}
                 {opponent.def.abbr === team.def.rival && (
-                  <p>
-                    <StarFilledIcon /> The rivalry.{' '}
-                    {rivalry.w + rivalry.l > 0
+                  <li><Icon name="star-filled" size={16} />
+                    Rivalry game. {rivalry.w + rivalry.l > 0
                       ? rivalry.w >= rivalry.l
-                        ? `You lead the series ${rivalry.w}-${rivalry.l}.`
-                        : `They lead the series ${rivalry.l}-${rivalry.w}.`
-                      : 'The first chapter under your watch.'}
-                  </p>
+                        ? `You lead the series ${recordText(rivalry.w, rivalry.l)}.`
+                        : `They lead the series ${recordText(rivalry.l, rivalry.w)}.`
+                      : 'The first one on your watch.'}
+                  </li>
                 )}
                 {formerAssistant && (
-                  <p>
-                    <StarFilledIcon /> Coaching tree. {opponent.coach?.name} spent {formerAssistant.yearsWithYou}{' '}
-                    {formerAssistant.yearsWithYou === 1 ? 'year' : 'years'} on your staff before taking his own path.
-                  </p>
+                  <li><Icon name="person" size={16} />
+                    {opponent.coach?.name} spent {plural(formerAssistant.yearsWithYou, 'year')} on your staff.
+                  </li>
                 )}
-                {held && (
-                  <p>
-                    <SewingPinIcon /> Nothing moves until
-                    {musts === 1 ? ' the decision below is' : ' the decisions below are'} made.
-                  </p>
-                )}
+              </ul>
+            )}
+            {activePlaybook ? (
+              <div className="pb-inlinerow is-positive">
+                <Icon name="check-circled" size={16} />
+                <span className="pb-inlinerow__text">Playbook on{prepRead ? `: ${prepRead.title}` : ''}</span>
+                <Button size="sm" variant="quiet" onClick={() => { setPlaybookFocus(opponent.def.abbr); go('program', 'strategy'); }}>Open</Button>
               </div>
-            </div>
-            <button
-              className={`match-prep tap${activePlaybook ? ' is-active' : ''}`}
-              type="button"
-              onClick={() => {
-                if (activePlaybook) {
-                  setPlaybookFocus(opponent.def.abbr);
-                  go('program', 'strategy');
-                } else {
-                  openTeam(opponent.index);
-                }
-              }}
-            >
-              <span>
-                <small>PREPARATION</small>
-                <strong>{activePlaybook ? 'Opponent playbook active' : 'No opponent playbook'}</strong>
-                <em>{activePlaybook
-                  ? prepRead ? `${prepRead.title}. Open the plan to adjust your counters.` : 'Your custom plan applies automatically tonight.'
-                  : 'Open their profile for a scouting brief before you spend.'}</em>
-              </span>
-              <span className="match-prep-cta">{activePlaybook ? 'OPEN PLAN' : 'SCOUT'} ›</span>
-            </button>
-            <div className="match-actions">
-              <button type="button" onClick={() => go('team', 'lineup')}>
-                Set lineup
-              </button>
-              <button
-                type="button"
-                data-guide="play-ball"
-                disabled={busy || liveStarting || thinking !== null || (held && !live) || pendingGame !== null}
-                onClick={() => void startManagedGame()}
-              ><PlayIcon /> {live ? 'Back to the game' : 'Play ball'}</button>
-            </div>
-            <div className="simulation-row">
-              <button
-                type="button"
-                disabled={busy || !!live || held || pendingGame !== null || thinking === 'week'}
-                onClick={() => think('game', advanceDay)}
-              >{thinking === 'game' ? <span className="spinner" /> : 'Sim game'}</button>
-              <button
-                type="button"
-                disabled={busy || !!live || held || pendingGame !== null || thinking === 'game'}
-                onClick={() => think('week', simWeek)}
-              >{thinking === 'week' ? <span className="spinner" /> : 'Sim week'}</button>
-            </div>
-          </section>
+            ) : (
+              <div className="pb-inlinerow">
+                <Icon name="file" size={16} />
+                <span className="pb-inlinerow__text">No scouting report</span>
+                <Button size="sm" variant="quiet" meta={dollars(SCOUT_COST)} onClick={() => openTeam(opponent.index)}>Scout</Button>
+              </div>
+            )}
+          </GameCard>
         )}
 
         {!todayGame && !done && (
-          <section className="next-game">
-            <div className="match-label">
-              <span>OFF DAY</span><b>WEEK {day?.week ?? 1}</b>
-            </div>
-            <p><SewingPinIcon /> Bullpen work and situational defense.</p>
-            <div className="simulation-row">
-              <button
-                type="button"
-                disabled={busy || !!live || held || pendingGame !== null || thinking === 'week'}
-                onClick={() => think('game', advanceDay)}
-              >{thinking === 'game' ? <span className="spinner" /> : 'Advance'}</button>
-              <button
-                type="button"
-                disabled={busy || !!live || held || pendingGame !== null || thinking === 'game'}
-                onClick={() => think('week', simWeek)}
-              >{thinking === 'week' ? <span className="spinner" /> : 'Sim week'}</button>
-            </div>
-          </section>
+          <Card
+            eyebrow={`Week ${day?.week ?? 1}`}
+            title="Off day"
+            footer={(
+              <div className="pb-buttons-2">
+                <Button
+                  variant="secondary"
+                  disabled={busyNow || !!live || held || pendingGame !== null || thinking === 'week'}
+                  onClick={() => think('game', advanceDay)}
+                >{thinking === 'game' ? <span className="pb-spinner" aria-label="Simulating" /> : 'Next day'}</Button>
+                <Button
+                  variant="primary"
+                  disabled={busyNow || !!live || held || pendingGame !== null || thinking === 'game'}
+                  onClick={() => think('week', simWeek)}
+                >{thinking === 'week' ? <span className="pb-spinner" aria-label="Simulating" /> : 'Sim to Sunday'}</Button>
+              </div>
+            )}
+          >
+          </Card>
         )}
 
         {busy && progress && (
-          <section className="budget-bar">
-            <span>
-              <small>SIMULATING</small>
-              <strong>DAY {progress.day} / {progress.totalDays}</strong>
-            </span>
-            <i>
-              <b style={{ width: `${Math.round((progress.day / progress.totalDays) * 100)}%` }} />
-            </i>
-          </section>
+          <Card title="Simulating">
+            <Meter
+              label={`Day ${progress.day} of ${progress.totalDays}`}
+              valueText={`${Math.round((progress.day / progress.totalDays) * 100)}%`}
+              value={progress.day}
+              max={progress.totalDays}
+            />
+          </Card>
         )}
 
-
-
         {done && !lastPostseason && (
-          /*
-            The season is over and the screen says so like it matters.
-
-            The opponent card vanishes with the schedule, and a bare button
-            floating where it used to be read as something missing rather than
-            something arriving. Reported from testing: "when the play the post
-            season button came up it took out the whole card which makes it look
-            weird." This is the card that takes its place — a gate, not a gap.
-          */
-          <>
-            <section className="season-verdict rise-in">
-              <small>{year} · THE REGULAR SEASON IS IN THE BOOKS</small>
-              <strong>June is here</strong>
-              <p>
-                {team.w}-{team.l}, and now the games that get remembered. Every
-                jersey in the country is washed for this.
-              </p>
-            </section>
-            <button
-              className="primary-command"
-              type="button"
-              disabled={busy}
-              onClick={() => void playPostseason()}
-            >{busy ? 'PLAYING…' : 'PLAY THE POSTSEASON'}</button>
-          </>
+          <Card
+            eyebrow={`${year} · The regular season is in the books`}
+            title="June is here"
+            footer={(
+              <Button variant="primary" block disabled={busy} onClick={() => void playPostseason()}>
+                {busy ? 'Playing…' : 'Play the postseason'}
+              </Button>
+            )}
+          >
+            <p className="pb-text">{recordText(team.w, team.l)}, and now the games that get remembered.</p>
+          </Card>
         )}
 
         {done && lastPostseason && (
-          <>
-            <PostseasonVerdict />
-            {/*
-              The offseason is a sequence of full screens, so this hands over to
-              it rather than doing the work itself. It is only reachable after a
-              reload, because the phase is not persisted — normally the
-              postseason opens the sequence directly.
-            */}
-            <button
-              className="primary-command"
-              type="button"
-              onClick={() => openOffseason()}
-            >END THE SEASON</button>
-          </>
+          <PostseasonVerdict onEnd={() => openOffseason()} />
         )}
 
-        {/*
-          What is waiting on you, where the conference scoreboard used to be.
-
-          Asked for in those terms, and it is the better use of the space. The
-          scoreboard was eight results you could do nothing about, sitting under
-          the one button that moves your season -- and the things you *could* do
-          something about had nowhere to be, so the press room got itself a
-          screen by interrupting and an injury got itself nothing at all.
-
-          Last night around the conference has not gone anywhere: SCHEDULE has
-          every result and CONFERENCE has the table they add up to.
-        */}
         <NeedsYou />
 
         {!done && season.recruiting.week <= RECRUITING_WEEKS && (() => {
           const rp = boardBudget(season, team.index, economy.recruitingGrant);
           const spentRp = totalWeekSpend(season.recruiting.prospects, team.index);
+          const left = Math.max(0, rp - spentRp);
           const commits = season.recruiting.prospects.filter((p) => p.signedBy === team.index).length;
-          const targets = season.recruiting.prospects.filter((p) => p.signedBy === null && ((p.points[team.index] ?? 0) > 0 || (p.spent[team.index] ?? 0) > 0)).length;
+          const targets = season.recruiting.prospects.filter((p) => p.signedBy === null
+            && ((p.points[team.index] ?? 0) > 0 || (p.spent[team.index] ?? 0) > 0)).length;
           return (
-            <button className="today-recruiting-card tap" type="button" onClick={() => go('program', 'recruiting')}>
-              <span><small>RECRUITING · WEEK {season.recruiting.week}</small><strong>{Math.max(0, rp - spentRp)} RP available</strong></span>
-              <em>{targets} active target{targets === 1 ? '' : 's'} · {commits} commit{commits === 1 ? '' : 's'} for next season</em>
-              <span aria-hidden>›</span>
-            </button>
+            <Card
+              eyebrow={`Recruiting · Week ${season.recruiting.week} of ${RECRUITING_WEEKS}`}
+              title={`${left} of ${rp} points left this week`}
+              trailing={<StatusBadge tone="neutral" icon="clock">Resets weekly</StatusBadge>}
+              footer={<Button variant="quiet" iconAfter="chevron-right" onClick={() => go('program', 'recruiting')}>Open recruiting</Button>}
+            >
+              <Meter value={left} max={Math.max(1, rp)} size="sm" ariaLabel="Recruiting points left this week" />
+              <p className="pb-text-muted">{plural(targets, 'target')} · {commits} committed</p>
+            </Card>
           );
         })()}
 
-        {/* Below the needs, by request: "needs you is more important than the
-            other." The pulse is reference; the needs are work. The CLUB PULSE
-            kicker went and the title shrank on 2026-09-10, so the week's games
-            and the needs share a small screen. */}
-        <SectionHeading
-          compact
-          title="This week"
-          action="Schedule"
-          onAction={() => { go('season', 'sched'); }}
-        />
-        <WeekGames season={season} team={team} year={year} onOpen={setOpenGame} />
-        <section className="pulse-grid">
-          <button type="button" onClick={() => { go('team', 'stats'); }}>
-            {/*
-              One card, one side of the ball.
-
-              This tile printed TEAM AVG over a line about innings pitched —
-              and when nobody had thrown one it read "TEAM AVG — / no innings
-              yet", which is a batting card explaining itself with a pitching
-              sentence. Found in an outside audit and confirmed on a fresh
-              career. The bat gets the headline and the bat gets the note; the
-              arm has its own tile beside it now.
-            */}
-            <small>TEAM AVG</small>
-            <strong>{ourAvg === null ? '—' : ourAvg.toFixed(3).replace(/^0/, '')}</strong>
-            <span>{ourAvg === null
-              ? (team.gp === 0 ? 'no games yet' : 'not enough at-bats yet')
-              : `${team.rs} run${team.rs === 1 ? '' : 's'} scored`}</span>
-          </button>
-          <button type="button" onClick={() => { go('season', 'stand'); }}>
-            <small>{leagueLabel(team.conference).toUpperCase()}</small>
-            <strong>{team.cw}-{team.cl}</strong>
-            <span>{team.w}-{team.l} overall</span>
-          </button>
-          {/*
-            The arm, which had no tile at all.
-
-            This was GAMES PLAYED — a number the header already carries as a
-            record and the schedule carries as a calendar, so the pulse spent
-            a third of itself repeating. Bat, league, arm: three tiles, three
-            different questions.
-          */}
-          <button type="button" onClick={() => { go('team', 'stats'); }}>
-            <small>TEAM ERA</small>
-            <strong>{ourEra === null ? '—' : ourEra.toFixed(2)}</strong>
-            <span>{ourEra === null
-              ? (team.gp === 0 ? 'no innings yet' : 'not enough innings yet')
-              : `${team.ra} run${team.ra === 1 ? '' : 's'} allowed`}</span>
-          </button>
+        <section>
+          <SectionHeader title="This week" action={{ label: 'Full schedule', onClick: () => go('season', 'sched') }} />
+          <WeekGames season={season} team={team} year={year} onOpen={setOpenGame} />
         </section>
-
       </main>
 
-      {/*
-        How it played out. The user's own game has a full box score in the save,
-        so it opens the real one; everyone else's carries a summary card.
-      */}
+      {/* The user's own game has a full box score in the save. */}
       {openGame && openGame.day in (season.boxScores ?? {})
         && (openGame.home === team.index || openGame.away === team.index) && (
         <BoxScoreSheet
@@ -580,13 +413,9 @@ export function Today() {
 }
 
 /**
- * The week's games, played or still to come, above the pulse.
- *
- * Reported from the emulator: "when we sim a game, we can see the outcome of
- * that match, we tap on the game and the box score comes up." The schedule
- * always had it; the desk is where you are standing when the sim finishes.
- * A played date carries its score and opens the box; one still to come
- * carries what kind of game it is and opens the other program.
+ * The games around tonight: the three before and the three after. A played
+ * game carries its score and opens the box score; one still to come opens the
+ * other program.
  */
 function WeekGames(
   { season, team, year, onOpen }:
@@ -597,74 +426,68 @@ function WeekGames(
     const g = d.games.find((x) => x.home === team.index || x.away === team.index);
     return g ? [{ d, g }] : [];
   });
-  // The week in play: the one holding the next date still to play, or the
-  // last one once the year is done.
   const today = season.schedule[season.dayIndex]?.day ?? Number.POSITIVE_INFINITY;
   const next = mine.find(({ d }) => d.day >= today) ?? mine[mine.length - 1];
   if (!next) return null;
-  // Club Pulse follows game night rather than a calendar week: the game that
-  // matters is centred, with the three before and three after available by
-  // swipe. That keeps recent form and what is coming next in one gesture.
   const focusIndex = Math.max(0, mine.indexOf(next));
   const rail = mine.slice(Math.max(0, focusIndex - 3), Math.min(mine.length, focusIndex + 4));
   return (
-    <section className="schedule-rail week-games" aria-label="Games around tonight">
+    <List label="This week">
       {rail.map(({ d, g }) => {
         const home = g.home === team.index;
         const opponent = season.teams[home ? g.away : g.home];
-        const result = season.results.find(
-          (r) => r.day === d.day && (r.home === team.index || r.away === team.index),
-        );
+        const result = season.results.find((r) => r.day === d.day && (r.home === team.index || r.away === team.index));
         const us = result ? (home ? result.homeRuns : result.awayRuns) : null;
         const them = result ? (home ? result.awayRuns : result.homeRuns) : null;
-        const won = result ? us! > them! : null;
         const box = result !== undefined && d.day in (season.boxScores ?? {});
+        const when = shortDate(year, d.day);
+        const kind = d.kind === 'series'
+          ? (opponent && opponent.conference === team.conference ? 'Conference series' : 'Weekend series')
+          : 'Midweek';
         return (
-          <button
+          <GameRow
             key={d.day}
-            type="button"
-            className={d.day === next.d.day ? 'is-focus' : ''}
+            day={when.weekday}
+            date={when.date}
+            opponent={opponent?.def.school ?? '—'}
+            abbr={opponent?.def.abbr ?? ''}
+            home={home}
+            kind={kind}
+            current={d.day === next.d.day && !result}
+            result={result && us !== null && them !== null ? { win: us > them, score: recordText(us, them) } : undefined}
+            status={result ? undefined : d.day === today ? 'Tonight' : when.weekday}
             onClick={() => (box && result ? onOpen(result) : opponent && openTeam(opponent.index))}
-          >
-            <small>{seasonDate(year, d.day).split(' ').slice(1).join(' ')}</small>
-            <strong>{home ? '' : '@ '}{opponent?.def.abbr ?? '—'}</strong>
-            <i className={won === null ? '' : won ? 'won' : 'lost'}>
-              {won === null
-                ? (d.day === today ? 'tonight' : d.kind === 'series' ? 'series' : 'midweek')
-                : `${won ? 'W' : 'L'} ${us}-${them}`}
-            </i>
-          </button>
+          />
         );
       })}
-    </section>
+    </List>
   );
 }
 
 /** How the year ended, shown once between the last game and the roll over. */
-function PostseasonVerdict() {
+function PostseasonVerdict({ onEnd }: { onEnd: () => void }) {
   const season = useDynasty((x) => x.season);
   const userTeam = useDynasty((x) => x.userTeam);
   const result = useDynasty((x) => x.lastPostseason);
   if (!season || !result) return null;
-
-  // A club that played its conference tournament and went out there is not
-  // in the postseason summary's finish map; it did not miss the postseason.
+  // A club that went out in its conference tournament did not miss the postseason.
   const conference = season.teams[userTeam]?.conference;
-  const inField = conference !== undefined
-    && conferenceField(season, conference).field.includes(userTeam);
+  const inField = conference !== undefined && conferenceField(season, conference).field.includes(userTeam);
   const me = result.finish[userTeam] ?? (inField ? 'conference' : 'missed');
   const champion = season.teams[result.champion]?.def.school ?? '—';
   const wonConference = result.conferenceChampions.includes(userTeam);
   const big = me === 'champion';
-
   return (
-    <section className="season-verdict">
-      <small>POSTSEASON</small>
-      <strong>{FINISH_LABEL[me]}</strong>
-      <p>
+    <Card
+      eyebrow="Postseason"
+      title={FINISH_LABEL[me]}
+      trailing={big ? <StatusBadge tone="positive" icon="star-filled">National champions</StatusBadge> : undefined}
+      footer={<Button variant="primary" block onClick={onEnd}>Start the offseason</Button>}
+    >
+      <p className="pb-text">
         {wonConference ? 'Won the conference tournament. ' : ''}
         {big ? 'Nobody can take this one away.' : `${champion} won the national title.`}
       </p>
-    </section>
+    </Card>
   );
 }

@@ -1,40 +1,31 @@
+// Board.tsx
+// Recruiting: this week's points, where you stand with each prospect, and
+// what to do next.
+//
+// Points build a prospect's interest in you; at the end of each week a
+// prospect who clearly prefers one program commits to it. The screen says as
+// little as it can about that and shows the rest: every number carries its
+// scale, and every status is an icon, a word and a colour.
+//
+// Nothing on a prospect is a fact. His rating is a scouted range and his
+// ceiling a span of grades, as wide as your recruiting skill is poor. A
+// prospect out of your program's reach says so rather than quietly taking
+// points for nothing.
+
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PROMISE_DETAIL } from '../../engine/morale.js';
 import { recruitingPlan, programRecruitingPitch } from '../../engine/recruitingPlan.js';
-// Board.tsx
-// Recruiting, over three weeks.
-//
-// Four views of the same class — everyone available, who you are chasing, who
-// you have landed, and the roster the class is meant to fix — because those are
-// four different questions and answering them on one list means answering none
-// of them well.
-//
-// Two rules hold the screen together.
-//
-// **Nothing here is a fact.** A recruit's ability is a band and his ceiling is
-// a span of letters, both as wide as the coach reading them is bad at this, and
-// the two lines of scouting prose narrow the field without ever settling it. So
-// the board is a set of bets rather than a sorted table, and the class review
-// after signing day is where anybody finds out. See the long note at the top of
-// `recruiting.ts` for how the bands are drawn and why the truth is never in the
-// middle of one.
-//
-// **A recruit out of your program's reach is refused outright** rather than
-// quietly discounted, because a button that works and achieves nothing reads as
-// a bug.
-
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
-import { useDialogFocus } from '../dialogFocus.js';
 import { boardBudget, PHASES, useDynasty, useUserTeam } from '../../state/store.js';
 import {
   fit, canPursue, inPipeline, byRank,
-  RECRUITING_FACTORS, RECRUITING_FACTOR_LABEL, RECRUITING_FACTOR_BLURB,
+  RECRUITING_FACTORS, RECRUITING_FACTOR_BLURB,
   recruitingPrioritiesOf, factorScore, factorGrade, wantedScore, pitchVerdict, weekActionCost, totalWeekSpend,
   hasRecruitingRelationship, PITCH_COST, HARD_SELL_COST, SWAY_COST, VISIT_COST,
   PROMISE_COST, PROMISE_LABEL, availableRecruitPromises,
   ASK_COST, ASK_COOLDOWN, askBlocked, decisionStyle, DECISION_LABEL,
   SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS,
   reportedOverall, reportedPotential, reportedTool, hintsFor,
-  type Prospect, type RecruitingFactor, type RecruitMajorInput,
+  type Prospect, type RecruitingFactor, type RecruitMajorInput, type PitchVerdict,
 } from '../../engine/recruiting.js';
 import { walkOnShortfall, depthShortfall, departureOdds } from '../../engine/progression.js';
 import { pitchFor } from '../../engine/pitch.js';
@@ -42,35 +33,28 @@ import { overallOf } from '../../engine/ratings.js';
 import { highSchoolLine } from '../../engine/scouting.js';
 import { CONFERENCES, ALL_STATES } from '../../data/schools.js';
 import { prestigeStars } from '../../engine/program.js';
-import { Avatar, teamColour } from '../Avatar.js';
-import { InFrame } from '../Overlay.js';
-import { GodBolt, GodIntroRow } from '../god/GodBolt.js';
+import { GodBolt } from '../god/GodBolt.js';
 import { FirstVisit } from '../Tutorial.js';
-import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { Cross2Icon, MixerHorizontalIcon } from '@radix-ui/react-icons';
+import { Modal } from '../Modal.js';
 import { withStaff, pipelineStrength, pipelineLabel, PIPELINE_MIN } from '../../engine/economy.js';
-import { FieldNote, Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { handles } from '../../state/depth.js';
 import { isTwoWay } from '../../engine/types.js';
 import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
+import {
+  ActionBar, Button, Callout, Card, Chip, Chips, ConfirmButton, cx, DescriptionList, EmptyState,
+  Face, Icon, List, ListRow, Marquee, Meter, OptionCard, OptionGroup, PlayerRow, ProspectCard,
+  SectionHeader, SegmentedControl, Sheet, Stars, StatGroup, StatusBadge, Step, Stepper, Switch,
+  Table, Tag, type IconName, type Tone,
+} from '../components/ui/index.js';
+import { CLASS_NAME, HIGH_SCHOOL_WORD, POSITION_NAME, capsWords, handsText, plural, stateName } from '../words.js';
+import { StepScreen } from './OffseasonStep.js';
 
 type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
-type Sheet = 'overview' | 'report' | 'stats' | 'schools';
 
-const SHEET_LABEL: Record<Sheet, string> = {
-  overview: 'OVERVIEW',
-  report: 'REPORT',
-  stats: 'HIGH SCHOOL',
-  schools: 'SCHOOLS',
-};
-
-const VIEW_LABEL: Record<View, string> = {
-  recruits: 'RECRUITS',
-  targets: 'TARGETS',
-  commits: 'COMMITS',
-  needs: 'NEEDS',
-  roster: 'ROSTER',
-};
+/** A prospect's position code; a two-way man answers to both of his. */
+const slotOf = (p: Prospect): string =>
+  isTwoWay(p.player) ? 'TWO-WAY'
+    : p.player.type === 'pitcher' ? (p.player as Pitcher).role : p.player.pos;
 
 const POSITIONS: readonly (Position | 'SP' | 'RP')[] =
   ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'SP', 'RP'];
@@ -236,31 +220,75 @@ export function coveredSince(
   return out;
 }
 
-/** How the chase is going, said in words rather than a raw point total. */
-function standing(mine: number, best: number, anyone: boolean): { label: string; tone: string } {
-  if (!anyone) return { label: 'NOBODY ON HIM', tone: 'var(--dim)' };
-  if (mine <= 0) return { label: 'NOT IN IT', tone: 'var(--dim)' };
-  if (mine >= best) return { label: 'LEADING', tone: 'var(--win)' };
-  const behind = (best - mine) / best;
-  if (behind < 0.2) return { label: 'RIGHT THERE', tone: 'var(--win)' };
-  if (behind < 0.5) return { label: 'IN THE MIX', tone: 'var(--ink)' };
-  return { label: 'WAY BEHIND', tone: 'var(--clay)' };
-}
+// ---------------------------------------------------------------------------
+// Words
+// ---------------------------------------------------------------------------
 
-const topPriority = (p: Prospect): RecruitingFactor => {
-  const priorities = recruitingPrioritiesOf(p);
-  return [...RECRUITING_FACTORS].sort((a, b) => priorities[b] - priorities[a])[0] as RecruitingFactor;
+/** A label the tested helpers write in capitals, as the screen says it. */
+const say = (label: string): string => label.charAt(0) + label.slice(1).toLowerCase();
+
+const posName = (code: string): string =>
+  code === 'TWO-WAY' ? 'Two-way'
+    : code === 'BENCH' ? 'Bench'
+      : POSITION_NAME[code as Position | 'SP' | 'RP'] ?? code;
+
+/** The factor as a pitch tile has room to say it. */
+const FACTOR_SHORT: Record<RecruitingFactor, string> = {
+  tradition: 'Tradition',
+  coach: 'Coach',
+  conference: 'Conference',
+  playingTime: 'Playing time',
+  winning: 'Winning now',
+  development: 'Development',
+  facilities: 'Facilities',
+  proximity: 'Close to home',
+  proPipeline: 'Path to pros',
 };
 
-const slotOf = (p: Prospect): string =>
-  isTwoWay(p.player) ? 'TWO-WAY'
-    : p.player.type === 'pitcher' ? (p.player as Pitcher).role : p.player.pos;
+/** Your grade against his want, as the engine weighs a pitch on it. */
+const VERDICT: Record<PitchVerdict, { word: string; tone: 'positive' | 'muted' | 'warning' | 'negative'; icon: IconName }> = {
+  strong: { word: 'Strong', tone: 'positive', icon: 'check-circled' },
+  fair: { word: 'Fair', tone: 'muted', icon: 'minus-circled' },
+  thin: { word: 'Thin', tone: 'warning', icon: 'alert' },
+  hollow: { word: 'Backfires', tone: 'negative', icon: 'cross-circled' },
+};
 
-/** The outside of the envelope: only the open card says TWO-WAY. */
-const listSlotOf = (p: Prospect): string =>
-  isTwoWay(p.player)
-    ? ((p.player as { role?: string }).role ?? p.player.pos)
-    : slotOf(p);
+/** His interest in you as a share of all of it, and who leads. */
+function interestShare(p: Prospect, team: number): { any: boolean; you: number; leader: number; leaderTeam: number | null } {
+  const entries = Object.entries(p.points).map(([t, v]) => ({ t: Number(t), v })).filter((e) => e.v > 0);
+  const total = entries.reduce((a, e) => a + e.v, 0);
+  if (total <= 0) return { any: false, you: 0, leader: 0, leaderTeam: null };
+  const lead = [...entries].sort((a, b) => b.v - a.v)[0]!;
+  return {
+    any: true,
+    you: Math.round(((p.points[team] ?? 0) / total) * 100),
+    leader: Math.round((lead.v / total) * 100),
+    leaderTeam: lead.t,
+  };
+}
+
+/** Where you stand with him: the chase, or how it ended. */
+function chase(
+  p: Prospect, userTeam: number, schoolOf: (i: number) => string, reachable: boolean,
+): { tone: Tone; label: string; icon?: IconName } {
+  if (p.signedBy === userTeam) return { tone: 'positive', label: 'Committed to you' };
+  if (p.signedBy !== null) return { tone: 'negative', label: `Signed with ${schoolOf(p.signedBy)}` };
+  if (!reachable) return { tone: 'neutral', icon: 'lock', label: 'Out of reach' };
+  const points = Object.values(p.points).filter((v) => v > 0);
+  const best = points.length ? Math.max(...points) : 0;
+  const mine = p.points[userTeam] ?? 0;
+  if (best <= 0) return { tone: 'neutral', label: 'Nobody on him yet' };
+  if (mine <= 0) return { tone: 'neutral', label: 'Others are on him' };
+  if (mine >= best) return { tone: 'positive', label: 'You lead' };
+  const behind = (best - mine) / best;
+  if (behind < 0.2) return { tone: 'info', label: 'Close behind' };
+  if (behind < 0.5) return { tone: 'warning', label: 'Behind' };
+  return { tone: 'negative', icon: 'alert', label: 'Far behind' };
+}
+
+// ---------------------------------------------------------------------------
+// The board
+// ---------------------------------------------------------------------------
 
 export function Board() {
   const season = useDynasty((s) => s.season);
@@ -270,16 +298,8 @@ export function Board() {
   const recruitPitch = useDynasty((s) => s.recruitPitch);
   const recruitMajor = useDynasty((s) => s.recruitMajor);
   const advanceWeek = useDynasty((s) => s.advanceRecruitingWeek);
-  /*
-    Whether he is working his own board, or watching his coordinator work it.
-
-    The board stays readable either way, deliberately. A delegated system the
-    player cannot watch is a system he has to take on faith, and the whole
-    reason to hand recruiting over is to stop doing the work — not to stop
-    seeing the class. Every card, every commitment and every rival's interest
-    reads exactly as it does for a coach doing it himself; the only things that
-    go are the controls he is no longer allowed to touch.
-  */
+  // Whether he works his own board or watches his coordinator work it. The
+  // board reads the same either way; only the controls go.
   const worksBoard = useDynasty((s) => handles(s.depth, 'recruiting'));
   const economy = useDynasty((s) => s.economy);
   const phase = useDynasty((s) => s.phase);
@@ -289,12 +309,7 @@ export function Board() {
 
   const [view, setView] = useState<View>('recruits');
   const [openId, setOpenId] = useState<string | null>(null);
-  /*
-    Kept across visits. Reported: "if we use one of the toggles they are kept
-    until we clear the filter or till the stage ends." The screen unmounts on
-    every navigation, so the last set lives outside it, keyed to the year; a
-    new class starts clean, and CLEAR EVERY FILTER still clears.
-  */
+  // Kept across visits for the same class; a new class starts clean.
   const year = useDynasty((s) => s.year);
   const [filters, setFiltersState] = useState<Filters>(
     () => (keptFilters.year === year ? keptFilters.filters : NO_FILTERS),
@@ -305,19 +320,16 @@ export function Board() {
     setFiltersState(next);
   };
   const [filtersOpen, setFiltersOpen] = useState(false);
-  /** The FILTER button, which the dialog grows out of and shrinks back into. */
-  const filterButton = useRef<HTMLButtonElement | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [warnHoles, setWarnHoles] = useState(false);
-  const holesSheet = useRef<HTMLDivElement | null>(null);
-  useDialogFocus(holesSheet, () => setWarnHoles(false), { active: warnHoles });
-
+  const [lastTap, setLastTap] = useState(0);
   const lastWeek = useDynasty((s) => s.lastWeek);
 
   const pitch = useMemo(() => {
     if (!season || !team) return null;
     const conf = CONFERENCES.find((c) => c.id === team.conference);
-    return programRecruitingPitch(season, team, conf?.region ?? 'Gulf', coach.prestige, economy);  }, [season, team, version, economy, coach.prestige]);
+    return programRecruitingPitch(season, team, conf?.region ?? 'Gulf', coach.prestige, economy);
+  }, [season, team, version, economy, coach.prestige]);
 
   const myStars = team ? prestigeStars(team.prestige) : 1;
   const homeState = team?.def.state ?? '';
@@ -327,23 +339,12 @@ export function Board() {
     list, matches, targets, commits, spent, locked, shortfall, thin, covered, leaving,
   } = useMemo(() => {
     const all = season?.recruiting.prospects ?? [];
-    // One gate, asked the same way everywhere on this screen: the program's
-    // tier, plus a star for a recruit out of its own state.
-    const reaches = (p: Prospect): boolean =>
-      canPursue(p, myStars, networkFor(p));
+    // One gate, asked the same way everywhere on this screen.
+    const reaches = (p: Prospect): boolean => canPursue(p, myStars, networkFor(p));
 
-    // Anyone this program has ever put money on stays on the target list until
-    // he is resolved — signed here or signed somewhere else.
-    //
-    // Filtering targets by *this week's* spend made a recruit disappear the
-    // moment the week turned, so a board you had been working for two weeks came
-    // back empty and there was no way to see who you were still in on. A target
-    // list you lose track of is not a target list.
-    // Once he commits here he is not a target any more, he is a commit — and he
-    // has his own tab. Leaving him on both lists made the board read as if there
-    // were still work to do on a player who was already signed. A recruit who
-    // picked somebody else does stay, marked, because losing one quietly is how
-    // you never learn who you were beaten by.
+    // Anyone this program has ever spent on stays a target until he is
+    // resolved. One who commits here moves to Committed; one who signs
+    // elsewhere stays, marked, so you learn who beat you.
     const mine = all.filter(
       (p) => p.signedBy !== userTeam
         && ((p.spent[userTeam] ?? 0) > 0 || weekActionCost(p, userTeam) > 0 || (p.points[userTeam] ?? 0) > 0),
@@ -358,50 +359,21 @@ export function Board() {
       ? [...reachable].sort((a, b) => (b.stars * fit(b, pitch)) - (a.stars * fit(a, pitch)))
       : reachable;
 
-    // The roster the class is being signed into, and the class itself in the
-    // order the board holds it — not the order this screen sorts it into. The
-    // year roll takes the class as it comes off the board, and a projection
-    // that disagreed with it on a tie would be a projection worth nothing.
     const roster: Player[] = team
       ? [...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen]
       : [];
-    /*
-      Who will still be here when the class arrives.
-
-      Recruiting runs through the season now, and the roster in front of you
-      in March is full — so this tab read "every spot covered" all spring,
-      with a class of nobody, while the seniors were three months from
-      leaving. Reported 2026-09-10: "the needs sub tab isn't working, it is
-      not telling me the team's needs." Until the draft step runs the
-      departures, the seniors are counted as gone: they are the one certain
-      departure, and the men the draft takes cannot be known in March. From
-      the draft step on the roster standing here is already the survivors.
-    */
-    /*
-      And the men the draft is likely to take, which the note above said could
-      not be known. The WHO cannot: `departure` spends a random draw on it. The
-      ODDS can, and they are the same arithmetic the draw is made against —
-      `departureOdds`, which is `draftChance(overall)` discounted by how much
-      leverage his class year still gives him. Reported 2026-09-12: "as well
-      the players likely to get drafted."
-
-      A half is the line, and it is the honest one rather than a tuned one: at
-      better than even money he is likelier gone than not, so a board planning
-      a class should already be covering his spot. Below it he is a maybe, and
-      a NEEDS tab that shouted about every maybe would be as useless as one
-      that shouted about none.
-    */
+    // Who will still be here when the class arrives. Until the draft step runs
+    // the departures, seniors and anyone likelier than not to be drafted
+    // (`departureOdds`, the odds the draw is made against) count as gone.
     const departed = phase !== null && PHASES.indexOf(phase) >= PHASES.indexOf('draft');
     const survivors = departed
       ? roster
       : roster.filter((p) => p.classYear !== 'SR' && departureOdds(p) < 0.5);
     const leaving = roster.length - survivors.length;
-    // Every signed man: the July high-school draft went on 2026-09-10, so
-    // the class the year roll receives is exactly the class on this screen.
     const classPlayers = signed.map((p) => p.player);
     const still = walkOnShortfall(survivors, classPlayers);
-    // The second tier: a starter with nobody who naturally covers him. An open
-    // hole already sits in the list above, so it is not said twice.
+    // A starter with nobody who naturally covers him. An open spot is already
+    // in the list above, so it is not said twice.
     const thin = depthShortfall(survivors, classPlayers)
       .filter((t) => !still.some((h) => h.pos === t.pos));
 
@@ -409,20 +381,14 @@ export function Board() {
 
     return {
       list,
-      // What the filter actually caught, before the board's row cap. The capped
-      // number is the wrong one to put on the apply button: it reads 50
-      // whatever you do until you have narrowed the country down past fifty
-      // players, which is exactly the range where you need to be told whether
-      // the last tap did anything.
+      // What the filter caught, before the row cap.
       matches: reachable.length,
       targets: mine.slice().sort((a, b) => {
-        // Unresolved first — those are the ones still worth a decision.
+        // Unresolved first: those are the ones still worth a decision.
         const live = Number(a.signedBy !== null) - Number(b.signedBy !== null);
         return live || (b.points[userTeam] ?? 0) - (a.points[userTeam] ?? 0);
       }),
-      // The class you have landed, in the same national order the signing day
-      // report reads in. Two screens showing the same eight names with the same
-      // #rank on each row must agree about which of them is first.
+      // The class in the same national order the signing-day report reads in.
       commits: signed.slice().sort(byRank),
       spent: used,
       locked: filters.reachOnly ? [] : shown.filter((p) => !reaches(p))
@@ -437,16 +403,11 @@ export function Board() {
   if (!season || !team || !pitch) return null;
 
   const week = season.recruiting.week;
-
   // What the class has still not covered, counted off the roster in front of
-  // you rather than off the draft's report. The report is not restored by a
-  // reload — see `coveredSince` — and the roster always is.
+  // you. See `coveredSince`.
   const stillShort = shortfall.reduce((a, r) => a + r.count, 0);
   const open = season.recruiting.prospects.find((p) => p.id === openId) ?? null;
-  // What a week is worth here, after the draft phase took whatever it took to
-  // keep somebody. The header prints the honest number, so a coach who talked
-  // his shortstop out of professional baseball in June can see the price of it
-  // on the board he opens ninety seconds later.
+  // A week's points, after whatever the draft step spent keeping somebody.
   const weekly = boardBudget(season, userTeam, economy.recruitingGrant);
   const recruiterSkill = withStaff(coach.skills, economy.staff).recruiting;
   const left = weekly - spent;
@@ -458,8 +419,8 @@ export function Board() {
     filtersOpen: false, live: live && !seasonMode, week, matches, shown: list.length,
     byHand: worksBoard,
   });
-  // The dialog's own button, off the same function: it says what the board
-  // will show when the box closes.
+  // The filter sheet's own button, off the same function: it says what the
+  // board will show when the sheet closes.
   const filterLabel = pinnedAction({
     filtersOpen: true, live: live && !seasonMode, week, matches, shown: list.length,
   }).label;
@@ -470,284 +431,184 @@ export function Board() {
     return isTwoWay(p.player) && (p.player.pos === pos || (p.player as { role?: string }).role === pos);
   }).length;
   const uncoveredBoardNeeds = shortfall.filter((h) => activeTargetCount(h.pos) < h.count);
+  const coordinator = economy?.staff?.recruiting;
+  const schoolOf = (i: number): string => season.teams[i]?.def.school ?? 'another program';
 
-  return (
-    /*
-      The title, the budget and the four tabs stay put; the list scrolls under
-      them.
-
-      Reported from testing: "the list of players should be what actually
-      scrolls, not the whole page". On a phone the old layout put the tab you
-      were on, the money you had left and the scholarships you had used off the
-      top of the screen the moment you started reading — which is exactly when
-      you need them, because every one of them is a constraint on the decision
-      you are scrolling to make.
-    */
-    <FixedHeader
-      action={pinned.kind !== null && (
-        <FloatingAction
-          label={pinned.label}
-          onClick={() => {
-            if (pinned.kind === 'signing-day') { advanceWeek(); void nextPhase('recruiting'); }
-            // Not when the staff picked the board: the warning exists to stop a
-            // coach ending week one with nothing on it, and his coordinator
-            // cannot make that mistake.
-            else if (pinned.kind === 'end-week' && worksBoard && week === 1 && uncoveredBoardNeeds.length > 0) setWarnHoles(true);
-            else advanceWeek();
-          }}
-        />
-      )}
-      header={
-      <div className="dense-head" style={{ padding: '9px 14px 6px' }}>
-      <div className="screen-title-row">
-        <GodIntroRow target={{ kind: 'recruits' }} label="Edit the class in god mode">
-          <ModuleIntro
-            // The year, because this screen is reached in-season from PROGRAM
-            // and the frame around it names the club but never the season.
-            kicker={`RECRUITING · ${year} · ${live ? `WEEK ${week} OF ${RECRUITING_WEEKS}` : 'CLASS CLOSED'}`}
-            title="The board"
-          />
-        </GodIntroRow>
-        {/*
-          Filtering is a dialog that grows out of this button.
-
-          It was a mode. Reported first: "if we scrolled to the players and try
-          to tap on the filter it would not work" -- it opened a panel at the
-          top of the list, fourteen hundred pixels above where you were
-          reading, and scroll anchoring held the view still so that nothing
-          appeared to happen. Swapping the body for the panel fixed that and
-          brought its own report: "right now it is almost impossible to see
-          how it opens in small screens" -- a body that becomes a panel reads
-          as the screen changing under you. So it is a box over the board now,
-          opened from this button by growing out of it and put back the same
-          way; see `FilterModal` for the motion.
-        */}
-        <button
-          ref={filterButton}
-          className={`filter-button tap${filtersOpen || activeFilters ? ' active' : ''}`}
-          type="button"
-          aria-label={activeFilters ? 'Filter recruits, filters on' : 'Filter recruits'}
-          aria-haspopup="dialog"
-          aria-expanded={filtersOpen}
-          onClick={() => {
-            setOpenId(null);
-            // Filters only shape the recruits list, so a box opened from the
-            // roster tab and closed onto the roster would be a control that
-            // changed a screen you were not looking at.
-            setView('recruits');
-            setFiltersOpen(true);
-          }}
-        ><MixerHorizontalIcon /><span>{activeFilters ? 'Filter on' : 'Filter'}</span></button>
-      </div>
-
-      <MetricStrip>
-        <Metric label="SCHOLARSHIPS" value={`${commits.length}/${SCHOLARSHIPS}`} note={full ? 'FULL' : 'COMMITTED'} />
-        <Metric
-          label="BUDGET"
-          value={live ? String(left) : '—'}
-          /*
-            What the big number IS. Reported as a contradiction — "budget 29,
-            and underneath 159 / 3 weeks" — and both were true of different
-            things: 29 is what is left of THIS WEEK, 159 was the whole window,
-            and the slash read as a division that gave 53. The note names the
-            number above it now, which is the only job it has.
-          */
-          note={live ? `OF ${weekly} RP THIS WEEK` : 'CLOSED'}
-        />
-        {/* Sized down as well as filled-only. The display face has no star, so
-            each ★ came from the fallback font at nearly a square em — five of
-            those at the metric's 25px overflowed the box even after the empty
-            ones were dropped. Reported twice; the span is the second fix. */}
-        <Metric
-          label="PRESTIGE"
-          value={<span className="metric-stars">{'★'.repeat(Math.max(1, myStars))}</span>}
-          note={`OF 5 · PROGRAM PULL`}
-        />
-      </MetricStrip>
-
-      <Segmented
-        label="Recruiting section"
-        value={view}
-        onChange={(v) => {
-          setView(v);
-          // Leaving filter mode is the whole point of this line. The tabs are
-          // in the pinned header and stay live while the panel is up, so
-          // without it a tap moved the tab underneath a panel that was still
-          // covering the body and still owned the pinned button — which is how
-          // END WEEK ended up reading "SHOW THE TOP 50 OF 518" on a screen that
-          // looked like the roster tab.
-          setFiltersOpen(false);
-        }}
-        options={(['recruits', 'targets', 'commits', 'needs', 'roster'] as View[]).map((v) => {
-          const count = v === 'targets' ? targets.length
-            : v === 'commits' ? commits.length
-              : v === 'needs' ? stillShort : 0;
-          const word = VIEW_LABEL[v];
-          return {
-            value: v,
-            label: `${word.charAt(0)}${word.slice(1).toLowerCase()}${count > 0 ? ` ${count}` : ''}`,
-          };
-        })}
+  const card = (p: Prospect) => {
+    const reachable = canPursue(p, myStars, networkFor(p));
+    const status = chase(p, userTeam, schoolOf, reachable);
+    const share = interestShare(p, userTeam);
+    const ovr = reportedOverall(p, recruiterSkill);
+    const pot = reportedPotential(p, recruiterSkill);
+    const priorities = recruitingPrioritiesOf(p);
+    const wants = [...RECRUITING_FACTORS].sort((a, b) => priorities[b] - priorities[a]).slice(0, 3);
+    const thisWeek = (p.spent[userTeam] ?? 0) + weekActionCost(p, userTeam);
+    const rival = share.leaderTeam !== null && share.leaderTeam !== userTeam ? schoolOf(share.leaderTeam) : undefined;
+    const canWork = p.signedBy === null && reachable && live && worksBoard && !full;
+    const chasing = p.signedBy === null && (p.points[userTeam] ?? 0) > 0;
+    return (
+      <ProspectCard
+        key={p.id}
+        className={thisWeek > 0 && p.signedBy === null ? 'is-targeted' : chasing ? 'is-chasing' : undefined}
+        id={p.id}
+        team={p.signedBy !== null ? season.teams[p.signedBy]?.def.abbr : undefined}
+        name={p.player.name}
+        tags={[slotOf(p) === 'TWO-WAY' ? 'Two-way' : slotOf(p), p.state]}
+        meta={thisWeek > 0 && p.signedBy === null ? `${thisWeek} pts this week` : undefined}
+        stars={p.stars}
+        rank={p.rank}
+        ratingLow={ovr.low}
+        ratingHigh={ovr.high}
+        ratingNote="of 100"
+        ceiling={pot.low === pot.high ? pot.low : `${pot.low} to ${pot.high}`}
+        ceilingNote="D to S"
+        status={status}
+        interest={share.any && p.signedBy === null
+          ? { you: share.you, leader: rival ? share.leader : undefined, leaderName: rival }
+          : undefined}
+        wants={wants.map((k) => ({ text: FACTOR_SHORT[k], fit: ['strong', 'fair'].includes(pitchVerdict(p, pitch, k)) }))}
+        action={canWork
+          ? {
+            label: thisWeek > 0 ? 'Change his week' : 'Plan his week',
+            variant: thisWeek > 0 ? 'secondary' : 'tonal',
+            onClick: () => setOpenId(p.id),
+          }
+          : undefined}
+        onOpen={() => setOpenId(p.id)}
       />
-      </div>
-    }>
-    {live && <FirstVisit id="recruiting" />}
-    {seasonMode && live && (
-      <div className="recruiting-calendar-note">
-        <b>Weekly RP refreshes with the season calendar.</b> Your choices bank automatically when the schedule moves into the next week. Commits arrive next season.
-      </div>
-    )}
-    <div className="offseason-recruiting" style={{ padding: '10px 14px 20px' }}>
+    );
+  };
+
+  const rows = view === 'recruits' ? list : view === 'targets' ? targets : commits;
+
+  const onPinned = (): void => {
+    const now = Date.now();
+    if (now - lastTap < 600) return;
+    setLastTap(now);
+    if (pinned.kind === 'signing-day') { advanceWeek(); void nextPhase('recruiting'); }
+    // The warning stops a coach ending week one with a need nobody on his
+    // board covers; his coordinator cannot make that mistake.
+    else if (pinned.kind === 'end-week' && worksBoard && week === 1 && uncoveredBoardNeeds.length > 0) setWarnHoles(true);
+    else advanceWeek();
+  };
+
+  const page = (
+    <main className="pb-page">
+      {live && <FirstVisit id="recruiting" />}
+      <Marquee
+        eyebrow={`${year} class · ${live ? `Week ${week} of ${RECRUITING_WEEKS}` : 'Closed'}`}
+        title="Recruiting"
+        trailing={<GodBolt target={{ kind: 'recruits' }} label="Edit the class in god mode" />}
+      />
+
+      <Card
+        eyebrow="This week"
+        title={live ? `${Math.max(0, left)} of ${weekly} points left` : 'The class is closed'}
+        trailing={live ? <StatusBadge tone="neutral" icon="clock">Resets weekly</StatusBadge> : undefined}
+      >
+        {live && (
+          <Meter value={Math.max(0, left)} max={Math.max(1, weekly)} ariaLabel="Points left this week" />
+        )}
+        <StatGroup
+          size="sm"
+          items={[
+            { label: 'Scholarships', value: `${commits.length} of ${SCHOLARSHIPS}`, note: full ? 'Class full' : undefined },
+            { label: 'Program pull', value: <Stars value={myStars} label="Program pull" /> },
+          ]}
+        />
+      </Card>
+
       {live && lastWeek && (
-        <div style={{
-          marginBottom: 10, border: '1px solid var(--clay)',
-          background: 'rgba(var(--clay-rgb), .10)',
-        }}>
-          <div style={{ padding: '5px 10px', background: 'var(--clay)' }}>
-            <span style={{
-              font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em', color: 'var(--cream)',
-            }}>WEEK {lastWeek.closed} IS OVER</span>
-          </div>
-          <div style={{ padding: '10px 11px', font: "400 calc(12px * var(--ts))/1.5 var(--body)" }}>
-            {lastWeek.yours.length > 0 ? (
-              <div style={{ marginBottom: 6 }}>
-                <strong>Committed to you:</strong> {lastWeek.yours.join(', ')}.
-              </div>
-            ) : (
-              <div style={{ marginBottom: 6, color: 'var(--dim)' }}>
-                Nobody committed to you this week.
-              </div>
-            )}
-            <div style={{ color: 'var(--dim)' }}>
-              {lastWeek.gone === 0
-                ? 'Nobody came off the board anywhere.'
-                : `${lastWeek.gone} recruit${lastWeek.gone === 1 ? '' : 's'} signed elsewhere.`}
-            </div>
-          </div>
-        </div>
+        <Callout tone={lastWeek.yours.length > 0 ? 'positive' : 'neutral'} title={`Week ${lastWeek.closed} is over`}>
+          {lastWeek.yours.length > 0 ? `Committed to you: ${lastWeek.yours.join(', ')}.` : 'Nobody committed to you.'}
+          {lastWeek.gone > 0 ? ` ${plural(lastWeek.gone, 'prospect')} signed elsewhere.` : ''}
+        </Callout>
       )}
 
+      {live && !worksBoard && (
+        <Callout tone="info" title={coordinator ? `${coordinator.name} works your board` : 'Your staff works your board'}>
+          Change it in Settings.
+        </Callout>
+      )}
+
+      <div className="pb-stickybar">
+      <Chips label="Recruiting">
+        <Chip selected={view === 'recruits'} onClick={() => setView('recruits')}>Prospects</Chip>
+        <Chip selected={view === 'targets'} count={targets.length || undefined} onClick={() => setView('targets')}>Your targets</Chip>
+        <Chip selected={view === 'commits'} count={commits.length || undefined} onClick={() => setView('commits')}>Committed</Chip>
+        <Chip selected={view === 'needs'} count={stillShort || undefined} onClick={() => setView('needs')}>Positions needed</Chip>
+        <Chip selected={view === 'roster'} onClick={() => setView('roster')}>Your roster</Chip>
+      </Chips>
+      </div>
 
       {view === 'needs' ? (
-        <NeedsView short={shortfall} thin={thin} covered={covered} leaving={leaving} targeted={activeTargetCount} onPick={(pos) => {
-          // On top of what is already set, not instead of it. Reported: "if I
-          // toggle pipelines and then go to needs and tap on one of the needs,
-          // it only looks for needs but drops the toggle." A need names a
-          // position; the toggles are the coach's standing view of the board.
-          setFilters({ ...filters, pos });
-          setView('recruits');
-        }} />
+        <NeedsView
+          short={shortfall} thin={thin} covered={covered} leaving={leaving} targeted={activeTargetCount}
+          // On top of the filters already set, not instead of them.
+          onPick={(pos) => { setFilters({ ...filters, pos }); setView('recruits'); }}
+        />
       ) : view === 'roster' ? (
         <RosterView />
       ) : (
-        <>
-          {/*
-            Keyed on what shaped it, so a change of filters or view fades the
-            list in rather than cutting. Reported: "when filtering, the screen
-            flicks" — the rows swapped in the same frame the state changed.
-            One 260ms fade on the container, not per-row theatre.
-          */}
-          <div
-            className="fade-in recruit-board-grid"
-            key={`${view}:${JSON.stringify(filters)}`}>
-            {(view === 'recruits' ? list : view === 'targets' ? targets : commits).length === 0 && (
-              <div style={{
-                padding: '18px 12px', font: "400 calc(12px * var(--ts)) var(--body)", color: 'var(--dim)',
-                textAlign: 'center',
-              }}>
-                {view === 'targets' ? 'Nobody on your board yet.'
-                  : view === 'commits' ? 'No commitments yet.'
-                  : activeFilters ? 'Nobody matches those filters.' : 'Nobody available.'}
-              </div>
-            )}
-            {(view === 'recruits' ? list : view === 'targets' ? targets : commits).map((p) => (
-              <Row
-                key={p.id}
-                p={p}
-                userTeam={userTeam}
-                season={season}
-                onOpen={() => setOpenId(p.id)}
-                signed={view === 'commits'}
-                recruitingSkill={recruiterSkill}
-              />
-            ))}
-          </div>
-
-          {/*
-            The cap, and the way out of it.
-
-            Fifty rows sorted by fit is the answer to the question this tab is
-            for, and five hundred names is not a list anybody reads. But a coach
-            who has filtered down to "four star catchers" and gets fifty of them
-            has been told a number and shown a slice of it, so the last row is
-            followed by the whole class if he wants it.
-          */}
-          {view === 'recruits' && matches > list.length && (
-            <CapButton
-              label={`SHOW ALL ${matches}`}
-              onClick={() => setShowAll(true)}
+        <div className="pb-stack">
+          <SectionHeader
+            title={view === 'recruits' ? 'Prospects' : view === 'targets' ? 'Your targets' : 'Committed to you'}
+            count={view === 'recruits' ? matches : rows.length}
+            action={view === 'recruits'
+              ? { label: activeFilters ? 'Filters on' : 'Filter', onClick: () => { setOpenId(null); setFiltersOpen(true); } }
+              : undefined}
+          />
+          {view === 'recruits' && activeFilters && (
+            <Button variant="quiet" size="sm" icon="cross" onClick={() => setFilters(NO_FILTERS)}>Clear filters</Button>
+          )}
+          {rows.length === 0 ? (
+            <EmptyState
+              icon={view === 'recruits' ? 'search' : 'person'}
+              title={view === 'targets' ? 'Nobody on your board yet'
+                : view === 'commits' ? 'No commitments yet'
+                  : activeFilters ? 'Nobody matches' : 'Nobody available'}
             />
+          ) : rows.map(card)}
+
+          {view === 'recruits' && matches > list.length && (
+            <Button variant="secondary" block onClick={() => setShowAll(true)}>Show all {matches}</Button>
           )}
           {view === 'recruits' && showAll && matches > ROW_CAP && (
-            <CapButton
-              label={`BACK TO THE TOP ${ROW_CAP}`}
-              onClick={() => setShowAll(false)}
-            />
+            <Button variant="quiet" block onClick={() => setShowAll(false)}>Back to the top {ROW_CAP}</Button>
           )}
 
           {view === 'recruits' && locked.length > 0 && (
             <>
-              <div className="label" style={{ marginTop: 18, marginBottom: 6 }}>
-                OUT OF REACH
-              </div>
-              <div style={{
-                border: '1px solid var(--faint)', background: 'var(--paper)', opacity: 0.72,
-              }}>
-                {locked.map((p) => (
-                  <Row
-                    key={p.id} p={p} userTeam={userTeam} season={season}
-                    onOpen={() => setOpenId(p.id)}
-                    recruitingSkill={recruiterSkill}
-                  />
-                ))}
-              </div>
-              <div style={{
-                marginTop: 6, font: "400 calc(11px * var(--ts))/1.45 var(--body)", color: 'var(--dim)',
-              }}>
-                Out of reach for now. Build the program up and names like these
-                start listening.
-              </div>
+              <SectionHeader title="Out of reach for now" />
+              {locked.map(card)}
             </>
           )}
-        </>
+        </div>
       )}
 
       {filtersOpen && (
-        <FilterModal
-          from={filterButton}
+        <FilterSheet
           filters={filters}
           onChange={setFilters}
           onClear={() => setFilters(NO_FILTERS)}
           onClose={() => setFiltersOpen(false)}
-          label={filterLabel}
+          label={say(filterLabel)}
           homeState={homeState}
-          myStars={myStars}
         />
       )}
 
       {warnHoles && (
-        <InFrame>
-          <div ref={holesSheet} className="prospect-sheet-scrim fade-in" onClick={() => setWarnHoles(false)} role="dialog" aria-modal="true" aria-label="Your board still has holes">
-            <section className="recruit-week-warning rise-in" onClick={(e) => e.stopPropagation()}>
-              <small>WEEK 1 · BOARD CHECK</small>
-              <h2>Your board still has holes</h2>
-              <p>New chases get harder once other schools bank a week of relationships. You still have uncovered needs at:</p>
-              <div>{uncoveredBoardNeeds.map((h) => <b key={h.pos}>{h.pos} · {h.count - activeTargetCount(h.pos)} OPEN</b>)}</div>
-              <button type="button" className="primary-command tap" onClick={() => { setWarnHoles(false); setView('needs'); }}>GO BACK TO NEEDS</button>
-              <button type="button" className="secondary-command tap" onClick={() => { setWarnHoles(false); advanceWeek(); }}>END WEEK ANYWAY</button>
-            </section>
-          </div>
-        </InFrame>
+        <Modal
+          kicker="Week 1 · before it ends"
+          title="Some needs have nobody on them"
+          lines={[
+            'New chases get harder once other programs bank a week of interest. Nobody on your board plays:',
+            uncoveredBoardNeeds.map((h) => `${posName(h.pos)} (${h.count - activeTargetCount(h.pos)} open)`).join(', '),
+          ]}
+          action="End the week anyway"
+          cancel={{ label: 'Go back to positions needed', onClick: () => { setWarnHoles(false); setView('needs'); } }}
+          onClose={() => { setWarnHoles(false); advanceWeek(); }}
+        />
       )}
 
       {open && (
@@ -755,8 +616,7 @@ export function Board() {
           prospect={open}
           userTeam={userTeam}
           coachPrestige={coach.prestige}
-          // With the coordinator on top — the same effective skill the week's
-          // close will spend, or the preview undersells the staff you pay for.
+          // The same effective skill the week's close will spend.
           recruitingSkill={recruiterSkill}
           pitch={pitch}
           reachable={canPursue(open, myStars, networkFor(open))}
@@ -766,500 +626,194 @@ export function Board() {
           full={full && open.signedBy === null}
           left={left}
           week={week}
+          schoolOf={schoolOf}
           onSet={(n) => recruitFor(open.id, n)}
           onPitch={(factor) => recruitPitch(open.id, factor)}
           onMajor={(action) => recruitMajor(open.id, action)}
           onClose={() => setOpenId(null)}
         />
       )}
-
-      {/*
-        The pinned button says what you are actually doing.
-
-        Reported from testing: "when filtering the button set should appear
-        instead of the end week one, that causes confusion." Ending the week is
-        the one irreversible act on this screen — recruits come off the board and
-        the budget resets — and leaving it under the thumb while somebody is
-        tuning a position filter is a trap rather than a convenience. The filter
-        is a dialog over the whole frame now, so END WEEK is under its scrim
-        rather than under the thumb, and the dialog's own button says how many
-        recruits are waiting on the other side.
-
-        One button and one label, decided by `pinnedAction`. It was two branches
-        of a ternary each writing their own, which is how the label and the
-        state it described came apart.
-      */}
-    </div>
-    </FixedHeader>
+    </main>
   );
-}
 
-/**
- * One recruit, in the colours of whoever has him.
- *
- * Every row carries a school: the one that signed him if the board has closed
- * on him, otherwise the one leading the chase. That colour is the point —
- * "keep the ones I lost on the board, tinted with the colour of the school that
- * took him, so I can see who beat me" — and it is worth as much before the
- * signature as after it, because the school in front of you on a recruit you
- * are still working is the fact the week's spending turns on. A recruit nobody
- * has called carries no colour at all, which is its own signal and pairs with
- * the filter for exactly those men.
- */
-function Row({
-  p, userTeam, season, onOpen, signed, recruitingSkill,
-}: {
-  p: Prospect; userTeam: number; season: { teams: { def: { abbr: string } }[] };
-  onOpen: () => void; signed?: boolean; recruitingSkill: number;
-}) {
-  const spent = (p.spent[userTeam] ?? 0) + weekActionCost(p, userTeam);
-  const points = Object.values(p.points);
-  const best = points.length ? Math.max(...points) : 0;
-  const state = signed || p.signedBy === userTeam
-    ? { label: 'SIGNED', tone: 'var(--win)' }
-    : p.signedBy !== null
-      ? { label: 'LOST', tone: 'var(--clay)' }
-      : standing(p.points[userTeam] ?? 0, best, points.length > 0);
-  const leader = p.signedBy !== null ? p.signedBy
-    : points.length > 0 ? Number(Object.entries(p.points).sort((a, b) => b[1] - a[1])[0]?.[0]) : null;
-  const abbr = leader !== null ? season.teams[leader]?.def.abbr : undefined;
-  const colour = abbr ? teamColour(abbr) : 'var(--line)';
-  const ovr = reportedOverall(p, recruitingSkill);
-  const pot = reportedPotential(p, recruitingSkill);
-
+  // The old offseason board (kept for saves made before recruiting moved into
+  // the season) ends its weeks from a pinned bar.
+  if (pinned.kind === null) return page;
   return (
-    <button className={`recruit-card tap${spent > 0 && !signed ? ' targeted' : ''}`} type="button" onClick={onOpen} style={{ '--recruit-accent': colour } as CSSProperties}>
-      <span className="recruit-card-rank"><small>NAT'L</small><strong>#{p.rank}</strong></span>
-      <span className="recruit-card-face"><Avatar id={p.id} team={p.signedBy !== null ? abbr : undefined} size={40} /></span>
-      <span className="recruit-card-copy">
-        <small>{listSlotOf(p)} · {p.state} · {RECRUITING_FACTOR_LABEL[topPriority(p)]}</small>
-        <strong>{p.player.name}</strong>
-        <em>{'★'.repeat(p.stars)}</em>
-      </span>
-      <span className="recruit-card-read">
-        <i><small>OVR</small><strong>{ovr.low}-{ovr.high}</strong></i>
-        <i><small>CEIL</small><strong>{pot.low}-{pot.high}</strong></i>
-      </span>
-      <span className="recruit-card-status" style={{ color: state.tone }}>
-        <strong>{state.label}</strong>
-        <small>{spent > 0 && !signed ? `${spent} pts/wk` : abbr && leader !== userTeam ? `Leader: ${abbr}` : 'Open card'}</small>
-      </span>
-    </button>
+    <StepScreen
+      bar={(
+        <ActionBar note={pinned.kind === 'signing-day' ? 'The rest sign on signing day.' : undefined}>
+          <Button variant="primary" iconAfter="arrow-right" onClick={onPinned}>
+            {pinned.kind === 'signing-day' ? 'Go to signing day' : `End week ${week}`}
+          </Button>
+        </ActionBar>
+      )}
+    >{page}</StepScreen>
   );
 }
 
-/** The way past the row cap, and the way back to it. */
-function CapButton({ label, onClick }: { label: string; onClick: () => void }) {
+// ---------------------------------------------------------------------------
+// Filters
+// ---------------------------------------------------------------------------
+
+/** A star rating on a chip: the stars themselves, not the word. */
+function StarRow({ n }: { n: number }) {
   return (
-    <button
-      onClick={onClick}
-      className="tap"
-      style={{
-        width: '100%', marginTop: 8, padding: '10px 0',
-        background: 'var(--paper)', border: '1px solid rgba(var(--ink-rgb), .28)',
-        color: 'var(--ink)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-      }}
-    >{label}</button>
+    <span className="pb-chipstars" aria-label={plural(n, 'star')} role="img">
+      {Array.from({ length: n }, (_, i) => <Icon key={i} name="star-filled" size={12} />)}
+    </span>
   );
 }
 
-/**
- * The whole body while filtering, rather than a drawer above the list.
- *
- * Clearing and applying live on the pinned button underneath — the two things
- * you do *to* the filter set belong together and in the one place on this screen
- * that never scrolls away, which is the same argument the header is built on.
- *
- * Four controls and three switches, where there were two chip fields and two
- * sliders that fought each other. Reported from testing: "the filter has grown
- * into a panel of controls that fight each other." Thirty five states as chips
- * was two thirds of the panel's height for a thing you pick one of, so it is a
- * dropdown; the sliders read against bands and could not mean anything precise,
- * so they are gone and the star rating — the one measure on this board that is
- * a single value and not a window — carries the quality filter instead.
- */
-/** The box's trip, out of the button and back into it. */
-const GROW_MS = 300;
-
-/**
- * The filter, as a box that grows out of its button.
- *
- * Asked for: "a modal ... but this modal has to open with a nice transition
- * animation like the box getting bigger from the button." The card is laid
- * out at its full size and, before the first frame is painted, animated from
- * the button's rectangle -- translated to its centre, scaled to its width and
- * height -- to where it lies, so what plays is the button's box growing into
- * the dialog. Closing runs the same trip backwards and unmounts when it
- * lands. Nothing is measured by hand: both boxes are read from the DOM, so
- * the button can sit wherever the header puts it, and a phone that has asked
- * for less motion gets the box and none of the trip.
- *
- * Web Animations rather than a transition juggled through inline styles: an
- * animation starts from its first keyframe whatever the element's style was
- * a moment ago, so it does not care that React's dev-mode double effect runs
- * the mount twice, and a close that lands mid-open cancels the trip and
- * measures the box at rest.
- *
- * It carries the dialog contract every sheet does (`useDialogFocus`): focus
- * lands on CLOSE, Escape closes, Tab stays inside.
- */
-function FilterModal({
-  from, filters, onChange, onClear, onClose, label, homeState, myStars,
+function FilterSheet({
+  filters, onChange, onClear, onClose, label, homeState,
 }: {
-  from: RefObject<HTMLButtonElement | null>;
-  filters: Filters; onChange: (f: Filters) => void;
-  onClear: () => void; onClose: () => void;
-  /** The primary button's label: what the board shows once the box closes. */
+  filters: Filters; onChange: (f: Filters) => void; onClear: () => void; onClose: () => void;
+  /** What the board shows once the sheet closes. */
   label: string;
-  homeState: string; myStars: number;
+  homeState: string;
 }) {
-  const card = useRef<HTMLElement | null>(null);
-  const closeButton = useRef<HTMLButtonElement | null>(null);
-  const [closing, setClosing] = useState(false);
-  const still = (): boolean =>
-    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  /**
-   * The transform that lays the card over the button, or null without one.
-   * Any trip in flight is cancelled first, so the card is measured at rest.
-   */
-  const ontoButton = (): string | null => {
-    const el = card.current;
-    const b = from.current?.getBoundingClientRect();
-    if (!el || !b || b.width === 0 || b.height === 0) return null;
-    for (const a of el.getAnimations()) a.cancel();
-    const c = el.getBoundingClientRect();
-    if (c.width === 0 || c.height === 0) return null;
-    const dx = b.left + b.width / 2 - (c.left + c.width / 2);
-    const dy = b.top + b.height / 2 - (c.top + c.height / 2);
-    return `translate(${dx}px, ${dy}px) scale(${b.width / c.width}, ${b.height / c.height})`;
-  };
-  const grown = useRef(false);
-  useLayoutEffect(() => {
-    // Once. Dev mode mounts twice, and the second pass would find the card
-    // already on its way and measure it there.
-    if (grown.current) return;
-    grown.current = true;
-    const el = card.current;
-    if (!el || still()) return;
-    const start = ontoButton();
-    if (!start) return;
-    // `backwards` so the first painted frame is the button's box, not a
-    // flash of the whole card before the trip begins.
-    el.animate(
-      [{ transform: start, opacity: 0.15 }, { transform: 'none', opacity: 1 }],
-      { duration: GROW_MS, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'backwards' },
-    );
-  }, []);
-  const close = (): void => {
-    if (closing) return;
-    const el = card.current;
-    const end = el && !still() ? ontoButton() : null;
-    if (!el || !end) { onClose(); return; }
-    setClosing(true);
-    const trip = el.animate(
-      [{ transform: 'none', opacity: 1 }, { transform: end, opacity: 0.15 }],
-      { duration: GROW_MS, easing: 'cubic-bezier(.4, 0, .6, 1)', fill: 'forwards' },
-    );
-    trip.finished.then(onClose, onClose);
-    // A tab in the background stops animating and `finished` waits with it;
-    // the box must not still be closing when the coach comes back to it.
-    setTimeout(onClose, GROW_MS + 100);
-  };
-  useDialogFocus(card, close, { initial: closeButton });
-  const set = <K extends keyof Filters>(k: K, v: Filters[K]) =>
-    onChange({ ...filters, [k]: v });
-  const toggleStar = (n: number) =>
-    set('stars', filters.stars.includes(n)
-      ? filters.stars.filter((s) => s !== n)
-      : [...filters.stars, n].sort((a, b) => b - a));
+  const set = <K extends keyof Filters>(k: K, v: Filters[K]) => onChange({ ...filters, [k]: v });
+  const toggleStar = (n: number) => set('stars', filters.stars.includes(n)
+    ? filters.stars.filter((s) => s !== n)
+    : [...filters.stars, n].sort((a, b) => b - a));
   const active = [
     filters.pos, filters.state, filters.stars.length > 0,
     filters.pipelineOnly, filters.untouchedOnly, filters.reachOnly,
   ].filter(Boolean).length;
 
   return (
-    <InFrame>
-      <div
-        className={`modal-scrim filter-scrim${closing ? ' is-closing' : ' fade-in'}`}
-        onClick={close}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Board filters"
-      >
-      <section ref={card} className="filter-modal" onClick={(e) => e.stopPropagation()}>
-      <header className="recruit-filter-head">
-        <span>
-          <small>BOARD FILTERS</small>
-          <strong>Shape the board</strong>
-          <p>Keep the country broad, or narrow it to the players worth a call.</p>
-        </span>
-        <b>{active > 0 ? `${active} ON` : 'ALL'}</b>
-        <button ref={closeButton} type="button" className="filter-modal-close tap" aria-label="Close the filters" onClick={close}>
-          <Cross2Icon />
-        </button>
-      </header>
-
-      <div className="filter-modal-body recruit-filter-room">
-      <div className="recruit-filter-section">
-        <div className="recruit-filter-label">
-          <span><small>POSITION</small><strong>{filters.pos ?? 'Any position'}</strong></span>
-          {filters.pos && <button type="button" onClick={() => set('pos', null)}>CLEAR</button>}
+    <Sheet
+      eyebrow={active > 0 ? `${plural(active, 'filter')} on` : undefined}
+      title="Filter prospects"
+      onClose={onClose}
+      tall
+      footer={(
+        <div className="pb-recruit-filterfoot">
+          <Button variant="secondary" disabled={active === 0} onClick={onClear}>Clear all</Button>
+          <Button variant="primary" onClick={onClose}>{label}</Button>
         </div>
-        <div className="recruit-position-grid">
-          {POSITIONS.map((pos) => (
-            <button
-              className={filters.pos === pos ? 'active' : ''}
-              type="button"
-              key={pos}
-              onClick={() => set('pos', filters.pos === pos ? null : pos)}
-            >{pos}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="recruit-filter-section">
-        <div className="recruit-filter-label">
-          <span><small>TALENT BAND</small><strong>{filters.stars.length > 0 ? `${filters.stars.join(' / ')} star` : 'Any rating'}</strong></span>
-          {filters.stars.length > 0 && <button type="button" onClick={() => set('stars', [])}>CLEAR</button>}
-        </div>
-        <div className="recruit-star-grid">
-          {[5, 4, 3, 2, 1].map((n) => (
-            <button
-              className={filters.stars.includes(n) ? 'active' : ''}
-              type="button"
-              key={n}
-              onClick={() => toggleStar(n)}
-            ><strong>{n}</strong><span>★</span></button>
-          ))}
-        </div>
-      </div>
-
-      <div className="recruit-filter-section recruit-location-filter">
-        <div className="recruit-filter-label">
-          <span><small>GEOGRAPHY</small><strong>{filters.state ?? 'Anywhere'}</strong></span>
-          {filters.state && <button type="button" onClick={() => set('state', null)}>CLEAR</button>}
-        </div>
-        <label>
-          <small>HOME STATE</small>
-          <select
-            value={filters.state ?? ''}
-            onChange={(e) => set('state', e.target.value === '' ? null : e.target.value)}
-          >
-            <option value="">ANYWHERE</option>
-            {ALL_STATES.map((st) => (
-              <option key={st} value={st}>{st}{st === homeState ? ' · YOUR STATE' : ''}</option>
-            ))}
-          </select>
-        </label>
-        <p>Your program currently carries {Math.max(1, myStars)}★ pull. Geography and pipelines can make the difference at the edge of your reach.</p>
-      </div>
-
-      <div className="recruit-filter-section">
-        <div className="recruit-filter-label">
-          <span><small>BOARD SIGNALS</small><strong>What matters right now</strong></span>
-        </div>
-        <div className="recruit-signal-grid">
-          <FilterToggle
-            on={filters.pipelineOnly}
-            onClick={() => set('pipelineOnly', !filters.pipelineOnly)}
-            label="PIPELINES"
-            note="Markets where your program already has a relationship."
-          />
-          <FilterToggle
-            on={filters.untouchedOnly}
-            onClick={() => set('untouchedOnly', !filters.untouchedOnly)}
-            label="UNTOUCHED"
-            note="Nobody in the country has spent a point on him yet."
-          />
-          <FilterToggle
-            on={filters.reachOnly}
-            onClick={() => set('reachOnly', !filters.reachOnly)}
-            label="IN REACH"
-            note="Only players who would currently take your call."
-          />
-        </div>
-      </div>
-      </div>
-
-      {/* The way out says what it leads to, off `pinnedAction`, and the
-          clear sits above it the way every secondary in the app does. */}
-      <footer className="filter-modal-foot">
-        {active > 0 && (
-          <button type="button" className="secondary-command tap" onClick={onClear}>CLEAR EVERY FILTER</button>
-        )}
-        <button type="button" className="primary-command tap" onClick={close}>{label}</button>
-      </footer>
-      </section>
-      </div>
-    </InFrame>
-  );
-}
-
-function FilterToggle({ on, onClick, label, note }: {
-  on: boolean; onClick: () => void; label: string; note: string;
-}) {
-  return (
-    <button
-      type="button"
-      className={`recruit-filter-toggle tap${on ? ' active' : ''}`}
-      aria-pressed={on}
-      onClick={onClick}
+      )}
     >
-      <span><small>{on ? 'ON' : 'OFF'}</small><strong>{label}</strong></span>
-      <p>{note}</p>
-      <i aria-hidden="true"><b /></i>
-    </button>
+      <Card title="Position">
+        <Chips label="Position" className="pb-chips--wrap pb-chips--tight">
+          {POSITIONS.map((pos) => (
+            <Chip key={pos} selected={filters.pos === pos} onClick={() => set('pos', filters.pos === pos ? null : pos)}>
+              <span title={posName(pos)}>{pos}</span>
+            </Chip>
+          ))}
+        </Chips>
+      </Card>
+      <Card title="Stars">
+        <Chips label="Stars" className="pb-chips--wrap pb-chips--tight">
+          {[5, 4, 3, 2, 1].map((n) => (
+            <Chip key={n} selected={filters.stars.includes(n)} onClick={() => toggleStar(n)}><StarRow n={n} /></Chip>
+          ))}
+        </Chips>
+      </Card>
+      <Card title="Home state">
+        <select
+          className="pb-field__input pb-select"
+          aria-label="Home state"
+          value={filters.state ?? ''}
+          onChange={(e) => set('state', e.target.value === '' ? null : e.target.value)}
+        >
+          <option value="">Anywhere</option>
+          {ALL_STATES.map((st) => (
+            <option key={st} value={st}>{stateName(st)}{st === homeState ? ' (yours)' : ''}</option>
+          ))}
+        </select>
+      </Card>
+      <List label="More filters">
+        <Switch label="Pipeline states only" checked={filters.pipelineOnly} onChange={() => set('pipelineOnly', !filters.pipelineOnly)} />
+        <Switch label="Nobody recruiting him yet" checked={filters.untouchedOnly} onChange={() => set('untouchedOnly', !filters.untouchedOnly)} />
+        <Switch label="In reach only" checked={filters.reachOnly} onChange={() => set('reachOnly', !filters.reachOnly)} />
+      </List>
+    </Sheet>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Positions needed, and your roster
+// ---------------------------------------------------------------------------
 
 /**
- * What the class has not covered, as a list you can act on.
- *
- * The same projection the class review prints, read off the same function on
- * the same two inputs — the roster standing in front of you and the men you
- * have signed. It used to count signings against the draft's own list of holes
- * and got a different answer, which is how a tab reading COVERED down its whole
- * length was followed three taps later by a class review that brought walk-ons.
- * See `coveredSince` for the two ways that went wrong.
- *
- * A row here is not a hole in the abstract. It is a man who will turn up in
- * June, at that position, thirteen points below your own level, unless somebody
- * signs first — which is why the tap filters the board to players who play
- * there.
+ * What the class has not covered, read off the same projection the class
+ * review uses: the roster standing here and the players you have signed. A
+ * row is a walk-on who turns up in June at that position unless somebody
+ * signs first, so tapping it filters the board to players who play there.
  */
 function NeedsView(
   { short, thin, covered, leaving, targeted, onPick }:
   {
     short: readonly { pos: string; count: number }[];
-    /** A starter and nobody who naturally covers him — see `depthShortfall`. */
+    /** A starter and nobody who naturally covers him; see `depthShortfall`. */
     thin: readonly { pos: string; count: number }[];
     covered: readonly { pos: string; count: number }[];
-    /** Seniors counted as gone in June, while the season is still on. */
+    /** Players counted as gone in June, while the season is still on. */
     leaving: number;
     targeted: (pos: string) => number;
     onPick: (pos: string) => void;
   },
 ) {
   const total = short.reduce((a, r) => a + r.count, 0);
-  const seniors = leaving > 0
-    ? ` Your ${leaving} senior${leaving === 1 ? ' is' : 's are'} counted as gone in June.`
-    : '';
-
   return (
-    <div style={{ marginTop: 10 }}>
-      <div style={{
-        marginBottom: 10, padding: '9px 11px', background: 'var(--paper)',
-        borderLeft: `3px solid ${total === 0 ? 'var(--win)' : 'var(--clay)'}`,
-        font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--ink)',
-      }}>
-        {(total === 0
-          ? 'Every spot covered. The whole roster is men you went and got.'
-          : `${total} walk-on${total === 1 ? '' : 's'} as it stands. Whoever turns `
-            + 'up is well below your level, and gone in a year.') + seniors
-          + (thin.length > 0 ? ` ${thin.length} spot${thin.length === 1 ? ' has' : 's have'} no natural backup.` : '')}
-      </div>
-
+    <>
+      <Callout
+        tone={total === 0 ? 'positive' : 'warning'}
+        title={total === 0 ? 'Every spot is covered' : `${plural(total, 'spot')} would go to walk-ons`}
+      >
+        {leaving > 0 ? `Counting ${plural(leaving, 'player')} leaving in June.` : undefined}
+      </Callout>
       {short.length > 0 && (
-        <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-          {short.map((h) => (
-            <button
-              key={h.pos}
-              onClick={() => onPick(h.pos)}
-              className="tap"
-              style={{
-                width: '100%', textAlign: 'left',
-                display: 'grid', gridTemplateColumns: '52px 1fr auto',
-                gap: 10, alignItems: 'center',
-                padding: '11px 11px', borderBottom: '1px solid var(--hairline)',
-                background: 'transparent',
-              }}
-            >
-              <span style={{
-                font: "700 calc(13px * var(--ts)) var(--mono)", letterSpacing: '.06em', color: 'var(--clay)',
-              }}>{h.pos}</span>
-              <span style={{ font: "400 calc(11.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)' }}>
-                {targeted(h.pos) >= h.count
-                  ? `${targeted(h.pos)} active target${targeted(h.pos) === 1 ? '' : 's'} · covered on board`
-                  : `${h.count - targeted(h.pos)} spot${h.count - targeted(h.pos) === 1 ? '' : 's'} still uncovered · ${targeted(h.pos)} active`}
-              </span>
-              <span style={{
-                font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
-              }}>SHOW ME →</span>
-            </button>
-          ))}
-        </div>
+        <Card title="Open spots" flush>
+          <List label="Open spots">
+            {short.map((h) => {
+              const on = targeted(h.pos);
+              const open = Math.max(0, h.count - on);
+              return (
+                <ListRow
+                  key={h.pos}
+                  title={posName(h.pos)}
+                  subtitle={on === 0 ? 'Nobody on your board' : `${plural(on, 'target')} on your board`}
+                  status={open === 0
+                    ? <StatusBadge tone="positive">Covered</StatusBadge>
+                    : <StatusBadge tone="warning">{open} open</StatusBadge>}
+                  onClick={() => onPick(h.pos)}
+                />
+              );
+            })}
+          </List>
+        </Card>
       )}
-
-      {/* The second tier, asked for 2026-09-10: a starter with nobody who
-          naturally covers him is a need too — one injury from a stretch. */}
       {thin.length > 0 && (
-        <>
-          <div className="label" style={{ marginTop: 16, marginBottom: 6 }}>
-            NO BACKUP
-          </div>
-          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+        <Card title="No backup" flush>
+          <List label="No backup">
             {thin.map((h) => (
-              <button
+              <ListRow
                 key={`thin-${h.pos}`}
+                title={posName(h.pos)}
+                subtitle={targeted(h.pos) > 0 ? `${plural(targeted(h.pos), 'target')} on your board` : undefined}
                 onClick={() => onPick(h.pos)}
-                className="tap"
-                style={{
-                  width: '100%', textAlign: 'left',
-                  display: 'grid', gridTemplateColumns: '52px 1fr auto',
-                  gap: 10, alignItems: 'center',
-                  padding: '11px 11px', borderBottom: '1px solid var(--hairline)',
-                  background: 'transparent',
-                }}
-              >
-                <span style={{
-                  font: "700 calc(13px * var(--ts)) var(--mono)", letterSpacing: '.06em', color: 'var(--clay)',
-                }}>{h.pos}</span>
-                <span style={{ font: "400 calc(11.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)' }}>
-                  {targeted(h.pos) > 0
-                    ? `${targeted(h.pos)} active target${targeted(h.pos) === 1 ? '' : 's'} · a backup on the board`
-                    : h.pos === 'SP' ? 'Four starters and nobody behind them' : 'A starter and nobody who naturally covers him'}
-                </span>
-                <span style={{
-                  font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: 'var(--dim)',
-                }}>SHOW ME →</span>
-              </button>
+              />
             ))}
-          </div>
-        </>
+          </List>
+        </Card>
       )}
-
-      {/* What the class has already bought. A tab that only ever lists what is
-          still wrong teaches the coach that signing somebody changes nothing. */}
       {covered.length > 0 && (
-        <>
-          <div className="label" style={{ marginTop: 16, marginBottom: 6 }}>
-            YOUR CLASS COVERED
-          </div>
-          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
+        <Card title="Covered by your class" flush>
+          <List label="Covered">
             {covered.map((h) => (
-              <div
+              <ListRow
                 key={h.pos}
-                style={{
-                  display: 'grid', gridTemplateColumns: '52px 1fr auto',
-                  gap: 10, alignItems: 'center',
-                  padding: '10px 11px', borderBottom: '1px solid var(--hairline)',
-                }}
-              >
-                <span style={{
-                  font: "700 calc(13px * var(--ts)) var(--mono)", letterSpacing: '.06em', color: 'var(--win)',
-                }}>{h.pos}</span>
-                <span style={{ font: "400 calc(11.5px * var(--ts))/1.4 var(--body)", color: 'var(--dim)' }}>
-                  {h.count > 1 ? `${h.count} spots` : 'one spot'} the class fills
-                </span>
-                <span style={{
-                  font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: 'var(--win)',
-                }}>COVERED</span>
-              </div>
+                title={posName(h.pos)}
+                status={<StatusBadge tone="positive">{h.count > 1 ? `${h.count} filled` : 'Filled'}</StatusBadge>}
+              />
             ))}
-          </div>
-        </>
+          </List>
+        </Card>
       )}
-    </div>
+    </>
   );
 }
 
@@ -1267,593 +821,479 @@ function RosterView() {
   const team = useUserTeam();
   const openPlayer = useDynasty((s) => s.openPlayer);
   if (!team) return null;
-
   const groups: [string, (Hitter | Pitcher)[]][] = [
-    ['LINEUP', team.team.lineup],
-    ['BENCH', team.team.bench],
-    ['ROTATION', team.team.rotation],
-    ['BULLPEN', team.team.bullpen],
+    ['Lineup', team.team.lineup],
+    ['Bench', team.team.bench],
+    ['Rotation', team.team.rotation],
+    ['Bullpen', team.team.bullpen],
   ];
-
   return (
-    <div style={{ marginTop: 10 }}>
+    <>
       {groups.map(([label, players]) => (
-        <div key={label} style={{ marginBottom: 12 }}>
-          <div className="label" style={{ marginBottom: 5 }}>{label}</div>
-          <div style={{ border: '1px solid var(--faint)', background: 'var(--paper)' }}>
-            {players.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => openPlayer(p.id)}
-                style={{
-                  width: '100%', textAlign: 'left',
-                  display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
-                  gap: 9, alignItems: 'center', background: 'transparent',
-                  padding: '8px 11px', borderBottom: '1px solid var(--hairline)',
-                }}
-              >
-                <Avatar id={p.id} size={28} />
-                <span style={{
-                  font: "400 calc(12.5px * var(--ts)) var(--body)",
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{p.name}</span>
-                <span style={{ font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)' }}>
-                  {p.type === 'pitcher' ? (p as Pitcher).role : p.pos} · {p.classYear}
-                </span>
-                <span style={{ font: "600 calc(12px * var(--ts)) var(--mono)" }}>{overallOf(p)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <Card key={label} title={label} eyebrow={plural(players.length, 'player')} flush>
+          <List label={label}>
+            {players.map((p) => {
+              const code = p.type === 'pitcher' ? (p as Pitcher).role : p.pos;
+              return (
+                <PlayerRow
+                  key={p.id}
+                  name={p.name}
+                  avatar={<Face id={p.id} team={team.def.abbr} size={36} />}
+                  tags={[{ text: code, title: posName(code) }, CLASS_NAME[p.classYear]]}
+                  value={overallOf(p)}
+                  valueLabel="of 100"
+                  onClick={() => openPlayer(p.id)}
+                />
+              );
+            })}
+          </List>
+        </Card>
       ))}
-    </div>
+    </>
   );
 }
 
+// ---------------------------------------------------------------------------
+// One prospect
+// ---------------------------------------------------------------------------
+
+type SheetView = 'week' | 'report' | 'schools';
+
 function ProspectSheet({
   prospect, userTeam, coachPrestige, recruitingSkill, pitch, reachable, pipeline, pipelineStrength,
-  live, full, left, week, onSet, onPitch, onMajor, onClose,
+  live, full, left, week, schoolOf, onSet, onPitch, onMajor, onClose,
 }: {
   prospect: Prospect; userTeam: number; coachPrestige: number; recruitingSkill: number;
   pitch: ReturnType<typeof pitchFor>;
   reachable: boolean; pipeline: boolean; pipelineStrength: number; live: boolean; full: boolean; left: number;
   week: number;
+  schoolOf: (i: number) => string;
   onSet: (n: number) => void;
   onPitch: (factor: RecruitingFactor | null) => boolean;
   onMajor: (action: RecruitMajorInput | null) => boolean;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<Sheet>('overview');
-  const dialog = useRef<HTMLDivElement | null>(null);
-  useDialogFocus(dialog, onClose);
+  const [tab, setTab] = useState<SheetView>('week');
+  const worksBoard = useDynasty((s) => handles(s.depth, 'recruiting'));
+  const economy = useDynasty((s) => s.economy);
+  const roster = useDynasty((s) => s.season?.teams[userTeam]?.team);
   const p = prospect.player;
   const spent = prospect.spent[userTeam] ?? 0;
-  const points = Object.values(prospect.points);
-  const best = points.length ? Math.max(...points) : 0;
-  const s2 = standing(prospect.points[userTeam] ?? 0, best, points.length > 0);
+  const share = interestShare(prospect, userTeam);
+  const status = chase(prospect, userTeam, schoolOf, reachable);
+  const overall = reportedOverall(prospect, recruitingSkill);
+  const ceiling = reportedPotential(prospect, recruitingSkill);
+  const decides = DECISION_LABEL[decisionStyle(prospect)];
+  const canWork = reachable && live && !full && worksBoard && prospect.signedBy === null;
+  const plan = recruitingPlan(prospect, pitch, {
+    team: userTeam, actions: spent, prestige: coachPrestige, skill: recruitingSkill, economy,
+    roster: roster ? [...roster.lineup, ...roster.bench, ...roster.rotation, ...roster.bullpen] : [],
+  });
+  const total = spent + weekActionCost(prospect, userTeam);
 
-  /*
-    Into the frame, not into the scroller.
-
-    The sheet rendered inside the board's momentum scroller, and iOS treats
-    absolutely-positioned layers inside one badly: after a long scroll the
-    scrim could land off-screen or keep swallowing taps it no longer appeared
-    to own — reported as 'the end week button doesn't work after we try to
-    scout one player.' The frame is the phone; a sheet covers the phone.
-  */
   return (
-    <InFrame>
-      <div ref={dialog} className="prospect-sheet-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Recruiting file: ${p.name}`}>
-        <section className="prospect-sheet-modern rise-in" onClick={(e) => e.stopPropagation()}>
-          <header className="prospect-sheet-toolbar">
-            <span><small>RECRUITING FILE</small><strong>#{prospect.rank} nationally{DECISION_LABEL[decisionStyle(prospect)] ? ` · ${DECISION_LABEL[decisionStyle(prospect)]}` : ''}</strong></span>
-            <GodBolt target={{ kind: 'recruit', id: p.id }} label={`Edit ${p.name} in god mode`} className="toolbar-god" />
-            <button className="tap" type="button" onClick={onClose}>CLOSE</button>
-          </header>
-
-          <section className="prospect-sheet-identity">
-            <span className="prospect-sheet-avatar"><Avatar id={p.id} size={68} /></span>
-            <span className="prospect-sheet-name">
-              <small>{'★'.repeat(prospect.stars)} · {prospect.state} · {slotOf(prospect)}</small>
-              <h2>{p.name}</h2>
-              <p>bats {p.bats} · throws {p.throws}</p>
-            </span>
-            <span className="prospect-sheet-standing" style={{ color: s2.tone }}>
-              <small>CHASE</small><strong>{s2.label}</strong>
-            </span>
-          </section>
-
-          <section className="prospect-sheet-snapshot">
-            <span><small>STATUS</small><strong>{prospect.signedBy !== null ? 'SIGNED' : spent > 0 ? 'TARGET' : 'AVAILABLE'}</strong></span>
-            <span><small>YOUR SPEND</small><strong>{spent + weekActionCost(prospect, userTeam) > 0 ? `${spent + weekActionCost(prospect, userTeam)}/WK` : '—'}</strong></span>
-            <span><small>PIPELINE</small><strong>{pipeline ? pipelineLabel(pipelineStrength) : 'NO'}</strong></span>
-          </section>
-
-          <div className="prospect-sheet-tabs">
-            <Segmented<Sheet>
-              label="Prospect card section"
-              value={tab}
-              onChange={setTab}
-              options={(['overview', 'report', 'stats', 'schools'] as Sheet[]).map((t) => ({
-                value: t,
-                label: SHEET_LABEL[t].charAt(0) + SHEET_LABEL[t].slice(1).toLowerCase(),
-              }))}
-            />
-          </div>
-
-          {/*
-            Keyed on the tab, so each one mounts fresh at the top.
-
-            The four tabs share one scroller and switching swapped only the
-            children, so the div kept whatever scrollTop the Overview left —
-            and the Overview is much the tallest. Reported 2026-09-12: "tap on
-            one prospect and then scroll down and then go to school offers, it
-            would show nothing or would show it cut in half."
-          */}
-          <div className="prospect-sheet-body" key={tab}>
-            {tab === 'overview' && (
-              <Overview
-                prospect={prospect} pitch={pitch} reachable={reachable}
-                pipeline={pipeline} pipelineStrength={pipelineStrength} live={live}
-                full={full} spent={spent} left={left} coachPrestige={coachPrestige}
-                recruitingSkill={recruitingSkill} week={week} userTeam={userTeam}
-                onSet={onSet} onPitch={onPitch} onMajor={onMajor}
-              />
-            )}
-            {tab === 'report' && <Report prospect={prospect} recruitingSkill={recruitingSkill} />}
-            {tab === 'stats' && <Stats prospect={prospect} />}
-            {tab === 'schools' && <Schools prospect={prospect} userTeam={userTeam} />}
-          </div>
-        </section>
+    <Sheet
+      eyebrow={`#${prospect.rank} nationally · ${stateName(prospect.state)}`}
+      title={p.name}
+      subtitle={`${posName(slotOf(prospect))} · ${handsText(p.bats, p.throws)}`}
+      lead={<Face id={p.id} size={48} />}
+      onClose={onClose}
+      tall
+      footer={tab === 'week' && canWork ? (
+        <div className="pb-recruit-total">
+          <span>
+            <b>{plural(total, 'point')} on him</b>
+            <small>{Math.max(0, left)} left this week</small>
+          </span>
+          <Button size="sm" variant="quiet" disabled={spent === 0} onClick={() => onSet(0)}>Clear effort</Button>
+        </div>
+      ) : undefined}
+    >
+      <div className="pb-cluster">
+        <Stars value={prospect.stars} label="Recruit rating" />
+        <StatusBadge tone={status.tone} icon={status.icon}>{status.label}</StatusBadge>
+        {decides && <Tag>{capsWords(decides)}</Tag>}
+        {reachable && pipeline && <Tag tone="positive">{`Pipeline: ${pipelineLabel(pipelineStrength).toLowerCase()}`}</Tag>}
+        <GodBolt target={{ kind: 'recruit', id: p.id }} label={`Edit ${p.name} in god mode`} />
       </div>
-    </InFrame>
+      <StatGroup
+        size="sm"
+        items={[
+          { label: 'Rating now', value: overall.low === overall.high ? overall.low : `${overall.low}–${overall.high}`, note: 'of 100' },
+          { label: 'Ceiling', value: ceiling.low === ceiling.high ? ceiling.low : `${ceiling.low} to ${ceiling.high}`, note: 'D to S' },
+          {
+            label: 'Interest in you',
+            value: share.any ? `${share.you}%` : '—',
+            note: !share.any ? undefined
+              : share.leaderTeam === userTeam ? 'You lead'
+                : share.leaderTeam !== null ? `${schoolOf(share.leaderTeam)} ${share.leader}%` : undefined,
+          },
+        ]}
+      />
+      <SegmentedControl<SheetView>
+        label="Prospect"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'week', label: 'This week' },
+          { value: 'report', label: 'Scouting' },
+          { value: 'schools', label: 'Other programs' },
+        ]}
+      />
+      {tab === 'week' && (
+        <WeekPlan
+          prospect={prospect} pitch={pitch} reachable={reachable} live={live} full={full}
+          spent={spent} left={left} week={week} userTeam={userTeam} plan={plan} canWork={canWork}
+          worksBoard={worksBoard}
+          onSet={onSet} onPitch={onPitch} onMajor={onMajor}
+        />
+      )}
+      {tab === 'report' && <Report prospect={prospect} recruitingSkill={recruitingSkill} />}
+      {tab === 'schools' && <Schools prospect={prospect} userTeam={userTeam} schoolOf={schoolOf} />}
+    </Sheet>
   );
-
 }
 
-function Overview({
-  prospect, pitch, reachable, pipeline, pipelineStrength, live, full, spent, left,
-  coachPrestige, recruitingSkill, week, userTeam, onSet, onPitch, onMajor,
+/**
+ * Everything he cares about, most first, as a grid of tiles: your program's
+ * grade, the grade he wants, and whether a pitch on it would land. The same
+ * grid is the pitch picker when you are working him, and a read-only card
+ * when you are not.
+ */
+function PitchGrid(
+  { prospect, pitch, selected, onPick }:
+  {
+    prospect: Prospect; pitch: ReturnType<typeof pitchFor>;
+    selected?: RecruitingFactor | null;
+    /** Omitted, the grid only reads. */
+    onPick?: (factor: RecruitingFactor | null) => void;
+  },
+) {
+  const priorities = recruitingPrioritiesOf(prospect);
+  const ranked = [...RECRUITING_FACTORS].sort((a, b) => priorities[b] - priorities[a]);
+  return (
+    <div className="pb-pitchgrid" role={onPick ? 'radiogroup' : 'list'} aria-label="What he cares about, most first">
+      {ranked.map((f, i) => {
+        const v = VERDICT[pitchVerdict(prospect, pitch, f)];
+        const on = selected === f;
+        const inner = (
+          <>
+            {i < 3 && <span className="pb-pitch__rank" aria-label={`His number ${i + 1}`}>{i + 1}</span>}
+            <span className="pb-pitch__name">{FACTOR_SHORT[f]}</span>
+            <span className="pb-pitch__grades">
+              <b>{factorGrade(factorScore(prospect, pitch, f))}</b>
+              <small>wants {factorGrade(wantedScore(prospect, f))}</small>
+            </span>
+            <span className={`pb-pitch__verdict pb-tone--${v.tone}`}><Icon name={v.icon} size={14} />{v.word}</span>
+          </>
+        );
+        return onPick ? (
+          <button
+            key={f}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            title={RECRUITING_FACTOR_BLURB[f]}
+            className={`pb-pitch${on ? ' is-selected' : ''}`}
+            onClick={() => onPick(on ? null : f)}
+          >{inner}</button>
+        ) : (
+          <div key={f} role="listitem" className="pb-pitch" title={RECRUITING_FACTOR_BLURB[f]}>{inner}</div>
+        );
+      })}
+    </div>
+  );
+}
+
+function WeekPlan({
+  prospect, pitch, reachable, live, full, spent, left, week, userTeam, plan, canWork, worksBoard,
+  onSet, onPitch, onMajor,
 }: {
   prospect: Prospect; pitch: ReturnType<typeof pitchFor>;
-  reachable: boolean; pipeline: boolean; pipelineStrength: number; live: boolean; full: boolean;
-  spent: number; left: number; coachPrestige: number; recruitingSkill: number;
-  week: number; userTeam: number;
+  reachable: boolean; live: boolean; full: boolean; spent: number; left: number; week: number; userTeam: number;
+  plan: ReturnType<typeof recruitingPlan>; canWork: boolean; worksBoard: boolean;
   onSet: (n: number) => void;
   onPitch: (factor: RecruitingFactor | null) => boolean;
   onMajor: (action: RecruitMajorInput | null) => boolean;
 }) {
+  const coordinator = useDynasty((s) => s.economy?.staff?.recruiting);
   const priorities = recruitingPrioritiesOf(prospect);
-  const wants = [...RECRUITING_FACTORS].sort(
-    (a, b) => priorities[b] - priorities[a],
-  ).slice(0, 3);
+  const wants = [...RECRUITING_FACTORS].sort((a, b) => priorities[b] - priorities[a]).slice(0, 3);
   const weekAction = prospect.weekActions?.[userTeam];
+  const major = weekAction?.major;
   const boundPromise = prospect.promiseBy?.[userTeam];
-  const promiseLocked = !!boundPromise && weekAction?.major?.kind !== 'promise';
+  const promiseLocked = !!boundPromise && major?.kind !== 'promise';
   const relationship = hasRecruitingRelationship(prospect, userTeam);
-  // A rolled sway is the week's major move, full stop: the store refuses to
-  // change it, so the buttons say so rather than tapping into a wall.
-  const swayRolled = weekAction?.major?.kind === 'sway';
+  // A sway or an ask is rolled the moment it is made: it is the week's big
+  // move, full stop.
+  const swayRolled = major?.kind === 'sway';
   const swayUsed = Boolean(prospect.swayedBy?.[userTeam]);
-  // The closing action. Why it is shut is the store's own rule, so the
-  // button says the reason rather than tapping into a wall.
-  const askRolled = weekAction?.major?.kind === 'ask';
+  const askRolled = major?.kind === 'ask';
   const askReason = askRolled ? null : askBlocked(prospect, userTeam, week, full);
-  // Same arithmetic the week close will use, including the active pitch/move.
-  const economy = useDynasty((s) => s.economy);
-  const worksBoard = useDynasty((s) => handles(s.depth, 'recruiting'));
-  // Optional all the way down: a save from before the staff screen has no
-  // `staff` object at all, and a sheet that throws is a save that will not open.
-  const coordinator = economy?.staff?.recruiting;
-  const team = useDynasty((s) => s.season?.teams[userTeam]?.team);
-  const plan = recruitingPlan(prospect, pitch, {
-    team: userTeam, actions: spent, prestige: coachPrestige, skill: recruitingSkill, economy,
-    roster: team ? [...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen] : [],
-  });
-  const overall = reportedOverall(prospect, recruitingSkill);
-  const ceiling = reportedPotential(prospect, recruitingSkill);
+  const rolled = swayRolled || askRolled;
   const hints = hintsFor(prospect);
+  // What a sway or a hard sell presses on: the pitch, or his top want.
+  const focus = weekAction?.pitch ?? wants[0]!;
+
+  if (prospect.signedBy !== null || !canWork) {
+    return (
+      <>
+        {prospect.signedBy !== null ? (
+          <Callout tone={prospect.signedBy === userTeam ? 'positive' : 'neutral'} title={prospect.signedBy === userTeam ? 'Committed to you' : 'Signed elsewhere'} />
+        ) : !reachable ? (
+          <Callout tone="neutral" icon="lock" title="Out of reach for now">Build the program up and he starts listening.</Callout>
+        ) : full ? (
+          <Callout tone="neutral" title="Your class is full" />
+        ) : !live ? (
+          <Callout tone="neutral" title="The class is closed" />
+        ) : !worksBoard ? (
+          <Callout tone="info" title={coordinator ? `${coordinator.name} works this board` : 'Your staff works this board'} />
+        ) : null}
+        {prospect.signedBy === null && (
+          <Callout tone="neutral" icon="chat" title="What the scouts say">&ldquo;{hints.ceiling.text}&rdquo;</Callout>
+        )}
+        <Card title="What he cares about">
+          <PitchGrid prospect={prospect} pitch={pitch} />
+        </Card>
+      </>
+    );
+  }
+
+  const room = Math.max(0, left);
+  const gain = Math.round(plan.gain);
 
   return (
-    <>
-      {/*
-        The estimate first, because it is the thing the rest of the sheet is
-        an argument about. Two bands and one line of what people say — the full
-        report, tool by tool, is one tab across. Putting nothing here and making
-        the report a tab you had to find would hide the only number on the
-        screen that the decision turns on.
-      */}
-      <section className="prospect-estimate">
-        <div>
-          <small>ESTIMATED OVERALL</small>
-          <strong>{overall.low}&ndash;{overall.high}</strong>
-          <span>today</span>
+    <div className="pb-steps">
+      <Step number={1} title="Put in effort" state={spent > 0 ? 'done' : 'current'} summary={spent > 0 ? plural(spent, 'point') : undefined}>
+        <Stepper
+          label="Points on him"
+          hint={room === 0 && spent < MAX_PER_RECRUIT ? 'No points left this week' : `Up to ${MAX_PER_RECRUIT}`}
+          value={spent}
+          min={0}
+          max={Math.min(MAX_PER_RECRUIT, spent + room)}
+          onChange={onSet}
+        />
+        <p className="pb-recruit-proj">
+          <span>Interest</span>
+          <b>{Math.round(plan.current)} → {Math.round(plan.projected)}</b>
+          {gain !== 0 && <span className={gain > 0 ? 'pb-tone--positive' : 'pb-tone--negative'}>{gain > 0 ? '+' : ''}{gain}</span>}
+          {plan.multiplier > 1 && <small>incl. +{Math.round((plan.multiplier - 1) * 100)}% coordinator</small>}
+        </p>
+      </Step>
+
+      <Step
+        number={2}
+        title={`Pitch one thing · ${PITCH_COST} pts`}
+        state={weekAction?.pitch ? 'done' : 'current'}
+        summary={weekAction?.pitch ? FACTOR_SHORT[weekAction.pitch] : 'Optional'}
+      >
+        <p className="pb-pitchlegend">Your grade vs. what he wants, his top 3 numbered.</p>
+        <PitchGrid prospect={prospect} pitch={pitch} selected={weekAction?.pitch ?? null} onPick={(f) => onPitch(f)} />
+      </Step>
+
+      <Step
+        number={3}
+        title="One big move"
+        state={major ? 'done' : relationship && week >= 2 ? 'current' : 'upcoming'}
+        summary={major ? MAJOR_WORDS[major.kind] : relationship && week >= 2 ? 'Optional' : 'From week 2'}
+      >
+        <div className="pb-movegrid" role="group" aria-label="Big move">
+          <MoveTile
+            title="Hard sell"
+            sub={FACTOR_SHORT[focus]}
+            cost={HARD_SELL_COST}
+            disabled={rolled}
+            selected={major?.kind === 'hardSell'}
+            onSelect={() => onMajor(major?.kind === 'hardSell' ? null : { kind: 'hardSell', factor: focus })}
+          />
+          <MoveTile
+            title="Program visit"
+            sub="Better if he fits"
+            cost={VISIT_COST}
+            disabled={rolled}
+            selected={major?.kind === 'visit'}
+            onSelect={() => onMajor(major?.kind === 'visit' ? null : { kind: 'visit' })}
+          />
+          {availableRecruitPromises(prospect.player).map((promise) => {
+            const active = major?.kind === 'promise' && major.promise === promise;
+            return (
+              <MoveTile
+                key={promise}
+                title="Promise"
+                sub={capsWords(PROMISE_LABEL[promise])}
+                hint={PROMISE_DETAIL[promise]}
+                cost={PROMISE_COST[promise]}
+                disabled={promiseLocked || rolled}
+                selected={active}
+                onSelect={() => onMajor(active ? null : { kind: 'promise', promise })}
+              />
+            );
+          })}
+          <MoveTile
+            special
+            confirm
+            title="Sway him"
+            sub={swayUsed && !swayRolled ? 'Used this season' : `Toward ${FACTOR_SHORT[focus].toLowerCase()}`}
+            armedText="Tap again · once a season"
+            cost={SWAY_COST}
+            disabled={swayUsed || rolled}
+            selected={swayRolled}
+            onSelect={() => onMajor({ kind: 'sway', factor: focus })}
+          />
+          <MoveTile
+            special
+            confirm
+            title="Ask to commit"
+            sub={askRolled ? 'Asked' : askReason ?? 'He answers now'}
+            armedText="Tap again · he answers now"
+            cost={ASK_COST}
+            disabled={rolled || askReason !== null}
+            selected={askRolled}
+            onSelect={() => onMajor({ kind: 'ask' })}
+          />
         </div>
-        <div>
-          <small>ESTIMATED CEILING</small>
-          <strong>{ceiling.low}&ndash;{ceiling.high}</strong>
-          <span>in time</span>
-        </div>
-      </section>
 
-      <section className="scout-note">
-        <small>WHAT THEY SAY</small>
-        <p>&ldquo;{hints.ceiling.text}&rdquo;</p>
-      </section>
-
-            <section className="prospect-wants">
-        {/* No counter — it overflowed on the phone and the list under it
-            already answers how many. */}
-        <div className="flow-section-title">
-          <span className="label">WHAT HE WANTS</span>
-        </div>
-        {/* His grade and ours, side by side. The list used to print our grade
-            alone, and read as though his wants were a copy of ours. */}
-        {wants.map((k, i) => {
-          const verdict = pitchVerdict(prospect, pitch, k);
-          return (
-            <div key={k}>
-              <span>{i + 1}</span>
-              <p>
-                <strong>{RECRUITING_FACTOR_LABEL[k]} · wants {factorGrade(wantedScore(prospect, k))}</strong>
-                <em className={`verdict-${verdict}`}>
-                  You have {factorGrade(factorScore(prospect, pitch, k))}
-                  {verdict === 'hollow' ? ' — he would see through a pitch on it'
-                    : verdict === 'thin' ? ' — a thin case'
-                      : verdict === 'strong' ? ' — more than he asks' : ''}
-                </em>
-                <small>{RECRUITING_FACTOR_BLURB[k]}</small>
-              </p>
-            </div>
-          );
-        })}
-      </section>
-
-      {reachable && live && !full && worksBoard && (
-        <section className="recruit-pitch-room">
-          <header>
-            <span><small>YOUR CASE</small><strong>Spend on what is actually true here</strong></span>
-            <b>{week === 1 ? 'BUILD THE BOARD' : week >= RECRUITING_WEEKS - 2 ? 'DECISION WINDOW' : 'WORK THE BOARD'}</b>
-          </header>
-          <div className="recruit-factor-grid">
-            {RECRUITING_FACTORS.map((factor) => {
-              const selected = weekAction?.pitch === factor;
-              const verdict = pitchVerdict(prospect, pitch, factor);
-              return (
-                <button
-                  type="button" key={factor}
-                  className={`tap verdict-${verdict}${selected ? ' active' : ''}`}
-                  onClick={() => onPitch(selected ? null : factor)}
-                  title={verdict === 'hollow' ? 'He wants more than you have here. A pitch on it costs you.' : undefined}
-                >
-                  <small>{RECRUITING_FACTOR_LABEL[factor]}</small>
-                  <strong>{factorGrade(factorScore(prospect, pitch, factor))}</strong>
-                  <span>WANTS {factorGrade(wantedScore(prospect, factor))} · {Math.max(1, Math.round(priorities[factor] * 20))}× FIT</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="recruit-major-room">
-            <div className="flow-section-title">
-              <span className="label">MAJOR MOVE</span>
-              <b>ONE PER WEEK</b>
-            </div>
-            {!relationship || week < 2 ? (
-              <p className="recruit-major-lock">Bank one week of interest first. Major moves unlock once there is a real relationship.</p>
-            ) : (
-              <>
-                <div className="recruit-major-buttons">
-                  <button
-                    type="button" disabled={swayRolled || askRolled} className={`tap${weekAction?.major?.kind === 'hardSell' ? ' active' : ''}`}
-                    onClick={() => {
-                      const factor = weekAction?.pitch ?? wants[0]!;
-                      onMajor(weekAction?.major?.kind === 'hardSell' ? null : { kind: 'hardSell', factor });
-                    }}
-                  ><strong>HARD SELL</strong><small>{HARD_SELL_COST} PT · double down on your pitch</small></button>
-                  <button
-                    type="button" disabled={swayRolled || askRolled} className={`tap${weekAction?.major?.kind === 'visit' ? ' active' : ''}`}
-                    onClick={() => onMajor(weekAction?.major?.kind === 'visit' ? null : { kind: 'visit' })}
-                  ><strong>PROGRAM VISIT</strong><small>{VISIT_COST} PT · sell the whole place</small></button>
-                  <button
-                    type="button" disabled={swayUsed || swayRolled || askRolled} className={`tap${swayRolled ? ' active' : ''}`}
-                    onClick={() => {
-                      const factor = weekAction?.pitch ?? wants[0]!;
-                      onMajor({ kind: 'sway', factor });
-                    }}
-                  ><strong>{swayUsed && !swayRolled ? 'SWAY USED' : 'SWAY'}</strong><small>{SWAY_COST} PT · one attempt all season</small></button>
-                  <button
-                    type="button" disabled={swayRolled || askRolled || askReason !== null} className={`tap${askRolled ? ' active' : ''}`}
-                    onClick={() => onMajor({ kind: 'ask' })}
-                  ><strong>ASK HIM TO COMMIT</strong><small>{ASK_COST} PT · {askReason ?? 'he answers now'}</small></button>
-                </div>
-                {weekAction?.major?.kind === 'ask' && (
-                  <div className={`recruit-sway-result ${weekAction.major.success ? 'won' : 'lost'}`}>
-                    {weekAction.major.success
-                      ? 'HE SAID YES — he commits when the week banks.'
-                      : `HE SAID NO — he doubts your ${weekAction.major.doubt ? RECRUITING_FACTOR_LABEL[weekAction.major.doubt].toLowerCase() : 'case'}. Ask again in week ${week + ASK_COOLDOWN}.`}
-                  </div>
-                )}
-                {weekAction?.major?.kind === 'sway' && (
-                  <div className={`recruit-sway-result ${weekAction.major.success ? 'won' : 'lost'}`}>
-                    {weekAction.major.success ? 'SWAY WORKED — his priorities moved.' : 'SWAY MISSED — the conversation did not move him.'}
-                  </div>
-                )}
-
-                {promiseLocked && boundPromise && (
-                  <div className="recruit-promise-file"><small>PROMISE ON FILE</small><strong>{PROMISE_LABEL[boundPromise]}</strong><span>{PROMISE_DETAIL[boundPromise]} This promise has been recorded and cannot be replaced.</span></div>
-                )}
-
-                <div className="recruit-promise-grid">
-                  {availableRecruitPromises(prospect.player).map((promise) => {
-                    const active = weekAction?.major?.kind === 'promise' && weekAction.major.promise === promise;
-                    return (
-                      <button
-                        type="button" key={promise} disabled={promiseLocked || swayRolled || askRolled}
-                        className={`tap${active ? ' active' : ''}`}
-                        onClick={() => onMajor(active ? null : { kind: 'promise', promise })}
-                      ><strong>PROMISE · {PROMISE_LABEL[promise]}</strong><small>{PROMISE_COST[promise]} RP · {PROMISE_DETAIL[promise]}</small></button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-        </section>
-      )}
-
-      {!reachable && (
-        <section className="recruit-decision-note is-blocked">
-          <small>OUT OF REACH</small>
-          <strong>He will not take the call.</strong>
-          <p>A recruit like him does not answer programs like yours yet. Build the place up and players like him start listening.</p>
-        </section>
-      )}
-
-      {/*
-        A mark, where three sentences used to be.
-
-        Reported as taking too much of the screen, and it was: a paragraph
-        explaining the home-state rule sat on every in-state recruit's card
-        for ever, long after the player had learned the rule. The advantage
-        itself is already visible where it does its work — it is in his
-        interest and in the pitch — so the card only has to say that it
-        applies.
-      */}
-      {reachable && pipeline && (
-        <div className="recruit-pipeline-badge">
-          <small>PIPELINE EDGE</small><strong>{pipelineLabel(pipelineStrength)} · {prospect.state}</strong>
-        </div>
-      )}
-
-      {reachable && full && (
-        <section className="recruit-decision-note is-full">
-          <small>CLASS FULL</small><strong>No scholarship room left.</strong>
-          <p>All scholarships for this class are committed. Clearing a target does not reopen a scholarship; your commits join next season.</p>
-        </section>
-      )}
-
-      {reachable && live && !full && !worksBoard && (
-        /*
-          What the board looks like once it is somebody else's job.
-
-          It reads the same as the blocked and full notes above rather than
-          inventing a fourth shape, because it is the same kind of sentence:
-          here is why there is nothing to press. Naming the man is the point —
-          "your staff handles it" is the sort of line that makes a player
-          wonder whether anything is happening at all, and his coordinator is
-          somebody he hired, pays, and can replace.
-        */
-        <section className="recruit-decision-note is-delegated">
-          <small>DELEGATED</small>
-          <strong>
-            {coordinator ? `${coordinator.name} works this board.` : 'Your staff works this board.'}
-          </strong>
-          <p>
-            {coordinator
-              ? 'He picks the targets and spends the week. He gets through a little less of it than you would, and the better he is at working a board the closer he comes.'
-              : 'With nobody in the coordinator chair it is handled by whoever is free, and it shows. Hiring one is the difference.'}
-            {' '}Turn the recruiting board back on in settings to work it yourself.
-          </p>
-        </section>
-      )}
-
-      {reachable && live && !full && worksBoard && (
-        <section className="prospect-offer">
-          <div className="prospect-offer-head">
-            <span>
-              <small>EFFORT THIS WEEK</small>
-              <strong>{spent} {spent === 1 ? 'POINT' : 'POINTS'}</strong>
-            </span>
-            <b>{plan.gain >= 0 ? '+' : ''}{Math.round(plan.gain)} interest</b>
-          </div>
-          {/*
-            Four facts as chips, not a paragraph. Reported: "remove some of the
-            text we have in effort this week, it is too long." The two
-            sentences of caveat it carried -- other schools act too, interest
-            is not a commitment -- the board teaches the first time a week
-            ends, and a coach setting an offer is reading the numbers.
-          */}
-          <div className="recruit-plan-chips" aria-live="polite">
-            <b>{plan.rp} RP</b>
-            <b>INTEREST {Math.round(plan.current)} → {Math.round(plan.projected)}</b>
-            {plan.multiplier > 1 && <b>+{Math.round((plan.multiplier - 1) * 100)}% COORDINATOR</b>}
-            <b>{week >= RECRUITING_WEEKS ? 'SIGNING DAY NEXT'
-              : `${RECRUITING_WEEKS - week} WEEK${RECRUITING_WEEKS - week === 1 ? '' : 'S'} LEFT`}</b>
-          </div>
-          {/*
-            Pips, not a track. A range input on a phone is a drag that has to
-            beat the scroller for the gesture — "the bar works fine to add
-            points but to remove them it doesn't work most of the times."
-            Twelve tap targets have no gesture to lose: tap the sixth pip and
-            the offer is six; tap it again and it is five.
-          */}
-          <div className="prospect-offer-pips">
-            {Array.from({ length: MAX_PER_RECRUIT }, (_, i) => {
-              const n = i + 1;
-              const can = n <= Math.min(MAX_PER_RECRUIT, spent + left);
-              return (
-                <button
-                  className={n <= spent ? 'on' : ''}
-                  type="button"
-                  key={n}
-                  disabled={!can}
-                  onClick={() => onSet(can ? (spent === n ? n - 1 : n) : spent)}
-                  aria-label={`Offer ${n} points`}
-                />
-              );
-            })}
-          </div>
-          <div className="prospect-offer-foot">
-            {/* The prestige floor used to be printed here — "min. prestige
-                ★★★" — which handed a hidden mechanic to the player as a
-                number. Part of the secrets scrub: the game may keep rules it
-                does not recite, and a recruit who is out of reach already
-                says so in his own voice on the card. */}
-            <span>{left} left this week</span>
-            <button type="button" disabled={spent === 0} onClick={() => onSet(0)}>Clear</button>
-          </div>
-        </section>
-      )}
-    </>
+        {major?.kind === 'promise' && (
+          <Callout tone="info" title={`If he signs: ${capsWords(PROMISE_LABEL[major.promise]).toLowerCase()}`}>
+            {PROMISE_DETAIL[major.promise]}
+          </Callout>
+        )}
+        {promiseLocked && boundPromise && (
+          <Callout tone="info" title={`Promised: ${capsWords(PROMISE_LABEL[boundPromise]).toLowerCase()}`}>
+            {PROMISE_DETAIL[boundPromise]}
+          </Callout>
+        )}
+        {swayRolled && major?.kind === 'sway' && (
+          <Callout tone={major.success ? 'positive' : 'neutral'} title={major.success ? 'The sway worked' : 'The sway missed'}>
+            {major.success ? `He cares more about ${FACTOR_SHORT[major.factor].toLowerCase()} now.` : undefined}
+          </Callout>
+        )}
+        {askRolled && major?.kind === 'ask' && (
+          <Callout tone={major.success ? 'positive' : 'warning'} title={major.success ? 'He said yes' : 'He said no'}>
+            {major.success
+              ? 'He commits when the week ends.'
+              : `He doubts your ${major.doubt ? FACTOR_SHORT[major.doubt].toLowerCase() : 'case'}. Ask again in week ${week + ASK_COOLDOWN}.`}
+          </Callout>
+        )}
+      </Step>
+    </div>
   );
 }
-
 
 /**
- * The scouting report: two bands, two impressions, and the tools underneath.
- *
- * Nothing on this tab is a fact. Every number is a window your own recruiting
- * skill decides the width of, and the two lines of prose are the only other
- * evidence there is — vague on purpose, honest always, and drawn on two
- * different things so that reading them together says more than either alone.
+ * One big move, as a tile the same size as its neighbours. Sway and ask are
+ * marked out (a bolt and a warmer tint) and take two taps, because each happens
+ * the moment it is made and cannot be taken back; touching anything else stands
+ * an armed tile down.
  */
-function Report({
-  prospect, recruitingSkill,
-}: { prospect: Prospect; recruitingSkill: number }) {
+function MoveTile(
+  { title, sub, hint, cost, selected, disabled, special, confirm, armedText, onSelect }:
+  {
+    title: string; sub: string; hint?: string; cost: number;
+    selected?: boolean; disabled?: boolean;
+    special?: boolean; confirm?: boolean; armedText?: string;
+    onSelect: () => void;
+  },
+) {
+  const [armed, setArmed] = useState(false);
+  const me = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (!armed) return undefined;
+    const stand = (e: PointerEvent): void => {
+      if (me.current && e.target instanceof Node && me.current.contains(e.target)) return;
+      setArmed(false);
+    };
+    document.addEventListener('pointerdown', stand, true);
+    return () => document.removeEventListener('pointerdown', stand, true);
+  }, [armed]);
+  return (
+    <button
+      ref={me}
+      type="button"
+      title={hint}
+      aria-pressed={!!selected}
+      disabled={disabled}
+      className={cx('pb-move', selected && 'is-selected', special && 'is-special', armed && 'is-armed')}
+      onClick={() => {
+        if (!confirm) { onSelect(); return; }
+        if (armed) { setArmed(false); onSelect(); } else setArmed(true);
+      }}
+    >
+      <span className="pb-move__title">
+        {special && <Icon name="lightning" size={14} />}
+        <span>{title}</span>
+      </span>
+      <span className="pb-move__sub">{armed && armedText ? armedText : sub}</span>
+      <span className="pb-move__cost">{cost} pts</span>
+    </button>
+  );
+}
+
+const MAJOR_WORDS: Record<RecruitMajorInput['kind'], string> = {
+  hardSell: 'Hard sell',
+  visit: 'Program visit',
+  sway: 'Sway',
+  promise: 'Promise',
+  ask: 'Asked to commit',
+};
+
+/** The scouting report: two impressions, the tools as ranges, last spring's line. */
+function Report({ prospect, recruitingSkill }: { prospect: Prospect; recruitingSkill: number }) {
   const p = prospect.player;
   const rows: [string, number][] = p.type === 'pitcher'
-    ? [['K/9', (p as Pitcher).stuff], ['H/9', (p as Pitcher).movement],
-       ['BB/9', (p as Pitcher).control], ['STAMINA', (p as Pitcher).stamina]]
-    : [['CONTACT', (p as Hitter).contact], ['POWER', (p as Hitter).power],
-       ['DISCIPLINE', (p as Hitter).eye], ['SPEED', (p as Hitter).speed],
-       ['REACTION', (p as Hitter).range], ['ARM STRENGTH', (p as Hitter).arm]];
-
-  const overall = reportedOverall(prospect, recruitingSkill);
-  const ceiling = reportedPotential(prospect, recruitingSkill);
+    ? [['Strikeout stuff', (p as Pitcher).stuff], ['Keeps hits down', (p as Pitcher).movement],
+       ['Control', (p as Pitcher).control], ['Stamina', (p as Pitcher).stamina]]
+    : [['Contact', (p as Hitter).contact], ['Power', (p as Hitter).power],
+       ['Plate discipline', (p as Hitter).eye], ['Speed', (p as Hitter).speed],
+       ['Range in the field', (p as Hitter).range], ['Arm strength', (p as Hitter).arm]];
   const hints = hintsFor(prospect);
-
+  const line = highSchoolLine(p);
   return (
     <>
-      <section className="prospect-estimate">
-        <div>
-          <small>ESTIMATED OVERALL</small>
-          <strong>{overall.low}&ndash;{overall.high}</strong>
-          <span>today</span>
-        </div>
-        <div>
-          <small>ESTIMATED CEILING</small>
-          <strong>{ceiling.low}&ndash;{ceiling.high}</strong>
-          <span>in time</span>
-        </div>
-      </section>
-
-      {/* Two impressions, not one summary. See the note on `hintsFor`. */}
-      <section className="scout-note">
-        <small>WHAT THEY SAY</small>
-        <p>&ldquo;{hints.ceiling.text}&rdquo;</p>
-        <p>&ldquo;{hints.development.text}&rdquo;</p>
-      </section>
-
-      {/* The bands drawn as bands — where inside the scale each window sits,
-          not just its two numbers. The proposal's own tool report. */}
-      <section className="prospect-tool-report">
-        {rows.map(([label, value]) => {
-          const { low, high } = reportedTool(prospect, value, recruitingSkill);
-          return (
-            <div key={label}>
-              <span>{label}</span>
-              <b>{low}&ndash;{high}</b>
-              <i><em style={{ left: `${low}%`, width: `${Math.max(2, high - low)}%` }} /></i>
-            </div>
-          );
-        })}
-      </section>
-
-      <FieldNote
-        title="Estimates, not measurements"
-        text="He is somewhere inside each band — not in the middle. Only your
-          RECRUITING skill narrows them."
-      />
+      <Callout tone="neutral" icon="chat" title="What the scouts say">
+        &ldquo;{hints.ceiling.text}&rdquo; &ldquo;{hints.development.text}&rdquo;
+      </Callout>
+      <Card title="Tools" eyebrow="Scouted ranges, of 100">
+        <DescriptionList
+          items={rows.map(([label, value]) => {
+            const { low, high } = reportedTool(prospect, value, recruitingSkill);
+            return { label, value: low === high ? String(low) : `${low}–${high}` };
+          })}
+        />
+      </Card>
+      {line.length > 0 && (
+        <Card title="Last spring" eyebrow="High school">
+          <DescriptionList items={line.map((row) => ({ label: HIGH_SCHOOL_WORD[row.label] ?? capsWords(row.label), value: row.value }))} />
+        </Card>
+      )}
     </>
   );
 }
 
-function Stats({ prospect }: { prospect: Prospect }) {
-  const line = highSchoolLine(prospect.player);
-  return (
-    <>
-      <div className="flow-section-title">
-        <span className="label">LAST SPRING</span>
-        <b>HIGH SCHOOL</b>
-      </div>
-      <section className="prospect-stats">
-        {line.map((row) => (
-          <div key={row.label}>
-            <small>{row.label}</small>
-            <strong>{row.value}</strong>
-          </div>
-        ))}
-      </section>
-      <FieldNote
-        title="Read the competition"
-        text="Everybody's numbers look absurd against high school pitching. Ask
-          whose look absurd for the right reasons."
-      />
-    </>
-  );
-}
-
-function Schools({ prospect, userTeam }: { prospect: Prospect; userTeam: number }) {
-  const season = useDynasty((s) => s.season);
+function Schools({ prospect, userTeam, schoolOf }: { prospect: Prospect; userTeam: number; schoolOf: (i: number) => string }) {
   const rivals = Object.entries(prospect.points)
-    .map(([team, pts]) => ({ team: Number(team), pts }))
+    .map(([t, pts]) => ({ team: Number(t), pts }))
     .filter((r) => r.pts > 0)
     .sort((a, b) => b.pts - a.pts);
-
-  if (!season) return null;
-  const best = rivals[0]?.pts ?? 1;
-
+  const total = rivals.reduce((a, r) => a + r.pts, 0);
+  if (rivals.length === 0) {
+    return <EmptyState icon="search" title="Nobody is recruiting him yet" />;
+  }
   return (
-    <>
-      <div className="flow-section-title">
-        <span className="label">WHO ELSE IS IN</span>
-        <b>{rivals.length} {rivals.length === 1 ? 'SCHOOL' : 'SCHOOLS'}</b>
-      </div>
-      {rivals.length === 0 && (
-        <FieldNote
-          title="Nobody has been to see him"
-          text="That is an opportunity or a warning, and the only way to find out
-            is to spend on him."
-        />
-      )}
-      <section className="school-chase">
-        {rivals.map((r, i) => {
-          const t = season.teams[r.team];
-          const mine = r.team === userTeam;
-          return (
-            <div key={r.team}>
-              <span>
-                <b>{i + 1}</b>
-                <strong>{t?.def.school ?? '?'}</strong>
-                <small>{mine ? 'YOU · ' : ''}{Math.round(r.pts)} PTS</small>
-              </span>
-              <i><em style={{ width: `${(r.pts / best) * 100}%` }} /></i>
-            </div>
-          );
-        })}
-      </section>
-    </>
+    <Card title="Who is recruiting him" eyebrow={plural(rivals.length, 'program')} flush>
+      <Table
+        dense
+        label="Programs recruiting him"
+        columns={[
+          { label: 'Program', grow: true },
+          { label: 'His interest', width: '96px', align: 'right', strong: true },
+        ]}
+        rows={rivals.map((r) => ({
+          key: r.team,
+          you: r.team === userTeam,
+          cells: [r.team === userTeam ? `${schoolOf(r.team)} (you)` : schoolOf(r.team), `${Math.round((r.pts / total) * 100)}%`],
+        }))}
+      />
+    </Card>
   );
 }
-

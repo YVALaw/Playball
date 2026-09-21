@@ -40,7 +40,7 @@ import {
   setRecruitWants, commitRecruit, presetParity, presetChaos, presetSuperteam, setMood as setMoodOf,
   type BadgeId, type BadgeTier,
 } from '../engine/godMode.js';
-import { setLeagueNames, usableLeagueNames } from '../engine/leagueNames.js';
+import { leagueName, setLeagueNames, usableLeagueNames } from '../engine/leagueNames.js';
 import type { GodTarget } from '../ui/god/target.js';
 
 /** One physical tap can arrive twice on touch hardware. Do not make Back reveal
@@ -67,16 +67,20 @@ import {
 } from '../engine/draft.js';
 import {
   newCoach, restoreCoach, reviewSeason, boardWords, jobOffers, rosterStrength, contractFor, playerBoard,
+  startingOffers, ROOKIE_PRESTIGE,
   leagueShape,
   canBeHired,
   approachSchool, APPROACHES_PER_SEASON, CAUGHT_SECURITY_COST, type ApproachOutcome,
-  prestigeStars, skillPoints, takeChair, objectivesFor,
+  prestigeStars, skillPoints, takeChair, bankStint, objectivesFor,
   type CoachState, type CoachSkills, type CoachProfile, type JobOffer, type Review,
   type SeasonOutcome, type Expectation,
 } from '../engine/program.js';
 import {
   runRivalYear, seatCoaches, syncCoachMods, coachFromAssistant, type CarouselMove, type FreeAgent,
 } from '../engine/rivals.js';
+import {
+  retirementStatus, legacyScore, type Legend, type LegendStint, type LegendYear,
+} from '../engine/retirement.js';
 import {
   ACHIEVEMENTS, awardFirstOverall, awardSeason, awardTopRecruit, noFeats,
   type AchievementId,
@@ -743,13 +747,13 @@ export function stepAfter(phase: Exclude<Phase, null>, rules: SeasonRules): Phas
 
 /** What each step is called on the rail across the top. */
 export const PHASE_LABEL: Record<Exclude<Phase, null>, string> = {
-  awards: 'AWARDS',
-  review: 'SEASON',
-  coach: 'COACH',
-  draft: 'DRAFT',
-  portal: 'PORTAL',
-  recruiting: 'RECRUIT',
-  signing: 'CLASS',
+  awards: 'Awards',
+  review: 'Season review',
+  coach: 'Coach points',
+  draft: 'Draft',
+  portal: 'Transfer portal',
+  recruiting: 'Recruiting',
+  signing: 'Signing day',
 };
 
 export interface TabDef {
@@ -765,19 +769,19 @@ export const TABS: readonly TabDef[] = [
   // the bell on the top bar (reachable from every frame, offseason included),
   // and the scorebook is where PLAY BALL takes you. A nav item that duplicates
   // a control an inch away is one more thing to read on a phone.
-  { id: 'home', label: 'HOME', screens: [
-    { id: 'today', label: 'TODAY' }, { id: 'wire', label: 'WIRE' }] },
+  { id: 'home', label: 'Home', screens: [
+    { id: 'today', label: 'Today' }, { id: 'wire', label: 'News' }] },
   // Statistics are your players, so they live with your players. Strategy is a
   // standing policy rather than a thing you check, so it sits with the program.
   // Awards are now part of the record books: only the ones your program won,
   // year by year, which is the only version of that list anybody cares about.
-  { id: 'team', label: 'TEAM', screens: [
-    { id: 'roster', label: 'ROSTER' }, { id: 'lineup', label: 'LINEUP' }, { id: 'stats', label: 'STATS' }] },
-  { id: 'season', label: 'SEASON', screens: [
+  { id: 'team', label: 'Team', screens: [
+    { id: 'roster', label: 'Roster' }, { id: 'lineup', label: 'Lineup' }, { id: 'stats', label: 'Stats' }] },
+  { id: 'season', label: 'Season', screens: [
     // CONFERENCE, not STANDINGS: the tab beside it is the national table, and
     // two tabs that both mean "the standings" leave the player working out
     // which one he is looking at from the contents rather than the name.
-    { id: 'sched', label: 'SCHEDULE' }, { id: 'stand', label: 'CONFERENCE' }, { id: 'rankings', label: 'NATIONAL' }] },
+    { id: 'sched', label: 'Schedule' }, { id: 'stand', label: 'Conference' }, { id: 'rankings', label: 'National' }] },
 
   // Saves sit here because this tab is the one that is about the career rather
   // than about the season: the board, the record books, the standing policies.
@@ -789,16 +793,16 @@ export const TABS: readonly TabDef[] = [
   // every frame, the offseason included, and a second door to the same room
   // was one more label sharing 360 pixels. The 'saves' screen id still
   // resolves — the menu and the overlay both route to it.
-  { id: 'program', label: 'PROGRAM', screens: [
+  { id: 'program', label: 'Program', screens: [
     // OVERVIEW, because that is what it is — asked for by name. PROGRAM as a
     // sub-tab of PROGRAM also said nothing the strip above had not already.
-    { id: 'records', label: 'OVERVIEW' },
+    { id: 'records', label: 'Overview' },
     // The whole country, one door. Every other route to a rival's page goes
     // through a table that happens to mention them; this one is the directory.
-    { id: 'colleges', label: 'COLLEGES' },
-    { id: 'history', label: 'HISTORY' },
-    { id: 'recruiting', label: 'RECRUIT' },
-    { id: 'strategy', label: 'STRATEGY' }] },
+    { id: 'colleges', label: 'Colleges' },
+    { id: 'history', label: 'History' },
+    { id: 'recruiting', label: 'Recruiting' },
+    { id: 'strategy', label: 'Strategy' }] },
 ];
 
 /** How far through the postseason we are, and what has happened so far. */
@@ -990,6 +994,20 @@ export interface DynastyStore {
    * is the one where you find another one.
    */
   jobSearch: boolean;
+  /**
+   * Say you are finished.
+   *
+   * Mid-season it is an announcement and the year plays out; with the season
+   * already graded there is nothing left to play and it ends there.
+   */
+  announceRetirement: () => void;
+  /** Put the career in the book and let go of the chair. */
+  endCareer: () => Promise<void>;
+  /** The next man, in the same world, with the doors your name opens. */
+  startNewCoach: (
+    profile: CoachProfile,
+    made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>>; ambition?: number },
+  ) => Promise<void>;
   /** Take one. Ends the current tenure and starts a new one. */
   acceptOffer: (team: number) => Promise<void>;
   /** Close the board meeting. */
@@ -1410,6 +1428,8 @@ export interface DynastyStore {
   bringIn: (p: Arm) => void;
   /** Go and talk to him. Once per pitcher per outing, confidence only. */
   visitMound: () => void;
+  /** The bench coach takes your pitching changes and visits, or hands them back. */
+  setBenchCoach: (on: boolean) => void;
   autoFinish: () => void;
   endManagedGame: () => Promise<void>;
 
@@ -2488,6 +2508,335 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
  * the store is busy and the button would refuse. The comments are the
  * button's; every report that shaped it applies to opening day as well.
  */
+/**
+ * How many seasons a man has actually coached.
+ *
+ * `tenure` counts the chair he is in and `history` counts finished seasons, and
+ * the two tick a moment apart in the offseason — so the longer of them is the
+ * only honest answer. The coach's own profile prints the same number.
+ */
+function careerSeasons(s: { history: SeasonRecord[]; coach: CoachState }): number {
+  return Math.max(s.history.length, s.coach.tenure);
+}
+
+/**
+ * Whether the man at the board meeting has coached his last game: he said so in
+ * the spring, or the years have run out on him. See `engine/retirement.ts`.
+ *
+ * Read at the meeting, where his age is still the age he coached the season at
+ * — the year rolls afterwards — so "over at seventy" means he finishes the
+ * season he was seventy for.
+ */
+export function careerFinished(s: {
+  history: SeasonRecord[]; coach: CoachState; year: number;
+}): boolean {
+  if (s.coach.retiredYear !== undefined) return false;
+  if (s.coach.farewellYear === s.year) return true;
+  return retirementStatus({ age: s.coach.age, seasons: careerSeasons(s) }) === 'over';
+}
+
+/**
+ * The career, written down for good.
+ *
+ * Everything a plaque or a ranking will ever want is copied in rather than
+ * referenced, because the `CoachState` it is read from is thrown away the
+ * moment a successor takes a chair, and the seasons in `history` go with him.
+ * The score is frozen here for the same reason the hall freezes a plaque: a
+ * book that re-scored itself would re-order men who are not around to earn
+ * their place again.
+ */
+function legendFrom(s: {
+  coach: CoachState; history: SeasonRecord[]; year: number;
+  season: SeasonState | null; userTeam: number;
+}, ending: Legend['ending']): Legend {
+  const here = s.season?.teams[s.userTeam]?.def.school;
+  // History names schools in full; the career book files players by their
+  // letters. Resolved once, here, while the world still has both.
+  const abbrOf = (school: string): string =>
+    s.season?.teams.find((t) => t.def.school === school)?.def.abbr ?? '';
+  const stints: LegendStint[] = [];
+  const years: LegendYear[] = [];
+  for (const row of s.history) {
+    const school = row.school ?? here ?? 'A program';
+    const abbr = abbrOf(school);
+    const last = stints[stints.length - 1];
+    const title = row.finish === 'champion' ? 1 : 0;
+    if (last && last.school === school) {
+      last.to = row.year; last.w += row.w; last.l += row.l; last.titles += title;
+    } else {
+      stints.push({ school, abbr, from: row.year, to: row.year, w: row.w, l: row.l, titles: title });
+    }
+    years.push({
+      year: row.year, school, w: row.w, l: row.l,
+      finish: row.finish, wonConference: row.wonConference,
+      ...(abbr ? { abbr } : {}),
+      // Copied rather than looked up later: the awards live on the history
+      // row, and the history goes when a successor is made.
+      ...(row.awards && row.awards.length > 0 ? { awards: row.awards.map((a) => ({ ...a })) } : {}),
+    });
+  }
+  // What the last program became while he had it, for the builder's ending.
+  const chair = s.season?.teams[s.userTeam];
+  const seasons = careerSeasons(s);
+  const coach = s.coach;
+  return {
+    name: coach.name,
+    you: true,
+    from: s.history[0]?.year ?? s.year,
+    // The year he finished in, not the last year that got a row: a season the
+    // record book never graded is still a season he coached.
+    to: Math.max(s.history[s.history.length - 1]?.year ?? s.year, s.year),
+    age: coach.age,
+    seasons,
+    careerWins: coach.careerWins,
+    careerLosses: coach.careerLosses,
+    titles: coach.titles,
+    conferenceTitles: coach.conferenceTitles,
+    regionalTitles: coach.regionalTitles,
+    tournaments: coach.tournaments,
+    stints,
+    score: legacyScore({ ...coach, seasons }),
+    ending,
+    homeState: coach.homeState,
+    look: coach.look,
+    ...(coach.badges && coach.badges.length > 0 ? { badges: [...coach.badges] } : {}),
+    years,
+    // The most any program of his gained while he had it. `bestBuild` carries
+    // the earlier chairs; the arithmetic below covers the one he is in.
+    built: Math.max(
+      coach.bestBuild ?? 0,
+      chair ? Math.round(chair.prestige - coach.arrivedPrestige) : 0,
+    ),
+  };
+}
+
+/**
+ * What the last man is worth to the next one.
+ *
+ * The successor is a rookie — twenty in every skill, no record, nothing of his
+ * own — and the only thing he has is whose staff he came off. That is worth a
+ * few points of standing and no more. Thirteen at the very top puts him at 38,
+ * which is the three-star rung of `requiredCoachPrestige` exactly: a legendary
+ * mentor opens the three-star band to him and can never open a four. A modest
+ * career is worth two or three, which is the honest value of a good reference.
+ */
+function legacyHeadStart(score: number): number {
+  return Math.max(0, Math.min(13, Math.round(score / 45)));
+}
+
+/**
+ * The year, into the books: the career lines, the marks, the coaching marks.
+ *
+ * Idempotent to a man — a season already in a career is not written twice and a
+ * mark has to be beaten rather than equalled — so it can run at the draft step
+ * and again on the paths that never reach it.
+ */
+function bookTheYear(get: () => DynastyStore): void {
+  const s = get();
+  const season = s.season;
+  if (!season) return;
+  const year = s.year;
+  archiveSeason(season, s.userTeam, year);
+  recordSeasonMarks(season, year);
+  recordCareerMarks(season, year);
+  if (season.records) {
+    const chair = season.teams[s.userTeam];
+    if (chair) recordCoachMarks(season.records, year, s.coach, chair.def.abbr);
+    for (const t of season.teams) {
+      if (t.coach) recordCoachMarks(season.records, year, t.coach, t.def.abbr);
+    }
+  }
+}
+
+/**
+ * The league's winter: everybody who is leaving leaves, everybody who stays
+ * gets a year better or worse, and your own departures become alumni.
+ *
+ * `departAndDevelop` is emphatically not idempotent — run twice it graduates a
+ * second class out of rosters that already lost one, and rebuilds the draft
+ * board over decisions the coach has already paid for — so it is guarded by
+ * `furthestPhase`, the one number in the offseason that only moves forward.
+ *
+ * Called from the draft step, where a coach walks through it, **and from the
+ * two exits that never reach that step**: a sacking and a retirement. Without
+ * the second, the whole country skipped a winter every time a career ended.
+ * Nobody graduated anywhere, nobody developed, and the next class landed on
+ * ninety-six rosters that had never been emptied — a year of the world frozen,
+ * silently, and inherited by whoever coached next.
+ */
+function leagueWinter(get: () => DynastyStore, set: (patch: Partial<DynastyStore>) => void): void {
+  const season = get().season;
+  if (!season || get().furthestPhase >= PHASES.indexOf('draft')) return;
+  const chair = season.teams[get().userTeam];
+  const year = get().year;
+  const eco = get().economy;
+  const facility = facilityEffects(eco);
+  const baseTraining = get().coach.skills.training
+    + (FACILITIES[eco.facilities]?.trainBump ?? 0);
+  const report = departAndDevelop(season, season.rng, {
+    userTeam: get().userTeam,
+    training: baseTraining + Math.round((facility.bat + facility.arm) / 4),
+    // Specialized facilities now matter on their own side of the roster.
+    trainingBat: baseTraining + Math.round(facility.bat) + devBonus(eco.staff).bat,
+    trainingArm: baseTraining + Math.round(facility.arm) + devBonus(eco.staff).arm,
+  });
+  /*
+    The alumni book — stage 13. One durable note per man who left YOUR
+    program, written the June he leaves, because the departure notice
+    itself survives one offseason and the pro career needs his round and
+    his rating for ever.
+  */
+  const notes = { ...get().alumni };
+  const myAbbr = season.teams[get().userTeam]?.def.abbr;
+  for (const d of [...report.drafted, ...report.graduated]) {
+    if (d.teamAbbr !== myAbbr) continue;
+    notes[d.id] = {
+      name: d.name, teamAbbr: d.teamAbbr, year: get().year,
+      reason: d.reason === 'drafted' ? 'drafted'
+        : d.reason === 'walk-on' ? 'walk-on' : 'graduated',
+      ...(d.round !== undefined ? { round: d.round } : {}),
+      overall: d.overall, classYear: d.classYear,
+    };
+  }
+  set({ lastOffseason: report, alumni: notes });
+
+  /*
+    First overall, which is a fact about the national board and not about
+    your roster — so it is read here, off the sorted list, rather than by
+    asking which of your men went highest.
+
+    `report.drafted` is ordered round then ability, which *is* the order
+    the clubs took them in, so the top row is the number one pick in the
+    country. It has to be checked in this branch and not on the draft
+    screen: `returned` gets written the moment a coach talks somebody
+    round, and a man who goes back to school was still taken first.
+  */
+  const first = report.drafted[0];
+  const mine = get().userTeam;
+  if (first && first.round === 1 && first.team === mine && chair) {
+    const won = awardFirstOverall(
+      get().coach.achievements, year, chair.def.abbr, first.name,
+    );
+    if (won.length > 0) {
+      set({ unseenTrophies: [...get().unseenTrophies, ...won] });
+    }
+  }
+  // The "N of your men drafted" card went in the 15.5 noise cut: it
+  // posted while you were standing ON the draft step it pointed at.
+  /*
+    The winter-badges card went in the 15.5 noise cut, named outright:
+    "when they get badges, not needed to be announced." The argument it
+    used to make for itself — that badges are TRAINING's only visible
+    return — lost to the routing rule; the chips on the player card are
+    where a badge lives, and finding one there is its own small moment.
+  */
+
+}
+
+/**
+ * The last of the draft board, and then the hall of fame meets.
+ *
+ * Anybody still sitting on the board has run out of time to be talked to;
+ * signing with the club that took him is what happens when a coach does
+ * nothing, so doing nothing means that here as well. The ballot follows,
+ * because the honest moment is the one where "his career is over" is finally a
+ * settled question.
+ *
+ * Idempotent: the men already in are passed as `inducted` and never
+ * reconsidered, and a man already released is released again to no effect.
+ *
+ * Run on the way out of a career as well as at the portal step, and for a
+ * reason beyond tidiness: the ballot weighs a man's honours out of the coach's
+ * `history`, and a retirement throws that history away the moment a successor
+ * is made. Left to next June, his last class would be voted on with nothing
+ * said in their favour.
+ */
+function settleTheDraft(get: () => DynastyStore): void {
+  const season = get().season;
+  if (!season) return;
+  for (const man of season.draft?.men ?? []) letHimGo(man);
+
+  /*
+    And with the last of them decided, the hall of fame meets. B12.
+
+    **Here rather than at the draft step, and the reason is the same one that
+    put Kingmaker at the draft step rather than on the draft screen: the
+    honest moment is the one where the fact is finally true.** A junior taken
+    in the fourth round is off the roster from the instant `departAndDevelop`
+    runs, and induct him there and a coach who then talks him into coming back
+    has a hall of famer on next year's lineup card. Every man on the board is
+    resolved one line above this, either by a conversation the coach paid for
+    or by the loop that lets the rest go, so this is the first moment in the
+    year at which "his career is over" is a settled question.
+
+    It is a moment on purpose. A list that silently recomputed itself would
+    make induction a leaderboard with a threshold, which is what the HALL tab
+    already was; the point of B12 is that somebody goes in, it is announced,
+    and it stays true afterwards. `season.hall` is written once per man and
+    never rescored — see `engine/hall.ts`.
+
+    Idempotent, and it has to be: this branch is not behind `furthestPhase`,
+    so walking back to the draft step and forward again runs it twice. The men
+    already in are passed in as `inducted` and are never reconsidered.
+  */
+  const hallYear = get().year;
+  /*
+    `history` now includes the season that has just ended — it is written at
+    the board meeting rather than at the year roll (see `settleSeason`) —
+    which is what lets this line be as simple as it looks.
+
+    It was not, and the ballot was reading every season the coach had ever
+    finished *except* the last one. That is the season a graduating senior
+    wins things in, and he is on the ballot precisely because it was his
+    last, so the case that went to the vote was systematically missing the
+    honours that argue for him.
+  */
+  /*
+    A man you talked out of the draft is not a man whose career is over.
+
+    Reported: "the player that got inducted was brought back from the draft,
+    so he shouldn't be in the hall -- only players that are no longer in the
+    league." `activeIds` reads the rosters, which is the right definition
+    and the wrong moment to rely on alone: it is one `reinstate` away from
+    being true, and this ballot runs on the very step where that happens.
+
+    The board itself knows the answer without inferring it. An outcome of
+    'stayed' *is* the statement that he is still playing here, so it is read
+    directly rather than trusted to have already been reflected on a roster.
+  */
+  const staying = new Set<string>(
+    (season.draft?.men ?? [])
+      .filter((m) => m.outcome === 'stayed')
+      .map((m) => String(m.player.id)),
+  );
+  const going = inductees({
+    careers: season.careers ?? {},
+    active: new Set([...activeIds(season.teams), ...staying]),
+    inducted: new Set((season.hall ?? []).map((m) => String(m.id))),
+    honours: honoursByPlayer(get().history),
+    year: hallYear,
+  });
+  if (going.length > 0) {
+    season.hall = [...(season.hall ?? []), ...going];
+    get().post({
+      kind: 'hall',
+      year: hallYear,
+      title: going.length === 1
+        ? `${going[0]!.name} goes into the hall`
+        : `${going.length} men go into the hall`,
+      body: going.length === 1 && going[0]
+        ? `Coach — ${going[0].line}. There is a plaque with his name on it `
+          + 'now. Bring a handkerchief.'
+        : `Coach — ${going.map((m) => m.name).join(', ')}. Plaques all `
+          + 'round. Bring a handkerchief.',
+      // One man opens his own card; a class opens the wall they are on.
+      link: going.length === 1 && going[0]
+        ? { to: 'player', id: going[0].id }
+        : { to: 'program', sheet: 'hall' },
+    });
+  }
+}
+
 function dealLikeAuto(team: TeamRecord['team'], day: number): void {
   /*
     Bench the men who cannot play, THEN order the card.
@@ -2863,12 +3212,23 @@ function seasonNews(store: DynastyStore): void {
     // season loaded from a save that predates the stamp.
     const want = store.boardAsk
       ?? playerBoard(me.prestige, rosterStrength(me.team), games).expectation;
+    /*
+      A man who has announced his last season is not being watched, he is being
+      seen off, and the letter should know which. Reported 2026-09-20: "once
+      you decide to retire, things like the halfway inbox should be something
+      different, so far ive notice nothing about the farewell tour".
+    */
+    const leaving = store.coach.farewellYear === year;
     store.post({
       kind: 'board', year, key: 'halfway',
-      title: 'Halfway, and the board is watching',
-      body: `Coach — ${w}-${half - w} at the turn puts us on for `
-        + `${Math.round((w / half) * games)} wins, against the ${want.targetWins} `
-        + 'upstairs asked for.',
+      title: leaving ? 'Halfway through your last summer' : 'Halfway, and the board is watching',
+      body: leaving
+        ? `Coach — ${w}-${half - w} at the turn, and every room you walk into `
+          + 'from here knows it is the last time. Nobody upstairs is counting '
+          + `to ${want.targetWins} any more.`
+        : `Coach — ${w}-${half - w} at the turn puts us on for `
+          + `${Math.round((w / half) * games)} wins, against the ${want.targetWins} `
+          + 'upstairs asked for.',
       /*
         And this one opens the league table. Reported 2026-09-12: "in cases like
         coach we are x-x, instead of taking the player to the board should take
@@ -3672,7 +4032,39 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       Sacked or simply not renewed: `fired` covers both, which is the thing
       the report asked for.
     */
+    /*
+      A finished career does not run the school's winter either.
+
+      Two ways in and the same door: a farewell announced in the spring, and
+      the years running out on a man who never announced anything. Both are
+      settled by now — the meeting above has already graded the last season
+      and written it into the history — so there is a whole career to put in
+      the book and nothing left to coach.
+
+      Checked before the sacking for the reason `rivals.ts` checks it before
+      the sacking: a man at the end of his last season did not get sacked, he
+      finished. See `retirementStatus`.
+    */
+    if (phase === 'review' && careerFinished(get())) {
+      await get().endCareer();
+      return;
+    }
+
     if (phase === 'review' && get().lastReview?.fired) {
+      /*
+        And the winter runs whether or not he is here to work it.
+
+        A career that ends at this meeting never reaches the draft step, where
+        the league graduates its seniors, develops everybody who stays and
+        settles the board. Without these three lines the whole country skipped
+        a year every time a coach was sacked or retired: no graduations, no
+        development, and the next class signed onto ninety-six rosters that had
+        never been emptied. The man leaving does not see any of it, which is
+        exactly why it was missed.
+      */
+      bookTheYear(get);
+      leagueWinter(get, set);
+      settleTheDraft(get);
       set({ phase: null });
       await get().rollYear();
       return;
@@ -3885,87 +4277,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // talked to. Signing with the club that took him is what happens when a
       // coach does nothing, so doing nothing has to mean that here too rather
       // than leaving him in limbo on a screen nobody will come back to.
-      for (const man of season.draft?.men ?? []) letHimGo(man);
-
-      /*
-        And with the last of them decided, the hall of fame meets. B12.
-
-        **Here rather than at the draft step, and the reason is the same one that
-        put Kingmaker at the draft step rather than on the draft screen: the
-        honest moment is the one where the fact is finally true.** A junior taken
-        in the fourth round is off the roster from the instant `departAndDevelop`
-        runs, and induct him there and a coach who then talks him into coming back
-        has a hall of famer on next year's lineup card. Every man on the board is
-        resolved one line above this, either by a conversation the coach paid for
-        or by the loop that lets the rest go, so this is the first moment in the
-        year at which "his career is over" is a settled question.
-
-        It is a moment on purpose. A list that silently recomputed itself would
-        make induction a leaderboard with a threshold, which is what the HALL tab
-        already was; the point of B12 is that somebody goes in, it is announced,
-        and it stays true afterwards. `season.hall` is written once per man and
-        never rescored — see `engine/hall.ts`.
-
-        Idempotent, and it has to be: this branch is not behind `furthestPhase`,
-        so walking back to the draft step and forward again runs it twice. The men
-        already in are passed in as `inducted` and are never reconsidered.
-      */
-      const hallYear = get().year;
-      /*
-        `history` now includes the season that has just ended — it is written at
-        the board meeting rather than at the year roll (see `settleSeason`) —
-        which is what lets this line be as simple as it looks.
-
-        It was not, and the ballot was reading every season the coach had ever
-        finished *except* the last one. That is the season a graduating senior
-        wins things in, and he is on the ballot precisely because it was his
-        last, so the case that went to the vote was systematically missing the
-        honours that argue for him.
-      */
-      /*
-        A man you talked out of the draft is not a man whose career is over.
-
-        Reported: "the player that got inducted was brought back from the draft,
-        so he shouldn't be in the hall -- only players that are no longer in the
-        league." `activeIds` reads the rosters, which is the right definition
-        and the wrong moment to rely on alone: it is one `reinstate` away from
-        being true, and this ballot runs on the very step where that happens.
-
-        The board itself knows the answer without inferring it. An outcome of
-        'stayed' *is* the statement that he is still playing here, so it is read
-        directly rather than trusted to have already been reflected on a roster.
-      */
-      const staying = new Set<string>(
-        (season.draft?.men ?? [])
-          .filter((m) => m.outcome === 'stayed')
-          .map((m) => String(m.player.id)),
-      );
-      const going = inductees({
-        careers: season.careers ?? {},
-        active: new Set([...activeIds(season.teams), ...staying]),
-        inducted: new Set((season.hall ?? []).map((m) => String(m.id))),
-        honours: honoursByPlayer(get().history),
-        year: hallYear,
-      });
-      if (going.length > 0) {
-        season.hall = [...(season.hall ?? []), ...going];
-        get().post({
-          kind: 'hall',
-          year: hallYear,
-          title: going.length === 1
-            ? `${going[0]!.name} goes into the hall`
-            : `${going.length} men go into the hall`,
-          body: going.length === 1 && going[0]
-            ? `Coach — ${going[0].line}. There is a plaque with his name on it `
-              + 'now. Bring a handkerchief.'
-            : `Coach — ${going.map((m) => m.name).join(', ')}. Plaques all `
-              + 'round. Bring a handkerchief.',
-          // One man opens his own card; a class opens the wall they are on.
-          link: going.length === 1 && going[0]
-            ? { to: 'player', id: going[0].id }
-            : { to: 'program', sheet: 'hall' },
-        });
-      }
+      settleTheDraft(get);
 
       /*
         Guarded the same way `departAndDevelop` is, and for the same reason:
@@ -4018,39 +4330,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         third was the only one that needed anything doing to it — a running total
         is the one thing here that does not get idempotence for free.
       */
-      const year = get().year;
-      archiveSeason(season, get().userTeam, year);
-      recordSeasonMarks(season, year);
-      recordCareerMarks(season, year);
-      /*
-        And then look at what those three just wrote.
-
-        Reported 2026-09-12: "the records notification red dot isn't working —
-        my team got a record but I never got notified." The dot's whole chain
-        is intact; what was missing is a scan at the moment the marks exist.
-        `unseenRecords` is filled only by `seasonNews`, and every one of that
-        function's callers is an in-season sim action — while the season, team
-        and career marks are all written here, at the draft step, after the
-        last of them has run. Nothing ever looked.
-
-        Safe here and nowhere earlier: `season.results` is still populated and
-        `get().year` has not rolled, so every guard inside `seasonNews` holds.
-        Every writer in it is keyed and idempotent, which `store.test.ts` pins
-        ("does not repeat itself when the scan runs again"), so the rail
-        walking back to the draft and forward again costs nothing.
-      */
+      bookTheYear(get);
       get().noteSeasonNews();
-      const chair = season.teams[get().userTeam];
-      // Every career in the country, not only yours. It was yours alone for as
-      // long as a rival bench was a strategy and a prestige number; now each of
-      // them is a man with a record, and a coaching section that ranked one
-      // career against nothing was measuring you against an empty field.
-      if (season.records) {
-        if (chair) recordCoachMarks(season.records, year, get().coach, chair.def.abbr);
-        for (const t of season.teams) {
-          if (t.coach) recordCoachMarks(season.records, year, t.coach, t.def.abbr);
-        }
-      }
 
       /*
         The third thing here is emphatically *not* idempotent, and the rail lets
@@ -4064,69 +4345,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         deducted. `furthestPhase` is the record of having been here, and it is
         the one thing in the offseason that only ever moves forward.
       */
-      if (get().furthestPhase < PHASES.indexOf('draft')) {
-        const eco = get().economy;
-        const facility = facilityEffects(eco);
-        const baseTraining = get().coach.skills.training
-          + (FACILITIES[eco.facilities]?.trainBump ?? 0);
-        const report = departAndDevelop(season, season.rng, {
-          userTeam: get().userTeam,
-          training: baseTraining + Math.round((facility.bat + facility.arm) / 4),
-          // Specialized facilities now matter on their own side of the roster.
-          trainingBat: baseTraining + Math.round(facility.bat) + devBonus(eco.staff).bat,
-          trainingArm: baseTraining + Math.round(facility.arm) + devBonus(eco.staff).arm,
-        });
-        /*
-          The alumni book — stage 13. One durable note per man who left YOUR
-          program, written the June he leaves, because the departure notice
-          itself survives one offseason and the pro career needs his round and
-          his rating for ever.
-        */
-        const notes = { ...get().alumni };
-        const myAbbr = season.teams[get().userTeam]?.def.abbr;
-        for (const d of [...report.drafted, ...report.graduated]) {
-          if (d.teamAbbr !== myAbbr) continue;
-          notes[d.id] = {
-            name: d.name, teamAbbr: d.teamAbbr, year: get().year,
-            reason: d.reason === 'drafted' ? 'drafted'
-              : d.reason === 'walk-on' ? 'walk-on' : 'graduated',
-            ...(d.round !== undefined ? { round: d.round } : {}),
-            overall: d.overall, classYear: d.classYear,
-          };
-        }
-        set({ lastOffseason: report, alumni: notes });
-
-        /*
-          First overall, which is a fact about the national board and not about
-          your roster — so it is read here, off the sorted list, rather than by
-          asking which of your men went highest.
-
-          `report.drafted` is ordered round then ability, which *is* the order
-          the clubs took them in, so the top row is the number one pick in the
-          country. It has to be checked in this branch and not on the draft
-          screen: `returned` gets written the moment a coach talks somebody
-          round, and a man who goes back to school was still taken first.
-        */
-        const first = report.drafted[0];
-        const mine = get().userTeam;
-        if (first && first.round === 1 && first.team === mine && chair) {
-          const won = awardFirstOverall(
-            get().coach.achievements, year, chair.def.abbr, first.name,
-          );
-          if (won.length > 0) {
-            set({ unseenTrophies: [...get().unseenTrophies, ...won] });
-          }
-        }
-        // The "N of your men drafted" card went in the 15.5 noise cut: it
-        // posted while you were standing ON the draft step it pointed at.
-        /*
-          The winter-badges card went in the 15.5 noise cut, named outright:
-          "when they get badges, not needed to be announced." The argument it
-          used to make for itself — that badges are TRAINING's only visible
-          return — lost to the routing rule; the chips on the player card are
-          where a badge lives, and finding one there is its own small moment.
-        */
-      }
+      leagueWinter(get, set);
       set({
         phase: next,
         furthestPhase: Math.max(get().furthestPhase, PHASES.indexOf(next)),
@@ -4378,7 +4597,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // (`SeasonRules.firing`; 05 §82). The other ninety-five never see it.
     if (!rulesOf(season).firing) board.tenured = true;
     const review = reviewSeason(
-      coach, me.prestige, rosterStrength(me.team), outcome, seasonLength(season.config),
+      // A man who announced this as his last is reviewed like anybody else and
+      // cannot be sacked out of a season he has already left. Read off the
+      // store rather than the `year` bound further down this function, which
+      // does not exist yet here.
+      { ...coach, farewell: coach.farewellYear === get().year },
+      me.prestige, rosterStrength(me.team), outcome, seasonLength(season.config),
       board,
     );
     /*
@@ -4387,13 +4611,32 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       before this one, and rotate by year (05 §90.9).
     */
     {
-      const words = boardWords(review, { prior: get().history, tenure: coach.tenure, year: get().year });
-      review.headline = words.headline;
-      review.message = words.message;
+      /*
+        Except for a farewell. Every line `boardWords` can choose from is a
+        board deciding what to do about next year — "five years left to
+        convince them" — and there is no next year to convince anybody in.
+        `reviewSeason` already wrote the one sentence that fits, so leave it.
+      */
+      if (coach.farewellYear !== get().year) {
+        const words = boardWords(review, { prior: get().history, tenure: coach.tenure, year: get().year });
+        review.headline = words.headline;
+        review.message = words.message;
+      }
     }
 
     // Prestige belongs to the school and survives a coaching change.
     me.prestige = review.prestigeAfter;
+    /*
+      And what he has built with it, banked every season rather than on the
+      way out -- the rule every rival's board meeting keeps (`runRivalYear`).
+      Nothing called `bankStint` before, so the player's `bestBuild` sat at
+      nought and Builder was a title only the other ninety five could wear.
+
+      A move needs nothing of its own. Outside god mode this meeting is the only
+      thing that moves his program's prestige, so the number `takeChair`
+      carries to the next chair is already the last one's final word.
+    */
+    const bestBuild = bankStint(coach, me.prestige).bestBuild ?? 0;
 
     /*
       The four habits a season answers rather than a moment.
@@ -4506,7 +4749,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       year,
       userTeam,
       games: seasonLength(season.config),
-      userOpen: review.fired,
+      // A man who announced his last season in the spring is as gone as a
+      // sacked one by the time the carousel sits down, and his chair belongs
+      // on the same market. A decision taken later — at the meeting itself —
+      // misses this winter, and the chair is filled by `seatCoaches` the
+      // moment his successor signs anywhere.
+      userOpen: review.fired || coach.farewellYear === year,
       extraFreeAgents,
     });
     // Their benches changed hands, so the edge every one of their games is
@@ -4572,6 +4820,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         regionalTitles: coach.regionalTitles + (outcome.wonRegional ? 1 : 0),
         tournaments: coach.tournaments + (outcome.madeTournament ? 1 : 0),
         skillPoints: coach.skillPoints + skillPoints(outcome),
+        bestBuild,
       },
       version: get().version + 1,
     });
@@ -5185,7 +5434,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         offers,
         // Dismissed means dismissed. The world carries on without you until you
         // take another job, and the career record is what you take with you.
-        jobSearch: review?.fired ?? false,
+        // Nobody is looking for a man who has stopped. `endCareer` rolls the
+        // year the way a sacking does, and the market it would have built is
+        // for somebody who is not coming back.
+        jobSearch: get().coach.retiredYear !== undefined ? false : (review?.fired ?? false),
         history: record ? [...get().history, record] : get().history,
         busy: false,
         tab: 'home',
@@ -5641,6 +5893,143 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (unreadCount(inbox) === 0) return;
     set({ inbox: markAllRead(inbox), version: get().version + 1 });
     void get().saveNow();
+  },
+
+  /*
+    Saying it.
+
+    Two doors, and which one a coach is standing at depends on whether there is
+    a season left to coach. In the spring there is: the year plays out as a
+    farewell and the meeting at the end of it is his last. In the offseason,
+    with the season already graded, there is nothing left to play — so it is
+    today. The one case in between is an offseason whose meeting has not
+    happened yet, and there the announcement still has a season to be about.
+
+    It touches nothing else on purpose. A game in progress finishes, the
+    schedule plays out, June happens: the season a man announces in is a season
+    like any other except that everybody knows.
+  */
+  announceRetirement: () => {
+    const { season, phase, year, userTeam, coach } = get();
+    if (!season || coach.retiredYear !== undefined || coach.farewellYear !== undefined) return;
+    const graded = get().lastReview !== null || get().history.some((h) => h.year === year);
+    if (phase !== null && graded) { void get().endCareer(); return; }
+    set({ coach: { ...coach, farewellYear: year }, version: get().version + 1 });
+    get().post({
+      kind: 'carousel',
+      year,
+      title: `${coach.name} will step down after the season`,
+      body: `Coach — the country knows this is your last year at ${season.teams[userTeam]?.def.school ?? 'the program'}. Whatever else happens now, nobody is taking the job off you.`,
+    });
+    void get().saveNow();
+  },
+
+  /*
+    The end.
+
+    Called from the board meeting, where the season has already been graded and
+    written into the history — so what goes in the book is a whole career, the
+    last season included. The world then turns over the way it turns over for a
+    sacking: the school plays its winter without him, and whoever comes next
+    arrives into the year after his last.
+  */
+  endCareer: async () => {
+    const { season, coach, year } = get();
+    if (!season || coach.retiredYear !== undefined) return;
+    /*
+      His last season, and the league's winter with it.
+
+      Neither happens anywhere else on this path: the draft step does both and
+      a career that ends at the board meeting returns two steps before it. The
+      first is why the roster that won a man's final title was missing from the
+      one screen the whole ending is about; the second is why the country used
+      to skip a year whenever somebody finished.
+    */
+    bookTheYear(get);
+    leagueWinter(get, set);
+    settleTheDraft(get);
+    const forced = retirementStatus({ age: coach.age, seasons: careerSeasons(get()) }) === 'over';
+    const legend = legendFrom(get(), coach.farewellYear !== undefined || !forced ? 'chose' : 'age');
+    // Onto the world, where it outlives him. The roll below carries it.
+    season.legends = [...(season.legends ?? []), legend];
+    set({
+      coach: { ...coach, retiredYear: year },
+      phase: null,
+      version: get().version + 1,
+    });
+    await get().rollYear();
+    /*
+      The roll builds next spring — a market, and a board asking the man in the
+      chair for thirty-three wins. Neither is addressed to him: the market is
+      for a coach looking for work and the letter is for whoever takes the job.
+      Left standing, the opener card comes up over the legacy screen and asks a
+      retired man what he is going to do about the season.
+    */
+    set({ jobSearch: false, offers: [], seasonOpener: null });
+    await get().saveNow();
+  },
+
+  /*
+    The next man, in the same world.
+
+    Not a new dynasty: the ninety six schools keep their banners, their record
+    book, their hall, their alumni and the man you have just been, who is in
+    the book with them. What he does not keep is anything that was yours — the
+    program was never his, the assistants worked for the man who hired them,
+    and the seasons in the history belong to a career that is closed. He starts
+    on the market, because that is where a coach with no chair is.
+  */
+  startNewCoach: async (profile, made) => {
+    const { season, year } = get();
+    if (!season) return;
+    const mine = [...(season.legends ?? [])].reverse().find((l) => l.you);
+    const prestige = ROOKIE_PRESTIGE + legacyHeadStart(mine?.score ?? 0);
+    const fresh = newCoach(profile, contractFor(prestige));
+    const next: CoachState = {
+      ...fresh,
+      prestige,
+      ...(made ? { skills: made.skills, badges: made.badges, leans: made.leans } : {}),
+    };
+    // Seeded off the world and the year, so this succession's desk is fixed
+    // and the next one's is not the same five schools.
+    const rng = makeRng(((season.seed ?? WORLD_SEED) ^ ((year * 2654435761) >>> 0)) >>> 0);
+    const offers: JobOffer[] = startingOffers(season.teams, 5, {
+      leans: next.leans,
+      ambition: made?.ambition,
+      rng,
+      prestige,
+      // The same test the market uses everywhere else: an empty chair, or one
+      // held by a man the school would move on for him.
+      open: (t) => !t.coach || prestige > t.coach.prestige,
+    })
+      .map((i) => season.teams[i])
+      .filter((t): t is NonNullable<typeof t> => !!t)
+      .map((t) => ({
+        team: t.index,
+        school: t.def.school,
+        conference: t.conference,
+        prestige: t.prestige,
+        pitch: mine ? 'They know whose staff you came off.' : 'They would like to talk.',
+      }));
+    set({
+      coach: next,
+      history: [],
+      economy: freshEconomy(),
+      rivalry: { w: 0, l: 0 },
+      watch: { programs: [], jobs: [] },
+      approaches: { tried: [], interest: [] },
+      inbox: [],
+      offers,
+      seasonOpener: null,
+      lastReview: null,
+      lastOutcome: null,
+      lastOffseason: null,
+      jobSearch: true,
+      tab: 'home',
+      screen: 'today',
+      version: get().version + 1,
+    });
+    await get().saveNow();
   },
 
   acceptOffer: async (team) => {
@@ -6750,7 +7139,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       if (me && deAsResult(myBracket.state).champion === userTeam) {
         get().offerBigMoment({
           kind: 'cup', team: userTeam, year: get().year,
-          line: `${me.conference} tournament champions`,
+          // The conference by its name, not its code: "Pacific Coast", not PAC.
+          line: `${leagueName(me.conference).replace(/\s+Conference$/i, '')} tournament champions`,
         });
       }
     } else if (myBracket.kind === 'regional' && myBracket.format === 'series') {
@@ -6930,6 +7320,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         continue;
       }
       if (a.k === 'visit') { live.visitMound(); continue; }
+      if (a.k === 'coach') { live.setBenchCoach(a.on); continue; }
       const arm = live.bullpenAvailable.find((p) => String(p.id) === a.id);
       if (arm) live.changePitcher(arm);
     }
@@ -6950,6 +7341,17 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       set({ live, liveMeta, version: version + 1 });
       await get().endManagedGame();
       return;
+    }
+
+    /*
+      The dugout reopens in your hands. A bench coach who had the game when the
+      app closed hands it back, and the journal says so, so the next replay
+      takes it back at the same batter this one did.
+    */
+    const lastCoach = [...j.actions].reverse().find((a) => a.k === 'coach');
+    if (lastCoach?.k === 'coach' && lastCoach.on && !live.over) {
+      live.setBenchCoach(false);
+      noteAction({ k: 'coach', on: false });
     }
 
     set({
@@ -7134,6 +7536,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // crash replays to the same crash rather than skipping the visit.
     noteAction({ k: 'visit' });
     live.visitMound();
+    set({ version: version + 1 });
+  },
+
+  setBenchCoach: (on) => {
+    const { live, version } = get();
+    if (!live || live.over) return;
+    // Journalled before the engine hears it, like every call.
+    noteAction({ k: 'coach', on });
+    live.setBenchCoach(on);
     set({ version: version + 1 });
   },
 

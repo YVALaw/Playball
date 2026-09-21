@@ -1,13 +1,13 @@
-// god/TimeEditor.tsx — calendar actions and global presets in separate panels.
+// god/TimeEditor.tsx — the calendar, and presets that rewrite the whole world.
 
 import { useState } from 'react';
 import { useDynasty } from '../../state/store.js';
-import { Segmented } from '../components/Kit.js';
 import { seasonComplete } from '../../engine/season.js';
-import { SureButton, Toast } from './controls.js';
+import { Button, Card, SegmentedControl, StatGroup } from '../components/ui/index.js';
+import { GodPage, SureButton, Toast } from './controls.js';
 
 type Panel = 'calendar' | 'presets';
-const PANELS = [{ value: 'calendar', label: 'CALENDAR' }, { value: 'presets', label: 'PRESETS' }] as const;
+const PANELS = [{ value: 'calendar', label: 'Calendar' }, { value: 'presets', label: 'Presets' }] as const;
 
 export function TimeEditor() {
   const season = useDynasty((s) => s.season);
@@ -25,33 +25,53 @@ export function TimeEditor() {
   const me = season?.teams[userTeam];
   if (!season || !me) return null;
   const over = seasonComplete(season);
+  const played = season.results.length > 0;
 
   return (
-    <main className="module-workspace god-desk">
-      <section className="god-summary-card world-summary">
-        <div><small>DAY</small><strong>{season.dayIndex + 1}</strong><span>season calendar</span></div>
-        <div><small>PLAYED</small><strong>{season.results.length}</strong><span>games recorded</span></div>
-        <div><small>STATE</small><strong className="god-summary-text">{over ? 'COMPLETE' : 'ACTIVE'}</strong><span>{over ? 'offseason next' : 'season in progress'}</span></div>
-      </section>
-      <div className="god-subnav"><Segmented value={panel} options={PANELS} onChange={setPanel} label="World editor section" /></div>
+    <GodPage eyebrow="God mode · World" title="Calendar and presets">
+      <StatGroup
+        size="sm"
+        items={[
+          { label: 'Day', value: season.dayIndex + 1, note: 'Of the season' },
+          { label: 'Games played', value: season.results.length, note: 'Across the country' },
+          { label: 'Season', value: over ? 'Over' : 'Under way' },
+        ]}
+      />
+      <SegmentedControl<Panel> label="World editor section" value={panel} onChange={setPanel} options={PANELS} />
 
-      {panel === 'calendar' && <section className="god-card">
-        <div className="god-actions">
-          <button type="button" className="tap" disabled={season.results.length > 0} onClick={() => { if (reshuffle()) setNote('The schedule was redrawn.'); }}>RESHUFFLE SCHEDULE</button>
-          <button type="button" className="tap" disabled={over || busy || !!live} onClick={() => { closeGodAll(); void playSeason(); }}>SIM THE SEASON</button>
-        </div>
-        <p className="god-note">{season.results.length > 0 ? 'The current schedule is locked because games have already been played.' : 'Reshuffle redraws the same fixture structure before the first pitch.'} Sim Season plays every remaining date to June, then returns to the normal offseason flow.</p>
-      </section>}
+      {panel === 'calendar' && (
+        <>
+          <Card title="Redraw the schedule">
+            <p className="pb-text-muted">
+              {played ? 'Locked: games have been played.' : 'Before the first pitch only.'}
+            </p>
+            <Button variant="secondary" block icon="shuffle" disabled={played} onClick={() => { if (reshuffle()) setNote('The schedule was redrawn.'); }}>Redraw the schedule</Button>
+          </Card>
+          <Card title="Sim the rest of the season">
+            <p className="pb-text-muted">Plays every game left through June.</p>
+            <Button variant="primary" block icon="play" disabled={over || busy || !!live} onClick={() => { closeGodAll(); void playSeason(); }}>Sim the season</Button>
+          </Card>
+        </>
+      )}
 
-      {panel === 'presets' && <section className="god-card">
-        <p className="god-panel-lead">Global presets can rewrite many programs or players at once, so each requires a second press.</p>
-        <div className="god-preset-grid">
-          <div><strong>PARITY</strong><p>Every program becomes 50 prestige.</p><SureButton label="APPLY PARITY" onSure={() => { preset('parity'); setNote('Every program is a fifty.'); }} /></div>
-          <div><strong>CHAOS</strong><p>Every program draws a fresh prestige.</p><SureButton label="APPLY CHAOS" onSure={() => { preset('chaos'); setNote('Every program drew a new prestige.'); }} /></div>
-          <div><strong>SUPERTEAM</strong><p>Your roster becomes 99 OVR with a 99 ceiling.</p><SureButton label="MAKE SUPERTEAM" onSure={() => { preset('superteam'); setNote(`${me.def.school}: everybody is a 99.`); }} /></div>
-        </div>
-      </section>}
+      {panel === 'presets' && (
+        <>
+          
+          <Card title="Parity" eyebrow="Every program">
+            <p className="pb-text-muted">Every program&rsquo;s prestige becomes 50.</p>
+            <SureButton label="Apply parity" armed="Tap again: every program becomes a 50" onSure={() => { preset('parity'); setNote('Every program is a 50 now.'); }} />
+          </Card>
+          <Card title="Chaos" eyebrow="Every program">
+            <p className="pb-text-muted">Every program draws a new prestige at random.</p>
+            <SureButton label="Apply chaos" armed="Tap again: every prestige is redrawn" onSure={() => { preset('chaos'); setNote('Every program drew a new prestige.'); }} />
+          </Card>
+          <Card title="Superteam" eyebrow={me.def.school}>
+            <p className="pb-text-muted">Everyone on your roster becomes a 99 with a 99 ceiling.</p>
+            <SureButton label="Make a superteam" armed="Tap again: your whole roster becomes 99" onSure={() => { preset('superteam'); setNote(`${me.def.school}: everybody is a 99.`); }} />
+          </Card>
+        </>
+      )}
       <Toast note={note} />
-    </main>
+    </GodPage>
   );
 }

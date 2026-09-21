@@ -1,13 +1,13 @@
-// god/MoneyEditor.tsx — budget and staff, separated into tabs.
+// god/MoneyEditor.tsx — the budget and the staff, in two panels.
 
 import { useState } from 'react';
 import { useDynasty, boardBudget } from '../../state/store.js';
-import { Segmented } from '../components/Kit.js';
 import { SEATS, SEAT_LABEL, dollars, remaining } from '../../engine/economy.js';
-import { Field, Slider } from './controls.js';
+import { Button, Callout, Card, SegmentedControl, StatGroup } from '../components/ui/index.js';
+import { Field, GodPage, Slider } from './controls.js';
 
 type Panel = 'budget' | 'staff';
-const PANELS = [{ value: 'budget', label: 'BUDGET' }, { value: 'staff', label: 'STAFF' }] as const;
+const PANELS = [{ value: 'budget', label: 'Budget' }, { value: 'staff', label: 'Staff' }] as const;
 
 export function MoneyEditor() {
   const season = useDynasty((s) => s.season);
@@ -20,24 +20,50 @@ export function MoneyEditor() {
   void version;
   const me = season?.teams[userTeam];
   if (!season || !me) return null;
+  const money = dollars(remaining(economy, me.prestige));
+  const points = boardBudget(season, userTeam, economy.recruitingGrant);
 
   return (
-    <main className="module-workspace god-desk">
-      <section className="god-summary-card money-summary">
-        <div><small>AVAILABLE</small><strong className="god-summary-text">{dollars(remaining(economy, me.prestige))}</strong><span>annual money</span></div>
-        <div><small>RECRUITING</small><strong>{boardBudget(season, userTeam, economy.recruitingGrant)}</strong><span>points per week</span></div>
-      </section>
-      <div className="god-subnav"><Segmented value={panel} options={PANELS} onChange={setPanel} label="Budget and staff section" /></div>
+    <GodPage eyebrow="God mode · Program" title="Budget and staff" description={me.def.school}>
+      <StatGroup
+        size="sm"
+        items={[
+          { label: 'Money left', value: money, note: 'This year' },
+          { label: 'Recruiting', value: points, note: 'Points a week' },
+        ]}
+      />
+      <SegmentedControl<Panel> label="Budget and staff section" value={panel} onChange={setPanel} options={PANELS} />
 
-      {panel === 'budget' && <section className="god-card">
-        <div className="god-actions"><span><small>ANNUAL MONEY</small><strong>{dollars(remaining(economy, me.prestige))}</strong></span><button type="button" className="tap" onClick={() => grant('money', 25)}>+{dollars(25)}</button><button type="button" className="tap" onClick={() => grant('money', 100)}>+{dollars(100)}</button></div>
-        <div className="god-actions"><span><small>RECRUITING · EVERY WEEK</small><strong>{boardBudget(season, userTeam, economy.recruitingGrant)}</strong></span><button type="button" className="tap" onClick={() => grant('recruiting', 5)}>+5</button><button type="button" className="tap" onClick={() => grant('recruiting', 10)}>+10</button></div>
-        <p className="god-note">Money sits on top of the annual budget. Recruiting points sit on top of every week's board budget.</p>
-      </section>}
+      {panel === 'budget' && (
+        <>
+          <Card title="Money" eyebrow={`${money} left this year`}>
+            <div className="pb-buttons-2">
+              <Button variant="secondary" icon="plus" onClick={() => grant('money', 25)}>Add {dollars(25)}</Button>
+              <Button variant="secondary" icon="plus" onClick={() => grant('money', 100)}>Add {dollars(100)}</Button>
+            </div>
+            <p className="pb-note">Added on top of this year&rsquo;s budget.</p>
+          </Card>
+          <Card title="Recruiting points" eyebrow={`${points} a week`}>
+            <div className="pb-buttons-2">
+              <Button variant="secondary" icon="plus" onClick={() => grant('recruiting', 5)}>Add 5 a week</Button>
+              <Button variant="secondary" icon="plus" onClick={() => grant('recruiting', 10)}>Add 10 a week</Button>
+            </div>
+            <p className="pb-note">Added to every week&rsquo;s recruiting points.</p>
+          </Card>
+        </>
+      )}
 
-      {panel === 'staff' && <section className="god-card">
-        {SEATS.map((seat) => { const staffer = economy.staff[seat]; return staffer ? <div key={seat} className="god-staff"><Field label={SEAT_LABEL[seat]} value={staffer.name} onCommit={(v) => setStaff(seat, { name: v })} /><Slider label="RATING" value={staffer.rating} onCommit={(v) => setStaff(seat, { rating: v })} /></div> : <p key={seat} className="god-note">{SEAT_LABEL[seat]}: the seat is empty. Hire from the market first.</p>; })}
-      </section>}
-    </main>
+      {panel === 'staff' && SEATS.map((seat) => {
+        const staffer = economy.staff[seat];
+        return staffer ? (
+          <Card key={seat} title={SEAT_LABEL[seat]}>
+            <Field label="Name" value={staffer.name} onCommit={(v) => setStaff(seat, { name: v })} />
+            <Slider label="Rating" value={staffer.rating} onCommit={(v) => setStaff(seat, { rating: v })} />
+          </Card>
+        ) : (
+          <Callout key={seat} tone="neutral" title={SEAT_LABEL[seat]}>The job is empty. Hire someone from the staff market first.</Callout>
+        );
+      })}
+    </GodPage>
   );
 }

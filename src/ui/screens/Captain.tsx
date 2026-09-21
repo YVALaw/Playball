@@ -1,58 +1,43 @@
 // Captain.tsx
 // Who wears the C, and why it is a decision rather than a formality.
 //
-// Reported after the first real play session: *"the button set captain in roster
-// ... it should have its own screen with hints of whom should be the captain,
-// the way we have it right now we don't really have an option to decide, it
-// simply show us one person and that person is the one that gets selected. Not a
-// real decision."*
-//
-// That was exactly right. The button went to the depth chart, which named the
-// room's own choice at the top of a page about something else — so the one man
-// the game suggested was the only man you ever saw, and picking him was the only
-// thing the screen let you do.
-//
-// A decision needs more than one door and a reason to prefer one. So this screen
-// shows every eligible man, says what each of them brings, says who the room
-// would pick if nobody asked you, and lets you disagree. The engine's rules are
-// unchanged: a freshman never leads, and a man without one of the three
-// leadership badges is not on the list — those are the room's rules, not the
-// screen's, and `appoint` enforces them whatever this page renders.
+// Every eligible player is listed with the reason to pick him, the team's own
+// choice is said out loud (seniority first, then ability) rather than applied,
+// and you can disagree. The rules are the engine's and `appoint` enforces them
+// whatever this page renders: a freshman never leads, and a player without
+// one of the three leadership badges is not on the list.
 
-import { useState } from 'react';
-import { StarIcon } from '@radix-ui/react-icons';
-import { Modal } from '../Modal.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { Avatar } from '../Avatar.js';
 import { BADGES, badgesOf } from '../../engine/badges.js';
 import { candidates, captainOf, roomsChoice } from '../../engine/captains.js';
-import { overallOf } from '../../engine/ratings.js';
+import { overallOf, naturalPos } from '../../engine/ratings.js';
 import { mood } from '../../engine/morale.js';
-import { FieldNote, ModuleIntro, SectionHeading } from '../components/Kit.js';
-import type { Player, PlayerId } from '../../engine/types.js';
+import type { Hitter, Pitcher, Player, PlayerId, Position } from '../../engine/types.js';
+import {
+  Button, ConfirmButton, EmptyState, Face, List, Marquee, PlayerRow, SectionHeader, StatusBadge, Tag,
+} from '../components/ui/index.js';
+import { CLASS_NAME, POSITION_NAME, capsWords } from '../words.js';
 
-/** The three badges the room actually follows, in the words it uses for them. */
+/** The three badges the team follows. */
 const LEADERSHIP = ['gymRat', 'noPanic', 'bigStage'];
 
+/** The position he plays, as a short tag with its full name on hover. */
+const slotOf = (p: Player): string =>
+  p.type === 'pitcher' ? (p as Pitcher).role : naturalPos(p as Hitter);
+
 /**
- * Why this man, in one line.
- *
- * Built from what he actually has rather than from a rating: the badges are the
- * reason he is eligible at all, so they are the reason to pick him. Seniority
- * and mood come after, because those are the two things that decide whether the
- * room listens when he speaks.
+ * Why this man, in one line: the badges that make him eligible, then his mood,
+ * which decides whether the room listens when he speaks.
  */
 function caseFor(p: Player): string {
   const held = badgesOf(p)
     .filter((b) => LEADERSHIP.includes(b.id))
-    .map((b) => BADGES[b.id].label.toLowerCase());
-  const year = p.classYear === 'SR' ? 'A senior'
-    : p.classYear === 'JR' ? 'A junior' : 'A sophomore';
+    .map((b) => capsWords(BADGES[b.id].label));
   const feeling = mood(p);
-  const room = feeling === 'unhappy' ? ' He is unhappy, which the room will hear.'
-    : feeling === 'restless' ? ' He is restless.'
-      : feeling === 'buzzing' ? ' He is buzzing, and the room can feel it.' : '';
-  return `${year} with ${held.length === 1 ? held[0] : held.join(' and ')}.${room}`;
+  const room = feeling === 'unhappy' ? ' · unhappy'
+    : feeling === 'restless' ? ' · restless'
+      : feeling === 'buzzing' ? ' · buzzing' : '';
+  return `${held.join(', ')}${room}`;
 }
 
 export function Captain() {
@@ -60,9 +45,6 @@ export function Captain() {
   const version = useDynasty((s) => s.version);
   const nameCaptain = useDynasty((s) => s.nameCaptain);
   const clearCaptain = useDynasty((s) => s.clearCaptain);
-  // Who is being handed the C, pending a yes. Nothing changes until it comes.
-  const [asking, setAsking] = useState<string | null>(null);
-  const [stripping, setStripping] = useState(false);
   const openPlayer = useDynasty((s) => s.openPlayer);
   void version;
 
@@ -71,109 +53,80 @@ export function Captain() {
   const men = candidates(team.team);
   const current = captainOf(team.team);
   const suggested = roomsChoice(team.team);
-  const asked = men.find((m) => String(m.id) === asking) ?? null;
 
   return (
-    <main className="module-workspace">
-      <ModuleIntro
-        kicker="THE ROOM"
-        title={current ? `${current.name} wears the C` : 'Nobody wears the C'}
-      />
+    <main className="pb-page">
+      <Marquee eyebrow="Who wears the C" title="Captain" />
 
       {men.length === 0 ? (
-        <section className="empty-state">
-          <StarIcon />
-          <h2>Nobody is ready</h2>
-          <p>
-            Nobody here can carry the C yet. Leaders are upperclassmen with the
-            makeup for it — recruit one, or wait.
-          </p>
-        </section>
+        <EmptyState
+          icon="star"
+          title="Nobody is ready yet"
+          text="A sophomore or older with Gym rat, No panic or Big stage can wear it."
+        />
       ) : (
-        <>
-          {/*
-            The room's own pick, said out loud rather than applied.
-
-            Seniority first and ability second, because that is how a dressing
-            room actually chooses. Showing it beside the list rather than at the
-            top of it is what makes ignoring it a decision instead of an
-            oversight.
-          */}
-          <SectionHeading
-            kicker="ELIGIBLE"
-            title={men.length === 1 ? 'One man' : `${men.length} men`}
+        <section>
+          <SectionHeader
+            title="Who can wear the C"
+            count={men.length}
+            description={suggested ? `The team would pick ${suggested.name}` : undefined}
           />
-
-          <section className="captain-list">
+          <List label="Captain candidates">
             {men.map((p) => {
               const isCurrent = current?.id === p.id;
               const isRoom = suggested?.id === p.id;
+              const slot = slotOf(p);
               return (
-                <div className={isCurrent ? 'is-captain' : ''} key={p.id}>
-                  <button
-                    className="captain-man tap"
-                    type="button"
+                <div className="pb-candidate" key={p.id}>
+                  <PlayerRow
+                    name={p.name}
+                    avatar={<Face id={p.id} team={team.def.abbr} size={40} />}
+                    mark={isCurrent
+                      ? <Tag tone="positive">Captain</Tag>
+                      : isRoom ? <Tag tone="you" title="The one the players would pick">Team&rsquo;s pick</Tag> : undefined}
+                    tags={[
+                      { text: slot, title: POSITION_NAME[slot as Position] ?? slot },
+                      CLASS_NAME[p.classYear],
+                    ]}
+                    meta={caseFor(p)}
+                    value={overallOf(p)}
+                    valueLabel="Rating"
                     onClick={() => openPlayer(p.id as PlayerId)}
-                  >
-                    <span className="portrait">
-                      <Avatar id={p.id} team={team.def.abbr} size={34} />
-                    </span>
-                    <span>
-                      <strong>
-                        {p.name}
-                        {isCurrent && <em>CAPTAIN</em>}
-                        {!isCurrent && isRoom && <em className="room">THE ROOM</em>}
-                      </strong>
-                      <small>
-                        {p.type === 'pitcher' ? p.role : p.pos} · {p.classYear}
-                        {' · '}{overallOf(p)} OVR
-                      </small>
-                      <p>{caseFor(p)}</p>
-                    </span>
-                  </button>
-                  <button
-                    className="captain-pick tap"
-                    type="button"
-                    disabled={isCurrent}
-                    onClick={() => setAsking(String(p.id))}
-                  >{isCurrent ? 'He has it' : 'Give him the C'}</button>
+                  />
+                  <div className="pb-candidate__action">
+                    {isCurrent ? (
+                      <StatusBadge tone="positive" icon="star-filled">Wears the C</StatusBadge>
+                    ) : current ? (
+                      <ConfirmButton
+                        size="sm"
+                        variant="secondary"
+                        icon="star"
+                        idle="Make him captain"
+                        armed="Tap again to hand him the C"
+                        armedMeta={`${current.name} loses it`}
+                        onConfirm={() => nameCaptain(p.id as PlayerId)}
+                      />
+                    ) : (
+                      <Button size="sm" variant="primary" icon="star" onClick={() => nameCaptain(p.id as PlayerId)}>
+                        Make him captain
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}
-          </section>
-
-          {current && (
-            <button
-              className="secondary-command tap"
-              type="button"
-              onClick={() => setStripping(true)}
-            >TAKE THE C OFF {current.name.toUpperCase()}</button>
-          )}
-        </>
+          </List>
+        </section>
       )}
 
-      {asked && (
-        <Modal
-          kicker="THE ARMBAND"
-          title={`Give the C to ${asked.name}?`}
-          lines={[
-            current
-              ? `${current.name} loses it the moment he takes it.`
-              : 'The room steadies around whoever wears it.',
-          ]}
-          action="GIVE HIM THE C"
-          cancel={{ label: 'NOT YET', onClick: () => setAsking(null) }}
-          onClose={() => { nameCaptain(asked.id as PlayerId); setAsking(null); }}
-        />
-      )}
-      {stripping && current && (
-        <Modal
-          kicker="THE ARMBAND"
-          title={`Take the C off ${current.name}?`}
-          lines={['The room goes without one until you name somebody.']}
-          action="TAKE IT OFF"
-          cancel={{ label: 'LEAVE IT', onClick: () => setStripping(false) }}
-          onClose={() => { clearCaptain(); setStripping(false); }}
+      {current && (
+        <ConfirmButton
+          variant="secondary"
+          block
+          idle={`Take the C off ${current.name}`}
+          armed="Tap again to take it off"
+          armedMeta="The team goes without one"
+          onConfirm={() => { clearCaptain(); }}
         />
       )}
     </main>

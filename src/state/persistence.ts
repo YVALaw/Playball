@@ -34,7 +34,21 @@ import type { SeasonState } from '../engine/season.js';
  */
 // 6 — season morale settlement is idempotent; project targets, weekly focus
 // and completion reports persist. The store backfills older staff plans.
-export const SCHEMA_VERSION = 6;
+/*
+  7 — a career can end. The coach carries `farewellYear` and `retiredYear`, and
+  the world carries `legends`, the book of every career it has seen finish.
+  Both ride the save already — `buildSaveFile` names the coach wholesale and
+  `toPortable` spreads the season — so there is nothing structural to migrate,
+  and nothing to backfill either: an absent book means this world has recorded
+  no finished careers, and an absent `retiredYear` means he has not finished,
+  both of which are true of every save written before this. Invented legends
+  for a career already in progress would be worse than none.
+
+  The bump is for the other direction. An older build reading a version 7 file
+  would ignore both fields and put a retired man back in a chair, which is the
+  same reason version 5 bumped for fields it could otherwise have ignored.
+*/
+export const SCHEMA_VERSION = 7;
 
 const DB_NAME = 'playball';
 const STORE = 'dynasties';
@@ -197,6 +211,15 @@ export interface SaveSummary {
    * label somebody typed once and never revisited.
    */
   school: string;
+  /**
+   * A career that has ended, and whose. Read off the file's own coach -- the
+   * flag a retirement writes is on him -- so nothing new has to be stored, and
+   * a save written before retirement existed simply has none.
+   *
+   * The school's season record means nothing once the man is gone (it is next
+   * year's, at nought), so a finished career lists his instead.
+   */
+  retired?: { year: number; coach: string; record: string };
 }
 
 /**
@@ -682,6 +705,16 @@ export async function listSaves(): Promise<SaveSummary[]> {
     .map((f): SaveSummary => {
       try {
         const team = f.season.teams[f.userTeam];
+        const coach = (f.coach ?? null) as {
+          retiredYear?: unknown; name?: unknown; careerWins?: unknown; careerLosses?: unknown;
+        } | null;
+        const retired = coach && typeof coach.retiredYear === 'number'
+          ? {
+            year: coach.retiredYear,
+            coach: String(coach.name ?? 'Coach'),
+            record: `${Number(coach.careerWins) || 0}-${Number(coach.careerLosses) || 0}`,
+          }
+          : undefined;
         return {
           slot: f.slot,
           name: f.name,
@@ -689,6 +722,7 @@ export async function listSaves(): Promise<SaveSummary[]> {
           year: f.year,
           record: team ? `${team.w}-${team.l}` : '—',
           school: team ? team.def.school : '—',
+          ...(retired ? { retired } : {}),
         };
       } catch {
         // One file that cannot be read is one row that says so, not an empty

@@ -10,8 +10,20 @@
 // Dismissable by tapping anywhere, because a modal you have to aim at is a
 // modal that has outstayed its welcome.
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useDialogFocus } from './dialogFocus.js';
+import { Icon, cx } from './components/ui/index.js';
+
+/**
+ * A label a caller wrote in capitals, in sentence case: "LET'S GO" reads
+ * "Let's go". Anything already in mixed case is left as written.
+ */
+function words(text: string): string {
+  if (!/[A-Z]/.test(text) || text !== text.toUpperCase()) return text;
+  const lower = text.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
 
 export function Modal(
   { kicker, title, lines, body, tone = 'ink', action, onClose, cancel, nudge }:
@@ -89,54 +101,50 @@ export function Modal(
     el.classList.add('is-nudged');
   }, [nudge]);
 
-  return (
-    <div
-      className="modal-scrim fade-in"
-      onClick={dismiss}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${kicker} ${title}`}
-    >
-      {/*
-        The proposal's season verdict, doing a second job. It is the one dark
-        panel in the whole stylesheet built to carry an announcement — a green
-        kicker, a huge condensed line, a paragraph under it — which is exactly
-        what this dialog is for. The tone rides on the title's colour: gold for
-        a trophy, red for a season that is over, and cream for the middle case
-        that is neither.
-      */}
+  const titleId = useId();
+  const host = typeof document === 'undefined' ? null : document.querySelector('.app-frame');
+  const dialog = (
+    <div className="pb-dialog-host" onClick={dismiss}>
       <section
         ref={card}
-        className={`modal-card season-verdict rise-in tone-${tone}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className={cx('pb-dialog', `pb-dialog--${tone}`)}
         onClick={(e) => e.stopPropagation()}
       >
-        <small>{kicker}</small>
-        <strong>{title}</strong>
-        {lines.map((l, i) => <p key={i}>{l}</p>)}
+        {tone !== 'ink' && (
+          <span className="pb-dialog__icon" aria-hidden>
+            <Icon name={tone === 'win' ? 'check-circled' : 'info'} size={28} />
+          </span>
+        )}
+        <span className="pb-eyebrow">{words(kicker)}</span>
+        <h2 id={titleId} className="pb-dialog__title">{words(title)}</h2>
+        {lines.map((l, i) => <p key={i} className="pb-dialog__text">{l}</p>)}
         {body}
-        {/* The way out sits above the action rather than beside it. Side by
-            side, the two are the same size and a thumb aimed at one is a thumb
-            that can land on the other; stacked, the destructive one is the one
-            you have to reach past the safe one to get to. It is also where
-            focus starts, so Enter on a fresh dialog acknowledges or cancels —
-            it never destroys. */}
-        <footer>
+        {/* The safe way out sits above the action rather than beside it: side
+            by side, a thumb aimed at one can land on the other. Focus starts
+            on it, so Enter on a fresh dialog cancels and never destroys. */}
+        <footer className="pb-dialog__foot">
           {cancel && (
             <button
-              className="modal-cancel tap"
+              className="pb-btn pb-btn--secondary pb-btn--md pb-btn--block"
               ref={firstButton}
               type="button"
               onClick={cancel.onClick}
-            >{cancel.label}</button>
+            ><span className="pb-btn__label">{words(cancel.label)}</span></button>
           )}
           <button
-            className="modal-action tap"
+            className="pb-btn pb-btn--primary pb-btn--md pb-btn--block"
             ref={cancel ? undefined : firstButton}
             type="button"
             onClick={onClose}
-          >{action}</button>
+          ><span className="pb-btn__label">{words(action)}</span></button>
         </footer>
       </section>
     </div>
   );
+  // Into the frame, like every sheet, so it covers the phone rather than
+  // whatever scroller the caller happens to sit in.
+  return host ? createPortal(dialog, host) : dialog;
 }

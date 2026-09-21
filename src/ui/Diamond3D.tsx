@@ -1445,15 +1445,20 @@ function Field({ night = false, accent }: { night?: boolean; accent?: string }) 
  * and every adjustment appeared to do nothing — which costs an entire reload per
  * tweak on a value that only gets found by tweaking.
  */
-const EYE: [number, number, number] = [0, 6.7, 7.9];
-const AIM: [number, number, number] = [0, 0.5, -4.15];
+// Close to the plate on purpose. Seated further back the frame carried the
+// whole park, and most of it — the deep outfield and the grass either side of
+// it — never had anything on it. From here the infield fills the band and the
+// wall sits at the top of it; the follow below carries the frame out to a
+// ball that is hit past them.
+const EYE: [number, number, number] = [0, 5.3, 5.9];
+const AIM: [number, number, number] = [0, 0.55, -2.8];
 
 /**
  * How far the aim travels toward a play, as a fraction of the way there.
  * Under a half on purpose: a broadcast pans WITH a play, it does not chase
  * it, and the plate must never leave the bottom of the frame.
  */
-const FOLLOW = 0.42;
+const FOLLOW = 0.52;
 /** The eye drifts a shade sideways with the pan, for parallax. */
 const EYE_DRIFT = 0.12;
 /** Smoothing rate. Higher is snappier; this is a camera operator, not a servo. */
@@ -1487,6 +1492,14 @@ function CameraRig({ plan, tick }: { plan: PlayPlan | null; tick: number }) {
     // camera was pointed under it. Looking deeper tips the whole park up into
     // the frame and drops home plate toward the bottom edge, which is also the
     // angle a television camera actually uses.
+    //
+    // And wide enough for the whole park whatever shape the box is: from this
+    // seat the foul lines sit about seventy degrees apart, so a taller, narrower
+    // box opens the lens rather than cutting them off at the sides.
+    const lens = camera as THREE.PerspectiveCamera;
+    const aspect = size.width / Math.max(1, size.height);
+    const across = Math.tan(THREE.MathUtils.degToRad(31));
+    lens.fov = Math.max(36, Math.min(80, THREE.MathUtils.radToDeg(2 * Math.atan(across / aspect))));
     camera.position.copy(eye.current);
     camera.lookAt(aim.current);
     camera.updateProjectionMatrix();

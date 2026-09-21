@@ -13,6 +13,14 @@ import './ui/program.css';
 // Shape last: one file assigns every corner in the app from the three radius
 // tokens, so a radius is never written beside a screen's own rules.
 import './ui/rounded-ui.css';
+// Playball 1.0 minimal mobile visual system. Keep this last: it is the deliberate
+// replacement skin for the legacy tabletop styling while preserving behaviour.
+import './ui/minimal-ui.css';
+// The design system: tokens, then its components. Last, so where a legacy
+// rule and a design-system rule meet, the design system wins.
+import './ui/design/tokens.css';
+import './ui/design/components.css';
+import './ui/design/screens.css';
 
 /*
   Preferences before the first paint.

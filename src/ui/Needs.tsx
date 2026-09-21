@@ -47,8 +47,9 @@
 // what the simulation does. Either way the man is hurt and either way somebody
 // covers him.
 
-import { ChevronRightIcon, SewingPinIcon } from '@radix-ui/react-icons';
 import { useDynasty, useUserTeam } from '../state/store.js';
+import { List, ListRow, SectionHeader, StatusBadge, type IconName } from './components/ui/index.js';
+import { ordinal } from './words.js';
 import { handles } from '../state/depth.js';
 import { available, squad } from '../engine/depthChart.js';
 import { injuryClock } from '../engine/season.js';
@@ -63,14 +64,22 @@ export interface Need {
   id: string;
   /** The line in the list, in the room's words. */
   title: string;
-  /** One line under it, saying what happens if you go. */
+  /** One short line under it: why, in words. */
   note: string;
+  /** Where the row goes, said on the row: "opens your lineup". */
+  where: string;
   /** Red: a decision the game cannot make for you. See the header. */
   must: boolean;
+  /** The badge for a need that does not block the day. */
+  badge?: string;
+  icon: IconName;
   /** What the button says. */
   cta: string;
   go: () => void;
 }
+
+/** The first letter up: "out a few days" as a sentence. */
+const sentence = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
  * Everything waiting, worst first.
@@ -195,10 +204,11 @@ export function useNeeds(): Need[] {
           ineligible one both produced a red card reading "cannot play —
           fit", on the most prominent surface in the game. Found in audit.
         */
-        note: `Batting ${i + 1} in tonight's nine — ${whyOut(man, day)}. `
-          + 'Nobody is moved for you — swap him out on the lineup.',
+        note: `Bats ${ordinal(i + 1)} tonight, ${whyOut(man, day)}.`,
+        where: 'opens your lineup',
         must: true,
-        cta: 'THE LINEUP',
+        icon: 'alert',
+        cta: 'Fix the lineup',
         // The man rides along. Landing on twenty-three names with no idea which
         // one the card was about is the errand handed over without its subject.
         go: () => { useDynasty.getState().go('team', 'lineup', man.id); },
@@ -212,9 +222,11 @@ export function useNeeds(): Need[] {
       needs.push({
         id: `cover-arm-${man.id}`,
         title: `${man.name} cannot start`,
-        note: `Rotation slot ${i + 1} — ${whyOut(man, day)}. Replace him before the schedule can move.`,
+        note: `Starter ${i + 1}, ${whyOut(man, day)}.`,
+        where: 'opens your lineup',
         must: true,
-        cta: 'THE LINEUP',
+        icon: 'alert',
+        cta: 'Fix the rotation',
         go: () => { useDynasty.getState().go('team', 'lineup', man.id); },
       });
     }
@@ -236,13 +248,13 @@ export function useNeeds(): Need[] {
       if (nineIds.has(man.id) || rotationIds.has(man.id) || !returnPending(man, day)) continue;
       needs.push({
         id: `back-${man.id}`,
-        title: `${man.name} is fit — decide his return`,
+        title: `${man.name} is fit: decide his return`,
         // `squad` is the bats; an arm reaches here only as a two-way man.
-        note: (man as Player).type === 'pitcher' || (man as Player & { twoWay?: boolean }).twoWay
-          ? 'Healed, and another arm still owns his rotation spot. Nothing moves until you restore him or keep the cover.'
-          : 'Healed, and the cover still has his spot. Nothing moves until you put him back in the nine or keep the cover.',
+        note: 'Put him back, or keep his replacement.',
+        where: 'opens your lineup',
         must: true,
-        cta: 'THE LINEUP',
+        icon: 'check-circled',
+        cta: 'Decide his return',
         go: () => { useDynasty.getState().go('team', 'lineup', man.id); },
       });
     }
@@ -260,7 +272,10 @@ export function useNeeds(): Need[] {
     needs.push({
       id: `hurt-${man.id}`,
       title: `${man.name} is hurt`,
-      note: `${prognosis(man, day)} The chart covers him while he heals.`,
+      note: `${sentence(prognosis(man, day))}.`,
+      where: 'opens your lineup',
+      badge: sentence(prognosis(man, day)),
+      icon: 'heart',
       must: false,
       /*
         THE LINEUP, not HIS CARD.
@@ -272,7 +287,7 @@ export function useNeeds(): Need[] {
         it. The lineup is where the hole gets covered, and he arrives on it
         marked so you can see which hole.
       */
-      cta: 'THE LINEUP',
+      cta: 'See the lineup',
       go: () => { useDynasty.getState().go('team', 'lineup', man.id); },
     });
   }
@@ -291,12 +306,12 @@ export function useNeeds(): Need[] {
       needs.push({
         id: 'captain',
         title: 'Nobody wears the C',
-        note: (able.length === 1
-          ? 'One man in this room has the makeup for it.'
-          : `${able.length} men in this room have the makeup for it.`)
-          + ' A captain stops a bad month becoming a bad year.',
+        note: able.length === 1 ? 'One player can wear it.' : `${able.length} players can wear it.`,
+        where: 'opens the captain picker',
+        badge: 'When you are ready',
+        icon: 'star',
         must: false,
-        cta: 'NAME ONE',
+        cta: 'Name a captain',
         go: () => openOverlay('captain'),
       });
     }
@@ -314,10 +329,12 @@ export function useNeeds(): Need[] {
       needs.push({
         id: `contract-${seat}`,
         title: `${man.name}'s contract is up`,
-        note: `Your ${SEAT_LABEL[seat].toLowerCase()} was signed through ${man.until}. Renew him before the new season, or the seat opens in June.`,
+        note: `Your ${SEAT_LABEL[seat].toLowerCase()}. Renew, or the job opens.`,
+        where: 'opens the staff room',
         must: true,
-        cta: 'THE STAFF',
-        go: () => { const st = useDynasty.getState(); st.setProgramSheet('money'); st.go('program', 'records'); },
+        icon: 'clock',
+        cta: 'Renew or replace',
+        go: () => { const st = useDynasty.getState(); st.setProgramSheet('staff'); st.go('program', 'records'); },
       });
     }
   }
@@ -338,12 +355,13 @@ export function useNeeds(): Need[] {
       id: `grades-${man.id}`,
       title: `${man.name} is failing`,
       note: wordsLeft > 0
-        ? 'Short of where he needs to be, and one bad week from missing a series. '
-          + 'Have a word with him before tonight.'
-        : 'Short of where he needs to be, and you are out of conversations this '
-          + 'season. He works it out or he sits.',
+        ? 'One bad week from sitting a series.'
+        : 'No talks left this season.',
+      where: 'opens his card',
+      badge: wordsLeft > 0 ? undefined : 'No talks left',
+      icon: 'reader',
       must: wordsLeft > 0,
-      cta: 'HIS CARD',
+      cta: 'Talk to him',
       go: () => {
         openPlayer(man.id);
         // First time only, and only while there is a word to have: light the
@@ -369,48 +387,29 @@ export function useNeeds(): Need[] {
  * you" is a row of furniture that trains the eye to skip the place where the
  * urgent things appear.
  */
-export function NeedsYou() {
+export function NeedsYou({ blocks = "tonight's game" }: { blocks?: string }) {
   const needs = useNeeds();
-  const openOverlay = useDynasty((s) => s.openOverlay);
   if (needs.length === 0) return null;
 
-  const musts = needs.filter((n) => n.must).length;
-
   return (
-    <>
-      <section className="dashboard-heading">
-        <div>
-          <small>AROUND THE CLUB</small>
-          <h2>Needs your eye</h2>
-        </div>
-        <button type="button" onClick={() => openOverlay("inbox")}>
-          Inbox <ChevronRightIcon />
-        </button>
-      </section>
-      <section className="decision-stack">
-        {needs.map((n, i) => (
-          <button key={n.id} type="button" data-guide={n.must ? 'need-must' : undefined} onClick={n.go}>
-            {/*
-              The number is the proposal's mark, and it earns the red it is
-              already painted in: these are ordered, the ones that must be dealt
-              with sort first, and the count in the mark is how many are ahead
-              of this one. A must keeps the red; the rest of the stack is quiet.
-            */}
-            <span
-              className="decision-mark"
-              style={n.must ? undefined : { color: "var(--dim)" }}
-            >{String(i + 1).padStart(2, "0")}</span>
-            <span>
-              <strong>{n.title}</strong>
-              <small>{n.note}</small>
-            </span>
-            <ChevronRightIcon />
-          </button>
+    <section>
+      <SectionHeader title="Needs your eye" count={needs.length} />
+      <List label="Needs your eye">
+        {needs.map((n) => (
+          <ListRow
+            key={n.id}
+            icon={n.icon}
+            markTone={n.must ? 'warning' : 'neutral'}
+            title={n.title}
+            subtitle={n.note}
+            status={n.must
+              ? <StatusBadge tone="warning" icon="lock">Blocks {blocks}</StatusBadge>
+              : n.badge ? <StatusBadge tone="neutral" icon={false}>{n.badge}</StatusBadge> : undefined}
+            guide={n.must ? 'need-must' : undefined}
+            onClick={n.go}
+          />
         ))}
-      </section>
-      {/* The card at the top of TODAY already says the day is held, in red,
-          above these very rows. This said it a second time and then narrated
-          where the first one was. One notice is a notice; two is noise. */}
-    </>
+      </List>
+    </section>
   );
 }

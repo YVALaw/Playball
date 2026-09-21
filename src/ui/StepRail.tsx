@@ -1,14 +1,14 @@
 // StepRail.tsx
 // The offseason route: always visible, always centred on where you are.
 //
-// The old version had a second header saying OFFSEASON ROADMAP / STEP X OF 7
-// above the tabs. It repeated what the tabs already said and took the most
-// valuable vertical space on a phone. The route is the navigation now: a compact
-// horizontal rail that automatically moves the current stage into view.
+// The design system's phase rail, with the step names every button uses: done
+// steps ticked, the current one filled, the rest waiting. A step already
+// reached can be opened again; one not reached yet cannot. The rail scrolls
+// sideways on a phone and brings the current step into view on its own.
 
 import { useEffect, useRef, type CSSProperties } from 'react';
-import { CheckIcon } from '@radix-ui/react-icons';
 import { wantsMotion } from './celebrate.js';
+import { PhaseRail } from './components/ui/index.js';
 
 export interface Step {
   key: string;
@@ -16,55 +16,38 @@ export interface Step {
 }
 
 export function StepRail(
-  { steps, at, furthest, onGo, style }:
+  { steps, at, furthest, onGo, style, label = 'Offseason steps' }:
   {
     steps: readonly Step[];
     at: number;
     furthest: number;
     onGo?: (key: string) => void;
     style?: CSSProperties;
+    /** What a screen reader calls the rail. */
+    label?: string;
   },
 ) {
-  const track = useRef<HTMLDivElement | null>(null);
-  const current = useRef<HTMLButtonElement | null>(null);
+  const box = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const el = current.current;
-    const rail = track.current;
-    if (!el || !rail) return;
-    // The app's own gate, not the OS media query alone: "reduced" chosen in
-    // Settings on a system with no preference set must stop this too.
+    const rail = box.current?.querySelector<HTMLElement>('.pb-phases ol');
+    const el = rail?.querySelector<HTMLElement>('li.is-current');
+    if (!rail || !el) return;
+    // The app's own motion setting, not the OS query alone.
     const left = el.offsetLeft - (rail.clientWidth - el.offsetWidth) / 2;
     rail.scrollTo({ left: Math.max(0, left), behavior: wantsMotion() ? 'smooth' : 'auto' });
   }, [at]);
 
   return (
-    <nav className="season-flow-rail season-flow-rail-compact" style={style} aria-label="Offseason stages">
-      <div className="season-flow-track" ref={track}>
-        {steps.map((s, i) => {
-          const done = i < at;
-          const here = i === at;
-          const reached = i <= furthest;
-          const open = reached && !here && !!onGo;
-          return (
-            <button
-              ref={here ? current : undefined}
-              key={s.key}
-              className={`${done ? 'done' : ''}${here ? ' here' : ''}${!reached ? ' locked' : ''}`.trim()}
-              onClick={open ? () => onGo(s.key) : undefined}
-              disabled={!open}
-              aria-current={here ? 'step' : undefined}
-              type="button"
-            >
-              <i>{done ? <CheckIcon /> : i + 1}</i>
-              <span>
-                <strong>{s.label}</strong>
-                <small>{here ? 'NOW' : done ? 'DONE' : reached ? 'REVISIT' : 'LOCKED'}</small>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
+    <div ref={box} className="pb-steprail" style={style}>
+      <PhaseRail
+        label={label}
+        steps={steps.map((s, i) => ({
+          label: s.label,
+          state: i < at ? 'done' : i === at ? 'current' : 'upcoming',
+          onClick: i <= furthest && i !== at && onGo ? () => onGo(s.key) : undefined,
+        }))}
+      />
+    </div>
   );
 }

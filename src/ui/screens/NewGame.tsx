@@ -1,57 +1,36 @@
 // NewGame.tsx
-// Choosing where the dynasty starts.
+// Starting a career: who you are, how much you handle, what you did before,
+// how your teams play, and where you work.
 //
-// Two ideas drive this screen.
+// Two ideas drive the last step.
 //
-// The first is that a star count tells you almost nothing. Two three star
+// The first is that a star count tells you almost nothing. Two three-star
 // programs can be completely different jobs, and what decides which is which is
-// the gap between what the school *is* and what its roster can *do* this year. A
-// proud program with a thin team is asking you to survive a rebuild; a modest one
-// with a senior heavy roster is handing you a window that closes in two years. So
-// the card says all of it: reputation, current talent, the board's mandate in
-// their own words, and how long they are giving you.
+// the gap between what the school *is* and what its roster can *do* this year.
+// So an offer says all of it: reputation, current talent, the board's mandate in
+// its own words, and how long they are giving you.
 //
-// The second is that **you cannot have any job you like.** A contender does not
-// hand its program to someone who has never run one. So the final step is a
-// desk with the offers that actually came — the handful of chairs the hiring
-// ladder says would ring a rookie, picked by `startingOffers` with at least one
-// guaranteed — rather than a directory of ninety six schools you page through
-// discovering which ones would take the call. The ladder itself is still
-// visible where it matters: mid-career, the job market prices every move.
+// The second is that you cannot have any job you like. A contender does not
+// hand its program to someone who has never run one, so the last step is the
+// handful of programs that would call a first-time head coach, picked by
+// `startingOffers` with at least one guaranteed, rather than a directory of
+// ninety-six schools you page through finding out which would take the call.
 //
-// Four steps, in that order: who you are, how much of the game you want to be
-// asked about, how your teams play, where you work.
-//
-// The second is the one that frames the rest, which is why it sits that early.
-// It is not a difficulty setting and the screen says so: the engine models all
-// ninety-six programs identically either way, and the only thing the answer
-// moves is how much of it lands on the desk.
-//
-// The first is pre-filled and skippable in a single press, because a form
-// standing between a player and the game is a toll, not a feature — and
-// everything it collects is flavour, which is exactly why it is not allowed to
-// cost anybody a minute. The second is the opposite: it is four sentences and it
-// really does decide how the games are played, so it is a step of its own rather
-// than a control buried in the first one.
-//
-// What the middle step is deliberately *not* is a second copy of the strategy
-// screen. That screen exists, it is where the five policies are argued with one
-// at a time, and asking somebody to set five enums before he has a team is
-// asking a question he has no information to answer. Here he picks a coach; the
-// policies follow from that and stay editable for ever after.
+// The first step arrives filled in and is one press for anyone who came to
+// coach rather than fill in a form. The second is not a difficulty setting and
+// says so: the engine plays out all ninety-six programs the same either way,
+// and the answer only moves how much lands on your desk. The fourth picks a
+// coach's approach rather than five strategy settings: the strategy screen is
+// where those are argued one at a time, and all of them stay editable there.
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import {
-  ArrowLeftIcon, CheckIcon, Pencil1Icon,
-} from '@radix-ui/react-icons';
-import { ModuleIntro } from '../components/Kit.js';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   CONFERENCES, STATES_BY_REGION, type SchoolDef,
 } from '../../data/schools.js';
 import {
   prestigeStars, contractFor, leagueShape, playerBoard, requiredCoachPrestige,
   canBeHired, hireGateNote, ROOKIE_PRESTIGE, rosterStrength, startingOffers, offerPitch,
-  randomProfile, clampAge, DEFAULT_LOOK,
+  randomProfile, clampAge, DEFAULT_LOOK, MIN_COACH_AGE, MAX_COACH_AGE, SKILLS,
   type CoachProfile, type CoachLook, type Mandate,
 } from '../../engine/program.js';
 import {
@@ -61,8 +40,6 @@ import {
 import { useDynasty, careerSeed } from '../../state/store.js';
 import { SYSTEMS, type DepthMode } from '../../state/depth.js';
 import { readPrefs } from '../../state/devicePrefs.js';
-import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { InFrame } from '../Overlay.js';
 import {
   CoachPortrait, COACH_SKIN, COACH_HAIR, CUT_LABEL, BEARD_LABEL,
 } from '../CoachPortrait.js';
@@ -70,31 +47,39 @@ import {
   createSeason, seasonLength, DEFAULT_RULES, SEASON_SPANS, type SeasonRules,
 } from '../../engine/season.js';
 import { makeRng } from '../../engine/rng.js';
-import { SKILL_LABEL, type CoachSkills } from '../../engine/program.js';
 import { cultureOf, CULTURE_LABEL } from '../../data/cultures.js';
 import { BACKGROUNDS, type BackgroundId } from '../../data/backgrounds.js';
 import { badgeOf } from '../../data/badges.js';
 import { Crest } from '../Crest.js';
+import { StepRail } from '../StepRail.js';
+import { StepScreen } from './OffseasonStep.js';
+import { policyWords } from './StrategyScreen.js';
+import {
+  ActionBar, Button, Callout, Card, Chip, Chips, DescriptionList, List, ListRow, OptionCard, OptionGroup,
+  ScreenHeader, SectionHeader, SegmentedControl, Sheet, StatGroup, StatusBadge, Stars, Stepper, Switch, Tag, TextField,
+} from '../components/ui/index.js';
+import { capsWords, conferenceName, plural, stateName } from '../words.js';
 
-const MANDATE_LABEL: Record<Mandate, string> = {
-  develop: 'DEVELOP',
-  build: 'REBUILD',
-  compete: 'COMPETE',
-  contend: 'CONTEND',
-  championship: 'WIN IT ALL',
+const MANDATE_WORDS: Record<Mandate, string> = {
+  develop: 'Develop players',
+  build: 'Rebuild',
+  compete: 'Compete',
+  contend: 'Contend',
+  championship: 'Win it all',
 };
 
-function BackgroundIcon({ id }: { id: BackgroundId }) {
-  if (id === 'player') return <svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="8" r="3"/><path d="M6 20c.6-4.2 2.6-6.3 6-6.3s5.4 2.1 6 6.3M5 7l4-2M19 7l-4-2"/></svg>;
-  if (id === 'recruiter') return <svg viewBox="0 0 24 24" aria-hidden><circle cx="10" cy="10" r="5"/><path d="M14 14l5 5M8 10h4M10 8v4"/></svg>;
-  if (id === 'hitting') return <svg viewBox="0 0 24 24" aria-hidden><path d="M5 20L16 4l3 2L8 21z"/><circle cx="18" cy="17" r="2"/></svg>;
-  return <svg viewBox="0 0 24 24" aria-hidden><circle cx="8" cy="7" r="3"/><path d="M6 20c.5-4 2.3-6 5-6 2 0 3.6 1 4.5 3M15 5c3 1 4.5 3 4.5 6"/><circle cx="19" cy="12" r="1.5"/></svg>;
-}
+const SKILL_WORDS: Record<string, string> = {
+  offense: 'Offense', defense: 'Defense', training: 'Training', recruiting: 'Recruiting',
+};
+
+/** The coach's look, in words a person uses. */
+const CUT_WORDS: Record<string, string> = { BALD: 'Bald', SHORT: 'Short', PART: 'Parted', CURLS: 'Curls', LONG: 'Long' };
+const BEARD_WORDS: Record<string, string> = { CLEAN: 'Clean shaven', STUBBLE: 'Stubble', TASH: 'Mustache', FULL: 'Full beard' };
 
 /**
- * What kind of program this is, read off the gap between name and roster. This
- * is the single most useful thing on a row: it is the difference between a job
- * that is hard because it is good and a job that is hard because it is not.
+ * What kind of program this is, read off the gap between name and roster: the
+ * difference between a job that is hard because it is good and a job that is
+ * hard because it is not.
  */
 function archetype(prestige: number, quality: number): string | null {
   const gap = prestige - quality;
@@ -102,12 +87,16 @@ function archetype(prestige: number, quality: number): string | null {
   // 78 prestige school sits so far above the scale that a good roster still
   // trails its name by a dozen points — which briefly had the best team in the
   // Gulf labelled a rebuild.
-  if (gap >= 12 && prestige >= 50) return 'SLEEPING GIANT';
-  if (gap <= -12) return 'ON THE RISE';
-  if (prestige >= 60) return 'PERENNIAL POWER';
-  if (prestige <= 34) return 'REBUILD';
+  if (gap >= 12 && prestige >= 50) return 'Sleeping giant';
+  if (gap <= -12) return 'On the rise';
+  if (prestige >= 60) return 'Perennial power';
+  if (prestige <= 34) return 'Rebuild';
   return null;
 }
+
+/** The steps, named, so the rail can say where you are. */
+const STEP_NAMES = ['Coach', 'Control', 'Background', 'Approach', 'Offers'] as const;
+type StepIndex = 0 | 1 | 2 | 3 | 4;
 
 export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   const start = useDynasty((s) => s.start);
@@ -117,49 +106,34 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
    * This career's seed, drawn once when the screen opens.
    *
    * The same number previews the world and starts it, and that is the whole
-   * point: the rosters on this screen have to be the rosters you get. Preview
-   * from one seed and start from another and the offer screen is a lie.
+   * point: the rosters on this screen have to be the rosters you get.
    */
   const [seed] = useState(careerSeed);
 
   // Drawn off the career seed rather than the clock, so the suggestion is the
-  // same man every render of the same career rather than a new one each time
-  // React decides to redraw the screen.
+  // same man every render of the same career.
   const suggestion = useMemo(() => randomProfile(makeRng(seed ^ 0x5eed)), [seed]);
   const [coach, setCoach] = useState<CoachProfile>(suggestion);
-  /** Which of the three we are on. See the note at the top of the file. */
-  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0);
-  // How deep a game this career is. Held here rather than written straight to
-  // the store because no dynasty exists yet — it is handed to `start` with the
-  // rest of the answers when a job is finally taken.
+  const [step, setStepState] = useState<StepIndex>(0);
+  const [furthest, setFurthest] = useState<number>(0);
+  const setStep = (n: StepIndex): void => {
+    setStepState(n);
+    setFurthest((f) => Math.max(f, n));
+  };
+  // How deep a game this career is. Held here rather than written to the store
+  // because no career exists yet; it is handed to `start` with the rest.
   const [mode, setMode] = useState<DepthMode>('full');
   // God mode, for this career. Offered only on a device that owns it.
   const godOwned = readPrefs().godMode;
   const [godMode, setGodMode] = useState(false);
-  // The coach's pre-dugout background. Unlike the old interview, this is one
-  // visible choice with a visible year-one stat shape.
   const [backgroundId, setBackgroundId] = useState<BackgroundId>('player');
-  /*
-    The rules of the world, held here with the rest of the answers.
-
-    Defaults, and behind a fold: nobody has to meet five switches on the way to
-    his first job, and the coach who wants his career without a portal in it
-    can find them in one tap. They are handed to `start` and never written
-    again — see `SeasonRules`, which explains why a world cannot change its
-    own rules halfway through its record book.
-  */
+  // The rules of the world: defaults, behind a fold, handed to `start` and never
+  // written again (see `SeasonRules`).
   const [rules, setRules] = useState<SeasonRules>(DEFAULT_RULES);
 
   // Build the actual world, not an estimate of it. Generation is deterministic
-  // from the seed and costs about 2ms, so the screen can simply read the
-  // rosters the player is going to get.
-  //
-  // The estimate it replaces was quality alone, which ran 1.7 points light on
-  // average and up to 7 in the tail — enough to move a job across a mandate
-  // boundary. The offer screen advertised Pascagoula Tech as COMPETE with a 61
-  // roster wanting 20 wins; signing produced CONTEND, a 65 roster and 22 wins.
-  // A board that changes its terms between the handshake and the first day is a
-  // bug, however small the numbers are.
+  // from the seed and cheap, so the screen reads the rosters the player gets:
+  // an estimate once advertised a job as Compete that signed as Contend.
   const world = useMemo(() => createSeason(makeRng(seed), undefined, CONFERENCES), [seed]);
 
   const rosters = useMemo(() => {
@@ -176,16 +150,9 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
 
   const preview = (school: SchoolDef) => {
     const roster = rosterOf(school);
-    /*
-      The same call the board actually stamps on day one — playerBoard with
-      the league shape and the school's patience — not the raw
-      expectationFor. The comment above this screen already records this
-      exact bug being fixed once (quality-only rosters moved a job across a
-      mandate boundary), and it crept back in from the other side when the
-      drift correction was added to the live board and not to the offer:
-      reported as "the job offer was asking for 13 wins but the program is
-      asking for 16." One function, one number, both rooms.
-    */
+    // The same call the board stamps on day one (playerBoard with the league
+    // shape and the school's patience), so the offer and the board agree on
+    // how many wins they want.
     const record = world.teams[indexOf(school)];
     return {
       roster,
@@ -205,8 +172,10 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   const rivalOf = (school: SchoolDef): SchoolDef | undefined =>
     CONFERENCES.flatMap((c) => c.schools).find((s) => s.abbr === school.rival);
 
-  const confNameOf = (school: SchoolDef): string =>
-    CONFERENCES.find((c) => c.schools.some((s) => s.abbr === school.abbr))?.name ?? '';
+  const confNameOf = (school: SchoolDef): string => {
+    const conf = CONFERENCES.find((c) => c.schools.some((s) => s.abbr === school.abbr));
+    return conf ? conferenceName(conf.id) : '';
+  };
 
   /** The programs that actually rang, shaped by the background you chose. */
   const background = BACKGROUNDS.find((b) => b.id === backgroundId) ?? BACKGROUNDS[0]!;
@@ -229,24 +198,36 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
     [world, outcome, seed, backgroundId],
   );
 
+  const rail = (
+    <StepRail
+      label="New career steps"
+      steps={STEP_NAMES.map((label) => ({ key: label, label }))}
+      at={step}
+      furthest={furthest}
+      onGo={(key) => setStep(STEP_NAMES.indexOf(key as typeof STEP_NAMES[number]) as StepIndex)}
+    />
+  );
+  const bar = (label: string, onClick: () => void, note?: string) => (
+    <ActionBar note={note}>
+      <Button variant="primary" iconAfter="arrow-right" onClick={onClick}>{label}</Button>
+    </ActionBar>
+  );
+
   if (step === 0) {
     return (
       <Identity
+        rail={rail}
         profile={coach}
         onChange={setCoach}
         onExit={onExit}
-        onDone={() => {
-          // A blank name is not a name. Clearing the field and pressing on
-          // used to carry an empty identity to the job board — the summary
-          // strip read "42 · AL · POWER" with nobody in it — and the world
-          // then quietly christened him "Coach". The prefilled man comes back
-          // instead, the same fallback the screen opened with.
+        bar={bar('Continue', () => {
+          // A blank name is not a name: the suggested one comes back.
           const name = coach.name.trim();
           if (name !== coach.name || name.length === 0) {
             setCoach({ ...coach, name: name.length > 0 ? name : suggestion.name });
           }
           setStep(1);
-        }}
+        })}
       />
     );
   }
@@ -254,6 +235,7 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   if (step === 1) {
     return (
       <DepthStep
+        rail={rail}
         chosen={mode}
         onChoose={setMode}
         godOwned={godOwned}
@@ -262,7 +244,7 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
         rules={rules}
         onRules={setRules}
         onBack={() => setStep(0)}
-        onDone={() => setStep(2)}
+        bar={bar('Continue', () => setStep(2))}
       />
     );
   }
@@ -270,10 +252,11 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   if (step === 2) {
     return (
       <BackgroundStep
+        rail={rail}
         chosen={backgroundId}
         onChoose={setBackgroundId}
         onBack={() => setStep(1)}
-        onDone={() => setStep(3)}
+        bar={bar('Continue', () => setStep(3))}
       />
     );
   }
@@ -281,10 +264,11 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   if (step === 3) {
     return (
       <PlayStyle
+        rail={rail}
         chosen={coach.philosophy ?? DEFAULT_PHILOSOPHY}
         onChoose={(philosophy) => setCoach({ ...coach, philosophy })}
         onBack={() => setStep(2)}
-        onDone={() => setStep(4)}
+        bar={bar('See who is hiring', () => setStep(4))}
       />
     );
   }
@@ -295,241 +279,143 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   const record = picked ? world.teams.find((t) => t.def.abbr === picked.abbr) : undefined;
 
   return (
-    <FixedHeader
-      header={
-        <div className="setup-head">
-          <StepHead n={5} title="Take a job" onBack={() => setStep(3)} />
-        </div>
-      }
-    >
-      <main className="module-workspace career-workspace">
-        <ModuleIntro kicker="THE OFFERS" title="Programs that called" />
+    <StepScreen top={rail}>
+      <main className="pb-page">
+        <ScreenHeader
+          back={{ label: 'Back', onClick: () => setStep(3) }}
+          eyebrow="New career"
+          title="Take a job"
+        />
 
         {/*
-          Who you are and what you are worth, above the offers. The four steps
-          behind this one are otherwise invisible from here, and a choice you
-          cannot see from the screen after it is a choice you are entitled to
-          think was not saved. Coach prestige is the number that decided which
-          of these doors opened at all.
+          Who you are, above the offers. The steps behind this one are otherwise
+          invisible from here, and coach prestige is the number that decided
+          which of these doors opened at all.
         */}
-        <button
-          className="career-summary tap"
-          type="button"
-          onClick={() => setStep(0)}
+        <Card
+          eyebrow="Your coach"
+          title={coach.name}
+          trailing={<Button size="sm" variant="quiet" icon="pencil" onClick={() => setStep(0)}>Edit</Button>}
         >
-          <small>YOUR COACH · TAP TO EDIT</small>
-          <strong>{coach.name}</strong>
-          <span>
-            {coach.age}{' · '}{coach.homeState}{' · '}
-            {philosophyOf(coach.philosophy ?? DEFAULT_PHILOSOPHY).name}
-          </span>
-          <p>COACH PRESTIGE {ROOKIE_PRESTIGE}</p>
-          {/* The coach you made — the background's four numbers and the badge
-              it grants — so the doors below read as consequences of him. */}
-          <span className="career-summary-shape" aria-label={`Year one shape: ${background.title}`}>
-            {(Object.entries(background.skills) as [keyof CoachSkills, number][]).map(([k, value]) => (
-              <span key={k}>
-                <small>{SKILL_LABEL[k]}</small>
-                <b>{value}</b>
-                <i><b style={{ width: `${Math.min(100, value * 3.2)}%` }} /></i>
-              </span>
-            ))}
-          </span>
-          <span className="career-summary-badges">
-            <small>{background.kicker} · {background.title.toUpperCase()}</small>
-            {background.badges.map((id) => badgeOf(id)).map((b) => b && (
-              <em key={b.id}>{b.name}</em>
-            ))}
-          </span>
-        </button>
-
-        {/* Only the chairs that actually rang. The rest of the country starts
-            calling once there is a record to point at. */}
-        <section className="career-offers career-offer-deck">
-          {offers.map((school) => {
-            const o = preview(school);
-            const on = picked?.abbr === school.abbr;
-            return (
-              <button
-                className={`career-offer-card tap${on ? ' selected' : ''}`}
-                type="button"
-                key={school.abbr}
-                onClick={() => setPicked(school)}
-              >
-                <span className="career-offer-card-crest"><Crest abbr={school.abbr} size={44} /></span>
-                <span className="career-offer-card-copy">
-                  <small>{confNameOf(school)} · {o.contract} YEAR DEAL</small>
-                  <strong>{school.school}</strong>
-                  <em>{'★'.repeat(o.stars)} · roster {o.roster}</em>
-                </span>
-                <span className="career-offer-card-ask">
-                  <small>BOARD</small>
-                  <b>{o.open ? MANDATE_LABEL[o.expectation.mandate] : 'NOT YET'}</b>
-                </span>
-              </button>
-            );
-          })}
-        </section>
-
-        {picked && detail && (
-          <InFrame>
-            <div className="modal-scrim fade-in" onClick={() => setPicked(null)}>
-              <section
-                className="career-offer-detail offer-modal offer-decision-modal rise-in"
-                style={{ '--offer-accent': picked.color } as CSSProperties}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <header className="offer-decision-hero">
-                  <span className="offer-decision-crest"><Crest abbr={picked.abbr} size={62} /></span>
-                  <div>
-                    <small>{confNameOf(picked)} · {MANDATE_LABEL[detail.expectation.mandate]}</small>
-                    <h2>{picked.school}</h2>
-                    <p>{picked.nickname}</p>
-                  </div>
-                </header>
-
-                <section className="offer-decision-metrics">
-                  <span><small>PRESTIGE</small><strong>{'★'.repeat(detail.stars)}</strong></span>
-                  <span><small>ROSTER</small><strong>{detail.roster}</strong></span>
-                  <span><small>CONTRACT</small><strong>{detail.contract} yr</strong></span>
-                  <span><small>BOARD ASK</small><strong>{detail.expectation.targetWins} W</strong></span>
-                </section>
-
-                <section className="offer-decision-story">
-                  <article>
-                    <small>THE JOB{detail.tag ? ` · ${detail.tag}` : ''}</small>
-                    <p>{picked.prestige - picked.quality >= 12
-                      ? 'The name is ahead of the roster. Expectations arrive before the depth does.'
-                      : picked.quality - picked.prestige >= 12
-                        ? 'The roster is ahead of the name. There is a window here right now.'
-                        : picked.prestige >= 60
-                          ? 'A strong program that expects to stay strong.'
-                          : 'A blanker canvas. Whatever this becomes, you build it.'}</p>
-                  </article>
-                  {culture && (
-                    <article>
-                      <small>THE PLACE · {CULTURE_LABEL[culture.edge]}</small>
-                      <p>{culture.creed}</p>
-                      {record && <em>{offerPitch(record, { leans: outcome.leans, ambition: outcome.ambition })}</em>}
-                    </article>
-                  )}
-                </section>
-
-                <section className="offer-decision-terms">
-                  <small>YEAR ONE MANDATE</small>
-                  <strong>{detail.expectation.summary}</strong>
-                  {rival && <span>Rivalry: {rival.school} · three times a year</span>}
-                </section>
-
-                {detail.open ? (
-                  <button
-                    className="career-offer-sign offer-sign-primary tap"
-                    type="button"
-                    onClick={() => start(seed, indexOf(picked), coach, mode, {
-                      skills: outcome.skills,
-                      badges: outcome.badges,
-                      leans: outcome.leans,
-                    }, godMode, rules)}
-                  >TAKE THE {picked.abbr} JOB</button>
-                ) : (
-                  <div className="career-offer-gate offer-gate-modern">
-                    <small>NOT OPEN TO YOU YET</small>
-                    <strong>THEY WANT {detail.needs} · YOU ARE {ROOKIE_PRESTIGE}</strong>
-                    <p>{detail.gate}</p>
-                  </div>
-                )}
-
-                <button className="career-offer-close tap" type="button" onClick={() => setPicked(null)}>
-                  Back to offers
-                </button>
-              </section>
+          <p className="pb-text-muted">
+            Age {coach.age} · from {stateName(coach.homeState)} · {capsWords(philosophyOf(coach.philosophy ?? DEFAULT_PHILOSOPHY).name)} · {background.title.toLowerCase()}
+          </p>
+          <StatGroup
+            size="sm"
+            items={[
+              { label: 'Coach prestige', value: ROOKIE_PRESTIGE, unit: '/100', note: 'A first-time head coach' },
+              { label: 'Control', value: mode === 'full' ? 'Full career' : 'Casual' },
+            ]}
+          />
+          {background.badges.length > 0 && (
+            <div className="pb-cluster">
+              {background.badges.map((id) => badgeOf(id)).map((b) => b && <Tag key={b.id} tone="positive">{b.name}</Tag>)}
             </div>
-          </InFrame>
-        )}
+          )}
+        </Card>
 
+        <section>
+          <SectionHeader title="Offers" count={offers.length} />
+          <List label="Offers">
+            {offers.map((school) => {
+              const o = preview(school);
+              return (
+                <ListRow
+                  key={school.abbr}
+                  lead={<Crest abbr={school.abbr} size={40} />}
+                  title={school.school}
+                  subtitle={`${confNameOf(school)} · ${o.contract}-year contract · roster ${o.roster} of 100`}
+                  status={o.open
+                    ? <span className="pb-cluster"><Stars value={o.stars} label="Program prestige" /><StatusBadge tone="info" icon={false}>Goal: {MANDATE_WORDS[o.expectation.mandate].toLowerCase()}</StatusBadge></span>
+                    : <span className="pb-cluster"><Stars value={o.stars} label="Program prestige" /><StatusBadge tone="neutral" icon="lock">Not open to you yet</StatusBadge></span>}
+                  onClick={() => setPicked(school)}
+                />
+              );
+            })}
+          </List>
+        </section>
       </main>
-    </FixedHeader>
-  );
-}
 
-/**
- * The top of every step: where you are, what this one is called, and the way
- * back out of it.
- *
- * The count is not decoration. A form that arrives without saying how long it is
- * has to be finished before you find out, and the whole promise of this flow is
- * that it is short. The back control is a header control rather than something
- * at the end of the content for the reason Sticky.tsx exists: a way out you have
- * to scroll to find is a way out the player has to think about.
- */
-/**
- * How many steps creation has.
- *
- * Written once rather than three times, because it was three times and the
- * interview arriving in the middle made two of them wrong -- the count said
- * four while the dots drew four and the flow ran to five.
- */
-const STEPS = 5;
-
-function StepHead(
-  { n, title, onBack, backLabel = 'Back' }: {
-    n: number; title: string; onBack?: () => void; backLabel?: string;
-  },
-) {
-  return (
-    <>
-      {onBack && (
-        <button className="back-link tap" type="button" onClick={onBack}>
-          <ArrowLeftIcon /> {backLabel}
-        </button>
+      {picked && detail && (
+        <Sheet
+          eyebrow={`${confNameOf(picked)}${detail.tag ? ` · ${detail.tag}` : ''}`}
+          title={picked.school}
+          subtitle={picked.nickname}
+          lead={<Crest abbr={picked.abbr} size={48} />}
+          onClose={() => setPicked(null)}
+          tall
+          footer={detail.open ? (
+            <Button
+              variant="primary"
+              block
+              iconAfter="arrow-right"
+              onClick={() => start(seed, indexOf(picked), coach, mode, {
+                skills: outcome.skills,
+                badges: outcome.badges,
+                leans: outcome.leans,
+              }, godMode, rules)}
+            >Take the {picked.school} job</Button>
+          ) : (
+            <Button variant="secondary" block onClick={() => setPicked(null)}>Back to the offers</Button>
+          )}
+        >
+          <StatGroup
+            size="sm"
+            items={[
+              { label: 'Prestige', value: <Stars value={detail.stars} label="Program prestige" />, note: `${picked.prestige} of 100` },
+              { label: 'Roster', value: detail.roster, unit: '/100', note: 'Average starter rating' },
+              { label: 'Contract', value: plural(detail.contract, 'year') },
+              { label: 'Board wants', value: plural(detail.expectation.targetWins, 'win'), note: 'In year one' },
+            ]}
+          />
+          {!detail.open && (
+            <Callout tone="neutral" icon="lock" title="Not open to you yet">
+              They want a coach with prestige {detail.needs}; yours is {ROOKIE_PRESTIGE}. {detail.gate}
+            </Callout>
+          )}
+          <Card eyebrow="Year one" title={MANDATE_WORDS[detail.expectation.mandate]}>
+            <p className="pb-text">{detail.expectation.summary}</p>
+            {rival && <p className="pb-text-muted">Rivalry: {rival.school}, three times a year.</p>}
+          </Card>
+          <Card eyebrow="The job" title={detail.tag ?? 'The program'}>
+            <p className="pb-text">
+              {picked.prestige - picked.quality >= 12
+                ? 'The name is ahead of the roster. Expectations arrive before the depth does.'
+                : picked.quality - picked.prestige >= 12
+                  ? 'The roster is ahead of the name. There is a window here right now.'
+                  : picked.prestige >= 60
+                    ? 'A strong program that expects to stay strong.'
+                    : 'A blank canvas. Whatever this becomes, you build it.'}
+            </p>
+          </Card>
+          {culture && (
+            <Card eyebrow="The place" title={`Known for ${capsWords(CULTURE_LABEL[culture.edge]).toLowerCase()}`}>
+              <p className="pb-text">{culture.creed}</p>
+              {record && <p className="pb-text-muted">&ldquo;{offerPitch(record, { leans: outcome.leans, ambition: outcome.ambition })}&rdquo;</p>}
+            </Card>
+          )}
+        </Sheet>
       )}
-      {/* The road so far, in the proposal's setup rail: done, here, still to
-          come. Colour is not the only signal — every step is numbered and the
-          one you are on is named underneath.
-
-          The rail is the whole header now. Each step opens with its own
-          ModuleIntro in the workspace below, which is where the proposal puts
-          the title, and a heading printed in both places was the same sentence
-          twice on a 360px screen. */}
-      <div
-        className="setup-steps setup-steps-five"
-        role="img"
-        aria-label={`Step ${n} of ${STEPS}: ${title}`}
-      >
-        {/* A number for the step you are on and the ones ahead, a check for
-            every one behind you. Reported from the phone: the rail filled in
-            green but never actually said a step was finished. */}
-        {STEP_NAMES.map((name, i) => (
-          <span className={i + 1 <= n ? 'active' : ''} key={name}>
-            {i + 1 < n ? <CheckIcon /> : i + 1}
-            <b>{name}</b>
-          </span>
-        ))}
-      </div>
-    </>
+    </StepScreen>
   );
 }
 
-/** What each step is, so the rail can name them rather than number them. */
-const STEP_NAMES = ['Coach', 'Control', 'Background', 'Plan', 'Offers'] as const;
-
 /**
- * Step one. Who the dynasty belongs to, and what he looks like.
+ * Step one: who the career belongs to, and what he looks like.
  *
- * The fields arrive filled in with a plausible man, so the whole step is one
- * press for anybody who came here to coach rather than to fill in a form. That
- * is the constraint the layout is built around: nothing is required, nothing is
- * validated against the player, and the button at the bottom is always live.
- *
- * The bounds on the age stepper are the only rule in here, and they are about
- * the fiction rather than the simulation — see MIN_COACH_AGE.
+ * The fields arrive filled in with a plausible coach, so the whole step is one
+ * press for anybody who came to coach rather than fill in a form: nothing is
+ * required, nothing is validated, and the button is always live. The age
+ * bounds are the only rule here, and they are about the fiction.
  */
-function Identity(
-  { profile, onChange, onExit, onDone }: {
+/** Exported for the successor screen, which asks the same two questions. */
+export function Identity(
+  { rail, profile, onChange, onExit, bar }: {
+    rail: ReactNode;
     profile: CoachProfile;
     onChange: (p: CoachProfile) => void;
     onExit?: () => void;
-    onDone: () => void;
+    bar: ReactNode;
   },
 ) {
   const set = <K extends keyof CoachProfile>(key: K, value: CoachProfile[K]): void =>
@@ -538,113 +424,93 @@ function Identity(
   const setLook = (part: Partial<CoachLook>): void => set('look', { ...look, ...part });
 
   return (
-    <FixedHeader
-      header={<div className="setup-head"><StepHead n={1} title="Your coach" onBack={onExit} backLabel="Main menu" /></div>}
-      action={<FloatingAction label="CONTINUE" onClick={onDone} />}
-    >
-      <main className="module-workspace career-workspace coach-builder-workspace">
-        <ModuleIntro kicker="STEP ONE" title="Build the coach" />
+    <StepScreen top={rail} bar={bar}>
+      <main className="pb-page">
+        <ScreenHeader
+          back={onExit ? { label: 'Main menu', onClick: onExit } : undefined}
+          eyebrow="New career"
+          title="Your coach"
+        />
 
-        <section className="coach-builder-stage">
-          <div className="coach-builder-portrait">
-            <span><CoachPortrait look={look} size={122} /></span>
-          </div>
-          <div className="coach-builder-identity">
-            <small>HEAD COACH</small>
-            <label className="coach-builder-name">
-              <input
+        <Card>
+          <div className="pb-coachbuild">
+            <span className="pb-coachbuild__portrait"><CoachPortrait look={look} size={112} /></span>
+            <div className="pb-coachbuild__fields">
+              <TextField
+                label="Name"
                 value={profile.name}
-                onChange={(e) => set('name', e.target.value)}
                 maxLength={26}
-                aria-label="Coach name"
+                onChange={(e) => set('name', e.target.value)}
               />
-              <Pencil1Icon />
-            </label>
-            <div className="coach-builder-facts">
-              <article>
-                <small>AGE</small>
-                <div>
-                  <button type="button" aria-label="Younger" onClick={() => set('age', clampAge(profile.age - 1))}>−</button>
-                  <strong>{profile.age}</strong>
-                  <button type="button" aria-label="Older" onClick={() => set('age', clampAge(profile.age + 1))}>+</button>
-                </div>
-              </article>
-              <article>
-                <small>HOME STATE</small>
-                <select value={profile.homeState} onChange={(e) => set('homeState', e.target.value)} aria-label="Home state">
-                  {Object.entries(STATES_BY_REGION).map(([region, states]) => (
-                    <optgroup key={region} label={region}>
-                      {states.map((st) => <option key={st} value={st}>{st} · {region}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-              </article>
+              <Stepper
+                label="Age"
+                value={profile.age}
+                min={MIN_COACH_AGE}
+                max={MAX_COACH_AGE}
+                onChange={(v) => set('age', clampAge(v))}
+              />
             </div>
           </div>
-        </section>
+          <label className="pb-field">
+            <span className="pb-field__label">Home state</span>
+            <select
+              className="pb-field__input pb-select"
+              value={profile.homeState}
+              onChange={(e) => set('homeState', e.target.value)}
+            >
+              {Object.entries(STATES_BY_REGION).map(([region, states]) => (
+                <optgroup key={region} label={region}>
+                  {states.map((st) => <option key={st} value={st}>{stateName(st)}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+        </Card>
 
-        <section className="coach-appearance-board">
-          <header><small>APPEARANCE</small><strong>Make him yours</strong></header>
-          <div className="coach-appearance-groups">
-            <Row label="SKIN">
+        <Card title="Appearance">
+          <div className="pb-lookrow">
+            <span className="pb-lookrow__label">Skin tone</span>
+            <div className="pb-swatches" role="radiogroup" aria-label="Skin tone">
               {COACH_SKIN.map((c, i) => (
                 <Swatch key={c} colour={c} on={look.skin === i}
                   label={`Skin tone ${i + 1} of ${COACH_SKIN.length}`} onClick={() => setLook({ skin: i })} />
               ))}
-            </Row>
-            <Row label="HAIR COLOR">
+            </div>
+          </div>
+          <div className="pb-lookrow">
+            <span className="pb-lookrow__label">Hair color</span>
+            <div className="pb-swatches" role="radiogroup" aria-label="Hair color">
               {COACH_HAIR.map((c, i) => (
                 <Swatch key={c} colour={c} on={look.hair === i}
                   label={`Hair color ${i + 1} of ${COACH_HAIR.length}`} onClick={() => setLook({ hair: i })} />
               ))}
-            </Row>
-            <Row label="HAIR">
-              {CUT_LABEL.map((word, i) => (
-                <Chip key={word} label={word} on={look.cut === i} onClick={() => setLook({ cut: i })} />
-              ))}
-            </Row>
-            <Row label="FACIAL HAIR">
-              {BEARD_LABEL.map((word, i) => (
-                <Chip key={word} label={word} on={look.beard === i} onClick={() => setLook({ beard: i })} />
-              ))}
-            </Row>
+            </div>
           </div>
-        </section>
+          <div className="pb-lookrow">
+            <span className="pb-lookrow__label">Hair</span>
+            <Chips label="Hair" className="pb-chips--wrap">
+              {CUT_LABEL.map((word, i) => (
+                <Chip key={word} selected={look.cut === i} onClick={() => setLook({ cut: i })}>{CUT_WORDS[word] ?? capsWords(word)}</Chip>
+              ))}
+            </Chips>
+          </div>
+          <div className="pb-lookrow">
+            <span className="pb-lookrow__label">Facial hair</span>
+            <Chips label="Facial hair" className="pb-chips--wrap">
+              {BEARD_LABEL.map((word, i) => (
+                <Chip key={word} selected={look.beard === i} onClick={() => setLook({ beard: i })}>{BEARD_WORDS[word] ?? capsWords(word)}</Chip>
+              ))}
+            </Chips>
+          </div>
+        </Card>
       </main>
-    </FixedHeader>
+    </StepScreen>
   );
 }
 
 /**
- * Step two. What kind of coach he is.
- *
- * Four sentences and a tick, and behind each one a full set of the five policies
- * the engine already reads — see PHILOSOPHIES in engine/strategy.ts. The
- * deliberate omission is the policies themselves: this screen names benches, not
- * enums. Somebody who has not seen a game yet has no way to judge whether he
- * wants the hook fifteen pitches early, and asking him to is how a creation
- * screen turns into a settings screen with the settings in the wrong order.
- *
- * The strategy screen is where those five are argued with individually, and
- * everything here is editable there from the first day of the season. This step
- * only decides where he starts.
- */
-/**
- * Step two. How much of the game you want to be asked about.
- *
- * Deliberately the second thing that happens, before the bench and before the
- * job: it changes the shape of everything after it, and a question that frames
- * the rest of the flow has no business arriving at the end of it.
- *
- * It is also deliberately *not* a difficulty menu, and the copy works hard at
- * that. Nothing here makes the game easier or the world smaller — the engine
- * models every one of the ninety-six programs identically whichever card is
- * picked. The only thing that changes is how much lands on your desk. Saying so
- * plainly is what stops "casual" reading as "the lesser game", which it is not.
- */
-/**
- * The systems the desk cards preview. The built ones — a chip for a system
- * that ships later would be promising a control the settings screen greys.
+ * The systems the control step previews. The built ones only: a chip for a
+ * system that ships later would promise a control the settings screen greys.
  */
 const DESK_KEYS: readonly string[] = [
   'lineups', 'bullpen', 'moundVisits', 'depthChart', 'redshirts',
@@ -652,11 +518,9 @@ const DESK_KEYS: readonly string[] = [
 ];
 
 /**
- * One switch, and the two or three answers it takes.
- *
- * Every row reads its numbers out of the engine rather than repeating them —
- * the game counts come from `seasonLength` over the schedules themselves, so a
- * screen and a season cannot disagree about how long a season is.
+ * One rule of the world, and the answers it takes. The game counts come from
+ * `seasonLength` over the schedules themselves, so this screen and a season
+ * cannot disagree about how long a season is.
  */
 interface RuleRow {
   key: string;
@@ -671,9 +535,9 @@ const RULE_ROWS: readonly RuleRow[] = [
     key: 'injuries',
     label: 'Injuries',
     options: [
-      { value: 'on', label: 'FULL', note: 'The trainer decides a season or two' },
-      { value: 'reduced', label: 'HALF', note: 'Half as often, same injuries' },
-      { value: 'off', label: 'NONE', note: 'Nobody misses a game' },
+      { value: 'on', label: 'Full', note: 'The normal rate. A bad one can cost a player a season.' },
+      { value: 'reduced', label: 'Half', note: 'The same injuries, half as often.' },
+      { value: 'off', label: 'None', note: 'Nobody misses a game.' },
     ],
     at: (r) => r.injuries,
     set: (r, v) => ({ ...r, injuries: v as SeasonRules['injuries'] }),
@@ -682,68 +546,65 @@ const RULE_ROWS: readonly RuleRow[] = [
     key: 'portal',
     label: 'Transfer portal',
     options: [
-      { value: 'on', label: 'ON', note: 'Men leave, and men arrive' },
-      { value: 'off', label: 'OFF', note: 'Nobody transfers; the step is gone' },
+      { value: 'on', label: 'On', note: 'Players leave for other programs, and others arrive.' },
+      { value: 'off', label: 'Off', note: 'Nobody transfers, and the portal step is gone.' },
     ],
     at: (r) => (r.portal ? 'on' : 'off'),
     set: (r, v) => ({ ...r, portal: v === 'on' }),
   },
   {
     key: 'realignment',
-    label: 'Realignment',
+    label: 'Conference realignment',
     options: [
-      { value: 'on', label: 'ON', note: 'Conferences trade programs each winter' },
-      { value: 'off', label: 'OFF', note: 'The map you start with is the map' },
+      { value: 'on', label: 'On', note: 'Conferences trade programs each winter.' },
+      { value: 'off', label: 'Off', note: 'The conferences you start with stay as they are.' },
     ],
     at: (r) => (r.realignment ? 'on' : 'off'),
     set: (r, v) => ({ ...r, realignment: v === 'on' }),
   },
   {
     key: 'poaching',
-    label: 'Poaching',
+    label: 'Assistants hired away',
     options: [
-      { value: 'on', label: 'ON', note: 'A good assistant gets his own program' },
-      { value: 'off', label: 'OFF', note: 'Staffs stay where they are' },
+      { value: 'on', label: 'On', note: 'A good assistant can be hired to run his own program.' },
+      { value: 'off', label: 'Off', note: 'Staffs stay where they are.' },
     ],
     at: (r) => (r.poaching ? 'on' : 'off'),
     set: (r, v) => ({ ...r, poaching: v === 'on' }),
   },
   {
     key: 'length',
-    label: 'Season',
+    label: 'Season length',
     options: [
       {
         value: 'short',
-        label: `${seasonLength(SEASON_SPANS.short)} GAMES`,
-        // Three men START in a week — two weekend and a midweek — but the
-        // staff is still four, because `rotationSizeFor` floors it there and
-        // the fourth man becomes depth rather than the world becoming thinner.
-        // Saying "three-man rotation" flatly contradicted the LINEUP screen,
-        // which counts the staff and now labels that fourth chip DEPTH.
-        note: 'Two-game weekends, three starters and a spare',
+        label: `${seasonLength(SEASON_SPANS.short)} games`,
+        // Three men start in a week, but the staff is still four: the fourth
+        // is depth, as the lineup screen labels him.
+        note: 'Two-game weekends, three starters and a spare.',
       },
       {
         value: 'standard',
-        label: `${seasonLength(SEASON_SPANS.standard)} GAMES`,
-        note: 'Three-game weekends, four-man rotation',
+        label: `${seasonLength(SEASON_SPANS.standard)} games`,
+        note: 'Three-game weekends and a four-man rotation.',
       },
       {
         value: 'long',
-        label: `${seasonLength(SEASON_SPANS.long)} GAMES`,
-        note: 'Four-game weekends, five-man rotation',
+        label: `${seasonLength(SEASON_SPANS.long)} games`,
+        note: 'Four-game weekends and a five-man rotation.',
       },
     ],
     at: (r) => r.length,
     set: (r, v) => ({ ...r, length: v as SeasonRules['length'] }),
   },
-  // Last, and apart: the five above are the world's, this one is your chair's.
+  // Last, and apart: the rules above are the world's, this one is your job's.
   // See `SeasonRules.firing` for why it is a rule of the world at all.
   {
     key: 'firing',
-    label: 'Firing',
+    label: 'Getting fired',
     options: [
-      { value: 'on', label: 'ON', note: 'A cold seat ends your tenure' },
-      { value: 'off', label: 'OFF', note: 'The board grades you and can never sack you' },
+      { value: 'on', label: 'On', note: 'Miss the board’s goals for long enough and you lose the job.' },
+      { value: 'off', label: 'Off', note: 'The board grades you but can never fire you.' },
     ],
     at: (r) => (r.firing ? 'on' : 'off'),
     set: (r, v) => ({ ...r, firing: v === 'on' }),
@@ -751,257 +612,135 @@ const RULE_ROWS: readonly RuleRow[] = [
 ];
 
 /**
- * The rules of the world, folded away.
- *
- * Folded because the defaults are the game and almost nobody wants to argue
- * with them on the way to a first job — and open in one tap because the coach
- * who cannot stand one of these systems should not have to abandon a career to
- * be rid of it. The summary carries a count rather than a list, so a career
- * started on anything but the standard world says so without being read.
+ * The rules of the world, folded away: the defaults are the game, and almost
+ * nobody wants to argue with them on the way to a first job. The heading says
+ * how many were changed, so a career started on anything else says so.
  */
 function WorldRules(
   { rules, onRules }: { rules: SeasonRules; onRules: (r: SeasonRules) => void },
 ) {
+  const [open, setOpen] = useState(false);
   const changed = RULE_ROWS.filter((row) => row.at(rules) !== row.at(DEFAULT_RULES)).length;
   return (
-    <details className="career-world-rules">
-      <summary className="tap">
-        <span>
-          <small>THE RULES OF THE WORLD</small>
-          <strong>{changed === 0 ? 'Standard world' : `${changed} changed`}</strong>
-        </span>
-        <b>{changed === 0 ? 'EDIT' : String(changed)}</b>
-      </summary>
-      <p className="career-rule-note">
-        Chosen once, for the life of the career. The first five are the same for
-        all ninety-six programs; the last is about your chair alone. None can be
-        changed later — a record book has to be comparable with itself.
+    <Card
+      eyebrow="The rules of the world"
+      title={changed === 0 ? 'Standard rules' : `${plural(changed, 'rule')} changed`}
+      trailing={(
+        <Button size="sm" variant="quiet" iconAfter="chevron-down" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? 'Hide' : 'Change'}
+        </Button>
+      )}
+    >
+      <p className="pb-text-muted">
+        These cannot be changed later.
       </p>
-      {RULE_ROWS.map((row) => {
+      {open && RULE_ROWS.map((row) => {
         const at = row.at(rules);
         const note = row.options.find((o) => o.value === at)?.note ?? '';
         return (
-          <div className="career-rule-row" key={row.key}>
-            <div className="career-rule-head">
-              <strong>{row.label}</strong>
-              <small>{note}</small>
-            </div>
-            <div className="career-rule-chips">
-              {row.options.map((o) => (
-                <Chip
-                  key={o.value}
-                  label={o.label}
-                  on={o.value === at}
-                  onClick={() => onRules(row.set(rules, o.value))}
-                />
-              ))}
-            </div>
+          <div className="pb-rulerow" key={row.key}>
+            <span className="pb-rulerow__label">{row.label}</span>
+            <SegmentedControl<string>
+              kind="radio"
+              label={row.label}
+              value={at}
+              onChange={(v) => onRules(row.set(rules, v))}
+              options={row.options.map((o) => ({ value: o.value, label: o.label }))}
+            />
+            <span className="pb-text-muted">{note}</span>
           </div>
         );
       })}
-    </details>
-  );
-}
-
-function DepthStep(
-  { chosen, onChoose, godOwned, god, onGod, rules, onRules, onBack, onDone }: {
-    chosen: DepthMode;
-    onChoose: (m: DepthMode) => void;
-    /** The device owns god mode, so the sandbox toggle is offered. */
-    godOwned: boolean;
-    god: boolean;
-    onGod: (on: boolean) => void;
-    /** The world's own switches, which are not a depth preference. See `SeasonRules`. */
-    rules: SeasonRules;
-    onRules: (r: SeasonRules) => void;
-    onBack: () => void;
-    onDone: () => void;
-  },
-) {
-  const cards: { id: DepthMode; title: string; line: string; bullets: string[] }[] = [
-    {
-      id: 'full', title: 'Full career',
-      line: 'Every decision is yours.',
-      bullets: [
-        'You write the lineup card',
-        'You work the bullpen, inning by inning',
-        'Everything the game adds, you get asked about',
-      ],
-    },
-    {
-      id: 'casual', title: 'Casual',
-      line: 'Your staff handles the routine. You handle the season.',
-      bullets: [
-        'Your bench coach fills out the card',
-        'Your pitching coach runs the pen',
-        'Recruiting, the draft and the big calls stay yours',
-      ],
-    },
-  ];
-  return (
-    <FixedHeader
-      header={<div className="setup-head">
-        <StepHead n={2} title="How you want to play" onBack={onBack} />
-      </div>}
-      action={<FloatingAction
-        label="CONTINUE"
-        onClick={onDone}
-      />}
-    >
-      <main className="module-workspace career-workspace">
-        <ModuleIntro kicker="CONTROL" title="Choose what you handle" />
-
-        <section className="career-depth-options">
-          {cards.map((c) => (
-            <button
-              className={c.id === chosen ? 'selected' : ''}
-              type="button"
-              key={c.id}
-              onClick={() => onChoose(c.id)}
-            >
-              <strong>{c.title}</strong>
-              <p>{c.line}</p>
-              {c.id === chosen && <CheckIcon />}
-            </button>
-          ))}
-        </section>
-
-        {/* The sandbox, for a device that bought it. Per career, never cleared. */}
-        {godOwned && (
-          <section className="career-god-toggle">
-            <button
-              type="button"
-              className={`tap${god ? ' selected' : ''}`}
-              aria-pressed={god}
-              onClick={() => onGod(!god)}
-            >
-              <span>
-                <small>GOD MODE</small>
-                <strong>{god ? 'On for this career' : 'Off for this career'}</strong>
-                <p>A sandbox. Edit any player, any program, your coach, your staff, the money and the schedule through God Mode bolts wherever you are. Records still count.</p>
-              </span>
-              <b>{god ? 'ON' : 'OFF'}</b>
-            </button>
-          </section>
-        )}
-
-        {/*
-          What the chosen card actually moves, split the way the answer splits
-          it. Reported: "it doesn't really show what the difference is — those
-          small lineup, bullpen, redshirt, captains chips should change
-          depending if we are selecting casual or full." The lists are read off
-          the same SYSTEMS table the settings screen enforces, so this preview
-          and the career it starts cannot disagree.
-        */}
-        {(() => {
-          const shown = SYSTEMS.filter((sys) => DESK_KEYS.includes(sys.key));
-          const desk = chosen === 'full' ? shown : shown.filter((sys) => sys.casual);
-          const staff = chosen === 'full' ? [] : shown.filter((sys) => !sys.casual);
-          return (
-            <>
-              <div className="career-chip-head label">ON YOUR DESK</div>
-              <section className="career-system-chips">
-                {desk.map((sys) => <span key={sys.key}>{sys.label.toUpperCase()}</span>)}
-              </section>
-              {staff.length > 0 && (
-                <>
-                  <div className="career-chip-head label">YOUR STAFF HANDLES</div>
-                  <section className="career-system-chips staff">
-                    {staff.map((sys) => <span key={sys.key}>{sys.label.toUpperCase()}</span>)}
-                  </section>
-                </>
-              )}
-            </>
-          );
-        })()}
-
-        {/*
-          Last, and folded. Everything above this decides what lands on the
-          desk; this decides what the world does, which is a different question
-          and `state/depth.ts` says so in its own header.
-        */}
-        <WorldRules rules={rules} onRules={onRules} />
-      </main>
-    </FixedHeader>
-  );
-}
-
-function PlayStyle(
-  { chosen, onChoose, onBack, onDone }: {
-    chosen: PhilosophyId;
-    onChoose: (id: PhilosophyId) => void;
-    onBack: () => void;
-    onDone: () => void;
-  },
-) {
-  return (
-    <FixedHeader
-      header={<div className="setup-head">
-        <StepHead n={4} title="Your approach" onBack={onBack} />
-      </div>}
-      action={<FloatingAction
-        label="FIND A JOB"
-        onClick={onDone}
-      />}
-    >
-      <main className="module-workspace career-workspace">
-        <ModuleIntro kicker="PLAYING IDENTITY" title="Choose how your teams play" />
-
-        <section className="career-plan-list">
-          {PHILOSOPHIES.map((p) => (
-            <button
-              className={p.id === chosen ? 'selected' : ''}
-              type="button"
-              key={p.id}
-              onClick={() => onChoose(p.id)}
-            >
-              <strong>{p.name}</strong>
-              <small>{p.blurb}</small>
-              {p.id === chosen && <CheckIcon />}
-            </button>
-          ))}
-        </section>
-
-        {/* The five settings this bench actually sets, spelled out — a plan you
-            can read is a plan, a name alone is a vibe. Each chip is one of the
-            strategy screen's own controls. */}
-        <section className="career-system-chips">
-          {planChips(chosen).map((chip) => <span key={chip}>{chip}</span>)}
-        </section>
-      </main>
-    </FixedHeader>
-  );
-}
-
-/** The five policy chips a philosophy sets, in the strategy screen's words. */
-function planChips(id: PhilosophyId): string[] {
-  const s = strategyForPhilosophy(id);
-  const alignment = { straight: 'STRAIGHT UP', situational: 'SITUATIONAL', shift: 'FULL SHIFT' };
-  return [
-    `RUN ${s.running.toUpperCase()}`,
-    `STEAL ${s.steals.toUpperCase()}`,
-    `BUNT ${s.bunt.toUpperCase()}`,
-    `HOOK ${s.hook.toUpperCase()}`,
-    alignment[s.alignment],
-  ];
-}
-
-/** One labelled line of choices inside the appearance panel. */
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="career-look-row">
-      <small>{label}</small>
-      <div>{children}</div>
-    </div>
+    </Card>
   );
 }
 
 /**
- * A colour, shown as itself.
- *
- * The chosen one is marked with a ring drawn *inside* the swatch rather than a
- * thicker border, so selecting does not change the size of the thing you just
- * tapped and shuffle the row under your thumb.
+ * Step two: how much of the game you want to be asked about. It frames the
+ * rest, so it comes early, and it is not a difficulty menu: nothing here makes
+ * the game easier or the world smaller.
+ */
+function DepthStep(
+  { rail, chosen, onChoose, godOwned, god, onGod, rules, onRules, onBack, bar }: {
+    rail: ReactNode;
+    chosen: DepthMode;
+    onChoose: (m: DepthMode) => void;
+    /** The device owns god mode, so the sandbox switch is offered. */
+    godOwned: boolean;
+    god: boolean;
+    onGod: (on: boolean) => void;
+    rules: SeasonRules;
+    onRules: (r: SeasonRules) => void;
+    onBack: () => void;
+    bar: ReactNode;
+  },
+) {
+  const cards: { id: DepthMode; title: string; line: string }[] = [
+    {
+      id: 'full', title: 'Full career',
+      line: 'Every decision is yours: you write the lineup, work the bullpen inning by inning, and get asked about everything.',
+    },
+    {
+      id: 'casual', title: 'Casual',
+      line: 'Your staff handles the routine and you handle the season. Recruiting, the draft and the big calls stay yours.',
+    },
+  ];
+  // What the chosen style moves, read off the same SYSTEMS table the settings
+  // screen enforces, so this preview and the career it starts cannot disagree.
+  const shown = SYSTEMS.filter((sys) => DESK_KEYS.includes(sys.key));
+  const desk = chosen === 'full' ? shown : shown.filter((sys) => sys.casual);
+  const staff = chosen === 'full' ? [] : shown.filter((sys) => !sys.casual);
+
+  return (
+    <StepScreen top={rail} bar={bar}>
+      <main className="pb-page">
+        <ScreenHeader
+          back={{ label: 'Back', onClick: onBack }}
+          eyebrow="New career"
+          title="How much you handle"
+        />
+
+        <OptionGroup label="How much you handle">
+          {cards.map((c) => (
+            <OptionCard key={c.id} title={c.title} hint={c.line} selected={c.id === chosen} onSelect={() => onChoose(c.id)} />
+          ))}
+        </OptionGroup>
+
+        <Card title="You handle" eyebrow={chosen === 'full' ? 'Everything' : 'The big calls'}>
+          <div className="pb-cluster">
+            {desk.map((sys) => <Tag key={sys.key}>{sys.label}</Tag>)}
+          </div>
+          {staff.length > 0 && (
+            <>
+              <span className="pb-eyebrow">Your staff handles</span>
+              <div className="pb-cluster">
+                {staff.map((sys) => <Tag key={sys.key}>{sys.label}</Tag>)}
+              </div>
+            </>
+          )}
+        </Card>
+
+        {/* The sandbox, for a device that bought it. Per career, never cleared. */}
+        {godOwned && (
+          <List label="God mode">
+            <Switch
+              label="God mode in this career"
+              description="Edit anything. Records still count."
+              checked={god}
+              onChange={() => onGod(!god)}
+            />
+          </List>
+        )}
+
+        <WorldRules rules={rules} onRules={onRules} />
+      </main>
+    </StepScreen>
+  );
+}
+
+/**
+ * A colour, shown as itself. The chosen one is marked with a ring drawn inside
+ * the swatch, so selecting does not change its size under your thumb.
  */
 function Swatch(
   { colour, on, onClick, label }:
@@ -1011,8 +750,10 @@ function Swatch(
 ) {
   return (
     <button
-      className={`career-swatch tap${on ? ' selected' : ''}`}
+      className={`pb-swatch-btn${on ? ' is-selected' : ''}`}
       type="button"
+      role="radio"
+      aria-checked={on}
       onClick={onClick}
       aria-label={label}
       style={{ background: colour }}
@@ -1020,66 +761,85 @@ function Swatch(
   );
 }
 
-/** A word you can pick, in the same chip the region filter uses. */
-function Chip(
-  { label, on, onClick }: { label: string; on: boolean; onClick: () => void },
-) {
-  return (
-    <button
-      className={`career-chip tap${on ? ' selected' : ''}`}
-      type="button"
-      onClick={onClick}
-    >{label}</button>
-  );
-}
-
-function BackgroundStep(
-  { chosen, onChoose, onBack, onDone }: {
+/** Exported for the successor screen. See `screens/Legacy.tsx`. */
+export function BackgroundStep(
+  { rail, chosen, onChoose, onBack, bar }: {
+    rail: ReactNode;
     chosen: BackgroundId;
     onChoose: (id: BackgroundId) => void;
     onBack: () => void;
-    onDone: () => void;
+    bar: ReactNode;
   },
 ) {
   const picked = BACKGROUNDS.find((b) => b.id === chosen) ?? BACKGROUNDS[0]!;
+  const top = Math.max(...SKILLS.map((k) => picked.skills[k]));
   return (
-    <FixedHeader
-      header={<div className="setup-head"><StepHead n={3} title="Your background" onBack={onBack} /></div>}
-      action={<FloatingAction label="CONTINUE" onClick={onDone} />}
-    >
-      <main className="module-workspace career-workspace background-workspace">
-        <ModuleIntro kicker="BEFORE THE DUGOUT" title="What did you do before this?" />
-        <section className="coach-background-grid">
+    <StepScreen top={rail} bar={bar}>
+      <main className="pb-page">
+        <ScreenHeader
+          back={{ label: 'Back', onClick: onBack }}
+          eyebrow="New career"
+          title="Before the dugout"
+        />
+        <OptionGroup label="Your background">
           {BACKGROUNDS.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              className={`coach-background-card tap${chosen === b.id ? ' selected' : ''}`}
-              onClick={() => onChoose(b.id)}
-            >
-              <span className="coach-background-icon"><BackgroundIcon id={b.id} /></span>
-              <small>{b.kicker}</small>
-              <strong>{b.title}</strong>
-              <p>{b.blurb}</p>
-              {chosen === b.id && <CheckIcon />}
-            </button>
+            <OptionCard key={b.id} title={b.title} hint={b.blurb} selected={chosen === b.id} onSelect={() => onChoose(b.id)} />
           ))}
-        </section>
+        </OptionGroup>
 
-        <section className="background-stat-preview">
-          <header><small>YEAR ONE SHAPE</small><strong>{picked.title}</strong></header>
-          <div>
-            {(Object.entries(picked.skills) as [keyof CoachSkills, number][]).map(([k, value]) => (
-              <span key={k}>
-                <small>{SKILL_LABEL[k]}</small>
-                <strong>{value}</strong>
-                <i><b style={{ width: `${Math.min(100, value * 3.2)}%` }} /></i>
-              </span>
-            ))}
-          </div>
-          <p>This is your starting edge, not a permanent class. Coach development can reshape it every offseason.</p>
-        </section>
+        <Card eyebrow="Your first-year strengths" title={picked.title}>
+          <DescriptionList
+            items={SKILLS.map((k) => ({
+              label: SKILL_WORDS[k] ?? capsWords(k),
+              value: `${picked.skills[k]} of 99`,
+              tone: picked.skills[k] === top ? 'positive' : undefined,
+              note: picked.skills[k] === top ? 'Your edge' : undefined,
+            }))}
+          />
+          <p className="pb-note">You improve these every offseason.</p>
+        </Card>
       </main>
-    </FixedHeader>
+    </StepScreen>
+  );
+}
+
+/**
+ * Step four: how his teams play. A named approach rather than five settings;
+ * the strategy screen is where each one is argued, and all stay editable there.
+ */
+function PlayStyle(
+  { rail, chosen, onChoose, onBack, bar }: {
+    rail: ReactNode;
+    chosen: PhilosophyId;
+    onChoose: (id: PhilosophyId) => void;
+    onBack: () => void;
+    bar: ReactNode;
+  },
+) {
+  const s = strategyForPhilosophy(chosen);
+  const keys = ['running', 'steals', 'bunt', 'hook', 'alignment'] as const;
+  return (
+    <StepScreen top={rail} bar={bar}>
+      <main className="pb-page">
+        <ScreenHeader
+          back={{ label: 'Back', onClick: onBack }}
+          eyebrow="New career"
+          title="Your approach"
+        />
+        <OptionGroup label="Your approach">
+          {PHILOSOPHIES.map((p) => (
+            <OptionCard key={p.id} title={capsWords(p.name)} hint={p.blurb} selected={p.id === chosen} onSelect={() => onChoose(p.id)} />
+          ))}
+        </OptionGroup>
+        <Card eyebrow="What it sets" title={capsWords(philosophyOf(chosen).name)}>
+          <DescriptionList
+            items={keys.map((k) => {
+              const w = policyWords(k, s[k]);
+              return { label: w.title, value: w.label };
+            })}
+          />
+        </Card>
+      </main>
+    </StepScreen>
   );
 }

@@ -1,86 +1,42 @@
-import { promiseSpent } from '../../engine/morale.js';
 // RosterMoves.tsx
-// Everything a coach does to one of his own men, behind one button.
+// Decisions: what a coach can do about one of his own men, in plain sight.
 //
-// The proposal's player-actions FAB: a round trigger in the bottom corner of
-// the card, and a dark panel that opens out of it with four tabs — the room,
-// the classroom, where else he plays, and his season. It replaces a stack of
-// panels that lived inline under the OVERVIEW tab and were only reachable by
-// scrolling past his ratings to get to them.
+// This used to be a floating Manage button that opened a dark panel. Now it is
+// a section of the player card, one row per decision, and every row answers
+// the same three questions: what it is about, how he stands on it right now,
+// and what you can do (or why you can't). Only ever for your own men.
 //
-// The rule that made this a separate file has not changed and is easier to hold
-// in one place: **these are only ever offered for your own men**, and only when
-// they are actually possible. A control that is visible and refuses is worse
-// than one that is not there — so a tab whose actions are all impossible says
-// why, rather than showing three dead buttons.
-//
-// Every action here writes to the store the engine reads. The proposal's
-// version logs a sentence into a decision ledger and changes nothing; this one
-// rests a man for three days, spends one of a season's four conversations, moves
-// a shortstop to second base for good, or burns a redshirt.
+// Every action writes to the store the engine reads: a rest sits him for three
+// days, a talk spends one of the season's four, a redshirt keeps a year of
+// eligibility, and a position change is permanent. The last three are
+// two-press buttons, because they spend something you cannot get back.
 
-import { useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import {
-  CalendarIcon, CheckIcon, Cross1Icon, EnvelopeClosedIcon, DotsHorizontalIcon,
-  ReloadIcon, StopwatchIcon,
-} from '@radix-ui/react-icons';
+import { useState } from 'react';
 import { useDynasty } from '../../state/store.js';
 import { handles } from '../../state/depth.js';
 import { standing, WORDS_A_SEASON } from '../../engine/eligibility.js';
 import { canRedshirt, MAX_REDSHIRTS, redshirtCount } from '../../engine/redshirt.js';
-import { retrainablePositions } from '../../engine/positions.js';
-import { RetrainModal } from '../RetrainModal.js';
+import { retrainablePositions, secondaryPositions } from '../../engine/positions.js';
 import { injuryClock } from '../../engine/season.js';
 import { isHurt, prognosis } from '../../engine/injury.js';
 import { legWeariness } from '../../engine/workload.js';
-import { mood, promiseOf, squadRanks } from '../../engine/morale.js';
-import { FieldNote } from '../components/Kit.js';
+import { promiseSpent } from '../../engine/morale.js';
+import { naturalPos } from '../../engine/ratings.js';
+import { RetrainSheet } from '../RetrainModal.js';
+import { whyOut } from '../Needs.js';
 import type { Hitter, Player as AnyPlayer, Position } from '../../engine/types.js';
+import {
+  Button, ConfirmButton, List, ListRow, SectionHeader, StatusBadge,
+} from '../components/ui/index.js';
+import { POSITION_NAME, plural, sentence } from '../words.js';
 
-const SCHOOL_WORDS: Record<'fine' | 'watch' | 'trouble', { label: string; line: string }> = {
-  fine: { label: 'IN GOOD STANDING', line: 'Nothing to do here.' },
-  watch: {
-    label: 'ON THE WATCH LIST',
-    line: 'He is close to the line. A week could go either way.',
-  },
-  trouble: {
-    label: 'FAILING',
-    line: 'He is short of eligible and will start missing weeks.',
-  },
+const posName = (pos: string): string => POSITION_NAME[pos as Position] ?? pos;
+
+const GRADES: Record<'fine' | 'watch' | 'trouble', { tone: 'positive' | 'warning' | 'negative'; label: string; line: string }> = {
+  fine: { tone: 'positive', label: 'Good standing', line: 'Nothing to address.' },
+  watch: { tone: 'warning', label: 'On the watch list', line: 'Close to the line: one bad week from missing games.' },
+  trouble: { tone: 'negative', label: 'Failing', line: 'Short of eligible. He will start missing weeks.' },
 };
-
-/** One thing a coach can do, as the proposal draws it. */
-function ActionCard(
-  { icon, eyebrow, title, detail, meta, onClick, selected = false, disabled = false, glow = false, guide }:
-  {
-    icon: ReactNode; eyebrow: string; title: string; detail: string; meta?: string;
-    onClick?: () => void; selected?: boolean; disabled?: boolean;
-    /** Lit as the final step of a guided errand. */
-    glow?: boolean;
-    /** The tour's name for this card, when the first season lights it. */
-    guide?: string;
-  },
-) {
-  return (
-    <button
-      className={`command-action-card${selected ? ' selected' : ''}${glow ? ' guide-glow' : ''}`}
-      type="button"
-      data-guide={guide}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      <span className="command-action-icon">{icon}</span>
-      <span className="command-action-copy">
-        <small>{eyebrow}</small>
-        <strong>{title}</strong>
-        <p>{detail}</p>
-        {meta && <em>{meta}</em>}
-      </span>
-      {selected ? <CheckIcon /> : <span className="command-action-state" />}
-    </button>
-  );
-}
 
 export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const season = useDynasty((s) => s.season);
@@ -89,215 +45,189 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const wordWith = useDynasty((s) => s.wordWith);
   const setRedshirt = useDynasty((s) => s.setRedshirt);
   const restMan = useDynasty((s) => s.restMan);
-  const changePosition = useDynasty((s) => s.changePosition);
-  // The offseason rail is non-null exactly while the winter is open, which
-  // is when a position change is allowed — the door made it a ritual: "he
-  // retrains over winter and opens next season at the new spot."
   const winter = useDynasty((s) => s.phase) !== null;
   const version = useDynasty((s) => s.version);
-  // A career that asked its staff to decide who sits does not get the button.
+  // A career that asked its staff to decide who sits does not get these buttons.
   const mine = useDynasty((s) => handles(s.depth, 'redshirts'));
-  /*
-    The guided errand, lighting one control at a time. Designed by the
-    reporter for the failing-man card: the action button glows until it is
-    opened, SCHOOL glows until it is chosen, HAVE A WORD glows until it is
-    pressed — and the press stamps 'guide:word' so the path never lights
-    twice. Each light is derived from the state the previous tap produced,
-    which is what makes the sequence a sequence.
-  */
-  const guide = useDynasty((s) => s.guide);
+  // The first-season errand for a failing man: the tour lights Have a word,
+  // and the press itself stamps the lesson as learned.
+  const guiding = useDynasty((s) => s.guide === 'word');
   const clearGuide = useDynasty((s) => s.clearGuide);
   const markTutorialSeen = useDynasty((s) => s.markTutorialSeen);
-  const guiding = guide === 'word';
-  // Three states, matching the college FAB: closing is a motion, and the
-  // scrim below stands the menu down from anywhere. See the note there.
-  const [phase, setPhase] = useState<'closed' | 'open' | 'closing'>('closed');
-  const open = phase === 'open';
-  const requestClose = (): void => {
-    setPhase('closing');
-    window.setTimeout(() => {
-      setPhase((p) => (p === 'closing' ? 'closed' : p));
-    }, 200);
-  };
   const [retrainOpen, setRetrainOpen] = useState(false);
   void version;
 
-  // Everything below is a thing a coach does to his own player. A leaderboard
-  // is full of men you do not employ.
   if (!isOurs || !season) return null;
   const team = season.teams[userTeam]?.team;
   if (!team) return null;
 
+  const clock = injuryClock(season);
   const school = standing(p);
   const promise = !promiseSpent(p.recruitPromise) ? p.recruitPromise : undefined;
   const redshirtConflict = promise?.kind === 'noRedshirt';
   const sitting = (p as AnyPlayer & { redshirt?: boolean }).redshirt === true;
   const outUntil = (p as AnyPlayer & { outUntil?: number }).outUntil;
-  const clock = injuryClock(season);
+  const why = (p as AnyPlayer & { why?: string }).why;
   const suspended = typeof outUntil === 'number' && clock < outUntil;
   const wordsLeft = WORDS_A_SEASON - wordsUsed;
-  // The real rule: one appearance burns the season, so this is only a decision
-  // before the first pitch of the year.
+  // One appearance burns the season, so this is only a decision before the
+  // first pitch of the year.
   const preseason = season.dayIndex === 0;
-  const canSit = preseason && mine && canRedshirt(p) && redshirtCount(team) < MAX_REDSHIRTS;
+  const used = redshirtCount(team);
+  const canSit = preseason && mine && canRedshirt(p) && used < MAX_REDSHIRTS;
 
   const hurtNow = isHurt(p, clock);
   const tired = legWeariness(p);
-  const resting = !hurtNow && suspended;
-  const ranks = squadRanks(team);
-  const rank = ranks.get(p.id) ?? 0;
-  const feeling = mood(p);
+  const workload = Math.round(tired * 100);
+  const academicHold = !hurtNow && suspended && why === 'academic';
+  const resting = !hurtNow && suspended && why !== 'academic';
+  const needsRest = tired > 0.35;
 
-  /*
-    The hardest three, not all of them.
+  const isHitter = p.type === 'hitter';
+  const alsoPlays = isHitter ? retrainablePositions(p as Hitter) : [];
+  const home = isHitter ? ((p as Hitter & { homePos?: Position }).homePos ?? naturalPos(p as Hitter)) : null;
+  const covers = isHitter ? secondaryPositions(p as Hitter).slice(0, 2) : [];
+  const planned = (p as Hitter & { retrainTo?: Position }).retrainTo;
 
-    A shortstop can genuinely stand anywhere except behind the plate, so the
-    honest list for him is six positions -- which in a panel is a wall, and the
-    three easiest of them tell you nothing you had not guessed.
-    `secondaryPositions` already sorts hardest first, so the top of that list is
-    the half worth printing: what he can do that is *not* obvious.
-  */
-  // Every spot a winter could teach him, covers first and then stretches —
-  // the modal prints them all, with the odds each one takes.
-  const alsoPlays = p.type === 'hitter' ? retrainablePositions(p as Hitter) : [];
+  /* ------------------------------------------------------------ workload */
+  const restBadge = hurtNow
+    ? <StatusBadge tone="negative">Injured · {prognosis(p, clock)}</StatusBadge>
+    : academicHold
+      ? <StatusBadge tone="warning" icon="reader">Academic hold</StatusBadge>
+      : resting
+        ? <StatusBadge tone="info" icon="clock">{sentence(whyOut(p, clock))}</StatusBadge>
+        : needsRest
+          ? <StatusBadge tone="warning">Tired legs</StatusBadge>
+          : <StatusBadge tone="positive">Fresh</StatusBadge>;
+  const restLine = hurtNow
+    ? 'Rest does not shorten an injury. The trainer decides when he is back.'
+    : academicHold
+      ? `He is ${whyOut(p, clock)}.`
+      : resting
+        ? 'He is already sitting.'
+        : !mine
+          ? 'Your staff decides who rests.'
+          : needsRest
+            ? 'Three days off takes the wear out of his legs.'
+            : 'Nothing to gain from sitting him.';
 
-  /** The word under the trigger, so the button says something before it opens. */
-  const statusLabel = hurtNow ? 'HURT'
-    : sitting ? 'REDSHIRT'
-      : suspended ? 'OUT'
-        : school !== 'fine' ? 'ACADEMIC'
-          : 'ACTIVE';
+  /* ------------------------------------------------------------- redshirt */
+  const redshirtBadge = sitting
+    ? <StatusBadge tone="neutral" icon="pause">Redshirted this season</StatusBadge>
+    : !mine
+      ? <StatusBadge tone="neutral" icon="lock">Your staff decides</StatusBadge>
+      : !preseason
+        ? <StatusBadge tone="neutral" icon="lock">Only before the first game</StatusBadge>
+        : used >= MAX_REDSHIRTS
+          ? <StatusBadge tone="neutral" icon="lock">All {MAX_REDSHIRTS} used</StatusBadge>
+          : !canRedshirt(p)
+            ? <StatusBadge tone="neutral" icon="lock">Not eligible</StatusBadge>
+            : null;
 
-  /*
-    Rendered into the overlay's frame rather than in place.
+  return (
+    <section className="pb-decisions" aria-label="Decisions">
+      <SectionHeader title="Decisions" />
+      <List label="Decisions">
+        {/* An arm's rest is the rotation's business, and his legs never tire,
+            so the row only appears for a pitcher when something has him out. */}
+        {(p.type !== 'pitcher' || hurtNow || suspended) && (
+          <ListRow
+            icon="stopwatch"
+            title="Workload"
+            subtitle={p.type === 'pitcher' ? restLine : `${workload} of 100 · ${restLine}`}
+            status={restBadge}
+          >
+            {mine && !hurtNow && !suspended && needsRest && (
+              <Button size="sm" variant="secondary" icon="pause" onClick={() => restMan(p.id, 3)}>Rest him 3 days</Button>
+            )}
+          </ListRow>
+        )}
 
-    In place it sat inside .overlay-scroll, and on iOS an absolutely-positioned
-    element whose containing block is outside its momentum scroller repaints a
-    beat behind the scroll — reported as the button 'moving along when
-    scrolling' and the stale white ghost it left behind. Outside the scroller
-    there is nothing to lag.
-  */
-  // The TOP overlay: a card opened off a team card sits over another
-  // `.full-overlay`, and the first one is the one underneath (15 sD).
-  const overlays = document.querySelectorAll('.full-overlay');
-  const host = overlays[overlays.length - 1] ?? document.querySelector('.app-frame');
-  if (!host) return null;
-
-  return createPortal(
-    <>
-      {open && (
-        <button
-          className="popover-scrim"
-          type="button"
-          aria-label="Close player actions"
-          onClick={requestClose}
-        />
-      )}
-    <aside className={`profile-actions-shell player-profile-actions${open ? ' open' : ''}${phase === 'closing' ? ' closing' : ''}`}>
-      <div className="profile-command-sheet" aria-hidden={!open}>
-        <div className="command-sheet-handle" />
-        <header className="profile-command-header">
-          <small>PLAYER DECISIONS</small>
-          <strong>{p.name}</strong>
-          <p>{hurtNow ? prognosis(p, clock) : sitting ? 'Redshirted for this season.' : `${feeling.toUpperCase()} · he ${promiseOf(p, rank)}.`}</p>
-        </header>
-
-        <section className="command-status-grid">
-          <span><small>MOOD</small><strong>{feeling.toUpperCase()}</strong><em>{promiseOf(p, rank)}</em></span>
-          <span className={tired > 0.35 ? 'is-alert' : ''}><small>WORKLOAD</small><strong>{hurtNow ? 'HURT' : `${Math.round(tired * 100)}%`}</strong><em>{hurtNow ? prognosis(p, clock) : tired > 0.35 ? 'Could use a breather' : 'Fresh enough'}</em></span>
-          <span className={school !== 'fine' ? 'is-alert' : ''}><small>ACADEMICS</small><strong>{SCHOOL_WORDS[school].label.replace('IN ', '')}</strong><em>{suspended ? 'Missing this week' : SCHOOL_WORDS[school].line}</em></span>
-          <span><small>ELIGIBILITY</small><strong>{sitting ? 'REDSHIRT' : p.classYear}</strong><em>{preseason ? `${redshirtCount(team)}/${MAX_REDSHIRTS} redshirts used` : 'Season is active'}</em></span>
-        </section>
-
-        <section className="command-section">
-          <header><small>RIGHT NOW</small><h2>Manage the week</h2></header>
-          <div className="command-action-grid">
-            <ActionCard
-              icon={<StopwatchIcon />}
-              eyebrow="RECOVERY"
-              title={resting ? 'Already resting' : 'Rest three days'}
-              detail={hurtNow ? 'Injury recovery is controlled by the trainer.' : tired > 0.35 ? 'Sit him now to take wear out of his legs.' : 'His workload is healthy; there is little to gain from sitting him.'}
-              meta={resting ? 'Currently unavailable' : tired > 0.35 ? `Workload ${Math.round(tired * 100)}%` : 'No action needed'}
-              selected={resting}
-              disabled={hurtNow || resting || tired <= 0.35 || !mine}
-              onClick={() => restMan(p.id, 3)}
-            />
-            <ActionCard
-              icon={<EnvelopeClosedIcon />}
-              eyebrow="ACADEMICS"
-              title={school === 'fine' ? 'Nothing to address' : wordsLeft > 0 ? 'Have a word' : 'No conversations left'}
-              detail={school === 'fine' ? 'He is in good standing.' : SCHOOL_WORDS[school].line}
-              meta={`${wordsLeft} of ${WORDS_A_SEASON} conversations left`}
-              disabled={school === 'fine' || wordsLeft <= 0}
-              glow={guiding && school !== 'fine' && wordsLeft > 0}
-              guide={school !== 'fine' && wordsLeft > 0 ? 'have-a-word' : undefined}
-              onClick={() => {
-                wordWith(p.id);
-                if (guiding) {
+        <ListRow
+          icon="reader"
+          title="Grades"
+          subtitle={`${GRADES[school].line}${academicHold ? ' He is missing games right now.' : ''} ${wordsLeft} of ${WORDS_A_SEASON} talks left this season.`}
+          status={(
+            <>
+              <StatusBadge tone={GRADES[school].tone}>{GRADES[school].label}</StatusBadge>
+              {school !== 'fine' && wordsLeft <= 0 && <StatusBadge tone="neutral" icon="lock">No talks left</StatusBadge>}
+            </>
+          )}
+        >
+          {school !== 'fine' && wordsLeft > 0 && (
+            <ConfirmButton
+              size="sm"
+              variant="secondary"
+              icon="chat"
+              guide="have-a-word"
+              idle="Have a word"
+              armed="Tap again to talk to him"
+              armedMeta={`${wordsLeft - 1} of ${WORDS_A_SEASON} left after`}
+              done="You talked to him"
+              onConfirm={() => {
+                const ok = wordWith(p.id);
+                if (ok && guiding) {
                   markTutorialSeen('guide:word');
                   clearGuide();
                 }
+                return ok;
               }}
             />
-          </div>
-          {hurtNow && <FieldNote title="Trainer decision" text="Rest does not shorten an injury timetable." />}
-          {!mine && !hurtNow && <FieldNote title="Staff controlled" text="Rest and redshirt decisions are delegated in your current control settings." />}
-        </section>
+          )}
+        </ListRow>
 
-        <section className="command-section">
-          <header><small>ROSTER PLANNING</small><h2>Shape next season</h2></header>
-          <div className="command-action-grid">
-            {p.type === 'hitter' && (
-              <div className="command-action-stack">
-                {/* Always open, by request — "leave it open all the time, and
-                    when we tap it a modal with the positions he can be
-                    retrained to and the % he actually gets good there." The
-                    move itself still waits for the winter. */}
-                <ActionCard
-                  icon={<ReloadIcon />}
-                  eyebrow="POSITION"
-                  title="Retrain position"
-                  detail={alsoPlays.length === 0
-                    ? 'There is no realistic spot to train him for.'
-                    : `${alsoPlays.length} spot${alsoPlays.length === 1 ? '' : 's'} he could learn, and the odds each one takes.`}
-                  meta={winter ? 'Permanent move · a step behind until it takes' : 'Moves happen over the offseason · look any time'}
-                  selected={false}
-                  disabled={alsoPlays.length === 0}
-                  onClick={() => setRetrainOpen(true)}
-                />
-                {retrainOpen && p.type === 'hitter' && (
-                  <RetrainModal p={p as Hitter} canMove onClose={() => setRetrainOpen(false)} />
-                )}
-              </div>
-            )}
-            <ActionCard
-              icon={<CalendarIcon />}
-              eyebrow="ELIGIBILITY"
-              title={sitting ? 'Return to active roster' : redshirtConflict ? 'Redshirt · breaks promise' : 'Redshirt season'}
-              detail={sitting ? 'Undo the preseason decision and make him available.' : preseason ? 'Preserve this year of eligibility before he appears.' : 'The season has already been used.'}
-              meta={redshirtConflict && !sitting ? 'You promised no redshirt. This can lower mood and increase transfer risk.' : preseason ? `${redshirtCount(team)} of ${MAX_REDSHIRTS} used` : 'Preseason decision'}
-              selected={sitting}
-              disabled={!canSit && !sitting}
-              onClick={() => setRedshirt(p.id, !sitting)}
+        {isHitter && home && (
+          <ListRow
+            icon="swap"
+            title="Position"
+            subtitle={alsoPlays.length === 0
+              ? `${posName(home)} · there is no realistic spot to train him for.`
+              : `${posName(home)}${covers.length ? `, also covers ${covers.map((c) => posName(c).toLowerCase()).join(' and ')}` : ''} · ${plural(alsoPlays.length, 'spot')} he could learn, with the odds.`}
+            status={planned
+              ? <StatusBadge tone="info" icon="calendar">Moving to {posName(planned).toLowerCase()} {winter ? 'now' : 'after the season'}</StatusBadge>
+              : undefined}
+            onClick={alsoPlays.length > 0 ? () => setRetrainOpen(true) : undefined}
+          />
+        )}
+
+        <ListRow
+          icon="pause"
+          title="Redshirt"
+          subtitle={sitting
+            ? 'He sits out the season and keeps the year of eligibility.'
+            : `Sit him out the season to keep a year of eligibility · ${used} of ${MAX_REDSHIRTS} used.${redshirtConflict ? ' You promised him no redshirt: breaking it hurts his mood and raises the chance he transfers.' : ''}`}
+          status={redshirtBadge ?? undefined}
+        >
+          {sitting && (preseason ? (
+            <Button size="sm" variant="secondary" icon="reset" onClick={() => setRedshirt(p.id, false)}>
+              Put him back on the active roster
+            </Button>
+          ) : (
+            <ConfirmButton
+              size="sm"
+              variant="secondary"
+              icon="reset"
+              idle="Put him back on the active roster"
+              armed="Tap again to bring him back"
+              armedMeta="He can play, and uses this year"
+              onConfirm={() => setRedshirt(p.id, false)}
             />
-          </div>
-        </section>
-      </div>
-
-      <button
-        className={`profile-actions-launcher${guiding && !open ? ' guide-glow' : ''}`}
-        type="button"
-        data-guide="player-actions"
-        aria-label={open ? 'Close player management' : 'Manage player'}
-        aria-expanded={open}
-        onClick={() => (open ? requestClose() : setPhase('open'))}
-      >
-        {open ? <Cross1Icon /> : <DotsHorizontalIcon />}
-        <span>{open ? 'Close' : 'Manage'}</span>
-      </button>
-      {!open && <span className="profile-actions-status" aria-hidden="true">{statusLabel}</span>}
-    </aside>
-    </>,
-    host,
+          ))}
+          {!sitting && canSit && (
+            <ConfirmButton
+              size="sm"
+              variant={redshirtConflict ? 'danger' : 'secondary'}
+              idle="Redshirt him this season"
+              armed="Tap again to redshirt him"
+              armedMeta={redshirtConflict ? 'Breaks your promise' : `${used + 1} of ${MAX_REDSHIRTS} used after`}
+              onConfirm={() => setRedshirt(p.id, true)}
+            />
+          )}
+        </ListRow>
+      </List>
+      {retrainOpen && isHitter && (
+        <RetrainSheet p={p as Hitter} canMove onClose={() => setRetrainOpen(false)} />
+      )}
+    </section>
   );
 }

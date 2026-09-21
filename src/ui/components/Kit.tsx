@@ -11,6 +11,7 @@
 // The three that used to live here — Rule, Tile, Card — belonged to the design
 // this port replaced and went with it.
 
+import { armedLock } from './ui/armed.js';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ChevronRightIcon, DotFilledIcon, PersonIcon, SewingPinIcon,
@@ -471,7 +472,6 @@ export function Meter(
  * spends forty points on the wrong man. There is deliberately no timer — a
  * player reading a cost before agreeing to it should not be racing one.
  */
-let armed: { id: symbol; disarm: () => void } | null = null;
 
 export function Confirmable(
   { idle, armed: armedLabel, done, failed, disabled, className, onConfirm }:
@@ -498,7 +498,7 @@ export function Confirmable(
   // next screen can ever arm.
   useEffect(() => {
     const id = me.current;
-    return () => { if (armed?.id === id) armed = null; };
+    return () => { if (armedLock.current?.id === id) armedLock.current = null; };
   }, []);
 
   /*
@@ -518,7 +518,7 @@ export function Confirmable(
     if (state !== 'armed') return;
     const stand = (e: PointerEvent): void => {
       if (btn.current && e.target instanceof Node && btn.current.contains(e.target)) return;
-      if (armed?.id === me.current) armed = null;
+      if (armedLock.current?.id === me.current) armedLock.current = null;
       setState('idle');
     };
     document.addEventListener('pointerdown', stand, true);
@@ -528,12 +528,12 @@ export function Confirmable(
   const press = (): void => {
     if (state === 'done') return;
     if (state !== 'armed') {
-      armed?.disarm();
-      armed = { id: me.current, disarm: () => setState('idle') };
+      armedLock.current?.disarm();
+      armedLock.current = { id: me.current, disarm: () => setState('idle') };
       setState('armed');
       return;
     }
-    armed = null;
+    armedLock.current = null;
     const ok = onConfirm();
     if (ok === false) { setState(failed ? 'failed' : 'idle'); return; }
     setState(done ? 'done' : 'idle');

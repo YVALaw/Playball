@@ -1,22 +1,25 @@
-// god/RosterEditor.tsx — roster management only.
-//
-// League movement deliberately does not live here. This editor is about the
-// people on one roster: add a player, filter the list, and open a player editor.
+// god/RosterEditor.tsx — the people on one roster: add a player, filter the
+// list, and open anyone in his own editor. League movement deliberately does
+// not live here.
 
 import { useMemo, useState } from 'react';
 import { useDynasty } from '../../state/store.js';
-import { Segmented } from '../components/Kit.js';
 import { isHurt } from '../../engine/injury.js';
 import { overallOf } from '../../engine/ratings.js';
 import { potentialGrade } from '../../engine/scouting.js';
 import { isTwoWay, type Hitter, type Pitcher, type Player, type PlayerId } from '../../engine/types.js';
+import {
+  Button, Card, EmptyState, Face, List, PlayerRow, SegmentedControl, StatGroup,
+} from '../components/ui/index.js';
+import { CLASS_NAME, POSITION_NAME } from '../words.js';
+import { GodPage } from './controls.js';
 
 const slotOf = (p: Player): string => p.type === 'pitcher' ? (p as Pitcher).role : (p as Hitter).pos;
 type Filter = 'all' | 'bats' | 'arms';
 const FILTERS = [
-  { value: 'all', label: 'ALL' },
-  { value: 'bats', label: 'BATS' },
-  { value: 'arms', label: 'ARMS' },
+  { value: 'all', label: 'Everyone' },
+  { value: 'bats', label: 'Hitters' },
+  { value: 'arms', label: 'Pitchers' },
 ] as const;
 
 export function RosterEditor({ team }: { team: number }) {
@@ -37,39 +40,58 @@ export function RosterEditor({ team }: { team: number }) {
   if (!season || !record) return null;
 
   const shown = men.filter((p) => filter === 'all' || (filter === 'arms' ? p.type === 'pitcher' : p.type !== 'pitcher'));
+  const add = (kind: 'hitter' | 'pitcher'): void => {
+    const id = addPlayer(record.index, kind);
+    if (id) openGod({ kind: 'player', id });
+  };
 
   return (
-    <main className="module-workspace god-desk">
-      <section className="god-summary-card">
-        <div><small>ROSTER</small><strong>{men.length}</strong><span>players</span></div>
-        <div><small>BATS</small><strong>{men.filter((p) => p.type !== 'pitcher').length}</strong><span>position players</span></div>
-        <div><small>ARMS</small><strong>{men.filter((p) => p.type === 'pitcher').length}</strong><span>pitchers</span></div>
-      </section>
+    <GodPage eyebrow="God mode · Roster" title={record.def.school}>
+      <StatGroup
+        size="sm"
+        items={[
+          { label: 'Players', value: men.length },
+          { label: 'Hitters', value: men.filter((p) => p.type !== 'pitcher').length },
+          { label: 'Pitchers', value: men.filter((p) => p.type === 'pitcher').length },
+        ]}
+      />
 
-      <section className="god-card god-quick-actions">
-        <div className="god-actions">
-          <button type="button" className="tap" onClick={() => { const id = addPlayer(record.index, 'hitter'); if (id) openGod({ kind: 'player', id }); }}>ADD A BAT</button>
-          <button type="button" className="tap" onClick={() => { const id = addPlayer(record.index, 'pitcher'); if (id) openGod({ kind: 'player', id }); }}>ADD AN ARM</button>
+      <Card title="Add a player">
+        <div className="pb-buttons-2">
+          <Button variant="secondary" icon="plus" onClick={() => add('hitter')}>Add a hitter</Button>
+          <Button variant="secondary" icon="plus" onClick={() => add('pitcher')}>Add a pitcher</Button>
         </div>
-        <p className="god-note">New players arrive on the bench or in the pen. Open them immediately to rewrite ratings, status or destination.</p>
-      </section>
+        
+      </Card>
 
-      <div className="god-subnav"><Segmented value={filter} options={FILTERS} onChange={setFilter} label="Roster filter" /></div>
+      <SegmentedControl<Filter> label="Roster filter" value={filter} onChange={setFilter} options={FILTERS} />
 
-      <section className="god-card god-roster-card">
-        <div className="god-roster">
-          {shown.map((p) => (
-            <button key={p.id} type="button" className="tap" onClick={() => openGod({ kind: 'player', id: p.id })}>
-              <strong>{p.name}</strong>
-              <small>
-                {slotOf(p)} · {p.classYear} · {overallOf(p)} OVR · {potentialGrade(p.potential)}
-                {isHurt(p, season.dayIndex) ? ' · HURT' : ''}{isTwoWay(p) ? ' · 2-WAY' : ''}
-              </small>
-            </button>
-          ))}
-        </div>
-        {shown.length === 0 && <p className="god-note">No players in this filter.</p>}
-      </section>
-    </main>
+      {shown.length === 0 ? (
+        <EmptyState icon="person" title="Nobody here" />
+      ) : (
+        <List label="Roster">
+          {shown.map((p) => {
+            const code = slotOf(p);
+            return (
+              <PlayerRow
+                key={p.id}
+                name={p.name}
+                avatar={<Face id={p.id} team={record.def.abbr} size={36} />}
+                tags={[
+                  { text: code, title: POSITION_NAME[code as keyof typeof POSITION_NAME] ?? code },
+                  CLASS_NAME[p.classYear],
+                  ...(isTwoWay(p) ? ['Two-way'] : []),
+                ]}
+                meta={`Ceiling ${potentialGrade(p.potential)}`}
+                warning={isHurt(p, season.dayIndex) ? 'Hurt' : undefined}
+                value={overallOf(p)}
+                valueLabel="of 100"
+                onClick={() => openGod({ kind: 'player', id: p.id })}
+              />
+            );
+          })}
+        </List>
+      )}
+    </GodPage>
   );
 }

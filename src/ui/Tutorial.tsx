@@ -6,14 +6,13 @@ import { readPrefs } from '../state/devicePrefs.js';
 import { useDynasty } from '../state/store.js';
 import { TUTORIALS, type TutorialPage } from './tutorials.js';
 import { activeGuideStep } from './guide.js';
+import { Icon } from './components/ui/index.js';
 
 /** One short explanation and a clear next action. */
 export function LessonBody({ page }: { page: TutorialPage }) {
   return <>
-    <p>{page.body}</p>
-    <div className="tutorial-action">
-      <p>{page.action}</p>
-    </div>
+    <p className="pb-text">{page.body}</p>
+    <p className="pb-tip__action"><Icon name="arrow-right" size={16} /><span>{page.action}</span></p>
   </>;
 }
 
@@ -40,19 +39,22 @@ export function FirstVisit({ id }: { id: string }) {
 
   return <>
     {show && frame && createPortal(
-      <div ref={dialog} className="tutorial-scrim fade-in" role="dialog" aria-modal="true"
+      <div ref={dialog} className="pb-tip-host" role="dialog" aria-modal="true"
         aria-labelledby={titleId} aria-describedby={bodyId} onClick={close}>
-        <section className="tutorial-card rise-in" onClick={(e) => e.stopPropagation()}>
-          <div className="flow-section-title">
-            <span className="label">QUICK TIP{pages.length > 1 ? ` · ${page + 1} OF ${pages.length}` : ''}</span>
-            <button className="tap" type="button" onClick={close}>Close</button>
-          </div>
-          <h2 id={titleId} aria-live="polite">{current.title}</h2>
-          <div id={bodyId}><LessonBody page={current} /></div>
-          <footer>
-            {page > 0 && <button className="tutorial-back tap" type="button" onClick={() => setPage(page - 1)}>Back</button>}
-            <button className="primary-command tap" ref={primary} type="button"
-              onClick={() => last ? close() : setPage(page + 1)}>{last ? 'GOT IT' : 'NEXT'}</button>
+        <section className="pb-tip" onClick={(e) => e.stopPropagation()}>
+          <header className="pb-tip__head">
+            <span className="pb-tip__mark" aria-hidden><Icon name="question" size={20} /></span>
+            <span className="pb-tip__titles">
+              <span className="pb-eyebrow">Quick tip{pages.length > 1 ? ` \u00b7 ${page + 1} of ${pages.length}` : ''}</span>
+              <h2 id={titleId} className="pb-tip__title" aria-live="polite">{current.title}</h2>
+            </span>
+            <button className="pb-icon-btn" type="button" aria-label="Close" onClick={close}><Icon name="cross" size={20} /></button>
+          </header>
+          <div id={bodyId} className="pb-tip__body"><LessonBody page={current} /></div>
+          <footer className="pb-tip__foot">
+            {page > 0 && <button className="pb-btn pb-btn--secondary pb-btn--md" type="button" onClick={() => setPage(page - 1)}><span className="pb-btn__label">Back</span></button>}
+            <button className="pb-btn pb-btn--primary pb-btn--md" ref={primary} type="button"
+              onClick={() => last ? close() : setPage(page + 1)}><span className="pb-btn__label">{last ? 'Got it' : 'Next'}</span></button>
           </footer>
         </section>
       </div>, frame,

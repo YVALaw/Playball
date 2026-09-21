@@ -1,20 +1,20 @@
 // Start.tsx
-// The front door.
+// The front door: carry on with the last career, start a new one, open
+// another, or change the settings.
 //
-// Asked for by name: "we need to start creating the starting screen. Like new
-// game, load game etc." Until now the app resumed the autosave the instant it
-// booted, which meant a career could only be left by deleting it — and gave a
-// player no moment to choose a different one, or to start again without first
-// landing inside the last dynasty.
+// The app opens here rather than inside the last career. Resuming the
+// autosave the instant it booted left a player no moment to choose, and made a
+// career impossible to leave except by deleting it — which did nothing, because
+// the next tap wrote the autosave straight back. A career now has a place to be
+// let go of: the door closes behind it and nothing is left running.
 //
-// It also fixes a reported bug by giving it somewhere to stand. Deleting the
-// live career's file "doesn't really delete it", because `saveNow` defaults to
-// the autosave slot and half the app calls it: the next tap wrote the file
-// straight back. A career now has a place to be let go OF — the door closes
-// behind it and nothing is left running to rewrite the slot.
+// One primary action: Resume when there is a career to resume, New career when
+// there is not.
 
 import { useEffect, useState } from 'react';
 import { useDynasty } from '../../state/store.js';
+import { Button, Callout, Card, List, ListRow } from '../components/ui/index.js';
+import { plural } from '../words.js';
 
 /** How long ago, in the fewest words that are still true. */
 function when(ts: number): string {
@@ -22,9 +22,20 @@ function when(ts: number): string {
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins} min ago`;
   const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+  if (hrs < 24) return `${plural(hrs, 'hour')} ago`;
   const days = Math.round(hrs / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
+  return `${plural(days, 'day')} ago`;
+}
+
+/** The game's mark: a ball on the field green. */
+function Mark() {
+  return (
+    <svg className="pb-start__mark" viewBox="0 0 56 56" aria-hidden>
+      <rect width="56" height="56" rx="16" fill="var(--brand-green)" />
+      <circle cx="28" cy="28" r="16" fill="var(--brand-ball)" />
+      <path d="M19 16.5c4 3.2 6 7 6 11.5s-2 8.3-6 11.5M37 16.5c-4 3.2-6 7-6 11.5s2 8.3 6 11.5" fill="none" stroke="#c8352b" strokeWidth="1.6" strokeLinecap="round" strokeDasharray="2 2.2" />
+    </svg>
+  );
 }
 
 export function Start(
@@ -53,72 +64,95 @@ export function Start(
       .then((ok) => { if (!ok) setBusy(false); })
       .catch(() => setBusy(false));
   };
+  const blocked = busy || savesState === 'error';
+  const startNew = (): void => { leaveStart(); onNew(); };
 
   return (
-    <div className="start-screen">
-      <header>
-        <small>COLLEGE BASEBALL DYNASTY</small>
-        <h1>Playball</h1>
-        <p>Build a program, shape the season, and take a dugout all the way to Omaha.</p>
-      </header>
+    <div className="pb-start">
+      <div className="pb-start__inner">
+        <header className="pb-start__brand">
+          <Mark />
+          <span className="pb-eyebrow">College baseball dynasty</span>
+          <h1 className="pb-start__title">Playball</h1>
+          <p className="pb-start__lede">Build a program, shape the season, and take a dugout all the way to Omaha.</p>
+        </header>
 
-      <div className="start-doors">
         {/*
-          A save store that will not open must say so here, on the one screen
-          whose empty state reads as "you have no careers" — and beside the
-          door that starts a new one. A blocked open (another tab holding the
-          database, a private window) is recoverable; hiding CONTINUE and the
-          load door without a word made it look like the device was empty
-          (05 §62.3).
+          A save store that will not open says so here, beside the door that
+          starts a new career: an empty start screen would otherwise read as
+          "you have no careers" when the device only refused to answer.
         */}
         {savesState === 'error' && (
-          <div className="start-storage-error" role="alert">
-            <strong>Your careers could not be read.</strong>
-            <small>{savesError ?? 'The device refused the save store.'} Nothing is lost; try again before starting anything new.</small>
-            <button type="button" className="tap" onClick={() => void refreshSaves()}>TRY AGAIN</button>
-          </div>
-        )}
-        {latest && (
-          <button
-            className="start-continue tap"
-            type="button"
-            disabled={busy}
-            onClick={resume}
+          <Callout
+            tone="negative"
+            role="alert"
+            title="Your careers could not be read"
+            action={{ label: 'Try again', onClick: () => void refreshSaves() }}
           >
-            <span>
-              <small>CONTINUE</small>
-              <strong>{latest.school}</strong>
-              <em>{latest.year} · {latest.record} · {when(latest.savedAt)}</em>
-            </span>
-            <b>Resume</b>
-          </button>
+            {savesError ?? 'The device refused the save store.'} Nothing is lost.
+          </Callout>
         )}
 
-        <button
-          className="start-door tap"
-          type="button"
-          disabled={busy || savesState === 'error'}
-          onClick={() => { leaveStart(); onNew(); }}
-        >
-          <strong>New career</strong>
-          <small>A new world, and a chair to take.</small>
-        </button>
-
-        {saves.length > 0 && (
-          <button className="start-door tap" type="button" onClick={onLoad}>
-            <strong>Load a career</strong>
-            <small>
-              {saves.length} on this device.
-            </small>
-          </button>
+        {latest && (
+          /*
+            A career ended here is not "where you left off" -- nothing was left
+            off. It is a finished thing you can open, and the card says whose
+            and how it went rather than a school's season at nought.
+          */
+          latest.retired ? (
+            <Card eyebrow={`A finished career · retired ${latest.retired.year}`} title={latest.retired.coach}>
+              <p className="pb-text-muted">
+                {latest.retired.record} · last at {latest.school} · saved {when(latest.savedAt)}
+              </p>
+              <Button variant="secondary" block iconAfter="arrow-right" disabled={busy} onClick={resume}>
+                {busy ? 'Opening…' : 'Open the career'}
+              </Button>
+            </Card>
+          ) : (
+            <Card eyebrow="Continue where you left off" title={latest.school}>
+              <p className="pb-text-muted">
+                {latest.name && latest.name !== latest.school ? `${latest.name} · ` : ''}
+                {latest.year} season · record {latest.record} · saved {when(latest.savedAt)}
+              </p>
+              <Button variant="primary" block iconAfter="arrow-right" disabled={busy} onClick={resume}>
+                {busy ? 'Opening…' : 'Resume'}
+              </Button>
+            </Card>
+          )
         )}
 
-        <button className="start-door tap" type="button" onClick={onSettings}>
-          <strong>Settings</strong>
-          <small>Text size, sound, and how much you are asked.</small>
-        </button>
+        {!latest && (
+          <Button variant="primary" block iconAfter="arrow-right" disabled={blocked} onClick={startNew}>
+            Start a new career
+          </Button>
+        )}
+
+        <List label="More">
+          {latest && (
+            <ListRow
+              icon="plus-circled"
+              title="New career"
+              subtitle="Pick a school and take the job."
+              onClick={blocked ? undefined : startNew}
+              disabled={blocked}
+            />
+          )}
+          {saves.length > 0 && (
+            <ListRow
+              icon="archive"
+              title="Load a career"
+              subtitle={`${plural(saves.length, 'career')} saved on this device`}
+              onClick={onLoad}
+            />
+          )}
+          <ListRow
+            icon="gear"
+            title="Settings"
+            subtitle="Text size, sound, and how much the game asks you."
+            onClick={onSettings}
+          />
+        </List>
       </div>
-
     </div>
   );
 }

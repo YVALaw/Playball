@@ -41,6 +41,7 @@ import { teamId } from './types.js';
 // Type only, and it has to stay that way: `hall.ts` reads `careerName` out of
 // this module, so a value import back the other way would be a runtime cycle.
 import type { Inductee } from './hall.js';
+import type { Legend } from './retirement.js';
 // Type only, and it has to stay that way: `postseason.ts` is built on this
 // module, so a value import back the other way would be a runtime cycle. The
 // school annals speak the postseason's vocabulary for how a year ended.
@@ -1008,6 +1009,17 @@ export interface SeasonState {
    */
   hall?: Inductee[];
   /**
+   * Every coaching career this world has seen finish -- yours and the ninety
+   * five -- oldest first.
+   *
+   * On the world rather than on the store beside `history`, for the reason the
+   * hall is: it is a permanent record of things that already happened, it is
+   * the only copy, and it has to outlive the man it was written from. It also
+   * has to be writable from here, because the carousel that retires the other
+   * ninety five is engine code and cannot reach the store.
+   */
+  legends?: Legend[];
+  /**
    * Career totals for every man on a roster in the country. See `CareerTotals`.
    *
    * Optional and genuinely empty on a save that predates it, on the same terms as
@@ -1648,6 +1660,8 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
     // are permanent records of things that already happened, and both are the
     // only copy of what they hold.
     ...(prev.hall ? { hall: prev.hall } : {}),
+    // Nor the book of finished careers, for all three of the same reasons.
+    ...(prev.legends ? { legends: prev.legends } : {}),
     careerTotals: prev.careerTotals ?? new Map(),
     captureBoxFor: prev.captureBoxFor,
     // A new class every year. Last year's board is spent, and so is last

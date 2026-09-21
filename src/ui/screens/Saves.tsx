@@ -1,25 +1,21 @@
 // Saves.tsx
-// Every dynasty on this device, and the four things you can do with one.
+// Every career on this device, and what you can do with one: open it, keep a
+// copy under a name of your own, or delete it.
 //
-// The save layer has been complete since v0.5 and nothing has ever called most
-// of it: `listSaves` and `deleteSave` had no caller anywhere in the app, so a
-// career meant the autosave and the autosave meant your one and only career.
-// Starting a second dynasty quietly wrote over the first, which is a thing you
-// only find out afterwards.
-//
-// So: a list, a load, a copy under a name of your own, and a delete that makes
-// you say it twice. The copy is the one that matters most in practice — it is
-// how you keep the state of a program the week before a decision you are not
-// sure about, which is as true of somebody testing the game as of somebody
-// playing it.
+// The copy matters most in practice. It is how you keep a program as it stands
+// the week before a decision you are not sure about, which is as true of
+// somebody testing the game as of somebody playing it. Deleting asks twice,
+// and says plainly when the save is the career you are playing.
 
 import { useEffect, useState } from 'react';
-import { TrashIcon } from '@radix-ui/react-icons';
 import { AUTOSAVE_SLOT, useDynasty, useUserTeam } from '../../state/store.js';
 import type { SaveSummary } from '../../state/store.js';
-import { FixedHeader } from '../Sticky.js';
-import { ModuleIntro } from '../components/Kit.js';
 import { Modal } from '../Modal.js';
+import {
+  Button, Callout, Card, EmptyState, IconButton, List, ListRow, Marquee, SectionHeader, StatusBadge,
+  TextField,
+} from '../components/ui/index.js';
+import { plural } from '../words.js';
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -91,16 +87,14 @@ export function Saves() {
   const saveState = useDynasty((s) => s.saveState);
   const lastSaveError = useDynasty((s) => s.lastSaveError);
   const loadError = useDynasty((s) => s.loadError);
+  const loadedSlot = useDynasty((s) => s.loadedSlot);
   const year = useDynasty((s) => s.year);
   const team = useUserTeam();
 
   const [name, setName] = useState('');
   const [ask, setAsk] = useState<Ask | null>(null);
-  /**
-   * Re-read on a timer so "just now" does not still say "just now" an hour
-   * later. Cheap, and the alternative is a screen that quietly lies about how
-   * old a save is for as long as it is left open.
-   */
+  // Re-read on a timer so "just now" does not still say "just now" an hour
+  // later.
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => { void refreshSaves(); }, [refreshSaves]);
@@ -110,6 +104,13 @@ export function Saves() {
   }, []);
 
   const blocked = savesState === 'error';
+  const saving = saveState === 'saving';
+  const fallbackName = team ? `${team.def.school} ${year}` : '';
+
+  // The store's own rule for a delete that closes the career: the autosave, or
+  // the file this career was opened from.
+  const closesCareer = (save: SaveSummary): boolean =>
+    !!team && (save.slot === AUTOSAVE_SLOT || save.slot === loadedSlot);
 
   const confirmDelete = (save: SaveSummary): void => {
     setAsk(null);
@@ -117,242 +118,158 @@ export function Saves() {
   };
 
   return (
-    <FixedHeader header={
-      <ModuleIntro kicker={blocked
-              ? 'STORAGE UNAVAILABLE'
-              : `${saves.length} DYNAST${saves.length === 1 ? 'Y' : 'IES'} ON THIS DEVICE`} title="Saves" />
-    }>
-      <div style={{ padding: '12px 14px 24px' }}>
+    <main className="pb-page">
+      <Marquee
+        eyebrow={blocked ? 'Storage unavailable' : `${plural(saves.length, 'career')} on this device`}
+        title="Saved careers"
+      />
 
-        {/*
-          Three different things can be wrong here and they have three different
-          answers, so they are three different panels rather than one apologetic
-          sentence: the browser will not give us storage at all, the last write
-          failed, or a particular save refused to open.
-        */}
-        {blocked && (
-          <Notice
-            title="This browser will not let the game store anything"
-            detail={savesError}
-            action={{ label: 'TRY AGAIN', onClick: () => { void refreshSaves(); } }}
-          >
-            Another tab may have Playball open, or site data is blocked here.
-            You can keep playing, but nothing saves until this clears.
-          </Notice>
-        )}
+      {/*
+        Three different things can be wrong here, with three different answers:
+        the browser will not store anything at all, the last write failed, or
+        one save refused to open.
+      */}
+      {blocked && (
+        <Callout
+          tone="negative"
+          role="alert"
+          title="This browser will not let the game store anything"
+          action={{ label: 'Try again', onClick: () => { void refreshSaves(); } }}
+        >
+          Another tab may have Playball open. Nothing saves until this clears.
+          {savesError && <span className="pb-errdetail">{savesError}</span>}
+        </Callout>
+      )}
 
-        {saveState === 'error' && (
-          <Notice
-            title="The last save did not go through"
-            detail={lastSaveError}
-            action={team ? {
-              label: 'TRY AGAIN',
-              onClick: () => { void useDynasty.getState().saveNow(); },
-            } : undefined}
-          >
-            Everything since is still on screen — just not on disk.
-          </Notice>
-        )}
+      {saveState === 'error' && (
+        <Callout
+          tone="warning"
+          role="alert"
+          title="The last save did not go through"
+          action={team ? { label: 'Try again', onClick: () => { void useDynasty.getState().saveNow(); } } : undefined}
+        >
+          Everything since is still on screen, just not stored.
+          {lastSaveError && <span className="pb-errdetail">{lastSaveError}</span>}
+        </Callout>
+      )}
 
-        {loadError && (
-          <Notice title="A save would not open" detail={loadError}>
-            Usually a save from a newer build of the game. It will open again
-            in the build that wrote it.
-          </Notice>
-        )}
+      {loadError && (
+        <Callout tone="warning" title="A save would not open">
+          Probably saved by a newer version. Nothing was deleted.
+          <span className="pb-errdetail">{loadError}</span>
+        </Callout>
+      )}
 
-        {/* ------------------------------------------------------------------
-            Take a copy. First, because it is the thing you came here to do
-            before a decision rather than after one.
-        */}
-        {team && !blocked && (
-          <div style={{
-            border: '1px solid var(--faint)', background: 'var(--paper)',
-            padding: '11px 12px 12px', marginBottom: 16,
-          }}>
-            <div className="label">SAVE A COPY</div>
-            <div style={{
-              marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-            }}>
-              {team.def.school}, {year}, {team.w}-{team.l} — under a name of your own.
-            </div>
-            <input
-              aria-label="A name for this save"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={`${team.def.school} ${year}`}
-              maxLength={32}
-              style={{
-                width: '100%', marginTop: 9, padding: '11px 10px',
-                background: 'var(--field)',
-                border: '1px solid rgba(var(--ink-rgb), .28)', borderRadius: 0,
-                // 16px floor: anything smaller makes a phone browser zoom in on
-                // focus and stay zoomed. Same fix as the coach name input.
-                color: 'var(--ink)', font: "400 calc(16px * var(--ts)) var(--body)",
-              }}
-            />
-            <button
-              onClick={() => {
-                void saveAs(name || `${team.def.school} ${year}`);
-                setName('');
-              }}
-              disabled={saveState === 'saving'}
-              className="tap"
-              style={{
-                width: '100%', marginTop: 8, padding: '12px 10px',
-                background: 'var(--clay)', border: '1px solid var(--clay)',
-                color: 'var(--cream)', font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-                opacity: saveState === 'saving' ? 0.6 : 1,
-              }}
-            >{saveState === 'saving' ? 'SAVING…' : 'SAVE A COPY'}</button>
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------------
-            The list.
-        */}
-        {!blocked && (
-          <div className="save-list-heading">
-            <span className="label">ON THIS DEVICE</span>
-            <small>Tap the trash on one career to remove only that save.</small>
-          </div>
-        )}
-
-        {!blocked && saves.length === 0 && savesState !== 'loading' && (
-          <div style={{ padding: '18px 4px 6px', textAlign: 'center' }}>
-            <div className="label">NOTHING SAVED YET</div>
-            <div style={{
-              maxWidth: 270, margin: '8px auto 0',
-              font: "400 calc(12px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
-            }}>
-              The game saves on its own. Copies land here too.
-            </div>
-          </div>
-        )}
-
-        {savesState === 'loading' && saves.length === 0 && (
-          <div style={{ padding: '18px 4px', textAlign: 'center' }}>
-            <span className="label">READING…</span>
-          </div>
-        )}
-
-        {saves.map((s) => (
-          <SaveRow
-            key={s.slot}
-            save={s}
-            now={now}
-            onLoad={() => { void loadSlot(s.slot); }}
-            onDelete={() => setAsk({ kind: 'delete', save: s })}
+      {/* First, because it is what you come here to do before a decision. */}
+      {team && !blocked && (
+        <Card eyebrow="Keep a copy" title="Save a copy of this career">
+          <p className="pb-text-muted">
+            {team.def.school}, {year} season, {team.w}–{team.l}.
+          </p>
+          <TextField
+            label="Name for the copy"
+            value={name}
+            placeholder={fallbackName}
+            maxLength={32}
+            hint={name ? `${32 - name.length} characters left` : `Left empty, it is called “${fallbackName}”.`}
+            onChange={(e) => setName(e.target.value)}
           />
-        ))}
+          <Button
+            variant="primary"
+            block
+            icon="download"
+            disabled={saving}
+            onClick={() => {
+              void saveAs(name.trim() || fallbackName);
+              setName('');
+            }}
+          >{saving ? 'Saving…' : 'Save a copy'}</Button>
+        </Card>
+      )}
 
-      </div>
+      {!blocked && (
+        <section>
+          <SectionHeader title="On this device" count={saves.length || undefined} />
+          {savesState === 'loading' && saves.length === 0 ? (
+            <EmptyState icon="clock" title="Reading your saves…" />
+          ) : saves.length === 0 ? (
+            <EmptyState icon="archive" title="Nothing saved yet" text="The game saves on its own as you play. Copies land here too." />
+          ) : (
+            <List label="Saved careers">
+              {saves.map((s) => (
+                <SaveRow
+                  key={s.slot}
+                  save={s}
+                  now={now}
+                  playing={!!team && s.slot === (loadedSlot ?? AUTOSAVE_SLOT)}
+                  onLoad={() => { void loadSlot(s.slot); }}
+                  onDelete={() => setAsk({ kind: 'delete', save: s })}
+                />
+              ))}
+            </List>
+          )}
+        </section>
+      )}
 
       {ask?.kind === 'delete' && (
         <Modal
-          kicker={ask.save.slot === AUTOSAVE_SLOT ? 'THIS IS THE AUTOSAVE' : 'DELETE FOR GOOD'}
-          title={ask.save.name}
+          kicker={closesCareer(ask.save) ? 'This closes your career' : 'Delete for good'}
+          title={`Delete “${ask.save.name}”?`}
           tone="clay"
           lines={[
-            `${ask.save.school} · ${ask.save.year} · ${ask.save.record} · saved ${agoLabel(ask.save.savedAt, now)}.`,
-            ask.save.slot === AUTOSAVE_SLOT
-              // Deleting the autosave is legitimate — you may be clearing a
-              // device — but it is almost never what somebody in the middle of a
-              // season means to do, and the reason it is nearly useless there is
-              // worth saying rather than leaving them to discover.
-              ? 'This is the career you are playing. Deleting it closes the career and stands you back at the front door.'
-              : 'There is no second copy of this dynasty and no way back to it once it is gone.',
+            `${ask.save.school} · ${ask.save.year} season · ${ask.save.record} · saved ${agoLabel(ask.save.savedAt, now)}.`,
+            closesCareer(ask.save)
+              // Legitimate (you may be clearing a device), but almost never what
+              // somebody in the middle of a season means, so it says why.
+              ? 'This is the save the career you are playing writes to. Deleting it closes the career and takes you back to the start screen.'
+              : 'There is no other copy of this career, and no way back to it once it is gone.',
           ]}
-          cancel={{ label: 'KEEP IT', onClick: () => setAsk(null) }}
-          action="DELETE IT"
+          cancel={{ label: 'Keep it', onClick: () => setAsk(null) }}
+          action="Delete it"
           onClose={() => confirmDelete(ask.save)}
         />
       )}
-
-    </FixedHeader>
+    </main>
   );
 }
 
 /**
- * One dynasty on the list.
- *
- * The autosave wears its name on the row rather than being sorted somewhere
- * special: it is the same kind of object as the others and behaves like one, and
- * the only thing worth saying about it is which one it is.
+ * One career on the list: its name, where and when it stands, and a delete
+ * that sits apart from the row's own tap.
  */
 function SaveRow(
-  { save, now, onLoad, onDelete }:
+  { save, now, playing, onLoad, onDelete }:
   {
     save: SaveSummary;
     now: number;
+    /** The save the open career writes to. */
+    playing: boolean;
     onLoad: () => void;
     onDelete: () => void;
   },
 ) {
   const auto = save.slot === AUTOSAVE_SLOT;
-  const meta = save.name.trim().toUpperCase() === save.school.toUpperCase()
-    ? `${save.year} · ${save.record}`
-    : `${save.school} · ${save.year} · ${save.record}`;
-
+  // A finished career reads as the man and his record, not the school's next
+  // season at nought.
+  const where = save.retired
+    ? `${save.retired.coach} · ${save.retired.record} · retired ${save.retired.year}`
+    : save.name.trim().toUpperCase() === save.school.toUpperCase()
+      ? `${save.year} season · ${save.record}`
+      : `${save.school} · ${save.year} season · ${save.record}`;
   return (
-    <article className="save-file-card card-in">
-      <button className="save-file-open tap" type="button" onClick={onLoad}>
-        <span className="save-file-mark">{auto ? 'AUTO' : 'SAVE'}</span>
-        <span className="save-file-copy">
-          {auto && <small>AUTOSAVE · CAREER IN PROGRESS</small>}
-          <strong>{save.name}</strong>
-          <em>{meta}</em>
-          <span>Saved {agoLabel(save.savedAt, now)}</span>
-        </span>
-        <b>LOAD</b>
-      </button>
-      <button
-        className="save-file-trash tap"
-        type="button"
-        aria-label={`Delete ${save.name}`}
-        title={`Delete ${save.name}`}
-        onClick={onDelete}
-      ><TrashIcon /></button>
-    </article>
-  );
-}
-
-/** Something went wrong, said plainly, with whatever can be done about it. */
-function Notice(
-  { title, detail, action, children }:
-  {
-    title: string;
-    detail?: string | null;
-    action?: { label: string; onClick: () => void };
-    children: React.ReactNode;
-  },
-) {
-  return (
-    <div style={{
-      background: 'var(--paper)', borderLeft: '3px solid var(--clay)',
-      padding: '10px 12px', marginBottom: 14,
-    }}>
-      <div style={{ font: "700 calc(13px * var(--ts))/1.3 var(--body)" }}>{title}</div>
-      <div style={{
-        marginTop: 5, font: "400 calc(11.5px * var(--ts))/1.55 var(--body)", color: 'var(--dim)',
-      }}>{children}</div>
-      {detail && (
-        <div style={{
-          marginTop: 6, font: "400 calc(9.5px * var(--ts))/1.5 var(--mono)", color: 'var(--dim)',
-          overflowWrap: 'anywhere',
-        }}>{detail}</div>
-      )}
-      {action && (
-        <button
-          onClick={action.onClick}
-          className="tap"
-          style={{
-            marginTop: 9, padding: '8px 14px',
-            background: 'transparent', border: '1px solid var(--clay)',
-            color: 'var(--clay)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-          }}
-        >{action.label}</button>
-      )}
+    <div className="pb-saverow">
+      <ListRow
+        icon={auto ? 'reset' : 'archive'}
+        title={save.name}
+        subtitle={`${where} · saved ${agoLabel(save.savedAt, now)}`}
+        status={save.retired
+          ? <StatusBadge tone="neutral" icon="star">Finished</StatusBadge>
+          : playing
+            ? <StatusBadge tone="positive">Playing now</StatusBadge>
+            : auto ? <StatusBadge tone="neutral" icon={false}>Autosave</StatusBadge> : undefined}
+        onClick={onLoad}
+      />
+      <IconButton icon="trash" label={`Delete ${save.name}`} tone="quiet" className="pb-saverow__delete" onClick={onDelete} />
     </div>
   );
 }

@@ -84,9 +84,9 @@ export function LevelTrack(
  * ball, the target and the crest are round because they are round; the boxes
  * are not.
  */
-export function FacilityArt({ kind }: { kind: Building }) {
+export function FacilityArt({ kind, className }: { kind: Building; className?: string }) {
   return (
-    <svg className={`facility-art facility-art-${kind}`} viewBox="0 0 240 130" fill="none" aria-hidden="true">
+    <svg className={`facility-art facility-art-${kind}${className ? ` ${className}` : ''}`} viewBox="0 0 240 130" fill="none" aria-hidden="true">
       <path d="m20 95 105-55 100 49-103 33L20 95Z" fill="currentColor" opacity=".07" />
       <g stroke="currentColor" strokeWidth="2" strokeLinejoin="miter" strokeLinecap="butt">
         {kind === 'cage' ? (
@@ -95,14 +95,14 @@ export function FacilityArt({ kind }: { kind: Building }) {
             <path d="M43 91V51l48-21 55 22v39M91 30v82m55-60 48 24v-40l-48-24-55 18M43 51l48 21 103-36M91 72v40m103-76v40" />
             <path d="m59 44 49 21m-32-28 49 22m-19-35 49 22m-31-29 49 20M59 58v40m16-33v40m34-40v41m18-48v43m35-54v40m16-47v42" opacity=".3" />
             <path d="m112 96 35-30m-38 33 6-2m-1-4-5 6" strokeWidth="4" />
-            <circle cx="153" cy="90" r="4" fill="var(--paper)" />
+            <circle cx="153" cy="90" r="4" fill="var(--pb-knockout, var(--paper))" />
           </>
         ) : kind === 'pen' ? (
           <>
             <path d="m35 85 122-45 53 27-123 45-52-27Z" fill="currentColor" opacity=".1" />
             <path d="M35 85V40l53 27v45m0-45 122-45v45" />
             <path d="M51 48v45m18-36v45m43-44v45m25-54v45m24-54v45m25-54v45M35 55l53 27 122-45M35 70l53 27 122-45" opacity=".25" />
-            <ellipse cx="151" cy="69" rx="18" ry="8" fill="var(--paper)" />
+            <ellipse cx="151" cy="69" rx="18" ry="8" fill="var(--pb-knockout, var(--paper))" />
             <path d="m144 69 12-4" strokeWidth="3" />
             <path d="m86 96 6 3 9-4-3-4-7 1-5 4Z" fill="currentColor" />
             <path d="m102 88 28-10" strokeDasharray="3 5" />

@@ -1,28 +1,29 @@
 // JobMarket.tsx
-// The screen for a university calling about a job — asked for by name.
+// Programs calling about their head-coaching job.
 //
-// Offers used to render as a list buried on the program board, where a tap on
-// the row WAS the acceptance: one loose thumb on a scrolling screen and you
-// coached somewhere else. This is the mockup's job market instead — every
-// offer a row you can open and read before anything is signed, and signing a
-// two-press act with the second press saying exactly what it does.
+// Every offer is a card you can read before anything is signed: the program,
+// how it compares with the job you have, what comes with you and what stays
+// behind, and a two-press button to take it. Taking a job is one of the two
+// irreversible acts in the game, so the second press says exactly what it
+// does, and touching anything else stands it down.
 //
-// The rows the career watches come along: TRACK JOB PATH on a college profile
-// stars its chair here, and the chairs you watch are listed even while they
-// are not calling, so the screen answers "where is my career pointed" and not
-// only "who wants me this week".
+// The jobs your career watches come along: starring a job on a college's page
+// lists it here even while it is not calling, so the screen answers "where is
+// my career pointed" and not only "who wants me this week".
 
-import { leagueLabel } from '../../engine/leagueNames.js';
-import { ChevronRightIcon, StarIcon, StarFilledIcon } from '@radix-ui/react-icons';
+import type { ReactNode } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { useOpenTeam } from './TeamCard.js';
 import { Crest } from '../Crest.js';
-import { Confirmable, ModuleIntro, SectionHeading } from '../components/Kit.js';
 import { prestigeStars, rosterStrength } from '../../engine/program.js';
 import { regularRecord } from '../../engine/season.js';
 import { annualBudget, dollars } from '../../engine/economy.js';
+import {
+  Card, CompareTable, ConfirmButton, EmptyState, Icon, List, ListRow, Marquee, SectionHeader, Stars,
+} from '../components/ui/index.js';
+import { conferenceName, plural, recordText } from '../words.js';
 
-export function JobMarket() {
+export function JobMarket({ lead }: { lead?: ReactNode } = {}) {
   const season = useDynasty((s) => s.season);
   const offers = useDynasty((s) => s.offers);
   const watch = useDynasty((s) => s.watch);
@@ -31,20 +32,10 @@ export function JobMarket() {
   const coach = useDynasty((s) => s.coach);
   const current = useUserTeam();
   const openTeam = useOpenTeam();
-  /*
-    Accepting is one of two irreversible acts in the game (the other starts a
-    season), so the button asks twice: the first press arms it, the second
-    signs, and tapping anywhere else stands it down.
-
-    That last clause used to be written here and not implemented anywhere — an
-    offer armed by a stray thumb stayed armed until the next press, which took
-    the job. It is real now, and it lives in `Confirmable` with the rest of the
-    grammar rather than in this file. See Kit.tsx.
-  */
 
   if (!season) return null;
 
-  // Chairs your career points at, called or not. Starred, and sorted first.
+  // Jobs your career points at, called or not. Starred, and sorted first.
   const starred = new Set(watch.jobs);
   const abbrOf = (team: number): string => season.teams[team]?.def.abbr ?? '';
   const calling = [...offers].sort((a, b) =>
@@ -54,89 +45,112 @@ export function JobMarket() {
     .map((abbr) => season.teams.find((t) => t.def.abbr === abbr))
     .filter((t): t is NonNullable<typeof t> => !!t);
 
+  const currentPrestige = current?.prestige ?? coach.prestige;
+  const currentRoster = current ? rosterStrength(current.team) : null;
+  const here = fired ? 'Last job' : 'Your job';
+
   return (
-    <main className="module-workspace">
-      <ModuleIntro
-        kicker={`${offers.length} OPEN ${offers.length === 1 ? 'CHAIR' : 'CHAIRS'}`}
-        title="The market"
-        text="Compare the program, then decide what is worth leaving behind."
+    <main className="pb-page">
+      <Marquee
+        eyebrow={offers.length > 0 ? `The carousel · ${plural(offers.length, 'program')} calling` : 'The carousel'}
+        title="Job offers"
+        numbers={offers.length > 0 ? [
+          { label: 'Calling', value: offers.length },
+        ] : undefined}
       />
+      {lead}
 
       {offers.length === 0 ? (
-        <section className="empty-state">
-          <StarIcon />
-          <h2>Nobody is calling</h2>
-          <p>
-            {fired
-              ? 'Chairs open every June. Rebuild the name and the phone rings again.'
-              : 'Offers land at the June board meeting. Track a chair and your agent flags it the year it can be won.'}
-          </p>
-        </section>
-      ) : (
-        <section className="job-offer-grid">
-          {calling.map((o) => {
-            const dest = season.teams[o.team];
-            const rec = dest ? regularRecord(dest) : { w: 0, l: 0 };
-            const currentPrestige = current?.prestige ?? coach.prestige;
-            const currentRoster = current ? rosterStrength(current.team) : 0;
-            const destinationRoster = dest ? rosterStrength(dest.team) : 0;
-            const prestigeDelta = o.prestige - currentPrestige;
-            const rosterDelta = destinationRoster - currentRoster;
-            return (
-              <article className="job-offer-card" key={o.team}>
-                <button className="job-offer-head tap" type="button" onClick={() => openTeam(o.team)}>
-                  <span className="job-offer-crest"><Crest abbr={abbrOf(o.team)} size={42} /></span>
-                  <span>
-                    <small>{leagueLabel(o.conference).toUpperCase()} · {rec.w}-{rec.l}</small>
-                    <strong>{starred.has(abbrOf(o.team)) && <StarFilledIcon className="job-star" />}{o.school}</strong>
-                    <p>{o.pitch}</p>
-                  </span>
-                  <ChevronRightIcon />
-                </button>
+        <EmptyState
+          icon="bell"
+          title="Nobody is calling yet"
+          text={fired
+            ? 'Jobs open every June. Rebuild your name and the phone rings again.'
+            : 'Offers arrive at the June board meeting. Star a job on a college’s page and you will hear the year it can be won.'}
+        />
+      ) : calling.map((o) => {
+        const dest = season.teams[o.team];
+        const rec = dest ? regularRecord(dest) : { w: 0, l: 0 };
+        const destinationRoster = dest ? rosterStrength(dest.team) : 0;
+        const abbr = abbrOf(o.team);
+        return (
+          <Card key={o.team} className="pb-offer">
+            <button type="button" className="pb-offer__head" onClick={() => openTeam(o.team)}>
+              <Crest abbr={abbr} size={44} />
+              <span className="pb-offer__who">
+                <span className="pb-offer__name">
+                  {o.school}
+                  {starred.has(abbr) && <Icon name="star-filled" size={14} label="A job you watch" className="pb-offer__star" />}
+                </span>
+                <span className="pb-offer__meta">{conferenceName(o.conference)} · {recordText(rec.w, rec.l)} this season</span>
+                <Stars value={prestigeStars(o.prestige)} label="Program prestige" />
+              </span>
+              <Icon name="chevron-right" size={20} className="pb-offer__chevron" />
+            </button>
+            {o.pitch && <p className="pb-offer__pitch">&ldquo;{o.pitch}&rdquo;</p>}
 
-                <div className="job-offer-comparison">
-                  <span><small>PRESTIGE</small><strong>{o.prestige}</strong><em className={prestigeDelta >= 0 ? 'up' : 'down'}>{prestigeDelta === 0 ? 'EVEN' : `${prestigeDelta > 0 ? '+' : ''}${prestigeDelta}`}</em></span>
-                  <span><small>ROSTER</small><strong>{destinationRoster}</strong><em className={rosterDelta >= 0 ? 'up' : 'down'}>{rosterDelta === 0 ? 'EVEN' : `${rosterDelta > 0 ? '+' : ''}${rosterDelta}`}</em></span>
-                  <span><small>ANNUAL BUDGET</small><strong>{dollars(annualBudget(o.prestige))}</strong><em>NEW LEDGER</em></span>
-                </div>
+            <CompareTable
+              label={`${o.school} against ${here.toLowerCase()}`}
+              labelHeader="Program"
+              from={here}
+              to="This job"
+              rows={[
+                { label: 'Prestige', hint: 'Out of 100', now: currentPrestige, next: o.prestige },
+                currentRoster !== null
+                  ? { label: 'Roster strength', hint: 'Average starter rating, of 100', now: currentRoster, next: destinationRoster }
+                  : { label: 'Roster strength', hint: 'Average starter rating, of 100', nowText: '—', next: destinationRoster },
+                {
+                  label: 'Budget a year',
+                  now: annualBudget(currentPrestige),
+                  next: annualBudget(o.prestige),
+                  nowText: dollars(annualBudget(currentPrestige)),
+                  nextText: dollars(annualBudget(o.prestige)),
+                  changeText: annualBudget(o.prestige) > annualBudget(currentPrestige) ? 'More'
+                    : annualBudget(o.prestige) < annualBudget(currentPrestige) ? 'Less' : 'Same',
+                  change: annualBudget(o.prestige) - annualBudget(currentPrestige),
+                },
+              ]}
+            />
 
-                <div className="job-move-consequence">
-                  <small>WHAT MOVES WITH YOU</small>
-                  <p><b>Comes:</b> your assistants, coaching tree, reputation, and philosophy.</p>
-                  <p><b>Stays:</b> facilities, earned pipelines, scouting reports, and this program's spending.</p>
-                </div>
+            <div className="pb-offer__moves">
+              <div>
+                <span className="pb-eyebrow">Comes with you</span>
+                <p className="pb-text-muted">Assistants, tree, reputation, philosophy.</p>
+              </div>
+              <div>
+                <span className="pb-eyebrow">Stays behind</span>
+                <p className="pb-text-muted">Facilities, pipelines, reports, spending.</p>
+              </div>
+            </div>
 
-                <Confirmable
-                  key={o.team}
-                  idle={`Take the ${o.school} job`}
-                  armed="Confirm — leave for good"
-                  onConfirm={() => { void acceptOffer(o.team); }}
-                />
-              </article>
-            );
-          })}
-        </section>
-      )}
+            <ConfirmButton
+              block
+              variant="primary"
+              idle={`Take the ${o.school} job`}
+              armed={current && !fired ? `Tap again: leave ${current.def.school} for good` : 'Tap again to sign'}
+              onConfirm={() => { void acceptOffer(o.team); }}
+            />
+          </Card>
+        );
+      })}
 
       {watchedIdle.length > 0 && (
-        <>
-          <SectionHeading kicker="YOUR CAREER PATH" title="Chairs you watch" />
-          <section className="retention-list">
+        <section>
+          <SectionHeader title="Jobs you watch" />
+          <List label="Jobs you watch">
             {watchedIdle.map((t) => (
-              <button className="tap" type="button" key={t.def.abbr} onClick={() => openTeam(t.index)}>
-                <span className="team-mark small"><Crest abbr={t.def.abbr} size={30} /></span>
-                <span>
-                  <strong>{t.def.school}</strong>
-                  <small>{leagueLabel(t.conference)} · {'★'.repeat(prestigeStars(t.prestige))} · not calling yet</small>
-                </span>
-                <b>{t.prestige}</b>
-                <ChevronRightIcon />
-              </button>
+              <ListRow
+                key={t.def.abbr}
+                lead={<Crest abbr={t.def.abbr} size={32} />}
+                title={t.def.school}
+                subtitle={`${conferenceName(t.conference)} · prestige ${t.prestige} of 100`}
+                status={<Stars value={prestigeStars(t.prestige)} label="Program prestige" />}
+                onClick={() => openTeam(t.index)}
+              />
             ))}
-          </section>
-        </>
+          </List>
+        </section>
       )}
-
     </main>
   );
 }

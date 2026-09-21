@@ -316,6 +316,41 @@ const ABROAD: readonly { level: string; place: string; line: string }[] = [
 ];
 
 /**
+ * Every place a career can be spent, the way a card should name it.
+ *
+ * The level strings are shouted because they are ids, and a screen that made
+ * its own sentence out of them got "Triple-a" and "The dominican". The words
+ * live here, beside the tables that invent the ids, so nothing downstream has
+ * to know that `THE DOMINICAN` is written "the Dominican Republic".
+ */
+const LADDER_WORDS: Record<string, string> = {
+  'THE SHOW': 'The Show',
+  'TRIPLE-A': 'Triple-A',
+  'DOUBLE-A': 'Double-A',
+  'SINGLE-A': 'Single-A',
+  'ROOKIE BALL': 'Rookie ball',
+  // Spelled out rather than keyed off `COACHING_LEVEL`, which is declared
+  // below this table and would be read before it exists.
+  COACHING: 'Coaching',
+};
+
+export function levelWords(level: string): string {
+  const known = LADDER_WORDS[level];
+  if (known) return known;
+  const abroad = ABROAD.find((a) => a.level === level);
+  const place = abroad?.place ?? level.toLowerCase();
+  return place.charAt(0).toUpperCase() + place.slice(1);
+}
+
+/**
+ * Whether a level is one of the affiliated rungs rather than a summer
+ * somewhere else. The ladder is ordered; everywhere else is not.
+ */
+export function onTheLadder(level: string): boolean {
+  return (LEVELS as readonly string[]).includes(level);
+}
+
+/**
  * What he read while he was here.
  *
  * Derived off the id like everything else in this file — no field on the
@@ -348,7 +383,20 @@ export const COACHING_LEVEL = 'COACHING';
  * professional game (2026-09-16).
  */
 export function proSeasons(rows: readonly { level: string }[]): number {
-  return rows.filter((r) => r.level !== 'HOME' && r.level !== COACHING_LEVEL).length;
+  return rows.filter((r) => playedIn(r.level)).length;
+}
+
+/**
+ * Whether a summer was actually played for money.
+ *
+ * Two of the rows a career holds are not summers at all: `HOME` is the June
+ * the baseball stopped and the degree got finished, and `COACHING` is the man
+ * on the other side of it. Anything that counts professional seasons has to
+ * say so through this, or it reports a man who never played as a professional
+ * -- which is the fault this function was split out of.
+ */
+export function playedIn(level: string): boolean {
+  return level !== 'HOME' && level !== COACHING_LEVEL;
 }
 
 /**

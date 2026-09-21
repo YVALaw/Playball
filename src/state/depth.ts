@@ -173,9 +173,9 @@ export const SYSTEMS: readonly SystemDef[] = [
     casual: false,
   },
   {
-    key: 'depthChart', label: 'The depth chart',
-    blurb: 'You set who plays where, and who backs him up.',
-    whenOff: 'Your staff sets the chart.',
+    key: 'depthChart', label: 'Injury replacements',
+    blurb: 'When a starter is hurt, you choose who takes his place before the next game.',
+    whenOff: 'Your staff slots in a replacement when a starter is hurt.',
     casual: false,
   },
   {

@@ -1,12 +1,14 @@
-// god/PortalEditor.tsx — every man in the portal, yours for nothing.
+// god/PortalEditor.tsx — everyone in the transfer portal, yours for nothing.
 //
-// Opened from the bolt on the transfer room while the window is open.
+// Opened from the bolt on the transfer portal while the window is open.
 
 import { useState } from 'react';
 import { useDynasty } from '../../state/store.js';
 import { overallOf } from '../../engine/ratings.js';
 import type { Hitter, Pitcher, Player } from '../../engine/types.js';
-import { Toast } from './controls.js';
+import { EmptyState, Face, List, PlayerRow } from '../components/ui/index.js';
+import { CLASS_NAME, POSITION_NAME } from '../words.js';
+import { GodPage, Toast } from './controls.js';
 
 const slotOf = (p: Player): string =>
   p.type === 'pitcher' ? (p as Pitcher).role : (p as Hitter).pos;
@@ -17,31 +19,40 @@ export function PortalEditor() {
   const signPortal = useDynasty((s) => s.godSignPortal);
   const [note, setNote] = useState<string | null>(null);
   void version;
-  if (!portal) return <p className="god-note">The portal is closed. It opens in the offseason.</p>;
+  if (!portal) {
+    return (
+      <main className="pb-page">
+        <EmptyState icon="lock" title="The portal is closed" text="It opens in the offseason." />
+      </main>
+    );
+  }
 
   return (
-    <main className="module-workspace god-desk">
-      <section className="god-card">
-        {portal.available.length === 0 ? (
-          <p className="god-note">Nobody is left in the portal.</p>
-        ) : (
-          <div className="god-roster">
-            {portal.available.map((m) => (
-              <button
+    <GodPage eyebrow="God mode · Transfer portal" title="Sign anyone" description="Tap a player to sign him, free">
+      {portal.available.length === 0 ? (
+        <EmptyState icon="person" title="Nobody is left in the portal" />
+      ) : (
+        <List label="In the portal">
+          {portal.available.map((m) => {
+            const code = slotOf(m.player);
+            return (
+              <PlayerRow
                 key={m.player.id}
-                type="button"
-                className="tap"
+                name={m.player.name}
+                avatar={<Face id={m.player.id} size={36} />}
+                tags={[{ text: code, title: POSITION_NAME[code as keyof typeof POSITION_NAME] ?? code }, CLASS_NAME[m.player.classYear]]}
+                meta={`From ${m.fromName}`}
+                value={overallOf(m.player)}
+                valueLabel="of 100"
+                trailing={<span className="pb-link">Sign</span>}
+                chevron={false}
                 onClick={() => { if (signPortal(m.player.id)) setNote(`${m.player.name} signed from the portal.`); }}
-              >
-                <strong>{m.player.name}</strong>
-                <small>{slotOf(m.player)} · {m.player.classYear} · {overallOf(m.player)} OVR · from {m.fromName}</small>
-              </button>
-            ))}
-          </div>
-        )}
-        <p className="god-note">Tap a man and he is yours, at no cost to the offseason budget.</p>
-      </section>
+              />
+            );
+          })}
+        </List>
+      )}
       <Toast note={note} />
-    </main>
+    </GodPage>
   );
 }

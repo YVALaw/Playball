@@ -1,16 +1,16 @@
-// god/LeaguesEditor.tsx — league identity and membership are related, but not
-// the same operation. Tabs make that distinction explicit.
+// god/LeaguesEditor.tsx — league names and league membership are related, but
+// not the same operation, so they are two panels.
 
 import { useState } from 'react';
 import { useDynasty } from '../../state/store.js';
-import { Segmented } from '../components/Kit.js';
 import { CONFERENCES } from '../../data/schools.js';
 import { conferenceWindow } from '../../engine/godMode.js';
 import { leagueLabel, leagueName } from '../../engine/leagueNames.js';
-import { Field, Toast } from './controls.js';
+import { Button, Callout, Card, SegmentedControl, StatGroup, StatusBadge } from '../components/ui/index.js';
+import { Choose, Field, GodPage, Toast } from './controls.js';
 
 type Panel = 'names' | 'membership';
-const PANELS = [{ value: 'names', label: 'NAMES' }, { value: 'membership', label: 'MOVES' }] as const;
+const PANELS = [{ value: 'names', label: 'Names' }, { value: 'membership', label: 'Membership' }] as const;
 
 export function LeaguesEditor() {
   const season = useDynasty((s) => s.season);
@@ -30,34 +30,77 @@ export function LeaguesEditor() {
   const teamB = b >= 0 ? season.teams[b] ?? null : null;
   const can = teamA && teamB && teamA.conference !== teamB.conference && window !== 'closed';
   const namedLeague = CONFERENCES[nameIndex] ?? CONFERENCES[0];
+  const programOptions = [
+    { value: -1, label: 'Choose a program' },
+    ...CONFERENCES.map((c) => ({
+      group: leagueName(c.id),
+      options: season.teams.filter((t) => t.conference === c.id).map((t) => ({ value: t.index, label: t.def.school })),
+    })),
+  ];
 
   return (
-    <main className="module-workspace god-desk">
-      <section className="god-summary-card league-summary">
-        <div><small>LEAGUES</small><strong>{CONFERENCES.length}</strong><span>in the world</span></div>
-        <div><small>MOVES</small><strong className="god-summary-text">{window === 'closed' ? 'LOCKED' : window === 'now' ? 'LIVE' : 'NEXT SPRING'}</strong><span>{window === 'closed' ? 'season in progress' : 'alignment editable'}</span></div>
-      </section>
-      <div className="god-subnav"><Segmented value={panel} options={PANELS} onChange={setPanel} label="League editor section" /></div>
+    <GodPage eyebrow="God mode · Leagues" title="Leagues">
+      <StatGroup
+        size="sm"
+        items={[
+          { label: 'Leagues', value: CONFERENCES.length },
+          {
+            label: 'Membership moves',
+            value: window === 'closed' ? 'Locked' : window === 'now' ? 'Open' : 'Next spring',
+            note: window === 'closed' ? 'Games are under way' : window === 'now' ? 'Before the first pitch' : 'After this season',
+          },
+        ]}
+      />
+      <SegmentedControl<Panel> label="League editor section" value={panel} onChange={setPanel} options={PANELS} />
 
-      {panel === 'names' && <section className="god-card">
-        <p className="god-panel-lead">Choose one league, then rename it without changing membership.</p>
-        <label className="god-field"><small>LEAGUE</small><select value={nameIndex} onChange={(e) => setNameIndex(Number(e.target.value))}>{CONFERENCES.map((c, i) => <option key={c.id} value={i}>{leagueName(c.id)}</option>)}</select></label>
-        {namedLeague && <Field key={namedLeague.id} label="CUSTOM NAME" value={leagueLabel(namedLeague.id) === namedLeague.id ? '' : leagueLabel(namedLeague.id)} placeholder={namedLeague.name} onCommit={(v) => setLeagueName(namedLeague.id, v)} />}
-        <p className="god-note">Clear the custom name to restore that league's default name everywhere.</p>
-      </section>}
+      {panel === 'names' && (
+        <Card title="Rename a league" eyebrow="Membership stays the same">
+          <Choose<number>
+            label="League"
+            value={nameIndex}
+            options={CONFERENCES.map((c, i) => ({ value: i, label: leagueName(c.id) }))}
+            onChange={setNameIndex}
+          />
+          {namedLeague && (
+            <Field
+              key={namedLeague.id}
+              label="New name"
+              value={leagueLabel(namedLeague.id) === namedLeague.id ? '' : leagueLabel(namedLeague.id)}
+              placeholder={namedLeague.name}
+              onCommit={(v) => setLeagueName(namedLeague.id, v)}
+            />
+          )}
+          <p className="pb-note">Clear it to bring back the original.</p>
+        </Card>
+      )}
 
-      {panel === 'membership' && <section className="god-card">
-        <p className="god-panel-lead">Move membership by swapping two programs from different leagues. No roster is changed.</p>
-        {[['FIRST PROGRAM', a, setA], ['SECOND PROGRAM', b, setB]].map(([label, value, set]) => (
-          <label key={label as string} className="god-field"><small>{label as string}</small><select value={value as number} disabled={window === 'closed'} onChange={(e) => (set as (n: number) => void)(Number(e.target.value))}>
-            <option value={-1}>Choose a program</option>
-            {CONFERENCES.map((c) => <optgroup key={c.id} label={leagueName(c.id)}>{season.teams.filter((t) => t.conference === c.id).map((t) => <option key={t.index} value={t.index}>{t.def.school}</option>)}</optgroup>)}
-          </select></label>
-        ))}
-        <div className="god-actions"><button type="button" className="tap" disabled={!can} onClick={() => { if (!teamA || !teamB) return; if (swap(teamA.index, teamB.index)) { setNote(`${teamA.def.school} and ${teamB.def.school} traded leagues.`); setA(-1); setB(-1); } }}>SWAP LEAGUES</button></div>
-        <p className="god-note">{window === 'now' ? 'Before the first pitch, the schedule is rebuilt immediately.' : window === 'next-spring' ? 'The season is over, so the move takes effect next spring.' : 'Games have been played in these leagues. Membership changes reopen after the season.'}</p>
-      </section>}
+      {panel === 'membership' && (
+        <Card
+          title="Swap two programs"
+          eyebrow="Between two different leagues"
+          trailing={window === 'closed' ? <StatusBadge tone="neutral" icon="lock">Locked</StatusBadge> : undefined}
+        >
+          <Choose<number> label="First program" value={a} disabled={window === 'closed'} options={programOptions} onChange={setA} />
+          <Choose<number> label="Second program" value={b} disabled={window === 'closed'} options={programOptions} onChange={setB} />
+          {teamA && teamB && teamA.conference === teamB.conference && (
+            <Callout tone="warning">They are already in the same league. Pick programs from two different leagues.</Callout>
+          )}
+          <Button
+            variant="primary"
+            block
+            icon="swap"
+            disabled={!can}
+            onClick={() => {
+              if (!teamA || !teamB) return;
+              if (swap(teamA.index, teamB.index)) { setNote(`${teamA.def.school} and ${teamB.def.school} traded leagues.`); setA(-1); setB(-1); }
+            }}
+          >Swap their leagues</Button>
+          <p className="pb-note">
+            {window === 'now' ? 'The schedule is rebuilt at once.' : window === 'next-spring' ? 'Takes effect next spring.' : 'Opens again after the season.'}
+          </p>
+        </Card>
+      )}
       <Toast note={note} />
-    </main>
+    </GodPage>
   );
 }

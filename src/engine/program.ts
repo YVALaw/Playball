@@ -1418,6 +1418,23 @@ export interface CoachState extends CoachProfile {
    * `engine/achievements.ts` — a sparse map, so an absent key means unearned.
    */
   achievements: AchievementLog;
+  /**
+   * The year he said this one was his last.
+   *
+   * Announced rather than done: a man who tells them in March still coaches
+   * the season, and the board meeting at the end of it is his last. The year
+   * rather than a flag, so an announcement cannot outlive the season it was
+   * about.
+   *
+   * Here rather than in the store because it is a fact about the man, and
+   * because everything on him is already carried by a save and thrown away
+   * when a successor takes a chair -- which is exactly the life this should
+   * have. Absent on every coach who has not said it, which is the same thing a
+   * save written before retirement existed says.
+   */
+  farewellYear?: number;
+  /** The year it ended. Set once; the man in this slot is finished. */
+  retiredYear?: number;
 }
 
 /**
@@ -1745,12 +1762,14 @@ export function newCoach(
 export function takeChair(coach: CoachState, programPrestige: number): CoachState {
   const length = contractFor(programPrestige);
   /*
-    What he left behind, banked before the new job overwrites it.
+    What he built at the last one, carried rather than measured.
 
-    `arrivedPrestige` is where the *current* programme stood when he walked in,
-    so it is the only record of the last one and it is about to be replaced.
-    Reading it here is the one moment a stint's worth can be measured, and a
-    builder is exactly a man who has done this and left the place better.
+    `arrivedPrestige` is about to be replaced, and it is the only record of
+    where the last programme started -- but the measuring is already done.
+    `bankStint` runs at every board meeting and, outside god mode, nothing else
+    moves a programme's prestige, so the last chair's final number is in
+    `bestBuild` before he stands up. Floored at nought for a save written
+    before the field existed.
   */
   const built = Math.max(coach.bestBuild ?? 0, 0);
   const REBUILD = 40;
@@ -1769,11 +1788,14 @@ export function takeChair(coach: CoachState, programPrestige: number): CoachStat
 }
 
 /**
- * What a man did for the programme he is leaving.
+ * The most a programme has grown under him, brought up to date.
  *
- * Called at the moment a career moves, with where the old chair stands now.
- * Kept separate from `takeChair` because leaving and arriving are two events
- * and only one of them knows what the last job became.
+ * Called at every board meeting, in `settleSeason`, with where his chair
+ * stands after the season -- the same rule `runRivalYear` keeps for every
+ * rival, so Builder means one thing whoever wears it. Best, not latest: a
+ * programme that slips after he lifted it does not take the build back, and
+ * neither does leaving. Kept apart from `takeChair` because that only knows
+ * the programme he is walking into.
  */
 export function bankStint(coach: CoachState, prestigeNow: number): CoachState {
   const gain = prestigeNow - coach.arrivedPrestige;
@@ -1937,6 +1959,14 @@ export interface Reviewable {
   badRun: number;
   /** Whether he was caught looking elsewhere this season. */
   caughtLooking?: boolean;
+  /**
+   * Whether this season was announced as his last -- see `farewellYear` on
+   * `CoachState`. A board does not sack a man who is already leaving: there is
+   * no chair to save and nothing to send a message about, and being let go on
+   * the way out would make an announcement read as a bluff the board called.
+   * He still gets the verdict; what he does not get is the door.
+   */
+  farewell?: boolean;
 }
 
 export interface Review {
@@ -2032,17 +2062,26 @@ export function reviewSeason(
   // it: a tenured coach is still told, because a board that cannot fire him is
   // still a board, and the message below reads the difference.
   const cold = securityAfter < bar && coach.tenure >= 1;
-  const sacked = cold && !board.tenured;
+  const sacked = cold && !board.tenured && coach.farewell !== true;
 
-  // Contract management is a real cycle now, not a countdown that can stick at
-  // zero. Exceeded years earn an early full extension; steady MET years can keep
-  // a two-year cushion; and an expired deal is either renewed or declined.
+  /*
+    Contract management is a real cycle now, not a countdown that can stick at
+    zero. Exceeded years earn an early full extension; steady MET years can keep
+    a two-year cushion; and an expired deal is either renewed or declined.
+
+    None of it applies to a man who has announced he is leaving. Reported:
+    "I selected to retire at the beginning of the season but now in season
+    review is telling me the board extended my contract" — a board signing a
+    coach for four more years on the day he finishes is not a generous board,
+    it is a board that has not been listening.
+  */
+  const leaving = coach.farewell === true;
   const remaining = Math.max(0, coach.contractYears - 1);
   const dealLength = contractFor(programPrestige);
-  const fullExtension = !sacked && verdict === 'exceeded' && coach.contractYears <= 2;
-  const rollingExtension = !sacked && verdict === 'met' && coach.contractYears === 2
+  const fullExtension = !leaving && !sacked && verdict === 'exceeded' && coach.contractYears <= 2;
+  const rollingExtension = !leaving && !sacked && verdict === 'met' && coach.contractYears === 2
     && securityAfter >= 55;
-  const renewed = !sacked && !fullExtension && !rollingExtension && remaining === 0
+  const renewed = !leaving && !sacked && !fullExtension && !rollingExtension && remaining === 0
     && (securityAfter >= board.renewAt || board.tenured === true);
   const extended = fullExtension || rollingExtension;
   const contractYears = fullExtension ? dealLength
@@ -2050,8 +2089,10 @@ export function reviewSeason(
       : renewed ? dealLength : remaining;
   const contractLength = (fullExtension || renewed) ? dealLength : coach.contractLength;
 
-  // Out of contract and out of favour: they thank you and move on.
-  const notRenewed = !sacked && !extended && !renewed && remaining === 0
+  // Out of contract and out of favour: they thank you and move on. A man on
+  // his way out is not "not renewed" either — nobody offered, because he had
+  // already said no.
+  const notRenewed = !leaving && !sacked && !extended && !renewed && remaining === 0
     && securityAfter < board.renewAt;
   const fired = sacked || notRenewed;
   // Kept regardless: the seat went cold, or the deal ran out under the renew
@@ -2067,7 +2108,11 @@ export function reviewSeason(
     ? ` ${badRun === 2 ? 'Twice in a row now' : `${badRun} years running`}, and it is being noticed outside this room.`
     : '';
 
-  const message = sacked
+  const message = leaving
+    ? (verdict === 'exceeded' || verdict === 'met'
+      ? 'They would have kept you as long as you wanted the chair. The search for the next man starts tomorrow.'
+      : 'They thank you for your years here. The search for the next man starts tomorrow.')
+    : sacked
     ? 'The board has seen enough. You are relieved of your duties.'
     : notRenewed
       ? 'Your contract expires and the board has chosen not to renew it.'
@@ -2342,6 +2387,23 @@ export interface OfferTaste {
    * still fixed: reloading creation does not reshuffle the offers.
    */
   rng?: Rng;
+  /**
+   * What he is worth walking in, when it is not nothing.
+   *
+   * A first career starts at {@link ROOKIE_PRESTIGE} and this is left alone. A
+   * man taking his first chair *after* somebody else's career -- the successor
+   * to a coach who retired -- is still a rookie in every other sense, but the
+   * country knows who he learned it from, and the ladder is where that shows.
+   */
+  prestige?: number;
+  /**
+   * Which chairs are actually going. Every seat is empty at world creation and
+   * this is left alone; in a world that has been running for twenty years they
+   * are all held, and a desk that ignored that would offer a rookie five jobs
+   * that nobody has left. The fallback below is deliberately outside it: a
+   * career that cannot be started is worse than an awkward hiring.
+   */
+  open?: (t: TeamRecord) => boolean;
 }
 
 export function startingOffers(
@@ -2385,7 +2447,8 @@ export function startingOffers(
     // worth about three points of coach prestige, which moves a seat or two at
     // the margin and never lifts a rookie into a job the ladder refuses.
     .filter(({ t, roster, fit: f }) =>
-      canBeHired(ROOKIE_PRESTIGE + Math.max(0, Math.min(3, f)), t.prestige, roster))
+      (taste.open ? taste.open(t) : true)
+      && canBeHired((taste.prestige ?? ROOKIE_PRESTIGE) + Math.max(0, Math.min(3, f)), t.prestige, roster))
     .map((row) => ({
       ...row,
       // A little noise, deterministic per seed. Small enough that the good jobs

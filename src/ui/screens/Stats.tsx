@@ -1,39 +1,40 @@
 // Stats.tsx
-// The numbers, all of them in one destination. Leaderboards — national by
-// default, because a ninety six team world is the point of having one, and
-// filterable down to your own program — plus your roster's glove work, which
-// used to be a separate GLOVES tab on the roster and is a statistic like any
-// other: batting, pitching and fielding live behind one set of tabs now.
+// The numbers: leaderboards for your team, the country and June, and your
+// players' glove work.
 //
-// The proposal's stats screen: an intro, a scope switch, a three-up metric
-// strip, and the boards as `.data-table`. Its four scopes are ours already —
-// National, My team, Postseason, Fielding — which is one more sign the designer
-// read the app before drawing it.
-//
-// The eight column glove grid went the way the roster's did. CH, PO, E, PCT and
-// +/100 are all still here; four of them read as the row's detail line and the
-// rate, which is the one the board is ranked on, is the number on the right.
+// One card per leaderboard. Its heading says what the stat is in words and
+// who qualifies, so a column labelled ERA never has to be decoded; the value
+// column is labelled once, and your own players carry a You tag on the
+// national boards.
 
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FirstVisit } from '../Tutorial.js';
-import { Avatar } from '../Avatar.js';
 import {
-  leaders, leagueFieldingRate, fieldingPct, paePer100, rankableChances,
+  leaders, leagueFieldingRate, fieldingPct, paePer100, rankableChances, qualifiers,
   type LeaderRow, type FieldingSeason,
 } from '../../engine/season.js';
 import { pct } from '../format.js';
-import {
-  DataTable, FieldNote, Metric, MetricStrip, ModuleIntro, SectionHeading, Segmented,
-  type Row,
-} from '../components/Kit.js';
 import { uniquePlayers } from '../../engine/types.js';
 import type { Player, PlayerId } from '../../engine/types.js';
+import {
+  Card, EmptyState, Face, Marquee, SegmentedControl, StatGroup, Table, Tag, type TableColumn,
+} from '../components/ui/index.js';
+import { POSITION_NAME } from '../words.js';
 
-type Scope = 'national' | 'team' | 'june' | 'fielding';
+type Scope = 'team' | 'national' | 'june' | 'fielding';
 
 /** A signed rate, so a fielder's line and the league's read in the same units. */
 const fmtRate = (v: number): string => `${v > 0 ? '+' : ''}${v.toFixed(1)}`;
+
+/** The engine's row detail, in words. */
+function detailWords(detail: string): string {
+  return detail
+    .replace(/(\d+)-for-(\d+)/, '$1 for $2')
+    .replace(/([\d.]+) IP/, (_, ip: string) => `${ip} innings`)
+    .replace(/(\d+) CH, ([+-]?\d+) PLAYS, (\.\d+) PCT/, (_, ch: string, pae: string, fp: string) =>
+      `${ch} chances · ${pae} plays · ${fp} fielding`);
+}
 
 export function Stats() {
   const season = useDynasty((s) => s.season);
@@ -41,146 +42,122 @@ export function Stats() {
   const year = useDynasty((s) => s.year);
   const team = useUserTeam();
   const openPlayer = useDynasty((s) => s.openPlayer);
-  const [scope, setScope] = useState<Scope>('national');
+  const [scope, setScope] = useState<Scope>('team');
   void version;
 
   if (!season || !team) return null;
 
   const played = season.results.length > 0;
-
-  /*
-    June, on its own.
-
-    The qualifiers have to come down and they have to come down hard: the
-    national bar is built for fifty games and a tournament is at most a
-    fortnight, so leaving it in place produces an empty screen rather than a
-    leaderboard. One at-bat and one out are the honest floor for a sample this
-    short, and the row's own detail says how few.
-  */
-  const juneBoards = leaders(season, { limit: 5, minPA: 1, minIP: 1, minChances: 1, june: true });
   const anyJune = (season.postBatting?.size ?? 0) > 0 || (season.postPitching?.size ?? 0) > 0;
+  const bars = qualifiers(season);
+  /*
+    June's qualifiers come down hard: the national bar is built for fifty games
+    and a tournament is a fortnight, so leaving it in place draws an empty page.
+    Your own roster's bat and arm bars go to one so the bench shows up; the glove
+    keeps a real bar, because it is ranked on a rate.
+  */
+  const boards = scope === 'june'
+    ? leaders(season, { limit: 5, minPA: 1, minIP: 1, minChances: 1, june: true })
+    : scope === 'team'
+      ? leaders(season, { limit: 5, minPA: 1, minIP: 1, minChances: 20, team: team.def.abbr })
+      : leaders(season);
 
-  const boards = scope === 'june' ? juneBoards : scope === 'team'
-    // The bat and arm qualifiers go to 1 on your own roster so the bench shows
-    // up. The glove keeps a real bar even here: it is ranked on a rate, and a
-    // rate off two chances is not a season.
-    ? leaders(season, { limit: 5, minPA: 1, minIP: 1, minChances: 20, team: team.def.abbr })
-    : leaders(season);
-
-  // The roster's glove work, exactly as the old GLOVES tab kept it: every man
-  // with a chance recorded, best rate first among the qualified, the rest by
-  // volume with a dash where the rate would be shouting noise.
+  // The roster's glove work: everyone with a chance, the qualified by rate first.
   const bar = rankableChances(season);
   const gloveRows = uniquePlayers([
     ...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen,
   ])
     .map((p) => ({ p: p as Player, line: season.fielding?.get(p.id) }))
-    .filter((r): r is { p: Player; line: FieldingSeason } =>
-      r.line !== undefined && r.line.chances > 0)
+    .filter((r): r is { p: Player; line: FieldingSeason } => r.line !== undefined && r.line.chances > 0)
     .sort((a, b) => {
       const qa = a.line.chances >= bar ? 1 : 0;
       const qb = b.line.chances >= bar ? 1 : 0;
       if (qa !== qb) return qb - qa;
       if (qa === 0) return b.line.chances - a.line.chances;
-      return paePer100(b.line) - paePer100(a.line)
-        || b.line.chances - a.line.chances;
+      return paePer100(b.line) - paePer100(a.line) || b.line.chances - a.line.chances;
     });
 
-  if (!played) {
-    return (
-      <main className="module-workspace">
-        <section className="empty-state">
-          <h2>No games played</h2>
-          <p>Leaderboards fill in once the season starts.</p>
-        </section>
-      </main>
-    );
-  }
-
-  /** A leaderboard row, with your own men marked by having a face at all. */
-  const boardRows = (rows: LeaderRow[], fmt: (v: number) => string): Row[] =>
-    rows.map((r) => ({
-      key: r.id,
-      title: r.name,
-      detail: `${r.team}${r.detail ? ` · ${r.detail}` : ''}`,
-      value: fmt(r.value),
-      face: <Avatar id={r.id} team={r.team} size={34} />,
-    }));
-
-  const scopeLabel = scope === 'national' ? 'The country'
-    : scope === 'june' ? 'The postseason'
-      : scope === 'fielding' ? 'In the field' : team.def.school;
+  const schoolOf = (abbr: string): string => season.teams.find((t) => t.def.abbr === abbr)?.def.school ?? abbr;
+  const qualifiesBat = scope === 'national' ? `at least ${bars.minPA} plate appearances`
+    : scope === 'june' ? 'anyone with a postseason at-bat' : 'every player with an at-bat';
+  const qualifiesArm = scope === 'national' ? `at least ${bars.minIP} innings`
+    : scope === 'june' ? 'anyone with a postseason out' : 'every pitcher with an out';
 
   return (
-    <main className="module-workspace">
+    <main className="pb-page">
       <FirstVisit id="stats" />
-
-      <ModuleIntro
-        kicker={`${year} NUMBERS`}
-        title={scopeLabel}
-      />
-
-      <Segmented<Scope>
-        label="Statistics scope"
+      <Marquee eyebrow={`${year} season · Leaderboards`} title="Stats" />
+      <SegmentedControl<Scope>
+        label="Whose stats"
         value={scope}
         onChange={setScope}
         options={[
+          { value: 'team', label: 'Your team' },
           { value: 'national', label: 'National' },
-          { value: 'team', label: 'My team' },
           ...(anyJune ? [{ value: 'june' as const, label: 'Postseason' }] : []),
           { value: 'fielding', label: 'Fielding' },
         ]}
       />
 
-      {scope === 'fielding' ? (
+      {!played ? (
+        <EmptyState icon="bar-chart" title="No games played yet" text="The leaderboards fill in once the season starts." />
+      ) : scope === 'fielding' ? (
         <>
-          <MetricStrip>
-            <Metric label="GLOVES RANKED" value={String(gloveRows.filter((g) => g.line.chances >= bar).length)} note="QUALIFIED" />
-            <Metric label="LEAGUE RATE" value={fmtRate(leagueFieldingRate(season))} note="PER 100 CH" />
-            <Metric label="THE BAR" value={String(bar)} note="CHANCES" />
-          </MetricStrip>
-          <DataTable
-            rows={gloveRows.map(({ p, line }) => ({
-              key: p.id,
-              title: p.name,
-              detail: `${p.type === 'pitcher' ? 'P' : p.pos} · ${line.chances} CH · ${line.plays} PO · ${line.errors} E · ${pct(fieldingPct(line))}`,
-              value: line.chances >= bar ? fmtRate(paePer100(line)) : '—',
-              face: <Avatar id={p.id} team={team.def.abbr} size={34} />,
-            }))}
-            onOpen={(id) => openPlayer(id as PlayerId)}
-            empty="Nothing has been hit at anybody yet."
+          <StatGroup
+            size="sm"
+            items={[
+              { label: 'Ranked', value: gloveRows.filter((g) => g.line.chances >= bar).length, note: `${bar}+ chances` },
+              { label: 'League rate', value: fmtRate(leagueFieldingRate(season)), note: 'per 100 chances' },
+              { label: 'Your fielders', value: gloveRows.length, note: 'with a chance' },
+            ]}
           />
-          <FieldNote
-            title="Zero is not average"
-            text={`Outs made that an average glove would not, per hundred balls,
-              errors deducted. The league sits at ${fmtRate(leagueFieldingRate(season))};
-              above that is a man helping his pitcher.`}
-          />
+          <Card
+            title="Plays made above average"
+            eyebrow="Per 100 chances, errors taken off"
+            flush
+          >
+            <Table
+              dense
+              label="Your fielders"
+              columns={[
+                { label: 'Player', grow: true },
+                { label: 'Ch', title: 'Chances', width: '36px', align: 'right' },
+                { label: 'E', title: 'Errors', width: '28px', align: 'right' },
+                { label: 'Pct', title: 'Fielding percentage', width: '48px', align: 'right' },
+                { label: 'Plays', title: 'Plays above average per 100 chances', width: '52px', align: 'right', strong: true },
+              ]}
+              empty="Nothing has been hit at anybody yet."
+              rows={gloveRows.map(({ p, line }) => ({
+                key: p.id,
+                onClick: () => openPlayer(p.id as PlayerId),
+                cells: [
+                  <PlayerCell key="p" id={p.id} team={team.def.abbr} name={p.name} sub={p.type === 'pitcher' ? 'Pitcher' : POSITION_NAME[p.pos] ?? p.pos} />,
+                  line.chances, line.errors, pct(fieldingPct(line)),
+                  line.chances >= bar ? fmtRate(paePer100(line)) : '—',
+                ],
+              }))}
+              caption={`The league sits at ${fmtRate(leagueFieldingRate(season))}, not zero: an error is a play nobody made. A dash means fewer than ${bar} chances.`}
+            />
+          </Card>
         </>
       ) : (
         <>
-          <Board title="BATTING AVERAGE" kicker="AT THE PLATE" rows={boardRows(boards.average, pct)} onOpen={openPlayer} />
-          <Board title="HOME RUNS" kicker="POWER" rows={boardRows(boards.homeRuns, String)} onOpen={openPlayer} />
-          <Board title="RUNS BATTED IN" kicker="DRIVEN IN" rows={boardRows(boards.rbi, String)} onOpen={openPlayer} />
-          <Board title="EARNED RUN AVERAGE" kicker="ON THE MOUND" rows={boardRows(boards.era, (v) => v.toFixed(2))} onOpen={openPlayer} />
-          <Board title="STRIKEOUTS" kicker="SWING AND MISS" rows={boardRows(boards.strikeouts, String)} onOpen={openPlayer} />
-          {/*
-            The defensive board ranks on plays made above what an average glove
-            would have made of the same chances, not on errors — fewest errors
-            in the country belongs to whoever nobody hits it to. Per hundred
-            chances rather than as a total, because a centre fielder sees six
-            times what a catcher does and the raw count reads that as talent.
-          */}
+          <p className="pb-note">Qualifying: {qualifiesBat} at the plate, {qualifiesArm} on the mound.</p>
+          <Board title="Batting average" about="Hits per at-bat" unit="AVG" rows={boards.average} fmt={pct} mine={team.def.abbr} scope={scope} schoolOf={schoolOf} onOpen={openPlayer} />
+          <Board title="Home runs" about="Most home runs" unit="HR" rows={boards.homeRuns} fmt={String} mine={team.def.abbr} scope={scope} schoolOf={schoolOf} onOpen={openPlayer} />
+          <Board title="Runs batted in" about="Runs driven in" unit="RBI" rows={boards.rbi} fmt={String} mine={team.def.abbr} scope={scope} schoolOf={schoolOf} onOpen={openPlayer} />
+          <Board title="Earned run average" about="Earned runs per 9 innings · lower is better" unit="ERA" rows={boards.era} fmt={(v) => v.toFixed(2)} mine={team.def.abbr} scope={scope} schoolOf={schoolOf} onOpen={openPlayer} />
+          <Board title="Strikeouts" about="Batters struck out" unit="K" rows={boards.strikeouts} fmt={String} mine={team.def.abbr} scope={scope} schoolOf={schoolOf} onOpen={openPlayer} />
           <Board
-            title="PLAYS ABOVE AVERAGE"
-            kicker="PER 100 CHANCES"
-            rows={boardRows(boards.fielding, fmtRate)}
+            title="Plays above average"
+            about={`Per 100 chances · the league sits at ${fmtRate(leagueFieldingRate(season))}`}
+            unit="Plays"
+            rows={boards.fielding}
+            fmt={fmtRate}
+            mine={team.def.abbr}
+            scope={scope}
+            schoolOf={schoolOf}
             onOpen={openPlayer}
-          />
-          <FieldNote
-            title="Zero is not average"
-            text={`The league sits at ${fmtRate(leagueFieldingRate(season))}, not
-              zero — an error is a play nobody made.`}
           />
         </>
       )}
@@ -188,18 +165,47 @@ export function Stats() {
   );
 }
 
-function Board(
-  { title, kicker, rows, onOpen }:
-  { title: string; kicker: string; rows: Row[]; onOpen: (id: PlayerId) => void },
-) {
+function PlayerCell({ id, team, name, sub, you }: { id: string; team: string; name: string; sub: string; you?: boolean }) {
   return (
-    <>
-      <SectionHeading kicker={kicker} title={title} />
-      <DataTable
-        rows={rows}
-        onOpen={(id) => onOpen(id as PlayerId)}
+    <span className="pb-teamcell">
+      <Face id={id} team={team} size={32} />
+      <span className="pb-teamcell__text">
+        <span className="pb-teamcell__name"><span className="pb-ellipsis">{name}</span>{you && <Tag tone="you">You</Tag>}</span>
+        <span className="pb-teamcell__sub">{sub}</span>
+      </span>
+    </span>
+  );
+}
+
+function Board(
+  { title, about, unit, rows, fmt, mine, scope, schoolOf, onOpen }:
+  {
+    title: string; about: string; unit: string; rows: LeaderRow[]; fmt: (v: number) => string;
+    mine: string; scope: Scope; schoolOf: (abbr: string) => string; onOpen: (id: PlayerId) => void;
+  },
+) {
+  const columns: TableColumn[] = [
+    { label: '#', width: '22px', align: 'right' },
+    { label: 'Player', grow: true },
+    { label: unit, title, width: '56px', align: 'right', strong: true },
+  ];
+  return (
+    <Card title={title} eyebrow={about} flush>
+      <Table
+        label={title}
+        columns={columns}
         empty="Nobody has qualified yet."
+        rows={rows.map((r, i) => ({
+          key: r.id,
+          onClick: () => onOpen(r.id),
+          you: scope !== 'team' && r.team === mine,
+          cells: [
+            <b key="n" className="pb-rank">{i + 1}</b>,
+            <PlayerCell key="p" id={r.id} team={r.team} name={r.name} sub={`${scope === 'team' ? '' : `${schoolOf(r.team)} · `}${detailWords(r.detail)}`} you={scope !== 'team' && r.team === mine} />,
+            <b key="v" className="pb-rank-value">{fmt(r.value)}</b>,
+          ],
+        }))}
       />
-    </>
+    </Card>
   );
 }

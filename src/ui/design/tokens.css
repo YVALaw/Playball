@@ -1,0 +1,214 @@
+/* design/tokens.css
+ * The Playball design system's tokens: colour, type, space, shape, motion.
+ *
+ * Loaded last, after the legacy layers, so these values are the ones the app
+ * paints with. The source of record is the design system artifact
+ * ("Playball", tokens.json); change a value there first, then here.
+ *
+ * Two rules the whole file leans on:
+ *   - Status colours are fixed. The school colour is the accent and nothing
+ *     else: it never means good or bad.
+ *   - The school colour arrives through hooks (`--school*`) written by
+ *     accent.ts, one per theme, so an inline value never hands one theme the
+ *     other's answer.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --bg: #f6f8f5;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #eef2ee;
+  --track: #e1e7e2;
+  --line: #e1e8e2;
+  --line-strong: #7a877d;
+
+  /* Text */
+  --ink: #102019;
+  --ink-rgb: 16, 32, 25;
+  --ink-muted: #505e55;
+  --ink-disabled: #7f8a82;
+
+  /* The school colour */
+  --accent: var(--school, #236b42);
+  --accent-rgb: var(--school-rgb, 35, 107, 66);
+  --accent-strong: var(--school-strong, #1a5433);
+  --accent-soft: var(--school-soft, #e6f0e8);
+  --command: var(--school, #236b42);
+  --on-command: #ffffff;
+
+  /* Status: fixed, whatever the school */
+  --positive: #1b7a47;
+  --positive-soft: #e2f2e7;
+  --warning: #8c5a00;
+  --warning-soft: #fcefd5;
+  --negative: #c9362f;
+  --negative-soft: #fdefed;
+  --info: #2f4f7a;
+  --info-soft: #e8eef6;
+  --you: var(--info);
+  --live: #ecb83d;
+  --on-live: #102019;
+
+  /* Trophy metals, as text on surfaces */
+  --gold: #8a6b16;
+  --silver: #4a5866;
+  --bronze: #6f4a2a;
+
+  /* The brand mark, fixed in both themes */
+  --brand-green: #236b42;
+  --brand-ball: #f4f8f4;
+  --brand-seam: #1d201d;
+
+  --scrim: rgba(9, 16, 12, 0.48);
+  --shadow-card: 0 1px 2px rgba(16, 32, 25, 0.04), 0 4px 16px rgba(16, 32, 25, 0.05);
+  --shadow-control: 0 1px 3px rgba(16, 32, 25, 0.14);
+  --shadow-float: 0 10px 32px rgba(16, 32, 25, 0.14);
+
+  /* Space */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Shape */
+  --radius-inner: 8px;
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --radius-dialog: 24px;
+  --radius-pill: 999px;
+
+  /* Size */
+  --size-touch: 48px;
+  --size-mark: 40px;
+  --size-icon: 20px;
+  --size-icon-sm: 16px;
+  --size-bar: 8px;
+  --size-bar-sm: 4px;
+
+  /* Motion */
+  --duration-quick: 120ms;
+  --duration-base: 220ms;
+  --duration-slow: 420ms;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.3, 1);
+
+  /* Type families. Headings and body are DM Sans; Barlow Condensed is for
+     numbers only; IBM Plex Mono is for stat tables only. */
+  --font-sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-numeral: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* The dark theme. Stated twice with the same numbers: the explicit choice from
+   Settings, and the OS preference when Settings says System. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0e1511;
+  --surface: #151f19;
+  --surface-raised: #1c2821;
+  --surface-sunken: #0f1712;
+  --track: #26332b;
+  --line: #28352c;
+  --line-strong: #5f6d63;
+  --ink: #eef3ef;
+  --ink-rgb: 238, 243, 239;
+  --ink-muted: #a3b1a7;
+  --ink-disabled: #6b776f;
+  --accent: var(--school-dk, #4da97a);
+  --accent-rgb: var(--school-dk-rgb, 77, 169, 122);
+  --accent-strong: var(--school-strong-dk, #6cc193);
+  --accent-soft: var(--school-soft-dk, #1b3326);
+  --command: var(--school-command-dk, #2f7a52);
+  --on-command: #f4f8f4;
+  --positive: #5cc28b;
+  --positive-soft: #163022;
+  --warning: #f0b04a;
+  --warning-soft: #33270e;
+  --negative: #ef7d76;
+  --negative-soft: #3a1a18;
+  --info: #8db3e0;
+  --info-soft: #172538;
+  --gold: #e3bb4f;
+  --silver: #bcc7d1;
+  --bronze: #d29a6a;
+  --scrim: rgba(0, 0, 0, 0.62);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0e1511;
+    --surface: #151f19;
+    --surface-raised: #1c2821;
+    --surface-sunken: #0f1712;
+    --track: #26332b;
+    --line: #28352c;
+    --line-strong: #5f6d63;
+    --ink: #eef3ef;
+    --ink-rgb: 238, 243, 239;
+    --ink-muted: #a3b1a7;
+    --ink-disabled: #6b776f;
+    --accent: var(--school-dk, #4da97a);
+    --accent-rgb: var(--school-dk-rgb, 77, 169, 122);
+    --accent-strong: var(--school-strong-dk, #6cc193);
+    --accent-soft: var(--school-soft-dk, #1b3326);
+    --command: var(--school-command-dk, #2f7a52);
+    --on-command: #f4f8f4;
+    --positive: #5cc28b;
+    --positive-soft: #163022;
+    --warning: #f0b04a;
+    --warning-soft: #33270e;
+    --negative: #ef7d76;
+    --negative-soft: #3a1a18;
+    --info: #8db3e0;
+    --info-soft: #172538;
+    --gold: #e3bb4f;
+    --silver: #bcc7d1;
+    --bronze: #d29a6a;
+    --scrim: rgba(0, 0, 0, 0.62);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-control: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --shadow-float: 0 16px 48px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/*
+  The legacy names, pointed at the tokens above.
+
+  Screens that have not moved to the components yet still paint with --paper,
+  --field, --clay and friends. Aliasing them here gives the whole app one
+  palette today; each alias is deleted with the last rule that reads it.
+
+  `:root:not(#_)` carries an id's weight on purpose: the legacy files restate
+  these names in their own theme blocks, and one alias block has to outrank
+  all of them in both themes. The values on the right are theme-aware already,
+  so the alias never needs a dark copy.
+
+  --display stays as minimal-ui.css set it (DM Sans): the legacy headings were
+  already moved off the condensed face, and numbers set with --font-numeral
+  are the new components' business.
+*/
+:root:not(#_) {
+  --field: var(--bg);
+  --paper: var(--surface);
+  --sunk: var(--surface-sunken);
+  --wash: var(--surface-sunken);
+  --dim: var(--ink-muted);
+  --mute: var(--ink-disabled);
+  --clay: var(--accent);
+  --clay-rgb: var(--accent-rgb);
+  --soft: var(--accent-soft);
+  --alert: var(--negative);
+  --loss: var(--negative);
+  --win: var(--positive);
+  --yellow: var(--live);
+  --mono: var(--font-mono);
+}

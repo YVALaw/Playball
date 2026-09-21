@@ -88,6 +88,24 @@ describe('baseball-state correctness', () => {
     expect([...side.byPosition.values()].some((f) => f.id === outgoing.id)).toBe(false);
   });
 
+  it('names the fielder by where he stands, not his roster position', () => {
+    const { batTeam, fldTeam } = clubs(12);
+    const bat = new TeamState(batTeam, false);
+    const fld = new TeamState(fldTeam, true);
+    // The first baseman catching tonight, the catcher at first.
+    const catcher = fld.byPosition.get('C')!;
+    const first = fld.byPosition.get('1B')!;
+    fld.byPosition.set('C', first);
+    fld.byPosition.set('1B', catcher);
+    const lines: string[] = [];
+    const half = createHalfInning(
+      bat, fld, 1, scriptedEngine([pa('out', 'popup')]), () => 0.1, (l) => lines.push(l),
+      false, null, undefined, true, true,
+    );
+    half.step();
+    expect(lines.find((l) => l.includes('pops out'))).toMatch(/pops out to the catcher\.$/);
+  });
+
   it('uses a team mound-visit pool rather than resetting with each pitcher', () => {
     const { batTeam } = clubs();
     const side = new TeamState(batTeam, true);

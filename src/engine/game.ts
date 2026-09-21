@@ -825,6 +825,17 @@ export function createHalfInning(
    * and every row promises by name who answers instead.
    */
   manualVisits = manualDefense,
+  /**
+   * The live dugout's bench coach, flipped on and off in the middle of a half.
+   *
+   * While `pitching` is on, the automatic pitching change and mound visit run
+   * for the human side as they do for the computer's: a coach who hands the
+   * game to his bench coach until he takes it back should not come back to a
+   * starter at a hundred and forty pitches. Read on every plate appearance, so
+   * taking the dugout back takes effect with the next batter. Absent in every
+   * simulated game, where nothing is manual to begin with.
+   */
+  delegate: { pitching: boolean } | null = null,
 ): HalfInning {
   bat.currentInning = inning;
   fld.currentInning = inning;
@@ -1005,14 +1016,14 @@ export function createHalfInning(
     // The automatic game. Under manual management each of these is the coach's
     // call, and having the engine quietly make it too would steal with his
     // runners and burn his bench and bullpen out from under him.
-    if (!manualDefense) maybeChangePitcher(fld, bat, bases, say);
+    if (!manualDefense || delegate?.pitching === true) maybeChangePitcher(fld, bat, bases, say);
     // The visit goes before the hook on purpose: a bench that has a settled man
     // available should try talking to him before it burns a reliever.
     //
     // On its own switch, not the pen's: a coach can keep the bullpen and hand
     // the conversations to his pitching coach, and then this is the only
     // automatic thing left in his half of the inning.
-    if (!manualVisits) maybeMoundVisit(fld, bases.some(Boolean), say);
+    if (!manualVisits || delegate?.pitching === true) maybeMoundVisit(fld, bases.some(Boolean), say);
     if (!manualOffense) maybePinchHit(bat, fld, inning, rng, say);
     if (!manualOffense && resolveSteal(false)) { finished = true; return true; }
 
@@ -1373,7 +1384,7 @@ export function createHalfInning(
           const looking = pa.pitches[pa.pitches.length - 1] === 'called';
           say(`${cnt} ${batter.name} strikes out ${looking ? 'looking' : 'swinging'}.`);
         } else {
-          const res = resolveOut(bases, batter, pa.kind, outs, rng, scored, blame, pitcher, called, fielder, note, defense);
+          const res = resolveOut(bases, batter, pa.kind, outs, rng, scored, blame, pitcher, called, fielder && standingAt(fld, fielder), note, defense);
           addOuts(res.outs);
           if (res.sacrificeFly) bLine.sf = (bLine.sf ?? 0) + 1;
           else bLine.ab++;
@@ -1831,6 +1842,20 @@ function fielderFor(fld: TeamState, kind: PAKind, batter: Hitter, rng: Rng): Pla
 }
 
 /**
+ * The man as he stands tonight. A player covering somewhere else keeps his
+ * roster position on his card, and the log named that: a DH in left "flies
+ * out to the bench", a first baseman behind the plate "pops out to first".
+ */
+function standingAt(fld: TeamState, man: Player): Player {
+  if (man.type === 'pitcher') return man;
+  for (const [spot, fielder] of fld.byPosition) {
+    if (String(fielder.id) !== String(man.id)) continue;
+    return spot === man.pos ? man : { ...man, pos: spot };
+  }
+  return man;
+}
+
+/**
  * The lane's two positions, best candidate first, chosen on the weights.
  *
  * Returns both rather than one so the caller keeps its fallback: a lineup with
@@ -2248,7 +2273,8 @@ export function resolveOut(
   // decided who fielded it, so the log may as well say so.
   const base = OUT_TEXT[kind];
   if (!base) return { outs: 1, text: 'is retired.' };
-  const where = fielder ? POSITION_WORD[fielder.pos] : null;
+  // Nobody fields at DH; a man only standing there by fallback gets no name.
+  const where = fielder && fielder.pos !== 'DH' ? POSITION_WORD[fielder.pos] : null;
   return {
     outs: 1,
     text: where ? `${base.replace(/.$/, '')} to ${where}.` : base,

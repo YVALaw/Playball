@@ -1,28 +1,25 @@
 // Postseason.tsx
 // June, in three championships.
 //
-// CONFERENCE: eight of twelve into a double elimination, top four finishers
-// advance, the champion hangs a banner. REGIONALS: sixteen best-of-three
-// championship series crossing neighbouring conferences, sixteen banners.
-// NATIONAL: those sixteen champions plus four protected or at-large bids,
-// twenty in all — split into two ten-team double eliminations whose bottom
-// four apiece play their way in, and the two bracket champions play a
-// best-of-three for the country.
+// CONFERENCE: eight of twelve into a double elimination, the top four
+// finishers go on. REGIONALS: sixteen best-of-3 series crossing neighbouring
+// conferences. NATIONAL: those sixteen champions plus four teams guaranteed a
+// place or picked for the field, twenty in all, split into two double
+// eliminations whose champions play a best of 3 for the country.
 //
-// The screen's rules, all reported from testing: the explanatory card is
-// gone and the brackets own the room it ate; winners and losers are two
-// views under a toggle rather than one giant map; every bracket card wears
-// its school's colour; and the action button is pinned to the frame so it
-// sits in the same place whatever tab is up.
+// The screen names the stage and its format in one sentence, shows where June
+// is on a three-step rail, and has two views: your next game (or, once you are
+// out, the games worth watching) and the bracket. The one action for this
+// moment sits pinned at the bottom with a note saying how much it plays.
+//
+// One word for each idea, everywhere: the winners side and the elimination
+// side, the deciding game, the national tournament, guaranteed a place and
+// picked for the national field.
 
-import { leagueLabel } from '../../engine/leagueNames.js';
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useDynasty, useUserTeam, type NationalProgress } from '../../state/store.js';
-import { FloatingAction } from '../Sticky.js';
 import { useBackLayer } from '../useBackLayer.js';
 import { Modal } from '../Modal.js';
-import { IdCardIcon } from '@radix-ui/react-icons';
-import { ModuleIntro } from '../components/Kit.js';
 import { Lineup } from './Lineup.js';
 import { Crest } from '../Crest.js';
 import { era, injuryClock, startableSlot } from '../../engine/season.js';
@@ -33,23 +30,10 @@ import { handles } from '../../state/depth.js';
 import { whyOut } from '../Needs.js';
 import { DoubleElimMap, type DECols } from '../DoubleElimMap.js';
 import { BoxScoreSheet } from './Schedule.js';
-import { teamColour } from '../Avatar.js';
-import { teamInk } from '../accent.js';
-
-/**
- * A club's colour as TEXT, handed to the stylesheet as a light cut and a dark
- * one so the theme picks. An inline `color` gave the dark theme the light
- * theme's answer, and every school in the country measured under 4.5:1 on the
- * dark paper — most of them under 3:1, which is not low contrast, it is gone.
- */
-function inkStyle(abbr?: string): CSSProperties | undefined {
-  const ink = teamInk(teamColour(abbr));
-  if (!ink) return undefined;
-  return { ['--team-ink' as string]: ink.light, ['--team-ink-dk' as string]: ink.dark } as CSSProperties;
-}
 import {
-  conferenceField, liveSeries, nextGameFor, hostOfGame, roundName, clincher,
-  regionOf, REGIONS, CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS, protectedTopFour, splitShowdown, nationalBidReason, NATIONAL_BID_DETAIL,
+  conferenceField, liveSeries, nextGameFor, hostOfGame, clincher,
+  regionOf, REGIONS, CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS, protectedTopFour, splitShowdown, nationalBidReason,
+  type NationalBidReason,
 } from '../../engine/postseason.js';
 import type {
   Series, SeriesBracket, RegionalSeries, ConferenceTournament, TournamentResult, BracketGame,
@@ -59,6 +43,11 @@ import {
   type DoubleElim, type DESlot,
 } from '../../engine/doubleElim.js';
 import { FirstVisit } from '../Tutorial.js';
+import {
+  ActionBar, BracketMatch, Button, Callout, Card, cx, GameCard, Marquee, PhaseRail, SectionHeader,
+  SegmentedControl, StatusBadge, Tag, type BracketTeam,
+} from '../components/ui/index.js';
+import { conferenceName, ordinal, plural, recordText, roundWords, sentence } from '../words.js';
 
 type JuneTab = 'next' | 'bracket';
 type NatHalf = 'A' | 'B';
@@ -66,33 +55,30 @@ type NatHalf = 'A' | 'B';
 /*
   The tabs remember themselves across an unmount — managing a game covers
   this screen, and coming back to a different tab than you left reads as the
-  screen forgetting you. Module scope on purpose: session-long, never saved,
-  exactly the lifetime a view preference deserves.
-
-  These replaced the winners/losers toggles in the redesign the reporter
-  settled in the sorting session (`06` §U): "instead of having two tabs
-  called winners and losers... a next game and bracket tabs." The bracket
-  draws both halves of a double elimination stacked — one map — so nobody
-  ever has to remember which side they are on; the only half-toggle left is
-  the national's A/B, because those genuinely are two separate rooms.
+  screen forgetting you. Module scope on purpose: session-long, never saved.
 */
 let juneTabMemo: JuneTab = 'next';
 let natHalfMemo: NatHalf | null = null;
+
+/** How you got into the national tournament, in the postseason's own words. */
+const BID_TITLE: Record<NationalBidReason, string> = {
+  regionalChampion: 'Regional champions',
+  protected: 'Guaranteed a place',
+  atLarge: 'Picked for the national field',
+};
+const BID_TEXT: Record<NationalBidReason, string> = {
+  regionalChampion: 'Winning your regional put you in the national tournament.',
+  protected: 'A top-four regular-season ranking guarantees a place in the national tournament, even after a regional loss.',
+  atLarge: 'Your regular-season ranking earned one of the places left after the regional champions and the top four.',
+};
 
 export function Postseason() {
   const [modal, setModal] = useState<'in' | 'out' | 'title' | null>(null);
   const [showLineup, setShowLineup] = useState(false);
   /*
-    A nav tap stands the takeovers down.
-
-    June renders this component in place for the whole month, so the lineup
-    card and a stage review — full-screen overlays held in local state —
-    survive a tap on JUNE in the bottom bar: the store changes tab and
-    screen, the render tree comes back identical, and the card is still
-    covering it. Reported from the phone: "if you tap set up lineup during
-    the postseason and then try to go back to the Home Screen it won't let
-    you — you go to any other first." The store counts nav taps now, and a
-    new count closes whatever is standing.
+    A nav tap stands the takeovers down. June renders this component in place
+    for the whole month, so the lineup card and a stage under review would
+    otherwise survive a tap on the bottom bar and keep covering it.
   */
   const navEpoch = useDynasty((st) => st.navEpoch);
   const epochSeen = useRef(navEpoch);
@@ -102,53 +88,32 @@ export function Postseason() {
     setShowLineup(false);
     setReviewing(null);
   }, [navEpoch]);
-  /*
-    A bracket game, opened.
-
-    Box scores are stored only for the user's own program, so this is honest
-    about what it can offer: a slot whose day has a box shows the whole game,
-    and everything else stays a score. Storing every line for ninety-six
-    programs would put tens of thousands of rows in a save to serve a screen
-    almost nobody opens for a game they were not in.
-  */
   // The box being read, not the day it was played on: a June day holds
   // several games, so the day alone could never name one.
   const [openBox, setOpenBox] = useState<BoxScore | null>(null);
-  /*
-    Which stage is on screen, which is not always the stage being played.
-
-    Reported: won the conference, went on to the regionals, and wanted to look
-    back at the conference bracket. There was no way to. June had exactly one
-    view -- whatever was live -- and the two tournaments already decided simply
-    stopped existing, which is a strange thing for a screen whose whole subject
-    is what happened in June.
-
-    Null means "follow the tournament", so the common case needs no state and a
-    stage advancing under you still moves the screen with it.
-  */
   const [findTeam, setFindTeam] = useState(0);
   const [followTeam, setFollowTeam] = useState(true);
+  /*
+    Which stage is on screen, which is not always the stage being played: a
+    coach who won the conference and went on can still look back at it. Null
+    means "follow the tournament".
+  */
   const [reviewing, setReviewing] = useState<number | null>(null);
   const [juneTab, setJuneTab0] = useState<JuneTab>(juneTabMemo);
   /*
-    A beat on the pinned button, the same one the pregame card takes.
-
-    Reported 2026-09-16: "once I'm out of the tournament [simming] is
-    instant, giving the illusion that nothing is actually being simmed."
-    `simBracket` is synchronous and stays so -- a thousand tests call it --
-    so the wait is the button's: seven hundred milliseconds of SIMULATING…
-    before the night is played, and the results land after it.
+    A beat on the pinned button. `simBracket` is synchronous, so without it a
+    spectator's simulation is instant and reads as if nothing was played.
   */
   const [beat, setBeat] = useState<string | null>(null);
   const beatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (beatTimer.current) clearTimeout(beatTimer.current); }, []);
   const withBeat = (label: string, run: () => void) => (): void => {
     if (beat !== null) return;
-    setBeat(label.startsWith('SIM') ? 'SIMULATING…' : 'PLAYING IT OUT…');
+    setBeat(label.startsWith('Sim') ? 'Simulating…' : 'Playing it out…');
     beatTimer.current = setTimeout(() => { beatTimer.current = null; setBeat(null); run(); }, 700);
   };
-  // The June lineup card and a stage under review are layers the gesture
-  // peels, like every sheet (05 §91.2).
+  // The June lineup card and a stage under review are layers the back
+  // gesture peels, like every sheet.
   useBackLayer(showLineup, () => setShowLineup(false));
   useBackLayer(reviewing !== null, () => setReviewing(null));
   const setJuneTab = (v: JuneTab): void => { juneTabMemo = v; setJuneTab0(v); };
@@ -180,40 +145,10 @@ export function Postseason() {
   useEffect(() => { openStage(); }, [openStage, bracket?.stage, version]);
 
   /*
-    The screen goes where you are.
-
-    Losing in the winners bracket moves you to the losers side, and the screen
-    used to stay looking at the half you had just left -- so the most important
-    thing that had happened to you all week was somewhere you had to go and
-    find. Reported as wanting the view to move, smoothly, so you can see where
-    you now are.
-
-    It follows rather than jumps: the toggle is a real control and somebody who
-    has deliberately gone to look at the other half should be left there. So
-    this only fires when the side you are *playing on* changes, which is once a
-    tournament at most, and the map fades in under it -- which it now actually
-    does. This comment described the fade for weeks before one existed.
+    Two different questions. `reported` is "there is an elimination this year
+    that has not been shown", true whether or not it ended the season. And
+    `knockedOut` is "your June is over", which an advancing exit is not.
   */
-  /*
-    The follow-the-side effect lived here — losing in the winners bracket
-    used to move the VIEW to the losers side for you. The one-map redesign
-    made it meaningless: both sides are on screen, stacked, with your drop
-    marked between them. What elimination moves now is the tab, and not to
-    the bracket any more: a knocked-out team has no next game, so the
-    pregame show yields to the spotlight — see `spectatorMode` below.
-  */
-
-  /*
-    Two different questions, and conflating them was half the bug.
-
-    `reported` is "there is an elimination this year that has not been shown" —
-    true whether or not it ended the season, because losing a conference final
-    and going on to a regional is still news. `knockedOut` is "your June is
-    over", which an advancing exit is not. The screen used to ask the first and
-    act on the second, so a team that advanced spent the rest of the postseason
-    being treated as finished.
-  */
-
   const reported = knockout !== null && knockout.year === year;
   const knockedOut = reported && !knockout!.advanced;
   const iAmOut = myBracket
@@ -222,36 +157,23 @@ export function Postseason() {
   const stageKey = bracket?.stage ?? '';
 
   const stillIn = myBracket !== null && !knockedOut;
-  /*
-    Whether the coach's own programme is in the tournament being LOOKED AT,
-    which is a different question from whether he is still alive in his own.
-    FIND MY TEAM has to be able to answer no.
-  */
   const [notHere, setNotHere] = useState(false);
   const mySeed = season && team
     ? conferenceField(season, team.conference).field.indexOf(userTeam) + 1
     : 0;
   const inTheField = mySeed > 0;
-  // Spectator mode also covers the programs that never made the conference
-  // field. They should never see a dead YOUR NEXT GAME room either -- at any
-  // stage: a program with no tournament of its own (`myBracket` null) used to
-  // be shown a live "another loss ends the run" card once June moved on to
-  // the national stage.
+  // Spectating also covers a program that never made the conference field:
+  // it never sees a dead "your next game" room, at any stage.
   const spectatorMode = iAmOut
     || (!inTheField && (bracket?.stage === 'conference' || myBracket === null));
   useEffect(() => {
-    // Arrive on the useful room once. A reader can still choose BRACKET after
-    // this; the dependency does not change again while he is spectating.
     if (spectatorMode) setJuneTab('next');
   }, [spectatorMode]);
   const introKey = `${year}:in:${stageKey}`;
-  // No out card for the national final: the runner-up takeover from
-  // closeMyBracket already owns that beat, and "select better which one
-  // stays" is the instruction this whole cull answers.
+  // No exit card for the national final: the runner-up takeover owns that beat.
   const outKey = reported && knockout && knockout.kind !== 'final'
     ? `${year}:out:${knockout.kind}` : '';
 
-  /** Whether the tier on screen is finished, and whether you won something. */
   const nat = bracket?.national ?? null;
   const stagePlayed = bracket
     ? (bracket.stage === 'conference' ? bracket.cups.length >= 8
@@ -260,45 +182,34 @@ export function Postseason() {
     : false;
   const wonConference = bracket?.cups.some((c) => c.champion === userTeam) ?? false;
   const wonRegional = bracket?.regionals.some((r) => r.champion === userTeam) ?? false;
-  const wonTitle = nat?.final?.champion === userTeam;
-  // The name on a settled stage's banner: my own conference's cup winner.
   const settledCup = bracket?.cups.find((c) => c.conference === team?.conference);
   const settledChamp = settledCup && settledCup.champion !== null
     ? season?.teams[settledCup.champion]?.def.school ?? null
     : null;
 
   /*
-    A title game, announced before it is played.
-
-    Reported as wanting a modal when a competition's championship is on, rather
-    than the game being one more card inside a bracket. It is the same surface
-    as the trophy card by design — the request was for one thing that changes
-    state, not two things to dismiss — so this says who, what is at stake and
-    what winning takes, and the crown card above takes over once it is decided.
-
-    Fires once per title game and never again, keyed like every other card June
-    raises. A modal that reappeared every time you came back to the bracket
-    would be a modal you learn to tap through without reading.
+    A title game, announced before it is played, once. It says who, what is
+    at stake and what winning takes; the champion card takes over once it is
+    decided.
   */
   const titleGame = (() => {
     if (!myBracket || iAmOut || !season || !team || !bracket) return null;
-    const stake = (extra: string): string[] => [extra];
     if (myBracket.format === 'double') {
       const slot = liveSlotFor(myBracket.state, userTeam);
       if (!slot || slot.side !== 'F' || slot.a === null || slot.b === null) return null;
       const other = slot.a === userTeam ? slot.b : slot.a;
       const losses = myBracket.state.losses.get(userTeam) ?? 0;
-      const where = bracket.stage === 'conference' ? `${leagueLabel(team.conference)} championship`
+      const where = bracket.stage === 'conference' ? `${conferenceName(team.conference)} championship`
         : 'Bracket championship';
       return {
         key: `${year}:title:${stageKey}:${slot.round}`,
-        kicker: `${year} · ${where.toUpperCase()}`,
-        title: `${team.def.school} v ${(season.teams[other]?.def.school ?? '?')}`,
-        lines: stake(slot.round === 1
-          ? 'The reset. One game, winner take all.'
+        kicker: `${year} · ${where}`,
+        title: `${team.def.school} vs ${(season.teams[other]?.def.school ?? '?')}`,
+        lines: [slot.round === 1
+          ? 'The deciding game: one game, and the winner takes the title.'
           : losses === 0
-            ? 'You arrived unbeaten. Win one and it is yours.'
-            : 'You came through the losers bracket. Win this one AND the next.'),
+            ? 'You arrived unbeaten. Win once and the title is yours.'
+            : 'You came through the elimination side. Win this one and the deciding game after it.'],
       };
     }
     if (myBracket.kind !== 'regional' && myBracket.kind !== 'final') return null;
@@ -309,18 +220,16 @@ export function Postseason() {
     const len = myBracket.state.lengths[s.round] ?? 3;
     const wins = (t: number): number => s.games.filter((g) => g.winner === t).length;
     const isFinal = myBracket.kind === 'final';
+    const mine = wins(userTeam);
+    const theirs = wins(other);
+    const standing = mine === theirs
+      ? (mine === 0 ? '' : ` Level at ${recordText(mine, theirs)}.`)
+      : mine > theirs ? ` You lead ${recordText(mine, theirs)}.` : ` You trail ${recordText(mine, theirs)}.`;
     return {
       key: `${year}:title:${myBracket.kind}`,
-      kicker: isFinal ? `${year} · NATIONAL CHAMPIONSHIP` : `${year} · REGIONAL CHAMPIONSHIP`,
-      title: `${team.def.school} v ${(season.teams[other]?.def.school ?? '?')}`,
-      lines: stake((() => {
-        const mine = wins(userTeam);
-        const theirs = wins(other);
-        const standing = mine === theirs
-          ? (mine === 0 ? '' : ` Level at ${mine}-${theirs}.`)
-          : mine > theirs ? ` You lead it ${mine}-${theirs}.` : ` You trail it ${mine}-${theirs}.`;
-        return `Best of ${len}, first to ${clincher(len)}.${standing}`;
-      })()),
+      kicker: isFinal ? `${year} · National championship` : `${year} · Regional championship`,
+      title: `${team.def.school} vs ${(season.teams[other]?.def.school ?? '?')}`,
+      lines: [`Best of ${len}: first to ${clincher(len)} wins.${standing}`],
     };
   })();
 
@@ -348,23 +257,19 @@ export function Postseason() {
   const rung = bracket?.stage === 'conference' ? 0
     : bracket?.stage === 'regional' ? 1 : 2;
   const shown = reviewing ?? rung;
-  /*
-    Whether the coach's own programme is in the tournament being LOOKED AT.
-
-    Not the same as `stillIn`, which asks about his own run, and not the same
-    as `inTheField`, which only knows about his conference. A coach browsing
-    the regionals he did not reach needs FIND MY TEAM to say so rather than
-    scroll nowhere.
-  */
+  // Whether your program is in the tournament being looked at, which is a
+  // different question from whether it is still alive in its own.
   const inShownStage = shown === 0
     ? inTheField
     : shown === 1
       ? (bracket?.regionals ?? []).some((r) => r.seeds.includes(userTeam))
       : (bracket?.national?.field.seeds.includes(userTeam) ?? false);
-  // A different tournament on screen is a different question, so the answer
-  // does not survive the reader moving.
   useEffect(() => { setNotHere(false); }, [shown, juneTab, natHalf]);
 
+  /*
+    Your game, brought into view: the page scrolls to it, and so does the
+    bracket's sideways track. Paused the moment the reader scrolls themselves.
+  */
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const lookingAt = `${juneTab}:${natHalf ?? ''}`;
   const activeSlot = myBracket?.format === 'double' ? liveSlotFor(myBracket.state, userTeam) : null;
@@ -377,7 +282,8 @@ export function Postseason() {
     const all = scroller.querySelectorAll<HTMLElement>('[data-you]');
     const you = scroller.querySelector<HTMLElement>('[data-you-live]') ?? all[all.length - 1];
     if (!you) return;
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      || document.documentElement.dataset.motion === 'reduced';
     const sr = scroller.getBoundingClientRect();
     const yr = you.getBoundingClientRect();
     const moves: { el: HTMLElement; axis: 'scrollTop' | 'scrollLeft'; from: number; to: number }[] = [];
@@ -385,7 +291,7 @@ export function Postseason() {
       const to = scroller.scrollTop + yr.top + yr.height / 2 - sr.top - sr.height / 2;
       moves.push({ el: scroller, axis: 'scrollTop', from: scroller.scrollTop, to: Math.max(0, Math.min(scroller.scrollHeight - scroller.clientHeight, to)) });
     }
-    const map = you.closest<HTMLElement>('.bracket-map-scroll');
+    const map = you.closest<HTMLElement>('.pb-bracket');
     if (map) {
       const mr = map.getBoundingClientRect();
       if (yr.left < mr.left || yr.right > mr.right) {
@@ -409,21 +315,8 @@ export function Postseason() {
 
   if (!season || !team || !bracket) return null;
 
-  /*
-    Opening a bracket game.
-
-    A slot carries the day its game was played, and box scores are filed by
-    day — so the lookup is exact rather than a search, and it simply finds
-    nothing for a game between two programs that are not yours. Nothing is a
-    perfectly good answer here: the score is already on the card.
-  */
-  /*
-    Any match played opens its own box now — the reporter's second report on
-    this: "in the previous design we could tap any of the matches and it
-    would show us the box score." A bracket game carries its lines with it,
-    so a rival's game is as readable as your own; the day-keyed store is the
-    fallback for a slot from a save written before that.
-  */
+  // Any played game opens its box. A bracket game carries its lines with it;
+  // the day-keyed store is the fallback for a save written before that.
   const openGame = (g: BracketGame | null | undefined): void => {
     if (!g) return;
     if (g.box) { setOpenBox(g.box); return; }
@@ -435,25 +328,19 @@ export function Postseason() {
 
   const name = (i: number): string => season.teams[i]?.def.school ?? '?';
   const abbr = (i: number): string => season.teams[i]?.def.abbr ?? '?';
+  const conf = conferenceName(team.conference);
 
   /*
-    The trophy this stage has already handed out, if it has.
-
-    Deliberately the *stage's* champion rather than only the user's: somebody
-    else winning the country is still the biggest thing that happened, and the
-    old screen's answer to it was a stripe at the foot of the page. A rival's
-    title is a quiet card and yours is a loud one, which is the difference
-    between reporting the news and celebrating.
+    The trophy this stage has handed out, if it has: the stage's champion,
+    yours or a rival's. A rival's is reported; only yours is your banner.
   */
   const crown: Crown | null = (() => {
-    if (!bracket) return null;
     if (bracket.stage === 'national') {
       const champ = nat?.final?.champion;
       if (champ === undefined) return null;
       return {
         team: champ, rung: 2,
-        kicker: `${year} NATIONAL CHAMPIONS`,
-        title: 'Champions of the country',
+        kicker: `${year} national champions`,
         line: champ === userTeam
           ? 'Everything this season was for.'
           : 'Somebody else takes it home this year.',
@@ -464,8 +351,7 @@ export function Postseason() {
       if (!mineRegional) return null;
       return {
         team: userTeam, rung: 1,
-        kicker: `${year} REGIONAL CHAMPIONS`,
-        title: 'A regional banner',
+        kicker: `${year} regional champions`,
         line: 'On to the national tournament.',
       };
     }
@@ -473,107 +359,97 @@ export function Postseason() {
     if (!mineCup) return null;
     return {
       team: userTeam, rung: 0,
-      kicker: `${year} ${leagueLabel(mineCup.conference)} CHAMPIONS`,
-      title: 'Conference champions',
-      line: 'The league is yours.',
+      kicker: `${year} ${conferenceName(mineCup.conference)} champions`,
+      line: 'The conference is yours.',
     };
   })();
 
   const nationalBid = nat ? nationalBidReason(nat.field, userTeam) : null;
-  const stageTitle = shown === 0 ? `${leagueLabel(team.conference)} tournament`
+  const stageTitle = shown === 0 ? `${conf} tournament`
     : shown === 1 ? 'Regionals' : 'National tournament';
+  const formatLine = shown === 0
+    ? `Double elimination: a team is out after its second loss. The top ${CONF_ADVANCE} go on to the regionals.`
+    : shown === 1
+      ? 'Best of 3: first to 2 wins. The regional champions go on to the national tournament.'
+      : `${NATIONAL_BIDS} teams in two double-elimination brackets. The two bracket champions play a best of 3 for the national title.`;
 
   const qualified = inTheField
     ? {
         good: true,
-        title: `${ordinal(mySeed)} seed`,
-        lines: [
-          `Finish top ${CONF_ADVANCE} and you play a regional.`,
-        ],
+        title: `You are the ${ordinal(mySeed)} seed`,
+        lines: [`Finish in the top ${CONF_ADVANCE} of the ${conf} tournament and you play a regional.`],
       }
     : {
         good: false,
         title: 'Season over',
         lines: [
-          `${team.def.school} finished outside the top ${CONF_FIELD}.`,
-          'A third of the league goes home in May.',
+          `${team.def.school} finished outside the top ${CONF_FIELD}, who make the tournament.`,
+          'Follow the rest of June from here, then get ready for next season.',
         ],
       };
 
   /*
-    Where the year stopped — or didn't.
-
-    Reported from testing: *"we won the first and lost the second and got
-    knocked out."* He had, of that tournament, and the card told him his
-    season was over. It was not: second place in a conference tournament goes
-    to a regional, and a protected top-four seed reaches the national field
-    whatever its regional does. `knockout.advanced` is the store's answer to
-    that, worked out at the moment of elimination.
-
-    Kept short on purpose. These cards are read at the loudest moment in a
-    season and a paragraph is not read at all.
+    Where the year stopped, or didn't. Out of a tournament is not always out
+    of June: second place in a conference goes to a regional, and a top-four
+    team is guaranteed a national place whatever its regional does. Kept
+    short: these cards are read at the loudest moment of a season.
   */
   const howFar = (() => {
     const kind = knockout?.kind ?? 'conference';
-    const where = knockout?.label ? ` in the ${knockout.label}` : '';
+    // The store writes the round in lower case ("losers round 3"); the screen
+    // says it in the postseason's own words ("elimination round 3").
+    const round = knockout?.label?.replace(/^the\s+/i, '') ?? '';
+    const where = round ? ` in the ${roundWords(sentence(round)).toLowerCase()}` : '';
     const place = knockout?.placing ?? 0;
 
     if (kind === 'conference' && knockout?.advanced) {
-      const finished = place === 2 ? 'Runners up'
-        : place === 3 ? 'Third in the league'
-        : 'Fourth in the league';
+      const finished = place === 2 ? 'Runners-up' : place === 3 ? 'Third in the conference' : 'Fourth in the conference';
       return {
         good: true,
         title: finished,
         lines: [
-          `${team.def.school} are out of the ${leagueLabel(team.conference)} tournament.`,
-          `The top ${CONF_ADVANCE} finishers advance. Your next stage is a best-of-three regional series.`,
+          `${team.def.school} are out of the ${conf} tournament.`,
+          `The top ${CONF_ADVANCE} go on. Next is a regional: best of 3, first to 2 wins.`,
         ],
       };
     }
     if (kind === 'conference') {
-      /*
-        Out of the tournament is not out of the postseason, and this card said
-        it was. A protected top-four seed is in the national field whatever
-        June does to him, and a team inside the table's bid range has not been
-        decided about at all — the selector fills its last seats off that table
-        after the regionals. Three endings, because there are three.
-      */
       const bid = knockout?.bid ?? 'none';
       if (bid === 'secure') return {
         good: true,
-        title: 'National bid secure',
+        title: 'Guaranteed a place',
         lines: [
-          `${team.def.school} fall${where} of the ${leagueLabel(team.conference)} tournament.`,
-          'The regular season already earned a protected place in the national field. It is not affected by this.',
+          `${team.def.school} go out${where} of the ${conf} tournament.`,
+          'Your regular season already guaranteed a place in the national tournament. This does not change it.',
         ],
       };
       if (bid === 'awaiting') return {
         good: true,
-        title: 'Awaiting selection',
+        title: 'Waiting to be picked',
         lines: [
-          `${team.def.school} fall${where} of the ${leagueLabel(team.conference)} tournament.`,
-          'The national field is picked after the regionals, and you are inside the numbers. Nothing is settled yet.',
+          `${team.def.school} go out${where} of the ${conf} tournament.`,
+          'The national field is picked after the regionals, and your ranking is inside the numbers. Nothing is settled yet.',
         ],
       };
       return {
         good: false,
-        title: 'Out in May',
+        title: 'Season over',
         lines: [
-          `${team.def.school} fall${where} of the ${leagueLabel(team.conference)} tournament.`,
-          'Your postseason is over. Follow the remaining tournaments, then prepare for next season.',
+          `${team.def.school} go out${where} of the ${conf} tournament.`,
+          'Your postseason is over. Follow the rest of June, then get ready for next season.',
         ],
       };
     }
     if (kind === 'regional' && knockout?.advanced) {
+      const guaranteed = protectedTopFour(season).includes(userTeam);
       return {
         good: true,
-        title: protectedTopFour(season).includes(userTeam) ? 'Protected national bid' : 'At-large national bid',
+        title: guaranteed ? 'Guaranteed a place' : 'Picked for the national field',
         lines: [
           `${team.def.school} lose the regional championship series.`,
-          protectedTopFour(season).includes(userTeam)
+          guaranteed
             ? 'Your top-four regular-season ranking guarantees a place in the national tournament.'
-            : 'Your final regular-season ranking earns one of the remaining national places after regional champions and protected teams qualify.',
+            : 'Your regular-season ranking earns one of the places left after the regional champions and the top four.',
         ],
       };
     }
@@ -583,14 +459,14 @@ export function Postseason() {
         title: 'Out at the regional',
         lines: [
           `${team.def.school} lose the regional championship series.`,
-          'You did not receive a national bid. Follow the remaining games, then prepare for next season.',
+          'You were not picked for the national field. Follow the rest of June, then get ready for next season.',
         ],
       };
     }
     if (kind === 'final') {
       return {
         good: false,
-        title: 'Runners up',
+        title: 'Runners-up',
         lines: [
           `${team.def.school} lose the national championship series.`,
           'Second best in the country, and it still feels like this.',
@@ -599,24 +475,18 @@ export function Postseason() {
     }
     return {
       good: false,
-      title: 'Out of the showdown',
+      title: 'Out of the national tournament',
       lines: [
         `${team.def.school} take a second loss${where}.`,
-        `${NATIONAL_BIDS} reach the showdown. Most of the country never sees it.`,
+        `${NATIONAL_BIDS} teams reach the national tournament. Most of the country never does.`,
       ],
     };
   })();
 
-
   /*
-    The June injury hold — the regular season's rule, kept through the
-    tournaments. Reported: "I never get a warning during tournaments, I think
-    injuries are not working during tournaments." Half of that is the engine
-    (nobody gets hurt IN June — the rolls are staged work, see the backlog);
-    this is the other half: a man hurt in May is still hurt tonight, the
-    bracket fields the card exactly as written, and nothing here said a word.
-    Full careers only, the same rule as NEEDS YOU — the coach who writes the
-    card is the one the game waits for.
+    The June injury hold: a man hurt in May is still hurt tonight, and the
+    bracket fields the lineup as written, so a hurt starter holds the game
+    until the coach moves him. Only for a coach who sets his own lineup.
   */
   const hurtNine = (handles(depth, 'lineups') || handles(depth, 'depthChart'))
     ? team.team.lineup.filter((m) => !available(m, injuryClock(season)))
@@ -628,93 +498,61 @@ export function Postseason() {
       ? nextGameFor(myBracket.state, userTeam) !== null
       : liveSlotFor(myBracket.state, userTeam) !== null)
     : false;
-  const LIVE_NAME = ['THE CONFERENCE', 'THE REGIONALS', 'THE NATIONAL'];
+  const LIVE_NAME = ['the conference tournament', 'the regionals', 'the national tournament'];
+  const holdNote = hurtNine.length === 1
+    ? `${hurtNine[0]!.name} is in your lineup and cannot play: ${whyOut(hurtNine[0]!, injuryClock(season))}. Nobody is moved for you.`
+    : `${hurtNine.length} players in your lineup cannot play. Nobody is moved for you.`;
   const action: {
     label: string;
     run: () => void;
-    /** The red line under the button, when the card is holding it. */
+    /** Why the button is holding, or how much it plays. */
     note?: string;
     secondary?: { label: string; onClick: () => void } | null;
     /** No beat: the press opens something rather than playing anything. */
     instant?: boolean;
   } = reviewing !== null
-    // Looking back at a finished tournament. The one thing the button can
-    // usefully do is put you back where the season actually is -- advancing
-    // the live stage from a screen showing a different one is how somebody
-    // plays a round they never saw.
+    // Looking back at a finished tournament: the one useful thing to do is go
+    // back to where the season actually is.
     ? {
-        label: `BACK TO ${LIVE_NAME[rung] ?? 'THE TOURNAMENT'}`,
+        label: `Back to ${LIVE_NAME[rung] ?? 'the tournament'}`,
         run: () => setReviewing(null),
         instant: true,
       }
     : due
     ? (hurtNine.length > 0
-      // Held, exactly the way END WEEK holds: the game will field this card
-      // as written, so a hurt man in the nine stops the night until the
-      // coach moves him. FIX THE LINEUP opens the same card the YourNext
-      // panel does; nothing is moved for you.
       ? {
-          label: 'FIX THE LINEUP',
+          label: 'Fix the lineup',
           run: () => setShowLineup(true),
           instant: true,
-          note: hurtNine.length === 1
-            ? `${hurtNine[0]!.name} is in your nine and cannot play — ${whyOut(hurtNine[0]!, injuryClock(season))}. Nobody is moved for you.`
-            : `${hurtNine.length} men in your nine cannot play. Nobody is moved for you.`,
+          note: holdNote,
         }
       : {
-          label: 'PLAY THIS GAME',
+          label: 'Play this game',
           run: manage,
           instant: true,
-          secondary: { label: 'SIMULATE THIS GAME', onClick: () => sim('game') },
+          secondary: { label: 'Simulate this game', onClick: () => sim('game') },
         })
     : myBracket
       ? {
-          /*
-            The button says which round it is about to play.
-
-            Reported: it said PLAY THE NEXT GAMES and then played the play-in
-            and the opening round together, so it was vague about a thing it
-            was also wrong about. The engine steps one round now, and the
-            button reads that round's own name — the same string the bracket
-            column and the log use, so the three cannot drift.
-          */
-          /*
-            Your next game is the primary; the round is the secondary.
-
-            Round by round is honest and is kept, but it is not what anybody
-            wants when four of the next five rounds have nothing of theirs in
-            them. Asked for directly and asked for as the primary, which is the
-            right way round: the reason to be on this screen is your own team.
-
-            Once you are out there is no next game of yours, so the pair
-            becomes the round and the whole tournament instead.
-          */
+          // Your next game is the primary; the round is the secondary. Once
+          // you are out, the pair becomes the rest of this tournament and the
+          // round.
           label: iAmOut
             ? (myBracket.kind === 'conference'
-              ? `SIM TO ${leagueLabel(team.conference).toUpperCase()} CHAMPIONSHIP`
+              ? `Simulate to the ${conf} championship`
               : myBracket.kind === 'national'
-                ? 'SIM TO BRACKET CHAMPIONSHIP'
-                : 'SIM TO THE CHAMPIONSHIP')
-            : 'SIM TO MY NEXT GAME',
+                ? 'Simulate to the bracket championship'
+                : 'Simulate to the championship')
+            : 'Simulate to my next game',
           run: () => sim(iAmOut ? 'rest' : 'mine'),
-          /*
-            The round is offered whether or not he is still in it.
-
-            Reported 2026-09-12: "when your team doesn't make the post season it
-            automatically decides all once I hit play postseason, not giving the
-            players the opportunity to either simulate full post season or sim
-            by round." A coach who has been knocked out got SIM TO THE
-            CHAMPIONSHIP and, beside it, VIEW THE BRACKET — which is the same
-            destination as the BRACKET tab sitting two rows above it, so the
-            pair was really one button. `sim('round')` steps the bracket's own
-            round index and never asks whose games are in it, so it was correct
-            for a spectator all along and simply was not offered.
-          */
+          note: iAmOut
+            ? 'Plays every game left in this tournament up to its championship.'
+            : 'Plays every game before yours.',
           secondary: {
             label: (() => {
               const round = myBracket.format === 'double'
                 ? nextRoundName(myBracket.state) : null;
-              return round ? `SIM THE ${round.toUpperCase()}` : 'SIM THE NEXT ROUND';
+              return round ? `Simulate the ${roundWords(round).toLowerCase()}` : 'Simulate the next round';
             })(),
             onClick: () => sim('round'),
           },
@@ -722,61 +560,59 @@ export function Postseason() {
       : stagePlayed
         ? {
             label: bracket.stage === 'conference'
-              ? (wonConference ? 'ON TO THE REGIONALS' : 'SEE THE REGIONALS')
+              ? (wonConference ? 'On to the regionals' : 'See the regionals')
               : bracket.stage === 'regional'
-                ? (wonRegional ? 'ON TO THE NATIONALS' : 'SEE THE NATIONALS')
-                : 'END THE SEASON',
+                ? (wonRegional ? 'On to the national tournament' : 'See the national tournament')
+                : 'End the season',
             run: advance,
           }
-        // The national stage names its own next step, because "CONTINUE" over
-        // four different things is how a player ends up looking at a finished
-        // tournament wondering when it was played.
         : bracket.stage === 'national'
           ? {
-              label: (!nat?.bracketA || !nat.bracketB) ? 'PLAY THE SHOWDOWN'
-                : 'PLAY THE CHAMPIONSHIP',
+              label: (!nat?.bracketA || !nat.bracketB) ? 'Play the national brackets' : 'Play the championship',
               run: advance,
             }
-          // A spectator's tier, not yet played. This used to be unreachable —
-          // the tier resolved on arrival — so it fell to a bare CONTINUE.
+          // A spectator's tier, not yet played.
           : {
-              label: bracket.stage === 'conference'
-                ? 'PLAY THE CONFERENCE TOURNAMENTS'
-                : 'PLAY THE REGIONALS',
+              label: bracket.stage === 'conference' ? 'Play the conference tournaments' : 'Play the regionals',
               run: advance,
             };
+
+  const findMine = (): void => {
+    const halves = splitShowdown(nat?.field.seeds ?? []);
+    const half = halves.bracketA.includes(userTeam) ? 'A' : halves.bracketB.includes(userTeam) ? 'B' : null;
+    if (shown === 2 && half) setNatHalf(half);
+    // It says so when you are not in the tournament on screen.
+    setNotHere(!inShownStage);
+    setFollowTeam(true);
+    setFindTeam((n) => n + 1);
+  };
+
+  // While your game is up, Play and Simulate live on its card; everywhere else
+  // the pinned bar carries the one action for this moment.
+  const cardHasAction = reviewing === null && !spectatorMode && juneTab === 'next';
 
   return (
     <>
       {modal === 'in' && (
         <Modal
-          kicker={`${year} POSTSEASON`}
+          kicker={`${year} postseason`}
           title={qualified.title}
           lines={qualified.lines}
           tone={qualified.good ? 'win' : 'clay'}
-          action={qualified.good ? "LET'S GO" : 'SEE THE REST OF IT'}
+          action={qualified.good ? 'Let’s go' : 'Follow the rest of June'}
           onClose={() => setModal(null)}
         />
       )}
       {modal === 'out' && (
         <Modal
-          kicker={howFar.good ? `${year} · STILL ALIVE` : `${year} · SEASON OVER`}
+          kicker={howFar.good ? `${year} · Still alive` : `${year} · Season over`}
           title={howFar.title}
           lines={howFar.lines}
-          /*
-            Advancing is not winning, and the card must not say it is.
-
-            Reported: finishing runners up in the conference showed a green
-            card, and green is what this app uses for a win -- so the screen
-            congratulated a team on losing its final. Three states, three
-            colours: green only for a trophy, clay for a season that is over,
-            and the neutral one for the middle case this card actually
-            describes, which is "you lost, and you are still alive".
-          */
+          // Advancing is not winning: green is only for a trophy.
           tone={howFar.good ? 'ink' : 'clay'}
           action={howFar.good
-            ? (knockout?.kind === 'conference' ? 'ON TO THE REGIONAL' : 'ON TO THE NATIONALS')
-            : 'SEE THE REST OF IT'}
+            ? (knockout?.kind === 'conference' ? 'On to the regional' : 'On to the national tournament')
+            : 'Follow the rest of June'}
           onClose={() => setModal(null)}
         />
       )}
@@ -786,234 +622,106 @@ export function Postseason() {
           title={titleGame.title}
           lines={titleGame.lines}
           tone="ink"
-          action="TAKE THE FIELD"
-          /*
-            The button does what it says.
-
-            Reported: "I reached the national final through the winners bracket
-            and the screen didn't navigate to where the game was happening --
-            the championship bracket is at the very bottom." TAKE THE FIELD only
-            closed the card, so it dropped you wherever you happened to be
-            standing, which after a week of tapping through brackets is usually
-            a stage you were reading rather than the one you are playing.
-
-            Closing it now also puts the page back on the live stage and on the
-            half you are actually in. YOUR NEXT GAME sits at the top of that
-            view, so the thing the card just announced is the first thing under
-            it rather than a scroll away.
-          */
+          action="Take the field"
+          // Lands on the live stage and your next game, where the game is.
           onClose={() => {
             setReviewing(null);
-            // The card just announced the game; TAKE THE FIELD lands on it.
             setJuneTab('next');
             setModal(null);
           }}
         />
       )}
 
-      {/* A bracket game, opened. Same sheet the schedule uses, because a
-          postseason box score is a box score. */}
       {openBox !== null && (
-        <BoxScoreSheet
-          box={openBox}
-          season={season}
-          onClose={() => setOpenBox(null)}
-        />
+        <BoxScoreSheet box={openBox} season={season} onClose={() => setOpenBox(null)} />
       )}
 
       {showLineup && (
-        <div className="postseason-lineup-overlay" style={{
-          position: 'absolute', inset: 0, zIndex: 30,
-          background: 'var(--field)', display: 'flex', flexDirection: 'column',
-        }}>
-          <div className="postseason-lineup-head" style={{
-            flex: 'none', display: 'flex', justifyContent: 'space-between',
-            alignItems: 'center', padding: '10px 14px',
-            borderBottom: '2px solid var(--ink)', background: 'var(--field)',
-          }}>
-            <div className="label">POSTSEASON · YOUR CARD</div>
-            <button
-              onClick={() => setShowLineup(false)}
-              className="tap"
-              style={{
-                padding: '8px 14px', minHeight: 36,
-                background: 'var(--band)', border: '1px solid var(--ink)',
-                color: 'var(--cream)', font: "700 calc(9.5px * var(--ts)) var(--mono)", letterSpacing: '.12em',
-              }}
-            >DONE</button>
+        <div className="pb-fulloverlay" role="dialog" aria-modal="true" aria-label="Your lineup for June">
+          <div className="pb-overlaybar">
+            <span className="pb-overlaybar__title">Your lineup for June</span>
+            <span className="pb-overlaybar__trailing">
+              <Button size="sm" variant="primary" icon="check" onClick={() => setShowLineup(false)}>Done</Button>
+            </span>
           </div>
-          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-            <Lineup />
-          </div>
+          <div className="pb-fulloverlay__scroll"><Lineup /></div>
         </div>
       )}
 
-      {/*
-        The frame: pinned header (title + stage nav + secondary toggle),
-        scrolling brackets, and the action button OUTSIDE the scroller so it
-        holds its position whatever tab is up and however long its content is.
-      */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', flexDirection: 'column', minHeight: 0,
-      }}>
-        <FirstVisit id="postseason" />
-        <div style={{ flex: 'none', background: 'var(--field)' }}>
-          <div className="postseason-head">
-            <ModuleIntro
-              kicker={`${year} POSTSEASON · STAGE ${shown + 1} OF 3${reviewing !== null ? ' · REVIEWING' : ''}`}
+      <div className="pb-june">
+        <div
+          ref={scrollerRef}
+          className="pb-june__scroll"
+          onWheel={() => setFollowTeam(false)}
+          onTouchMove={() => setFollowTeam(false)}
+        >
+          <main className="pb-page">
+            <FirstVisit id="postseason" />
+            <Marquee
+              eyebrow={`${year} postseason${reviewing !== null ? ' · Looking back' : ''}`}
               title={stageTitle}
             />
-          </div>
-
-          <StageRail at={rung} shown={shown} onGo={(i) => setReviewing(i === rung ? null : i)} />
-
-          {/* The stage's two rooms. Reviewing an older stage or being out of
-              June both mean there is no next game, so the toggle only shows
-              while the question it answers exists. */}
-          {reviewing === null && (
-            <SubToggle
-              options={[['next', spectatorMode ? 'IMPORTANT GAMES' : 'NEXT GAME'], ['bracket', 'BRACKET']]}
-              at={juneTab}
-              onGo={(v) => setJuneTab(v as JuneTab)}
-              spectator={spectatorMode}
+            <PhaseRail
+              label="Postseason stages"
+              steps={['Conference', 'Regionals', 'National'].map((label, i) => ({
+                label,
+                state: i < rung ? 'done' as const : i === rung ? 'current' as const : 'upcoming' as const,
+                onClick: i <= rung && i !== shown ? () => setReviewing(i === rung ? null : i) : undefined,
+              }))}
             />
-          )}
-        </div>
 
-        {(reviewing !== null || juneTab === 'bracket') && (
-          <div className="postseason-map-tools">
-            {reviewing !== null && <button type="button" onClick={() => setReviewing(null)}>Return to current stage</button>}
-            <button type="button" onClick={() => {
-              const halves = splitShowdown(nat?.field.seeds ?? []);
-              const half = halves.bracketA.includes(userTeam) ? 'A' : halves.bracketB.includes(userTeam) ? 'B' : null;
-              if (shown === 2 && half) setNatHalf(half);
-              /*
-                And it says so when he is not in the one on screen.
+            {reviewing === null && (
+              <SegmentedControl<JuneTab>
+                label="Postseason view"
+                value={juneTab}
+                onChange={setJuneTab}
+                options={[
+                  { value: 'next', label: spectatorMode ? 'Games to watch' : 'Your next game' },
+                  { value: 'bracket', label: 'Bracket' },
+                ]}
+              />
+            )}
 
-                Reported 2026-09-12: "the find my team button, if I didn't make
-                it to the postseason tournament that I press it on, should
-                simply tell me I didn't make it, instead it does a weird screen
-                switch." It was a silent no-op: the scroll effect looks for
-                `[data-you]`, which is only written on a card holding your
-                team, finds none, and returns without moving or saying
-                anything. The one thing the press DID do was set `followTeam`,
-                which unmounts the note below — and in a wrapping flex row that
-                note is its own line, so the map jumped as the row collapsed.
-                That twitch was the whole of the "weird screen switch".
-              */
-              setNotHere(!inShownStage);
-              setFollowTeam(true); setFindTeam((n) => n + 1);
-            }}>Find my team</button>
-            {/*
-              Rendered unconditionally, and never empty, so the row cannot
-              change height under a thumb — the collapse was half the reported
-              fault ("it does a weird screen switch"). Measured: rendering the
-              element but letting it hold '' still collapsed it and the row went
-              61px to 89px on the press, because `.postseason-map-tools` wraps
-              and this note is its own line. A non-breaking space reserves it.
-            */}
-            <small>
-              {notHere
-                ? `${team.def.school} did not reach this one.`
-                : !followTeam ? 'Following paused while you browse' : '\u00a0'}
-            </small>
-          </div>
-        )}
-        <div ref={scrollerRef} onWheel={() => setFollowTeam(false)} onTouchMove={() => setFollowTeam(false)} className="postseason-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          <div style={{ padding: '8px 0 10px' }}>
+            {(reviewing !== null || juneTab === 'bracket') && (
+              <div className="pb-june__tools">
+                {reviewing !== null && (
+                  <Button size="sm" variant="secondary" icon="arrow-left" onClick={() => setReviewing(null)}>
+                    Back to the current stage
+                  </Button>
+                )}
+                <Button size="sm" variant="quiet" icon="crosshair" onClick={findMine}>Find my team</Button>
+                {/* Never empty, so the row cannot change height under a thumb. */}
+                <span className="pb-text-muted" aria-live="polite">
+                  {notHere
+                    ? `${team.def.school} did not reach this one.`
+                    : !followTeam ? 'Following paused while you browse.' : ' '}
+                </span>
+              </div>
+            )}
+
             {reviewing === null && shown === 2 && nationalBid && !knockedOut && (
-              <section className="postseason-outcome" aria-label="National qualification">
-                <small>YOUR NATIONAL BID</small><p>{NATIONAL_BID_DETAIL[nationalBid]}</p>
-              </section>
+              <Callout tone="positive" title={BID_TITLE[nationalBid]}>{BID_TEXT[nationalBid]}</Callout>
             )}
-            {/*
-              The exit used to be restated here as a standing card, above the
-              next game — asked off on 2026-09-10: "there's a big text when we
-              are eliminated on top of the next game card. Remove it." The
-              announcement modal still says it once; the bracket says the rest.
-            */}
-            {/*
-              Who won, at the top, where it cannot be missed.
 
-              Reported plainly: the national champion sat at the foot of the
-              page behind two full brackets, and *"I didn't even know it was
-              down there"*. A champion is the loudest thing that happens in a
-              season and it was reading as a footnote.
-
-              It is the same card the takeover shows, kept rather than spent:
-              the moment fires once, and then this stays for the rest of June so
-              it can be read again.
-            */}
             {crown && (
-              <div style={{ padding: '0 14px', marginBottom: 8 }}>
-                <CrownCard
-                  crown={crown}
-                  mine={crown.team === userTeam}
-                  school={name(crown.team)}
-                  abbr={abbr(crown.team)}
-                />
-              </div>
+              <CrownCard crown={crown} mine={crown.team === userTeam} school={name(crown.team)} abbr={abbr(crown.team)} />
             )}
-            {/*
-              A bracket game a phone call took away.
 
-              The same offer the dashboard makes, because June has its own
-              frame and the dashboard is not in it — and a postseason game is
-              the one you least want to lose.
-            */}
             {pendingGame && (
-              <div style={{ padding: '0 14px', marginBottom: 8 }}>
-                <div className="rise-in" style={{
-                  border: '1px solid var(--clay)', borderLeft: '5px solid var(--clay)',
-                  background: 'var(--paper)',
-                }}>
-                  <div style={{ padding: '5px 11px', background: 'var(--clay)' }}>
-                    <span style={{
-                      font: "600 calc(8.5px * var(--ts)) var(--mono)", letterSpacing: '.18em',
-                      color: 'var(--cream)',
-                    }}>GAME IN PROGRESS</span>
+              <Card
+                eyebrow="Game in progress"
+                title="You left this one on the field"
+                footer={(
+                  <div className="pb-buttons-2">
+                    <Button variant="secondary" onClick={() => void resumeGame(false)}>Let them finish</Button>
+                    <Button variant="primary" icon="play" onClick={() => void resumeGame(true)}>Pick it up</Button>
                   </div>
-                  <div style={{ padding: '10px 12px 11px' }}>
-                    <div style={{
-                      font: "800 calc(16px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-                    }}>{pendingGame.line}</div>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 9 }}>
-                      <button
-                        onClick={() => void resumeGame(true)}
-                        className="tap"
-                        style={{
-                          flex: 1, padding: '11px 8px', minHeight: 42,
-                          background: 'var(--clay)', border: '1px solid var(--clay)',
-                          color: 'var(--cream)', font: "700 calc(10px * var(--ts)) var(--mono)",
-                          letterSpacing: '.1em',
-                        }}
-                      >PICK IT UP</button>
-                      <button
-                        onClick={() => void resumeGame(false)}
-                        className="tap"
-                        style={{
-                          flex: 1, padding: '11px 8px', minHeight: 42,
-                          background: 'transparent', border: '1px solid rgba(var(--ink-rgb), .4)',
-                          color: 'var(--ink)', font: "700 calc(10px * var(--ts)) var(--mono)",
-                          letterSpacing: '.1em',
-                        }}
-                      >LET THEM FINISH</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                )}
+              >
+                <p className="pb-text">{pendingGame.line}</p>
+              </Card>
             )}
 
-            {/*
-              Between stages the pregame has nothing to stage and used to say
-              "the round is still being played" under a CHAMPIONS banner —
-              reported from the phone: "I won the conference finals and the
-              next game box said the round was still being played but the
-              conference had already ended." Standing here un-eliminated with
-              the stage played means you WON it, so the card says that, and
-              points at the same button that moves the June along.
-            */}
             {reviewing === null && spectatorMode && juneTab === 'next' && (
               <ImportantGames
                 bracket={bracket}
@@ -1026,35 +734,33 @@ export function Postseason() {
               />
             )}
 
-            {reviewing === null && !spectatorMode && juneTab === 'next'
-              && myBracket === null && stagePlayed && (
-              <section className="pregame-show is-waiting">
-                <div className="pregame-kicker">
-                  <small>YOUR NEXT GAME</small>
-                  <span>{bracket.stage === 'conference'
-                    ? (wonConference ? 'CONFERENCE — WON' : 'CONFERENCE — SETTLED')
-                    : bracket.stage === 'regional'
-                      ? (wonRegional ? 'REGIONAL — WON' : 'REGIONAL — SETTLED')
-                      : 'JUNE'}</span>
-                </div>
-                <p className="pregame-sub">
+            {/* Between stages, standing here still alive means you won the one
+                just finished, or are waiting on the next: say which. */}
+            {cardHasAction && myBracket === null && stagePlayed && (
+              <Card
+                eyebrow="Your next game"
+                title={bracket.stage === 'conference'
+                  ? (wonConference ? 'Conference champions' : 'The conference is decided')
+                  : bracket.stage === 'regional'
+                    ? (wonRegional ? 'Regional champions' : 'The regionals are decided')
+                    : 'This stage is decided'}
+                footer={<StageButtons action={action} withBeat={withBeat} beat={beat} />}
+              >
+                <p className="pb-text">
                   {bracket.stage === 'conference'
                     ? (wonConference
-                      ? 'The tournament is yours. Sixteen conference winners form the regionals next.'
-                      : `${settledChamp ?? 'The field'} take the ${leagueLabel(team.conference)}. Your place in June holds.`)
+                      ? 'The tournament is yours. The regionals are drawn next.'
+                      : `${settledChamp ?? 'Another team'} won the ${conf} tournament. Your place in June holds.`)
                     : bracket.stage === 'regional'
                       ? (wonRegional
-                        ? 'The regional is yours. The national field forms next.'
-                        : 'The regional is decided.')
-                      : 'The stage is decided.'}
+                        ? 'The regional is yours. The national field is picked next.'
+                        : 'Every regional is decided.')
+                      : 'Every game in this stage is played.'}
                 </p>
-                <button className="primary-command tap" type="button" onClick={action.run}>{action.label}</button>
-                {action.secondary && <button className="secondary-command tap" type="button" onClick={action.secondary.onClick}>{action.secondary.label}</button>}
-              </section>
+              </Card>
             )}
-            {reviewing === null && !spectatorMode && juneTab === 'next'
-              && !(myBracket === null && stagePlayed) && (
-              <PregameShow
+            {cardHasAction && !(myBracket === null && stagePlayed) && (
+              <NextGame
                 myBracket={myBracket}
                 userTeam={userTeam}
                 season={season}
@@ -1062,173 +768,117 @@ export function Postseason() {
                 name={name}
                 abbr={abbr}
                 hurtNine={hurtNine}
+                holdNote={holdNote}
                 onLineup={() => setShowLineup(true)}
                 onPlay={manage}
                 onSim={() => sim('game')}
-                onAdvance={action.run}
-                advanceLabel={action.label}
-                advanceSecondary={action.secondary ?? null}
+                action={action}
+                withBeat={withBeat}
+                beat={beat}
               />
             )}
 
-            {/*
-              The brackets, arriving rather than appearing.
-
-              This wrapper once swapped between the winners and losers halves
-              — the "quite wild" jump report, and the fade that answered it.
-              The one-map redesign retired the swap (both halves are always
-              on screen, stacked), so the key is the stage and the national's
-              A/B room now, and the fade only plays when one of those
-              genuinely changes. Off under `prefers-reduced-motion` with
-              everything else.
-            */}
             {(reviewing !== null || juneTab === 'bracket') && (
-            <div
-              className="bracket-view-transition"
-              key={`${shown}:${lookingAt}`}
-            >
-            {shown === 0 && (
-              <ConferenceStage
-                cups={bracket.cups}
-                mine={myBracket?.kind === 'conference' && myBracket.format === 'double'
-                  ? myBracket.state : null}
-                myConference={team.conference}
-                abbr={abbr}
-                userTeam={userTeam}
-                onOpen={openSlot}
-              />
+              <div className="pb-stack" key={`${shown}:${lookingAt}`}>
+                {shown === 0 && (
+                  <ConferenceStage
+                    cups={bracket.cups}
+                    mine={myBracket?.kind === 'conference' && myBracket.format === 'double'
+                      ? myBracket.state : null}
+                    myConference={team.conference}
+                    name={name}
+                    abbr={abbr}
+                    userTeam={userTeam}
+                    onOpen={openSlot}
+                  />
+                )}
+                {shown === 1 && (
+                  <RegionalStage
+                    regionals={bracket.regionals}
+                    onOpen={openGame}
+                    mine={myBracket?.kind === 'regional' && myBracket.format === 'series'
+                      ? { state: myBracket.state, meta: myBracket.meta ?? null }
+                      : null}
+                    myRegion={regionOf(team.conference)}
+                    name={name}
+                    abbr={abbr}
+                    userTeam={userTeam}
+                  />
+                )}
+                {shown === 2 && (
+                  <NationalStage
+                    nat={nat}
+                    onOpenGame={openGame}
+                    myBracket={myBracket}
+                    sideShow={sideShow}
+                    half={natHalf ?? (myBracket?.kind === 'national' && myBracket.format === 'double'
+                      ? (myBracket.half ?? 'A') : 'A')}
+                    onHalf={setNatHalf}
+                    name={name}
+                    abbr={abbr}
+                    userTeam={userTeam}
+                    onOpen={openSlot}
+                  />
+                )}
+              </div>
             )}
-
-            {shown === 1 && (
-              <RegionalStage
-                regionals={bracket.regionals}
-                onOpen={openGame}
-                mine={myBracket?.kind === 'regional' && myBracket.format === 'series'
-                  ? {
-                      state: myBracket.state,
-                      meta: myBracket.meta ?? null,
-                    }
-                  : null}
-                myRegion={regionOf(team.conference)}
-                season={season}
-                abbr={abbr}
-                userTeam={userTeam}
-              />
-            )}
-
-            {shown === 2 && (
-              <NationalStage
-                nat={nat}
-                onOpenGame={openGame}
-                myBracket={myBracket}
-                sideShow={sideShow}
-                half={natHalf ?? (myBracket?.kind === 'national' && myBracket.format === 'double'
-                  ? (myBracket.half ?? 'A') : 'A')}
-                onHalf={setNatHalf}
-                abbr={abbr}
-                userTeam={userTeam}
-                onOpen={openSlot}
-              />
-            )}
-            </div>
-            )}
-          </div>
+          </main>
         </div>
 
-        {/* Pinned to the frame, not the scroll — except while the pregame
-            show has the game: PLAY and SIM moved onto that card by decision
-            ("PLAY / SIM move onto the card itself"), and a second pair of
-            the same buttons underneath it is noise. Every other state keeps
-            the bar: between rounds it simulates to your next game, out or
-            reviewing it advances the tournament. */}
-        {!(reviewing === null && !spectatorMode && juneTab === 'next') && (
-        <div style={{
-          flex: 'none', padding: '0 14px',
-          background: 'var(--field)', borderTop: '1px solid var(--faint)',
-        }}>
-          <FloatingAction
-            label={beat ?? action.label}
-            onClick={action.instant ? action.run : withBeat(action.label, action.run)}
-            disabled={beat !== null}
-            note={action.note}
-            secondary={action.secondary
-              ? { label: action.secondary.label, onClick: withBeat(action.secondary.label, action.secondary.onClick) }
-              : null}
-          />
-        </div>
+        {!cardHasAction && (
+          <ActionBar note={action.note}>
+            {action.secondary && (
+              <Button
+                variant="secondary"
+                disabled={beat !== null}
+                onClick={withBeat(action.secondary.label, action.secondary.onClick)}
+              >{action.secondary.label}</Button>
+            )}
+            <Button
+              variant="primary"
+              disabled={beat !== null}
+              onClick={action.instant ? action.run : withBeat(action.label, action.run)}
+            >{beat ?? action.label}</Button>
+          </ActionBar>
         )}
       </div>
     </>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Header furniture
-// ---------------------------------------------------------------------------
+type Action = {
+  label: string; run: () => void; note?: string;
+  secondary?: { label: string; onClick: () => void } | null; instant?: boolean;
+};
 
-/** Where you are in June. The blurbs are gone; the tutorial teaches instead. */
-function StageRail(
-  { at, shown, onGo }: { at: number; shown: number; onGo: (i: number) => void },
+/** A card's own copy of the moment's action, for the cards that carry it. */
+function StageButtons(
+  { action, withBeat, beat }:
+  { action: Action; withBeat: (label: string, run: () => void) => () => void; beat: string | null },
 ) {
-  const STAGES: Array<[string, string]> = [
-    ['Conference', 'Double elimination · top four advance'],
-    ['Regionals', 'Best of three · sixteen sites'],
-    ['National', 'Two brackets · championship series'],
-  ];
   return (
-    <section className="postseason-stage-rail" aria-label="Postseason stages">
-      {STAGES.map(([name, note], i) => {
-        const reachable = i <= at;
-        const current = i === at;
-        const viewing = i === shown;
-        return (
-          <button
-            className={`${viewing ? 'active' : ''}${i < at ? ' done' : ''}${current ? ' current' : ''}`}
-            key={name}
-            type="button"
-            disabled={!reachable}
-            onClick={() => onGo(i)}
-          >
-            <i>{i < at ? '✓' : i + 1}</i>
-            <span>
-              <small>{current ? 'CURRENT STAGE' : i < at ? 'COMPLETED' : 'UP NEXT'}</small>
-              <strong>{name}</strong>
-              <em>{note}</em>
-            </span>
-          </button>
-        );
-      })}
-    </section>
+    <>
+      <Button
+        variant="primary"
+        block
+        disabled={beat !== null}
+        onClick={action.instant ? action.run : withBeat(action.label, action.run)}
+      >{beat ?? action.label}</Button>
+      {action.secondary && (
+        <Button
+          variant="secondary"
+          block
+          disabled={beat !== null}
+          onClick={withBeat(action.secondary.label, action.secondary.onClick)}
+        >{action.secondary.label}</Button>
+      )}
+      {action.note && <span className="pb-note">{action.note}</span>}
+    </>
   );
 }
 
-/** The winners/losers (and opening) toggle, in the app's own clothes. */
-function SubToggle(
-  { options, at, onGo, spectator = false }:
-  { options: [string, string][]; at: string; onGo: (v: string) => void; spectator?: boolean },
-) {
-  return (
-    <div className="postseason-view-toggle" role="tablist" aria-label="Postseason view">
-      {options.map(([v, label]) => (
-        <button
-          key={v}
-          type="button"
-          role="tab"
-          aria-selected={at === v}
-          className={at === v ? 'active' : ''}
-          onClick={() => onGo(v)}
-        >
-          <small>{v === 'next' ? (spectator ? 'POSTSEASON SPOTLIGHT' : 'YOUR PATH') : 'THE FIELD'}</small>
-          <strong>{label}</strong>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-
 // ---------------------------------------------------------------------------
-// Spectator room — once our season is over
+// Games to watch — once your season is over
 // ---------------------------------------------------------------------------
 
 interface SpotlightGame {
@@ -1241,12 +891,9 @@ interface SpotlightGame {
   note: string;
 }
 
-/** Prefer the reset if it exists, otherwise the first championship game. */
+/** The deciding game if it exists, otherwise the first championship game. */
 function spotlightFinal(slots: readonly DESlot[] | undefined): DESlot | null {
   if (!slots || slots.length === 0) return null;
-  // If the first championship forced a reset, the reset is the game that
-  // matters now; only fall back to the latest finished final when nothing is
-  // still waiting to be played.
   return [...slots].reverse().find(
     (slot) => slot.game === null && slot.a !== null && slot.b !== null,
   ) ?? [...slots].reverse().find((slot) => slot.game !== null)
@@ -1262,10 +909,9 @@ function gameSpotlight(
 }
 
 /**
- * When the coached team is done, June becomes a spectator experience rather
- * than a dead bracket. The important games are deliberately few: the
- * championship of the room currently being played, then the national title as
- * soon as its finalists exist. The full bracket remains one tap away.
+ * When your team is done, June becomes something to follow rather than a dead
+ * bracket: the championship of the stage being played, then the national title
+ * as soon as its finalists exist. The full bracket is one tab over.
  */
 function ImportantGames(
   { bracket, myBracket, sideShow, conference, name, abbr, onOpen }:
@@ -1280,6 +926,9 @@ function ImportantGames(
   },
 ) {
   const games: SpotlightGame[] = [];
+  const conf = conferenceName(conference);
+  const set = (a: number | null | undefined, b: number | null | undefined): boolean =>
+    a !== null && a !== undefined && b !== null && b !== undefined;
 
   if (bracket.stage === 'conference') {
     const cup = bracket.cups.find((c) => c.conference === conference);
@@ -1288,13 +937,11 @@ function ImportantGames(
     const settled = spotlightFinal(cup?.de?.final);
     const slot = live ?? settled;
     games.push(gameSpotlight(
-      'conference-title', `${leagueLabel(conference).toUpperCase()} · CHAMPIONSHIP`,
-      `${leagueLabel(conference)} championship`, slot?.a ?? null, slot?.b ?? null,
-      slot?.game ?? null,
+      'conference-title', 'Conference tournament', `${conf} championship`,
+      slot?.a ?? null, slot?.b ?? null, slot?.game ?? null,
       slot?.game
-        ? `${name(slot.game.winner)} took the championship game.`
-        : slot?.a !== null && slot?.a !== undefined && slot?.b !== null && slot?.b !== undefined
-          ? 'The title game is set.'
+        ? `${name(slot.game.winner)} won the championship game.`
+        : set(slot?.a, slot?.b) ? 'The championship game is set.'
           : 'The bracket is still deciding who reaches the championship.',
     ));
   } else if (bracket.stage === 'regional') {
@@ -1305,18 +952,15 @@ function ImportantGames(
       const last = r.games[r.games.length - 1] ?? null;
       games.push(gameSpotlight(
         `regional-${r.region}-${r.seeds.join('-')}`,
-        `${r.name.toUpperCase()} · REGIONAL CHAMPIONSHIP`,
-        `${name(r.seeds[0] ?? -1)} vs ${name(r.seeds[1] ?? -1)}`,
+        'Regionals', `${r.name} regional`,
         r.seeds[0] ?? null, r.seeds[1] ?? null, last,
-        last ? `${name(r.champion)} won the regional and moves on.`
-          : 'A regional championship series is still being decided.',
+        last ? `${name(r.champion)} won the regional and go on.` : 'This regional series is still being decided.',
       ));
     }
     if (games.length === 0) {
       games.push(gameSpotlight(
-        'regional-forming', 'REGIONALS · CHAMPIONSHIP SERIES',
-        'Regional championships', null, null, null,
-        'The conference tournaments are feeding the regional field now.',
+        'regional-forming', 'Regionals', 'Regional championships', null, null, null,
+        'The conference tournaments are filling the regional field now.',
       ));
     }
   } else {
@@ -1325,7 +969,7 @@ function ImportantGames(
     if (final) {
       const last = final.games[final.games.length - 1] ?? null;
       games.push(gameSpotlight(
-        'national-title', 'NATIONAL CHAMPIONSHIP', 'Championship series',
+        'national-title', 'National tournament', 'National championship',
         final.seeds[0] ?? null, final.seeds[1] ?? null, last,
         `National champions: ${name(final.champion)}.`,
       ));
@@ -1334,21 +978,20 @@ function ImportantGames(
       const champB = nat?.bracketB?.champion ?? null;
       if (champA !== null && champB !== null) {
         games.push(gameSpotlight(
-          'national-title-forming', 'NATIONAL CHAMPIONSHIP',
-          `${name(champA)} vs ${name(champB)}`, champA, champB, null,
-          'The two showdown winners are set. The championship series is next.',
+          'national-title-forming', 'National tournament', 'National championship',
+          champA, champB, null,
+          'Both bracket champions are set. The championship series is next.',
         ));
       }
-
       const half = (which: 'A' | 'B'): SpotlightGame | null => {
         const result = which === 'A' ? nat?.bracketA : nat?.bracketB;
         if (result) {
           const slot = spotlightFinal(result.final);
           return gameSpotlight(
-            `national-${which}`, `SHOWDOWN ${which} · CHAMPIONSHIP`,
-            `Bracket ${which} championship`, slot?.a ?? result.placings?.[0] ?? null,
-            slot?.b ?? result.placings?.[1] ?? null, slot?.game ?? null,
-            `Bracket ${which} winner: ${name(result.champion)}.`,
+            `national-${which}`, `National bracket ${which}`, `Bracket ${which} championship`,
+            slot?.a ?? result.placings?.[0] ?? null, slot?.b ?? result.placings?.[1] ?? null,
+            slot?.game ?? null,
+            `Bracket ${which} champions: ${name(result.champion)}.`,
           );
         }
         const state = myBracket?.kind === 'national' && myBracket.format === 'double'
@@ -1357,16 +1000,13 @@ function ImportantGames(
         if (!state) return null;
         const slot = spotlightFinal(state.final);
         return gameSpotlight(
-          `national-${which}`, `SHOWDOWN ${which} · CHAMPIONSHIP`,
-          `Bracket ${which} championship`, slot?.a ?? null, slot?.b ?? null,
-          slot?.game ?? null,
+          `national-${which}`, `National bracket ${which}`, `Bracket ${which} championship`,
+          slot?.a ?? null, slot?.b ?? null, slot?.game ?? null,
           slot?.game ? `${name(slot.game.winner)} won this championship game.`
-            : slot?.a !== null && slot?.a !== undefined && slot?.b !== null && slot?.b !== undefined
-              ? 'The bracket championship is set.'
-              : 'The showdown is still deciding its finalists.',
+            : set(slot?.a, slot?.b) ? 'The bracket championship is set.'
+              : 'This bracket is still deciding its finalists.',
         );
       };
-
       for (const which of ['A', 'B'] as const) {
         const item = half(which);
         if (item && !games.some((g) => g.key === item.key)) games.push(item);
@@ -1374,45 +1014,42 @@ function ImportantGames(
     }
   }
 
+  const side = (t: number | null, runs: number | undefined, winner: number | undefined): BracketTeam => ({
+    abbr: t !== null ? abbr(t) : '',
+    name: t !== null ? name(t) : 'To be decided',
+    score: runs,
+    winner: winner !== undefined && t === winner,
+    out: winner !== undefined && t !== null && t !== winner,
+  });
+
   return (
-    <section className="postseason-spotlight">
-      <header>
-        <small>YOUR RUN IS OVER · JUNE CONTINUES</small>
-        <strong>The games that matter now</strong>
-        <p>Follow the championships here. The full bracket is still available beside this tab.</p>
-      </header>
-      <div className="postseason-spotlight-list">
-        {games.slice(0, 3).map((item) => {
-          const away = item.game?.away ?? item.a;
-          const home = item.game?.home ?? item.b;
-          return (
-            <article className="postseason-spotlight-game" key={item.key}>
-              <div className="postseason-spotlight-title">
-                <span><small>{item.kicker}</small><strong>{item.title}</strong></span>
-                <b>{item.game ? 'FINAL' : away !== null && home !== null ? 'SET' : 'FORMING'}</b>
-              </div>
-              <div className="postseason-spotlight-matchup">
-                <span>
-                  {away !== null ? <Crest abbr={abbr(away)} size={31} /> : <i className="spotlight-tbd">?</i>}
-                  <b>{away !== null ? name(away) : 'TBD'}</b>
-                  {item.game && <strong>{item.game.awayRuns}</strong>}
-                </span>
-                <span>
-                  {home !== null ? <Crest abbr={abbr(home)} size={31} /> : <i className="spotlight-tbd">?</i>}
-                  <b>{home !== null ? name(home) : 'TBD'}</b>
-                  {item.game && <strong>{item.game.homeRuns}</strong>}
-                </span>
-              </div>
-              <p>{item.note}</p>
-              {item.game && (
-                <button type="button" className="tap" onClick={() => onOpen(item.game)}>
-                  VIEW GAME
-                </button>
-              )}
-            </article>
-          );
-        })}
-      </div>
+    <section className="pb-stack">
+      <SectionHeader
+        title="Games to watch"
+      />
+      {games.slice(0, 3).map((item) => {
+        const away = item.game?.away ?? item.a;
+        const home = item.game?.home ?? item.b;
+        const winner = item.game?.winner;
+        const state = item.game ? 'Final' : away !== null && home !== null ? 'Set' : 'Still forming';
+        return (
+          <Card
+            key={item.key}
+            eyebrow={item.kicker}
+            title={item.title}
+            trailing={<StatusBadge tone={item.game ? 'neutral' : 'info'} icon={false}>{state}</StatusBadge>}
+          >
+            <BracketMatch
+              teams={[
+                side(away, item.game?.awayRuns, winner),
+                side(home, item.game?.homeRuns, winner),
+              ]}
+              onClick={item.game ? () => onOpen(item.game) : undefined}
+            />
+            <p className="pb-text-muted">{item.note}</p>
+          </Card>
+        );
+      })}
     </section>
   );
 }
@@ -1421,22 +1058,14 @@ function ImportantGames(
 // Your next game
 // ---------------------------------------------------------------------------
 
-/** What you are due to play, and the door to your lineup. */
 /**
- * The full pregame show — the NEXT GAME tab's whole reason to exist.
- *
- * The reporter's design, decided at the batch's door: "the red box... be the
- * main one and make it bigger and better looking to give it a feel of
- * importance now that we are in the tournament stages", and then "the full
- * matchup card... PLAY / SIM move onto the card itself." Crests, the probable
- * arms picked exactly the way the engine will pick them (appearances modulo
- * three — the same arithmetic playSeriesGame uses), the tournament record,
- * and the two buttons that act on it. The injury hold moves here with them:
- * a hurt man in the nine turns PLAY into FIX THE LINEUP, same as the pinned
- * bar it inherited the job from.
+ * The game in front of you: both teams with their tournament records, the
+ * probable starters (picked the way the engine will pick them), what a loss
+ * would mean, and Play or Simulate. A hurt starter in the lineup turns Play
+ * into Fix the lineup.
  */
-function PregameShow(
-  { myBracket, userTeam, season, me, name, abbr, hurtNine, onLineup, onPlay, onSim, onAdvance, advanceLabel, advanceSecondary }:
+function NextGame(
+  { myBracket, userTeam, season, me, name, abbr, hurtNine, holdNote, onLineup, onPlay, onSim, action, withBeat, beat }:
   {
     myBracket: ReturnType<typeof useDynasty.getState>['myBracket'];
     userTeam: number;
@@ -1445,26 +1074,20 @@ function PregameShow(
     name: (i: number) => string;
     abbr: (i: number) => string;
     hurtNine: Hitter[];
+    holdNote: string;
     onLineup: () => void;
     onPlay: () => void;
     onSim: () => void;
-    onAdvance: () => void;
-    advanceLabel: string;
-    advanceSecondary: { label: string; onClick: () => void } | null;
+    action: Action;
+    withBeat: (label: string, run: () => void) => () => void;
+    beat: string | null;
   },
 ) {
-  /*
-    The same beat the Today card takes, and for the same reason.
-
-    Reported 2026-09-12: "the postseason simulate game button doesn't have a
-    delay like the tonight's card so you can just double press." It did not —
-    `simBracket` is fully synchronous with no busy flag, and the guarded copy
-    of this label lives in the pinned command bar, which this card replaces.
-    Two presses inside one frame played two nights.
-  */
-  const [thinking, setThinking] = useState<'play' | 'sim' | 'advance' | null>(null);
+  // The same beat Today's game card takes, so one double press cannot play two
+  // nights.
+  const [thinking, setThinking] = useState<'play' | 'sim' | null>(null);
   const thinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const think = (which: 'play' | 'sim' | 'advance', run: () => void): void => {
+  const think = (which: 'play' | 'sim', run: () => void): void => {
     if (thinking !== null) return;
     setThinking(which);
     thinkTimer.current = setTimeout(() => {
@@ -1473,99 +1096,105 @@ function PregameShow(
       run();
     }, 800);
   };
-  // A beat must not land on a screen that has gone — the bracket closes.
   useEffect(() => () => { if (thinkTimer.current) clearTimeout(thinkTimer.current); }, []);
 
   // Who tonight is against, and what it is worth — or null between rounds.
   let opp: number | null = null;
   let home = false;
-  let formatLabel = '';
-  let sub: string | null = null;
+  let format = '';
+  let when: string | null = null;
+  let loss: string | null = null;
 
   if (myBracket && myBracket.format === 'series') {
-    formatLabel = 'BEST OF THREE';
     const next = nextGameFor(myBracket.state, userTeam);
     const sr = liveSeries(myBracket.state, userTeam);
+    const len = myBracket.state.lengths[sr?.round ?? 0] ?? 3;
+    format = `Best of ${len}`;
     if (next && sr) {
       const host = hostOfGame(sr, sr.games.length);
       opp = next.a === userTeam ? next.b : next.a;
       home = host === userTeam;
       const wins = (t: number): number => sr.games.filter((g) => g.winner === t).length;
-      const len = myBracket.state.lengths[sr.round] ?? 3;
       const mine = wins(userTeam);
       const theirs = wins(opp);
-      sub = `Game ${sr.games.length + 1} of ${len} · you ${mine}-${theirs} · first to ${clincher(len)}`;
+      const need = clincher(len) - theirs;
+      when = `Game ${sr.games.length + 1} of ${len} · ${mine === theirs ? `level at ${recordText(mine, theirs)}` : mine > theirs ? `you lead ${recordText(mine, theirs)}` : `you trail ${recordText(mine, theirs)}`}`;
+      loss = need <= 1
+        ? 'A loss ends the series.'
+        : `First to ${clincher(len)} wins takes the series. Lose ${plural(need, 'game')} and you are out.`;
     }
   } else if (myBracket) {
-    formatLabel = 'DOUBLE ELIMINATION';
+    format = 'Double elimination';
     const slot = liveSlotFor(myBracket.state, userTeam);
+    const losses = myBracket.state.losses.get(userTeam) ?? 0;
     if (slot && slot.a !== null && slot.b !== null) {
-      const host = slot.side === 'F' ? slot.a
-        : (slot.aSeed <= slot.bSeed ? slot.a : slot.b);
+      const host = slot.side === 'F' ? slot.a : (slot.aSeed <= slot.bSeed ? slot.a : slot.b);
       opp = slot.a === userTeam ? slot.b : slot.a;
       home = host === userTeam;
-      if (slot.side === 'F') {
-        sub = slot.round === 1 ? 'Championship · the reset' : 'Championship';
-      } else {
-        sub = slotName(slot);
-      }
+      when = roundWords(slotName(slot));
+      loss = slot.side === 'F'
+        ? (slot.round === 1
+          ? 'The deciding game: the winner takes the title.'
+          : losses === 0
+            ? 'Win and the title is yours. Lose and there is a deciding game.'
+            : 'You need to win this one and the deciding game after it. A loss ends your run.')
+        : losses === 0
+          ? 'A loss drops you to the elimination side. A second loss ends your run.'
+          : 'You are on the elimination side: a loss ends your run.';
     }
   }
 
-  const tournamentRecord = (team: number): string => {
-    if (!myBracket) return '0-0';
+  const tournamentRecord = (t: number): string => {
+    if (!myBracket) return recordText(0, 0);
     if (myBracket.format === 'series') {
-      const series = liveSeries(myBracket.state, team);
-      if (!series) return '0-0';
-      const wins = series.games.filter((g) => g.winner === team).length;
-      return `${wins}-${series.games.length - wins}`;
+      const series = liveSeries(myBracket.state, t);
+      if (!series) return recordText(0, 0);
+      const w = series.games.filter((g) => g.winner === t).length;
+      return recordText(w, series.games.length - w);
     }
     const state = myBracket.state;
-    const slots = [...state.winners.flat(), ...state.losers.flat(), ...state.final];
-    let wins = 0;
-    let losses = 0;
-    for (const slot of slots) {
+    let w = 0;
+    let l = 0;
+    for (const slot of [...state.winners.flat(), ...state.losers.flat(), ...state.final]) {
       if (slot.winner === null || slot.winner === undefined) continue;
-      if (slot.a !== team && slot.b !== team) continue;
-      if (slot.winner === team) wins += 1;
-      else losses += 1;
+      if (slot.a !== t && slot.b !== t) continue;
+      if (slot.winner === t) w += 1; else l += 1;
     }
-    return `${wins}-${losses}`;
+    return recordText(w, l);
   };
 
-  // Between rounds: nothing to stage yet. The pinned bar below simulates to
-  // your next game; the card only has to say the round is still forming.
+  const recLabel = myBracket?.format === 'series' ? 'In this series' : 'In this tournament';
+  const us = {
+    abbr: me.def.abbr,
+    name: me.def.school,
+    record: <>{tournamentRecord(userTeam)}<small>{recLabel}</small></>,
+    you: true,
+  };
+
+  // Between rounds. The card is the same matchup as always, with the other
+  // side left as TBD until their game is played: the shape says "you are
+  // waiting on an opponent" without a paragraph saying it.
   if (opp === null) {
+    const tbd = { abbr: 'TBD', name: 'TBD' };
     return (
-      <section className="pregame-show is-waiting">
-        <div className="pregame-kicker">
-          <small>YOUR NEXT GAME</small>
-          <span>{formatLabel || 'JUNE'}</span>
-        </div>
-        <div className="pregame-match">
-          <div className="pregame-side">
-            <Crest abbr={me.def.abbr} size={46} />
-            <strong style={inkStyle(me.def.abbr)}>{me.def.school}</strong>
-            <small className="pregame-tournament-record">TOURNAMENT {tournamentRecord(userTeam)}</small>
-            <em>&nbsp;</em>
-          </div>
-          <div className="pregame-vs">VS</div>
-          <div className="pregame-side">
-            <span className="pregame-tbd" aria-hidden>?</span>
-            <strong>TBD</strong>
-            <small className="pregame-tournament-record">TOURNAMENT —</small>
-            <em>&nbsp;</em>
-          </div>
-        </div>
-        <p className="pregame-sub">The other side is still playing. Your next opponent will appear here.</p>
-        <button className="primary-command tap" type="button" onClick={onAdvance}>{advanceLabel}</button>
-        {advanceSecondary && <button className="secondary-command tap" type="button" onClick={advanceSecondary.onClick}>{advanceSecondary.label}</button>}
-      </section>
+      <GameCard
+        label="Your next game"
+        when={when ?? 'Your next game'}
+        kind={format}
+        away={home ? tbd : us}
+        home={home ? us : tbd}
+        actions={(
+          <>
+            <StageButtons action={action} withBeat={withBeat} beat={beat} />
+            <Button variant="quiet" size="sm" icon="id-card" onClick={onLineup}>Set the lineup</Button>
+          </>
+        )}
+      />
     );
   }
 
-  // The probable arms, the way the engine will pick them: each side's own
-  // appearances mod 3, walked forward past an arm that cannot take the ball.
+  // The probable starters: each side's own appearances, walked forward past
+  // an arm that cannot take the ball.
   const used = (side: number): number =>
     ((myBracket!.state as { appearances?: Map<number, number> }).appearances?.get(side) ?? 0) % 3;
   const armFor = (side: number): string => {
@@ -1574,197 +1203,157 @@ function PregameShow(
     const arm = rec?.team.rotation[at] ?? rec?.team.rotation[0];
     if (!arm) return '—';
     const line = season.pitching.get(arm.id);
-    const e = line && line.outs >= 9 ? ` · ${era(line).toFixed(2)}` : '';
-    const parts = arm.name.split(' ');
-    const short = parts.length > 1 ? `${parts[0]?.[0] ?? ''}. ${parts.slice(1).join(' ')}` : arm.name;
-    return `${short}${e}`;
+    return line && line.outs >= 9 ? `${arm.name} · ${era(line).toFixed(2)} ERA` : arm.name;
   };
 
   const held = hurtNine.length > 0;
+  const them = { abbr: abbr(opp), name: name(opp), record: <>{tournamentRecord(opp)}<small>{recLabel}</small></> };
 
   return (
-    <section className="pregame-show">
-      <div className="pregame-kicker">
-        <small>YOUR NEXT GAME</small>
-        <span>{formatLabel}</span>
-      </div>
-
-      <div className="pregame-match">
-        <div className="pregame-side">
-          <Crest abbr={me.def.abbr} size={46} />
-          <strong style={inkStyle(me.def.abbr)}>{me.def.school}</strong>
-          <small className="pregame-tournament-record">TOURNAMENT {tournamentRecord(userTeam)}</small>
-          <em>{armFor(userTeam)}</em>
-        </div>
-        <div className="pregame-vs">{home ? 'VS' : 'AT'}</div>
-        <div className="pregame-side">
-          <Crest abbr={abbr(opp)} size={46} />
-          <strong style={inkStyle(abbr(opp))}>{name(opp)}</strong>
-          <small className="pregame-tournament-record">TOURNAMENT {tournamentRecord(opp)}</small>
-          <em>{armFor(opp)}</em>
-        </div>
-      </div>
-
-      {sub && <p className="pregame-sub">{sub}</p>}
-      {season.playbooks?.[abbr(opp)] && (
-        <p className="pregame-sub">Playing the {abbr(opp)} book.</p>
-      )}
-
-      {held ? (
-        <>
-          <p className="pregame-hold">
-            {hurtNine.length === 1
-              ? `${hurtNine[0]!.name} is in your nine and cannot play — ${whyOut(hurtNine[0]!, injuryClock(season))}. Nobody is moved for you.`
-              : `${hurtNine.length} men in your nine cannot play. Nobody is moved for you.`}
-          </p>
-          <button className="primary-command tap" type="button" onClick={onLineup}>
-            FIX THE LINEUP
-          </button>
-        </>
+    <GameCard
+      label="Your next game"
+      when={when ?? 'Your next game'}
+      kind={format}
+      away={home ? them : us}
+      home={home ? us : them}
+      facts={[
+        { label: 'Your starter', value: armFor(userTeam) },
+        { label: 'Their starter', value: armFor(opp) },
+      ]}
+      actions={held ? (
+        <Button variant="primary" block icon="id-card" onClick={onLineup}>Fix the lineup</Button>
       ) : (
         <>
-          <button
-            className="primary-command tap"
-            type="button"
-            disabled={thinking !== null}
-            onClick={() => think('play', onPlay)}
-          >
-            {thinking === 'play' ? <span className="spinner" /> : 'PLAY THIS GAME'}
-          </button>
-          <button
-            className="secondary-command tap"
-            type="button"
-            disabled={thinking !== null}
-            onClick={() => think('sim', onSim)}
-          >
-            {thinking === 'sim' ? <span className="spinner" /> : 'SIMULATE THIS GAME'}
-          </button>
+          <Button variant="primary" block icon="play" disabled={thinking !== null} onClick={() => think('play', onPlay)}>
+            {thinking === 'play' ? 'Starting…' : 'Play this game'}
+          </Button>
+          <Button variant="secondary" block disabled={thinking !== null} onClick={() => think('sim', onSim)}>
+            {thinking === 'sim' ? 'Simulating…' : 'Simulate it'}
+          </Button>
+          <Button variant="quiet" size="sm" icon="id-card" onClick={onLineup}>Set the lineup</Button>
         </>
       )}
-      <button className="pregame-lineup tap" type="button" onClick={onLineup}>
-        <IdCardIcon /> Set the lineup
-      </button>
-    </section>
+    >
+      {held
+        ? <Callout tone="warning" title="Your lineup needs a change">{holdNote}</Callout>
+        : loss && <Callout tone="info" icon="info">{loss}</Callout>}
+      {season.playbooks?.[abbr(opp)] && (
+        <p className="pb-text-muted">You are using your plan against {name(opp)}.</p>
+      )}
+    </GameCard>
   );
 }
 
+// ---------------------------------------------------------------------------
+// The brackets
+// ---------------------------------------------------------------------------
+
 /**
- * One double elimination as ONE map: the winners road, the drop marked in
- * your colour, and the losers road under it. The stacked layout is what let
- * the winners/losers toggle retire — see the redesign note at the top.
+ * One double elimination, both sides: the winners side on top, where every
+ * team starts, and the elimination side under it, where a first loss sends
+ * you. Your drop is said in words between them.
  */
 function OneMap(
-  { de, abbr, userTeam, onOpen, mineAbbr }:
+  { de, name, abbr, userTeam, onOpen, mine }:
   {
     de: DECols;
+    name: (i: number) => string;
     abbr: (i: number) => string;
     userTeam: number;
     onOpen?: (s: DESlot) => void;
-    /** Set when the user's team plays in this bracket — paints the drop. */
-    mineAbbr: string | null;
+    /** Whether your team plays in this bracket. */
+    mine: boolean;
   },
 ) {
-  // He dropped if he appears anywhere on the losers side.
-  const dropped = mineAbbr !== null && de.losers.some((r) =>
-    r.some((sl) => sl.a === userTeam || sl.b === userTeam));
+  const dropped = mine && de.losers.some((r) => r.some((sl) => sl.a === userTeam || sl.b === userTeam));
   return (
     <>
-      <DoubleElimMap de={de} view="winners" abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
-      <div
-        className={`drop-strip${dropped ? ' is-you' : ''}`}
-        style={dropped && mineAbbr ? { ['--team' as string]: teamColour(mineAbbr) } : undefined}
-      >
-        {dropped
-          ? `▼ ${mineAbbr} dropped here — one more loss ends the run`
-          : '▼ losses land here'}
-      </div>
-      <DoubleElimMap
-        de={de} view="losers" abbr={abbr} userTeam={userTeam} onOpen={onOpen}
-        showFinal={false}
-      />
+      <SectionHeader level={3} title="Winners side" description="One loss drops a team below" />
+      <DoubleElimMap de={de} view="winners" name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
+      {dropped && (
+        <Callout tone="warning" title="You dropped to the elimination side">One more loss ends your run.</Callout>
+      )}
+      <SectionHeader level={3} title="Elimination side" description="A second loss ends it" />
+      <DoubleElimMap de={de} view="losers" name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpen} showFinal={false} />
     </>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Stage bodies
-// ---------------------------------------------------------------------------
-
 function ConferenceStage(
-  { cups, mine, myConference, abbr, userTeam, onOpen }:
+  { cups, mine, myConference, name, abbr, userTeam, onOpen }:
   {
     cups: ConferenceTournament[];
     mine: DoubleElim | null;
     myConference: string;
+    name: (i: number) => string;
     abbr: (i: number) => string;
     userTeam: number;
     onOpen: (s: DESlot) => void;
   },
 ) {
+  const [openConf, setOpenConf] = useState<string | null>(null);
   // Yours first, live or finished; then the rest of the country.
-  const rows: { conference: string; de: DECols; you: boolean }[] = [];
-  if (mine) {
-    rows.push({
-      conference: myConference, you: true,
-      de: { winners: mine.winners, losers: mine.losers, final: mine.final },
-    });
-  }
-  for (const c of [...cups].sort((a, b) =>
-    (a.conference === myConference ? -1 : 0) - (b.conference === myConference ? -1 : 0))) {
-    if (!c.de) continue;
-    rows.push({
-      conference: c.conference,
-      you: c.conference === myConference,
-      de: c.de as DECols,
-    });
-  }
+  const myCup = cups.find((c) => c.conference === myConference);
+  const myDe: DECols | null = mine
+    ? { winners: mine.winners, losers: mine.losers, final: mine.final }
+    : myCup?.de ? myCup.de as DECols : null;
+  const others = cups.filter((c) => c.conference !== myConference && c.de);
 
   return (
     <>
-      {rows.map((r) => (
-        <div key={r.conference} style={{ marginBottom: 10 }}>
-          <div style={{
-            margin: '0 14px 4px', paddingBottom: 3,
-            borderBottom: '2px solid var(--ink)',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-          }}>
-            <span className="label" style={{ color: r.you ? 'var(--you)' : 'var(--ink)' }}>
-              {leagueLabel(r.conference)}{r.you ? ' · YOU' : ''}
-            </span>
-          </div>
-          {/* Your tournament is ONE map — both halves, the drop marked.
-              The other seven leagues get the winners road and the final:
-              their losers brackets are reading material, and seven more
-              stacked maps would bury yours. Tap into a cup's games as
-              always; the seeds and scores carry the story. */}
-          {r.you
-            ? <OneMap de={r.de} abbr={abbr} userTeam={userTeam} onOpen={onOpen}
-                mineAbbr={abbr(userTeam)} />
-            : <DoubleElimMap de={r.de} view="winners" abbr={abbr}
-                userTeam={userTeam} onOpen={onOpen} />}
-        </div>
-      ))}
+      <section className="pb-stack">
+        <SectionHeader title={`${conferenceName(myConference)} tournament`} />
+        {myDe
+          ? <OneMap de={myDe} name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpen} mine={!!mine || myCup?.de !== undefined} />
+          : <p className="pb-text-muted">The bracket is drawn when the tournament starts.</p>}
+      </section>
+      {others.length > 0 && (
+        <section className="pb-stack">
+          <SectionHeader title="Other conferences" count={others.length} />
+          {others.map((c) => {
+            const on = openConf === c.conference;
+            return (
+              <Card
+                key={c.conference}
+                title={`${conferenceName(c.conference)} tournament`}
+                trailing={c.champion !== null
+                  ? <StatusBadge tone="neutral" icon="star-filled">{name(c.champion)}</StatusBadge>
+                  : <StatusBadge tone="info" icon={false}>In progress</StatusBadge>}
+              >
+                <Button
+                  variant="quiet"
+                  size="sm"
+                  iconAfter={on ? 'chevron-down' : 'chevron-right'}
+                  aria-expanded={on}
+                  onClick={() => setOpenConf(on ? null : c.conference)}
+                >{on ? 'Hide the bracket' : 'Show the bracket'}</Button>
+                {on && (
+                  <DoubleElimMap de={c.de as DECols} view="winners" name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
+                )}
+              </Card>
+            );
+          })}
+        </section>
+      )}
     </>
   );
 }
 
 function RegionalStage(
-  { regionals, mine, myRegion, season, abbr, userTeam, onOpen }:
+  { regionals, mine, myRegion, name, abbr, userTeam, onOpen }:
   {
     regionals: RegionalSeries[];
-    /** Open a played game's box. See `openGame`. */
     onOpen: (g: BracketGame) => void;
     mine: {
       state: SeriesBracket;
       meta: { region: string; name: string; aLabel: string; bLabel: string } | null;
     } | null;
     myRegion: string;
-    season: { teams: ReadonlyArray<{ def: { abbr: string } }> };
+    name: (i: number) => string;
     abbr: (i: number) => string;
     userTeam: number;
   },
 ) {
-  void season;
   const byRegion = new Map<string, RegionalSeries[]>();
   for (const r of regionals) {
     byRegion.set(r.region, [...(byRegion.get(r.region) ?? []), r]);
@@ -1776,47 +1365,68 @@ function RegionalStage(
     <>
       {order.map((region) => {
         const list = byRegion.get(region.id) ?? [];
-        const mineHere = mine && (mine.meta?.region ?? myRegion) === region.id
-          ? mine : null;
+        const mineHere = mine && (mine.meta?.region ?? myRegion) === region.id ? mine : null;
         if (list.length === 0 && !mineHere) return null;
         return (
-          <div key={region.id} style={{ padding: '0 14px', marginBottom: 12 }}>
-            <div style={{
-              paddingBottom: 3, marginBottom: 6, borderBottom: '2px solid var(--ink)',
-            }}>
-              <span className="label" style={{
-                color: region.id === myRegion ? 'var(--you)' : 'var(--ink)',
-              }}>
-                {region.name.toUpperCase()} REGIONAL
-                {region.id === myRegion ? ' · YOU' : ''}
-              </span>
-            </div>
+          <section key={region.id} className="pb-stack">
+            <SectionHeader
+              title={`${region.name} regionals`}
+              description={region.id === myRegion ? 'Your region · best of 3' : 'Best of 3'}
+            />
             {mineHere && (
-              <LiveSeriesCard
-                state={mineHere.state}
-                aLabel={mineHere.meta?.aLabel ?? ''}
-                bLabel={mineHere.meta?.bLabel ?? ''}
-                abbr={abbr}
-                userTeam={userTeam}
-                onOpen={onOpen}
-              />
+              <LiveSeriesCard state={mineHere.state} name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
             )}
             {list.map((r, i) => (
-              <SeriesResultCard key={i} r={r} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
+              <SeriesResultCard key={i} r={r} name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
             ))}
-          </div>
+          </section>
         );
       })}
     </>
   );
 }
 
-/** A finished (or simulated) best-of-three, as a card. */
+/** The games of a series, each a door to its box score. */
+function SeriesGames(
+  { games, name, onOpen }:
+  { games: readonly BracketGame[]; name: (i: number) => string; onOpen?: (g: BracketGame) => void },
+) {
+  if (!onOpen || games.length === 0) return null;
+  return (
+    <div className="pb-series-games">
+      {games.map((g, i) => {
+        const hi = Math.max(g.homeRuns, g.awayRuns);
+        const lo = Math.min(g.homeRuns, g.awayRuns);
+        return (
+          <Button key={i} size="sm" variant="quiet" iconAfter="chevron-right" onClick={() => onOpen(g)}>
+            Game {i + 1}: {name(g.winner)} won {hi}–{lo}
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Both teams of a series, their wins as the score. */
+function seriesTeams(
+  a: number, b: number, winsOf: (t: number) => number, champion: number | null,
+  name: (i: number) => string, abbr: (i: number) => string, userTeam: number,
+): BracketTeam[] {
+  const side = (t: number): BracketTeam => ({
+    abbr: abbr(t), name: name(t), score: winsOf(t),
+    winner: champion === t, out: champion !== null && champion !== t, you: t === userTeam,
+  });
+  return [side(a), side(b)];
+}
+
+/** A finished (or simulated) series, as a card. */
 function SeriesResultCard(
-  { r, abbr, userTeam, tag, onOpen }:
-  { r: RegionalSeries | (TournamentResult & { aLabel?: string; bLabel?: string });
-    abbr: (i: number) => string; userTeam: number; tag?: string;
-    onOpen?: (g: BracketGame) => void },
+  { r, name, abbr, userTeam, onOpen }:
+  {
+    r: RegionalSeries | TournamentResult;
+    name: (i: number) => string; abbr: (i: number) => string; userTeam: number;
+    onOpen?: (g: BracketGame) => void;
+  },
 ) {
   const a = r.seeds[0]; const b = r.seeds[1];
   if (a === undefined || b === undefined) return null;
@@ -1825,94 +1435,22 @@ function SeriesResultCard(
   ).length;
   const mine = a === userTeam || b === userTeam;
   return (
-    <div
-      {...(mine ? { 'data-you': '' } : {})}
-      style={{
-        marginBottom: 6,
-        border: mine ? '1.5px solid var(--you)' : '1px solid var(--faint)',
-        background: 'var(--paper)',
-      }}>
-      {tag && (
-        <div style={{
-          padding: '3px 9px', background: 'var(--band)',
-          font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'var(--cream)',
-        }}>{tag}</div>
-      )}
-      <TeamLine
-        team={a} label={(r as RegionalSeries).aLabel} wins={winsOf(a)}
-        champion={r.champion === a} abbr={abbr} userTeam={userTeam} top
+    <div {...(mine ? { 'data-you': '' } : {})} className="pb-stack">
+      <BracketMatch
+        status="Final · games won"
+        teams={seriesTeams(a, b, winsOf, r.champion, name, abbr, userTeam)}
       />
-      <TeamLine
-        team={b} label={(r as RegionalSeries).bLabel} wins={winsOf(b)}
-        champion={r.champion === b} abbr={abbr} userTeam={userTeam}
-      />
-      <SeriesGames games={r.games} abbr={abbr} onOpen={onOpen} />
+      <SeriesGames games={r.games} name={name} onOpen={onOpen} />
     </div>
   );
 }
 
-/**
- * The games of a series, each a door to its box.
- *
- * The bracket maps open a game on a tap and the series cards did not, so
- * the regionals -- and the championship series -- were the one June stage
- * whose scores were frozen (2026-09-16: "in the regionals I'm not able to
- * see the box scores for the games"). Nothing to open before a game is
- * played, and nothing to draw for a card with no opener.
- */
-function SeriesGames(
-  { games, abbr, onOpen }:
-  { games: readonly BracketGame[]; abbr: (i: number) => string; onOpen?: (g: BracketGame) => void },
-) {
-  if (!onOpen || games.length === 0) return null;
-  return (
-    <div className="series-games">
-      {games.map((g, i) => (
-        <button key={i} type="button" className="tap" onClick={() => onOpen(g)} aria-label={`Game ${i + 1} box score`}>
-          <small>G{i + 1}</small>
-          <b>{abbr(g.home)} {g.homeRuns}–{g.awayRuns} {abbr(g.away)}</b>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** A matchup that exists and has not been played. Both names, no scores. */
-function PendingSeriesCard(
-  { a, b, aLabel, bLabel, abbr, userTeam }:
-  {
-    a: number; b: number; aLabel: string; bLabel: string;
-    abbr: (i: number) => string; userTeam: number;
-  },
-) {
-  const mine = a === userTeam || b === userTeam;
-  return (
-    <div
-      {...(mine ? { 'data-you': '', 'data-you-live': '' } : {})}
-      style={{
-        marginBottom: 6,
-        border: mine ? '1.5px solid var(--you)' : '1px solid var(--faint)',
-        background: 'var(--paper)',
-      }}>
-      <div style={{
-        padding: '3px 9px', background: 'var(--field)',
-        borderBottom: '1px solid var(--hairline)',
-        font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'var(--dim)',
-      }}>BEST OF 3 · NOT PLAYED</div>
-      <TeamLine team={a} label={aLabel} wins={0} champion={false}
-        abbr={abbr} userTeam={userTeam} top />
-      <TeamLine team={b} label={bLabel} wins={0} champion={false}
-        abbr={abbr} userTeam={userTeam} />
-    </div>
-  );
-}
-
-/** The user's live series, game by game. */
+/** Your live series, game by game. */
 function LiveSeriesCard(
-  { state, aLabel, bLabel, abbr, userTeam, onOpen }:
+  { state, name, abbr, userTeam, onOpen }:
   {
-    state: SeriesBracket; aLabel: string; bLabel: string;
-    abbr: (i: number) => string; userTeam: number;
+    state: SeriesBracket;
+    name: (i: number) => string; abbr: (i: number) => string; userTeam: number;
     onOpen?: (g: BracketGame) => void;
   },
 ) {
@@ -1921,254 +1459,110 @@ function LiveSeriesCard(
   const wins = (t: number): number => s.games.filter((g) => g.winner === t).length;
   const len = state.lengths[0] ?? 3;
   return (
-    <div style={{
-      marginBottom: 6, border: '1.5px solid var(--clay)', background: 'var(--paper)',
-    }}>
-      <div style={{
-        padding: '3px 9px', background: 'var(--clay)',
-        font: "600 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.14em', color: 'var(--cream)',
-      }}>
-        BEST OF {len} · {s.winner === null
-          ? `GAME ${s.games.length + 1}`
-          : 'FINAL'}
-      </div>
-      <TeamLine
-        team={s.a} label={aLabel} wins={wins(s.a)}
-        champion={s.winner === s.a} abbr={abbr} userTeam={userTeam} top
+    <div data-you="" data-you-live="" className="pb-stack">
+      <BracketMatch
+        status={`Best of ${len} · ${s.winner === null ? `game ${s.games.length + 1} next` : 'final'} · games won`}
+        live={s.winner === null}
+        teams={seriesTeams(s.a, s.b, wins, s.winner, name, abbr, userTeam)}
       />
-      <TeamLine
-        team={s.b} label={bLabel} wins={wins(s.b)}
-        champion={s.winner === s.b} abbr={abbr} userTeam={userTeam}
-      />
-      <SeriesGames games={s.games} abbr={abbr} onOpen={onOpen} />
+      <SeriesGames games={s.games} name={name} onOpen={onOpen} />
     </div>
   );
 }
-
-function TeamLine(
-  { team, label, wins, champion, abbr, userTeam, top }:
-  {
-    team: number; label?: string; wins: number; champion: boolean;
-    abbr: (i: number) => string; userTeam: number; top?: boolean;
-  },
-) {
-  const tint = teamColour(abbr(team));
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      padding: '6px 9px',
-      borderBottom: top ? '1px solid var(--hairline)' : 'none',
-      borderLeft: `3px solid ${tint}`,
-      background: champion ? `${tint}1c` : 'transparent',
-    }}>
-      <span style={{
-        flex: 'none', font: `${champion ? 700 : 600} calc(12px * var(--ts)) var(--mono)`,
-        color: tint, letterSpacing: '.04em',
-      }}>
-        {abbr(team)}{team === userTeam ? ' ★' : ''}
-      </span>
-      {label && (
-        <span style={{
-          font: "400 calc(8.5px * var(--ts)) var(--mono)", color: 'var(--dim)', letterSpacing: '.06em',
-        }}>{label}</span>
-      )}
-      <span style={{ flex: 1 }} />
-      {champion && (
-        <span style={{
-          font: "700 calc(7.5px * var(--ts)) var(--mono)", letterSpacing: '.1em', color: tint,
-        }}>CHAMPIONS</span>
-      )}
-      <span style={{
-        font: `${champion ? 800 : 600} calc(14px * var(--ts)) var(--display)`,
-        minWidth: 14, textAlign: 'right',
-      }}>{wins}</span>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// The national stage
-// ---------------------------------------------------------------------------
 
 function NationalStage(
-  { nat, myBracket, sideShow, half, onHalf, abbr, userTeam, onOpen, onOpenGame }:
+  { nat, myBracket, sideShow, half, onHalf, name, abbr, userTeam, onOpen, onOpenGame }:
   {
     nat: NationalProgress | null;
     myBracket: ReturnType<typeof useDynasty.getState>['myBracket'];
     sideShow: ReturnType<typeof useDynasty.getState>['sideShow'];
-    /** Which of the two rooms is on screen. */
     half: NatHalf;
     onHalf: (h: NatHalf) => void;
+    name: (i: number) => string;
     abbr: (i: number) => string;
     userTeam: number;
     onOpen: (s: DESlot) => void;
-    /** The championship series' games. */
     onOpenGame?: (g: BracketGame) => void;
   },
 ) {
-  if (!nat) {
-    return (
-      <div style={{
-        padding: '20px 14px', textAlign: 'center',
-        font: "400 calc(12px * var(--ts))/1.5 var(--body)", color: 'var(--dim)',
-      }}>The field is being drawn.</div>
-    );
-  }
-  const seeds = nat.field.seeds;
+  if (!nat) return <p className="pb-text-muted">The national field is being drawn.</p>;
 
-
-  /*
-    The showdown: two eight-team double eliminations, then the championship.
-
-    Each half is one of three things and the header says which: the one you
-    are playing, the one being played beside it, or a finished result. Before
-    this, a live bracket sat next to a finished one with nothing to
-    distinguish them, which is what read as "everything is already played".
-  */
-  const halfOf = (which: 'A' | 'B'): { de: DECols; tag: string; tone: string } | null => {
-    if (myBracket?.kind === 'national' && myBracket.format === 'double'
-      && myBracket.half === which) {
+  // Each half is the one you are playing, the one being played beside it, or
+  // a finished result, and its header says which.
+  const halfOf = (which: NatHalf): { de: DECols; tag: string; tone: 'info' | 'neutral' } | null => {
+    if (myBracket?.kind === 'national' && myBracket.format === 'double' && myBracket.half === which) {
       const s = myBracket.state;
-      return {
-        de: { winners: s.winners, losers: s.losers, final: s.final },
-        tag: 'YOUR BRACKET · LIVE', tone: 'var(--clay)',
-      };
+      return { de: { winners: s.winners, losers: s.losers, final: s.final }, tag: 'Your bracket · being played', tone: 'info' };
     }
     if (sideShow && sideShow.half === which) {
       const s = sideShow.state;
-      return {
-        de: { winners: s.winners, losers: s.losers, final: s.final },
-        tag: 'LIVE', tone: 'var(--ink)',
-      };
+      return { de: { winners: s.winners, losers: s.losers, final: s.final }, tag: 'Being played', tone: 'info' };
     }
     const r = which === 'A' ? nat.bracketA : nat.bracketB;
-    return r
-      ? {
-          de: { winners: r.winners, losers: r.losers, final: r.final },
-          tag: 'FINAL', tone: 'var(--dim)',
-        }
-      : null;
+    return r ? { de: { winners: r.winners, losers: r.losers, final: r.final }, tag: 'Final', tone: 'neutral' } : null;
   };
-
   const shownHalf = halfOf(half);
-  const iPlayHere = myBracket?.kind === 'national' && myBracket.format === 'double'
-    && myBracket.half === half;
+  const iPlayHere = myBracket?.kind === 'national' && myBracket.format === 'double' && myBracket.half === half;
 
   return (
     <>
-      {/* The championship first — "final pinned above", from the batch's
-          door. It is where the whole month is pointed; the rooms it is fed
-          from sit under it, one at a time. */}
-      <div style={{ padding: '0 14px', marginBottom: 10 }}>
-        <div style={{
-          paddingBottom: 3, marginBottom: 6, borderBottom: '2px solid var(--ink)',
-        }}>
-          <span className="label">NATIONAL CHAMPIONSHIP · BEST OF 3</span>
-        </div>
+      <section className="pb-stack">
+        <SectionHeader title="National championship" description="Best of 3" />
         {myBracket?.kind === 'final' && myBracket.format === 'series' ? (
-          <LiveSeriesCard
-            state={myBracket.state}
-            aLabel="BRACKET A" bLabel="BRACKET B"
-            abbr={abbr} userTeam={userTeam} onOpen={onOpenGame}
-          />
+          <LiveSeriesCard state={myBracket.state} name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpenGame} />
         ) : nat.final ? (
-          <SeriesResultCard
-            r={{ ...nat.final, aLabel: 'BRACKET A', bLabel: 'BRACKET B' }}
-            abbr={abbr} userTeam={userTeam} onOpen={onOpenGame}
-          />
+          <SeriesResultCard r={nat.final} name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpenGame} />
         ) : (
-          <div style={{
-            padding: '8px 0', font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
-          }}>Waiting on both brackets.</div>
+          <p className="pb-text-muted">Waiting on both brackets.</p>
         )}
-      </div>
+      </section>
 
-      {/* The two rooms, one at a time — the halves genuinely are separate
-          tournaments, which is why this toggle survived the redesign that
-          retired winners/losers everywhere else. */}
-      <SubToggle
-        options={[['A', 'BRACKET A'], ['B', 'BRACKET B']]}
-        at={half}
-        onGo={(v) => onHalf(v as NatHalf)}
+      <SegmentedControl<NatHalf>
+        label="National bracket"
+        value={half}
+        onChange={onHalf}
+        options={[{ value: 'A', label: 'Bracket A' }, { value: 'B', label: 'Bracket B' }]}
       />
 
-      <div style={{ marginBottom: 10 }}>
-        <div style={{
-          margin: '0 14px 4px', paddingBottom: 3, borderBottom: '2px solid var(--ink)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-        }}>
-          <span className="label">NATIONAL BRACKET {half}</span>
-          {shownHalf && (
-            <span style={{
-              font: "700 calc(8px * var(--ts)) var(--mono)", letterSpacing: '.1em',
-              color: shownHalf.tone,
-            }}>{shownHalf.tag}</span>
-          )}
+      <section className="pb-stack">
+        <div className="pb-june__halfhead">
+          <SectionHeader title={`National bracket ${half}`} />
+          {shownHalf && <StatusBadge tone={shownHalf.tone} icon={false}>{shownHalf.tag}</StatusBadge>}
         </div>
         {shownHalf
-          ? <OneMap
-              de={shownHalf.de} abbr={abbr} userTeam={userTeam} onOpen={onOpen}
-              mineAbbr={iPlayHere ? abbr(userTeam) : null}
-            />
-          : (
-            <div style={{
-              padding: '10px 14px', font: "400 calc(11px * var(--ts)) var(--body)", color: 'var(--dim)',
-            }}>The field is being drawn.</div>
-          )}
-      </div>
+          ? <OneMap de={shownHalf.de} name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpen} mine={iPlayHere} />
+          : <p className="pb-text-muted">This bracket is being drawn.</p>}
+      </section>
     </>
   );
 }
 
-const ordinal = (n: number): string => {
-  const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
-  return `${n}${suffix}`;
-};
-
-/** A decided trophy: which one, who took it, and how loudly to say so. */
+/** A decided trophy: which one, who took it, and whose banner it is. */
 export interface Crown {
   team: number;
-  /** 0 conference, 1 regional, 2 the country. Drives every size below. */
+  /** 0 conference, 1 regional, 2 the country. */
   rung: 0 | 1 | 2;
   kicker: string;
-  title: string;
   line: string;
 }
 
 /**
- * The trophy card, at three intensities.
- *
- * One component rather than three, because a conference banner and a national
- * title are the same fact at different volumes, and the escalation is itself
- * information: a player who has seen the conference card knows immediately,
- * without reading a word, that the national one is bigger. Three separate
- * components would have drifted into three different designs and lost that.
- *
- * The loudest it goes is still type and colour. Sound, animation and a
- * full-screen celebration are the broadcast stage's job and are deliberately
- * not faked here with a bigger font.
+ * The champion, at the top of the stage where it cannot be missed. The same
+ * fact at three sizes; and only your own title is called your banner.
  */
 function CrownCard(
   { crown, mine, school, abbr }:
   { crown: Crown; mine: boolean; school: string; abbr: string },
 ) {
-  const level = crown.rung === 2 ? 'NATIONAL' : crown.rung === 1 ? 'REGIONAL' : 'CONFERENCE';
   return (
-    <section className={`champion-banner rung-${crown.rung}${mine ? ' is-mine' : ''}`}>
-      <div className="champion-banner-glow" />
-      <header>
-        <span className="champion-banner-crest"><Crest abbr={abbr} size={62} /></span>
-        <span><small>{level} CHAMPIONS</small><strong>{school}</strong><em>{crown.kicker}</em></span>
-        <b>{crown.rung === 2 ? 'III' : crown.rung === 1 ? 'II' : 'I'}</b>
-      </header>
-      <div className="champion-banner-body">
-        <span className="champion-seal">★</span>
-        <div><small>BANNER EARNED</small><strong>{crown.title}</strong><p>{crown.line}</p></div>
-      </div>
-      <footer>
-        <span>{mine ? 'YOUR PROGRAM' : 'JUNE CHAMPION'}</span>
-        <b>{abbr}</b>
-      </footer>
-    </section>
+    <div role="group" className={cx('pb-crown', `pb-crown--${crown.rung}`, mine && 'is-mine')} aria-label={`${crown.kicker}: ${school}`}>
+      <Crest abbr={abbr} size={crown.rung === 2 ? 64 : 52} />
+      <span className="pb-crown__text">
+        <span className="pb-eyebrow">{crown.kicker}</span>
+        <strong className="pb-crown__school">{school}</strong>
+        <span className="pb-crown__line">{crown.line}</span>
+        {mine && <span className="pb-crown__tags"><Tag tone="positive">Your banner</Tag></span>}
+      </span>
+    </div>
   );
 }

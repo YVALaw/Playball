@@ -53,6 +53,11 @@ export interface DevicePrefs {
    * scale predates that and was never anybody's choice.
    */
   tsz?: boolean;
+  /**
+   * Stamped once the redesign set Normal as the default again. Before it, a
+   * stored 1.3 was the old default rather than a choice.
+   */
+  ts2?: boolean;
   /** The dugout's field. 3D is the default and the design; 2D is the fallback. */
   field: FieldMode;
   /** Motion. `system` honours `prefers-reduced-motion`, the other two override. */
@@ -90,17 +95,17 @@ export const TEXT_SCALES: readonly { value: number; label: string }[] = [
 
 export const DEFAULT_PREFS: DevicePrefs = {
   /*
-    LARGE, not normal.
+    Normal again.
 
-    Asked for directly: "make the large text the default when we first
-    start." This is a phone game with a lot of small mono labels on it, and
-    the honest reading of the room is that the comfortable size should be
-    what a new player meets — the three other sizes are still one tap away
-    in settings, including the smaller one for anybody who wants the density
-    back.
+    The default was raised to Larger when the labels were seven-point mono
+    capitals ("make the large text the default when we first start"). The
+    redesign's type scale is readable at 1 — 13px labels, 15px body — so
+    Normal is the comfortable size now, and the bigger ones are still one tap
+    away in Settings.
   */
-  textScale: 1.3,
+  textScale: 1,
   tsz: true,
+  ts2: true,
   field: '3d',
   motion: 'system',
   theme: 'system',
@@ -157,10 +162,17 @@ export function readPrefs(): DevicePrefs {
     new default; with it, the number really was chosen.
   */
   const chosen = TEXT_SCALES.some((t) => t.value === o.textScale);
-  const scale = o.tsz === true && chosen ? o.textScale! : DEFAULT_PREFS.textScale;
+  /*
+    And a stored 1.3 from before the redesign is the old default, not a
+    choice: Normal on the new scale is already bigger than Larger was on the
+    old one, so it moves to Normal. Anything else that was chosen stays.
+  */
+  const oldDefault = o.ts2 !== true && o.textScale === 1.3;
+  const scale = o.tsz === true && chosen && !oldDefault ? o.textScale! : DEFAULT_PREFS.textScale;
   return {
     textScale: scale,
     tsz: true,
+    ts2: true,
     field: o.field === '2d' ? '2d' : '3d',
     motion: o.motion === 'reduced' || o.motion === 'full' ? o.motion : 'system',
     theme: o.theme === 'light' || o.theme === 'dark' ? o.theme : 'system',
@@ -199,7 +211,14 @@ export function writePrefs(prefs: DevicePrefs): void {
 export function applyPrefs(prefs: DevicePrefs): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  root.style.setProperty('--ts', String(prefs.textScale));
+  /*
+    Two multipliers while the app moves over. --pb-ts is the setting itself
+    and drives the design system's components. --ts drives the legacy
+    stylesheets, whose sizes were drawn to be read at Larger, so it keeps
+    them where they were: Normal on the new scale is 1.3 on the old one.
+  */
+  root.style.setProperty('--pb-ts', String(prefs.textScale));
+  root.style.setProperty('--ts', String(Math.round(prefs.textScale * 1.3 * 1000) / 1000));
   // `system` removes the attribute entirely rather than writing a value,
   // because the media query is the correct answer whenever the user has not
   // overridden it, and an attribute that says "ask the OS" would still need the

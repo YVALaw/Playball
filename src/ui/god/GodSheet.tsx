@@ -1,17 +1,16 @@
-// god/GodSheet.tsx — God Mode's control center and focused editors.
+// god/GodSheet.tsx — god mode's control center and focused editors.
 //
-// The old God Mode desk was still effectively a long list. This version uses
-// a small top-level control center, then opens one responsibility at a time.
-// Editors can have their own compact sub-tabs without turning the whole feature
-// into a settings dump.
+// A small control center first, grouped by area, then one tool at a time, each
+// on its own page. An editor can have its own panels without turning the whole
+// feature into one long settings form.
 
 import { useMemo, useState } from 'react';
-import { ChevronRightIcon, LightningBoltIcon } from '@radix-ui/react-icons';
 import { useDynasty, type Tab } from '../../state/store.js';
 import { findPlayer } from '../../engine/godMode.js';
 import { Overlay } from '../Overlay.js';
-import { Segmented } from '../components/Kit.js';
+import { Chip, Chips, List, ListRow, type IconName } from '../components/ui/index.js';
 import { godTitle, type GodTarget } from './target.js';
+import { GodPage, words } from './controls.js';
 import { PlayerEditor } from './PlayerEditor.js';
 import { ProgramEditor } from './ProgramEditor.js';
 import { RosterEditor } from './RosterEditor.js';
@@ -36,7 +35,7 @@ export function GodOverlay() {
     : top.kind === 'recruit' ? season?.recruiting.prospects.find((p) => p.id === top.id)?.player.name
     : null;
   return (
-    <Overlay eyebrow={eyebrow} title={contextTitle ?? title} onClose={closeGod} className="god-sheet">
+    <Overlay eyebrow={words(eyebrow)} title={contextTitle ?? title} onClose={closeGod} className="god-sheet">
       <Editor key={`${stack.length}:${keyOf(top)}`} target={top} />
     </Overlay>
   );
@@ -63,13 +62,13 @@ function Editor({ target }: { target: GodTarget }) {
 
 type Area = 'team' | 'program' | 'recruiting' | 'leagues' | 'world';
 
-const AREA_OPTIONS = [
-  { value: 'team', label: 'TEAM' },
-  { value: 'program', label: 'PROGRAM' },
-  { value: 'recruiting', label: 'RECRUIT' },
-  { value: 'leagues', label: 'LEAGUES' },
-  { value: 'world', label: 'WORLD' },
-] as const;
+const AREAS: ReadonlyArray<{ value: Area; label: string; blurb: string }> = [
+  { value: 'team', label: 'Team', blurb: 'Your roster and every player on it.' },
+  { value: 'program', label: 'Program', blurb: 'The school, your coach, the money and the staff.' },
+  { value: 'recruiting', label: 'Recruiting', blurb: 'The recruiting class and the transfer portal.' },
+  { value: 'leagues', label: 'Leagues', blurb: 'League names, and which programs play in which league.' },
+  { value: 'world', label: 'World', blurb: 'The calendar, and presets that change the whole world at once.' },
+];
 
 const START_AREA: Record<Tab, Area> = {
   home: 'world',
@@ -78,7 +77,7 @@ const START_AREA: Record<Tab, Area> = {
   program: 'program',
 };
 
-interface Door { target: GodTarget; kicker: string; title: string; blurb: string; metric?: string }
+interface Door { target: GodTarget; icon: IconName; title: string; blurb: string; metric?: { value: number; unit: string } }
 
 function ControlCenter({ sourceTab }: { sourceTab: Tab }) {
   const userTeam = useDynasty((s) => s.userTeam);
@@ -91,62 +90,57 @@ function ControlCenter({ sourceTab }: { sourceTab: Tab }) {
 
   const doors = useMemo<Record<Area, Door[]>>(() => ({
     team: [
-      { target: { kind: 'roster', team: userTeam }, kicker: 'ROSTER', title: 'Players & roster', blurb: 'Add players, find anyone on the roster, then open his own editor.', metric: me ? `${new Set([...me.team.lineup, ...me.team.bench, ...me.team.rotation, ...me.team.bullpen].map((p) => p.id)).size} PLAYERS` : undefined },
+      {
+        target: { kind: 'roster', team: userTeam }, icon: 'person', title: 'Players and roster',
+        blurb: 'Add players, then open anyone to edit him.',
+        metric: me ? { value: new Set([...me.team.lineup, ...me.team.bench, ...me.team.rotation, ...me.team.bullpen].map((p) => p.id)).size, unit: ' players' } : undefined,
+      },
     ],
     program: [
-      { target: { kind: 'program', team: userTeam }, kicker: 'PROGRAM', title: 'School & prestige', blurb: 'Rename the program and change its prestige. League movement lives under Leagues.', metric: me ? `${Math.round(me.prestige)} PRESTIGE` : undefined },
-      { target: { kind: 'coach' }, kicker: 'COACH', title: 'Coach profile', blurb: 'Identity, skills, contract, record, badges and hidden counters.', metric: `${Math.round(coach.prestige)} PRESTIGE` },
-      { target: { kind: 'money' }, kicker: 'OPERATIONS', title: 'Budget & staff', blurb: 'Grant money or recruiting points and edit the assistant staff.' },
+      { target: { kind: 'program', team: userTeam }, icon: 'home', title: 'School and prestige', blurb: 'Rename the program and change its prestige.', metric: me ? { value: Math.round(me.prestige), unit: '/100' } : undefined },
+      { target: { kind: 'coach' }, icon: 'id-card', title: 'Your coach', blurb: 'Profile, skills, contract, record, badges and hidden counters.', metric: { value: Math.round(coach.prestige), unit: '/100' } },
+      { target: { kind: 'money' }, icon: 'bar-chart', title: 'Budget and staff', blurb: 'Add money or recruiting points, and edit your assistants.' },
     ],
     recruiting: [
-      { target: { kind: 'recruits' }, kicker: 'RECRUITING', title: 'Recruiting class', blurb: 'Add prospects, pick a recruit, edit stars and priorities.', metric: season ? `${season.recruiting.prospects.filter((p) => p.signedBy === null).length} UNSIGNED` : undefined },
-      ...(portal ? [{ target: { kind: 'portal' } as GodTarget, kicker: 'TRANSFER PORTAL', title: 'Portal', blurb: 'Sign an available transfer instantly at no cost.', metric: `${portal.available.length} AVAILABLE` }] : []),
+      {
+        target: { kind: 'recruits' }, icon: 'search', title: 'Recruiting class', blurb: 'Add prospects, or change a prospect’s stars and priorities.',
+        metric: season ? { value: season.recruiting.prospects.filter((p) => p.signedBy === null).length, unit: ' unsigned' } : undefined,
+      },
+      ...(portal ? [{ target: { kind: 'portal' } as GodTarget, icon: 'swap' as IconName, title: 'Transfer portal', blurb: 'Sign anyone in the portal at once, at no cost.', metric: { value: portal.available.length, unit: ' available' } }] : []),
     ],
     leagues: [
-      { target: { kind: 'leagues' }, kicker: 'LEAGUE CONTROL', title: 'Names & membership', blurb: 'Rename leagues or move programs between them. These controls are separate from rosters.' },
+      { target: { kind: 'leagues' }, icon: 'globe', title: 'Names and membership', blurb: 'Rename leagues or move programs between them.' },
     ],
     world: [
-      { target: { kind: 'time' }, kicker: 'WORLD CONTROL', title: 'Calendar & presets', blurb: 'Reshuffle before play, simulate forward, or apply parity, chaos and superteam presets.' },
+      { target: { kind: 'time' }, icon: 'calendar', title: 'Calendar and presets', blurb: 'Redraw the schedule, sim ahead, or apply parity, chaos or a superteam.' },
     ],
   }), [coach.prestige, me, portal, season, userTeam]);
 
-  const areaCopy: Record<Area, { kicker: string; title: string; blurb: string }> = {
-    team: { kicker: 'TEAM CONTROL', title: 'Build the roster.', blurb: 'Roster management and individual player edits live here—nothing about league alignment is mixed into it.' },
-    program: { kicker: 'PROGRAM CONTROL', title: 'Run the program.', blurb: 'School identity, your coach, money and staff are grouped together without burying them in one long form.' },
-    recruiting: { kicker: 'TALENT CONTROL', title: 'Control incoming talent.', blurb: 'Recruiting and the transfer portal are close enough to find together, but each opens as its own tool.' },
-    leagues: { kicker: 'LEAGUE CONTROL', title: 'Rewrite the map.', blurb: 'League names and conference membership belong here—not inside a roster or program profile.' },
-    world: { kicker: 'WORLD CONTROL', title: 'Move the season.', blurb: 'Calendar actions and global presets are isolated because they can change the whole save at once.' },
-  };
-  const copy = areaCopy[area];
+  const current = AREAS.find((a) => a.value === area)!;
 
   return (
-    <main className="module-workspace god-desk god-control-center">
-      <section className="god-command-hero compact">
-        <span><LightningBoltIcon /></span>
-        <div>
-          <small>{copy.kicker}</small>
-          <strong>{copy.title}</strong>
-          <p>{copy.blurb}</p>
-        </div>
-      </section>
-
-      <div className="god-area-tabs">
-        <Segmented value={area} options={AREA_OPTIONS} onChange={setArea} label="God Mode category" />
-      </div>
-
-      <div className="god-doors god-control-doors">
-        {doors[area].map((d) => (
-          <button key={`${d.kicker}:${d.title}`} type="button" className="god-door tap" onClick={() => openGod(d.target)}>
-            <span>
-              <small>{d.kicker}</small>
-              <strong>{d.title}</strong>
-              {d.metric && <b>{d.metric}</b>}
-            </span>
-            <p>{d.blurb}</p>
-            <ChevronRightIcon />
-          </button>
+    <GodPage eyebrow="God mode" title="Control center">
+      <Chips label="God mode area">
+        {AREAS.map((a) => (
+          <Chip key={a.value} selected={a.value === area} onClick={() => setArea(a.value)}>{a.label}</Chip>
         ))}
-      </div>
-    </main>
+      </Chips>
+      <section>
+        <p className="pb-text-muted pb-godblurb">{current.blurb}</p>
+        <List label={`${current.label} tools`}>
+          {doors[area].map((d) => (
+            <ListRow
+              key={d.title}
+              icon={d.icon}
+              title={d.title}
+              subtitle={d.blurb}
+              value={d.metric?.value}
+              unit={d.metric?.unit}
+              onClick={() => openGod(d.target)}
+            />
+          ))}
+        </List>
+      </section>
+    </GodPage>
   );
 }

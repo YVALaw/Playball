@@ -10,24 +10,20 @@
 //
 // design/Roster Tabletop/ is the design of record.
 
-import { leagueLabel } from '../engine/leagueNames.js';
-import { rulesOf } from '../engine/season.js';
+import { regularRecord, rulesOf } from '../engine/season.js';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   backLayerCount, newestStoreLayer, peelBackLayer, stampLayer, subscribeBackLayers, topBackLayer, unstampLayer,
 } from '../state/backLayers.js';
 import { Modal } from './Modal.js';
-import { uniquePlayers } from '../engine/types.js';
 import { applyTeamAccent } from './accent.js';
 import { audioReady, preloadSfx, unlockAudio } from './sound.js';
 import { BigMomentCard } from './BigMoment.js';
 import { teamColour } from './Avatar.js';
-import {
-  ArchiveIcon, ArrowLeftIcon, CalendarIcon, ChevronRightIcon, EnvelopeClosedIcon, GearIcon,
-  HomeIcon, IdCardIcon, StarIcon,
-} from '@radix-ui/react-icons';
+import { Button, Callout, CompareTable, Icon, List, ListRow, ScreenHeader, StatGroup, Stars, type IconName } from './components/ui/index.js';
 import {
   PHASES, PHASE_LABEL, stepsFor, TABS, useDynasty, useUserTeam, nextNavInstant, markBackGesture, blockingCardUp, openerShowing,
+  careerFinished,
   type ProgramSheet, type Tab,
 } from '../state/store.js';
 import { hasLayerToClose, Back, isNativeShell } from './backNav.js';
@@ -35,9 +31,8 @@ import { initBilling } from '../state/billing.js';
 import { readPrefs, writePrefs, applyPrefs } from '../state/devicePrefs.js';
 import { StepRail } from './StepRail.js';
 import { Overlay } from './Overlay.js';
-import {
-  ClubSwitcher, CoachAvatar, ContextNav, PrimaryNav, RecordChip,
-} from './Chrome.js';
+import { AreaNav, SchoolHeader, SectionTabs } from './Chrome.js';
+import { capsWords, conferenceName, recordText } from './words.js';
 import { Today } from './screens/Today.js';
 import { Standings } from './screens/Standings.js';
 import { Roster } from './screens/Roster.js';
@@ -64,6 +59,7 @@ import { SigningDay } from './screens/SigningDay.js';
 import { Postseason } from './screens/Postseason.js';
 import { Rankings } from './screens/Rankings.js';
 import { JobSearch } from './screens/JobSearch.js';
+import { Legacy } from './screens/Legacy.js';
 import { Draft } from './screens/Draft.js';
 import { Wire } from './screens/Wire.js';
 import { Inbox } from './screens/Inbox.js';
@@ -73,45 +69,10 @@ import { Saves } from './screens/Saves.js';
 import { OpenTeam, TeamCard } from './screens/TeamCard.js';
 import { GuidedStretch } from './GuidedStretch.js';
 import { Colleges } from './screens/Colleges.js';
-import { CoachPortrait } from './CoachPortrait.js';
 import { Settings } from './screens/Settings.js';
 import { Start } from './screens/Start.js';
-import { seasonDate } from './format.js';
 import { prestigeStars } from '../engine/program.js';
 import { teamReads } from '../engine/tendencies.js';
-
-/**
- * A face for each of the four areas.
- *
- * The bottom bar was four words in a condensed face and nothing else, which is
- * legible but slow: you read the bar rather than recognising it. A house, a
- * card, a calendar and a star are the shapes the proposal picked and they are
- * the obvious four — the only one worth arguing about is TEAM, where a roster
- * really is a stack of cards.
- *
- * Sized here rather than in Chrome.tsx so the nav stays honest about taking
- * whatever node it is handed; nothing stops a future tab carrying a portrait.
- */
-const TAB_ICON: Record<string, React.ReactNode> = {
-  home: <HomeIcon width={19} height={19} />,
-  team: <IdCardIcon width={19} height={19} />,
-  season: <CalendarIcon width={19} height={19} />,
-  program: <StarIcon width={19} height={19} />,
-};
-
-/**
- * HOME to Home.
- *
- * `TABS` stores its labels shouted, because the old bar set them in a condensed
- * face at twelve point where upper case is the only thing that holds a line
- * together. The new bar sets them at eleven in the body face, where shouting
- * reads as shouting. The store is not the place to fix that — those strings are
- * also what the sub-nav and a couple of screens print — so the bar quietens them
- * on the way out.
- */
-function titleCase(label: string): string {
-  return label.charAt(0) + label.slice(1).toLowerCase();
-}
 
 /**
  * The app, and the one piece of navigation state that is not in the store.
@@ -252,6 +213,9 @@ function AppBody(
   const rules = useDynasty((s) => rulesOf(s.season));
   const goPhase = useDynasty((s) => s.goPhase);
   const jobSearch = useDynasty((s) => s.jobSearch);
+  const retiredYear = useDynasty((s) => s.coach.retiredYear);
+  // Whether the board meeting on screen is the last one of a career.
+  const ending = useDynasty(careerFinished);
   const loadError = useDynasty((s) => s.loadError);
   const newDynasty = useDynasty((s) => s.newDynasty);
   const openOverlay = useDynasty((s) => s.openOverlay);
@@ -738,29 +702,39 @@ function AppBody(
 
   if (!season && needsTeam && checked) {
     return (
-      <div className="app-frame" style={{
-        display: 'flex', flexDirection: 'column', minHeight: 0,
-      }}>
-        <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
-          flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
-        }}>
+      <div className="app-frame">
+        <main ref={mainRef} key={phase ?? screen} className="screen-in pb-framemain pb-framemain--stack">
           {loadError && (
-            <div style={{
-              margin: '12px 14px 0', padding: '11px 12px',
-              background: 'var(--paper)', borderLeft: '3px solid var(--alert)',
-              font: "400 calc(12px * var(--ts))/1.55 var(--body)",
-            }}>
-              <strong>Couldn't open this dynasty.</strong>{' '}
-              {/newer version|schema/i.test(loadError)
-                ? 'This save was created by a newer, incompatible version of Playball. It has not been deleted.'
-                : 'We could not read this save. It has not been deleted; you can try it again from Program · Saves.'}
-              <div style={{
-                marginTop: 6, font: "400 calc(10px * var(--ts)) var(--mono)", color: 'var(--dim)',
-              }}>{loadError}</div>
+            <div className="pb-frameerror">
+              <Callout tone="warning" title="That career would not open">
+                {/newer version|schema/i.test(loadError)
+                  ? 'Saved by a newer version. Nothing was deleted.' : 'The save could not be read. Nothing was deleted.'}
+                <span className="pb-errdetail">{loadError}</span>
+              </Callout>
             </div>
           )}
-          <NewGame onExit={backToStart} />
+          <div className="pb-framefill"><NewGame onExit={backToStart} /></div>
         </main>
+      </div>
+    );
+  }
+
+  /*
+    A career that is over, which is the other end of the same idea as the
+    market frame below: no club, no nav, and one screen. It is tested first
+    because a man can be let go and finished in the same week — the board
+    meeting hands those two to retirement, and a legacy screen that flashed
+    the job market on the way past would be telling him to go and find work.
+  */
+  if (season && retiredYear !== undefined) {
+    return (
+      <div className="app-frame">
+        <SchoolHeader kicker="The end of a career" name="What you built" />
+        <SaveAlert topmost />
+        <main ref={mainRef} key="legacy" className="screen-in pb-framemain">
+          <Legacy />
+        </main>
+        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
       </div>
     );
   }
@@ -768,9 +742,7 @@ function AppBody(
   // No job, no team screen. Everything else waits until you take one.
   if (season && jobSearch) {
     return (
-      <div className="app-frame" style={{
-        display: 'flex', flexDirection: 'column', minHeight: 0,
-      }}>
+      <div className="app-frame">
         {/*
           The one frame that can genuinely dead-end — an older save carried
           `jobSearch` without the offers, and the screen below rendered
@@ -781,16 +753,9 @@ function AppBody(
         */}
         {/* No club mark and no record: there is no club yet, which is the whole
             situation this frame describes. */}
-        <header className="global-header" style={{ gridTemplateColumns: 'minmax(0,1fr) auto' }}>
-          <ClubSwitcher abbr="—" kicker="Between jobs" name="The Market" />
-          <button className="header-icon tap" type="button" aria-label="Saves"
-            onClick={() => openOverlay('saves')}
-          ><ArchiveIcon /></button>
-        </header>
+        <SchoolHeader kicker="Between jobs" name="The job market" />
         <SaveAlert topmost />
-        <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
-          flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
-        }}>
+        <main ref={mainRef} key={phase ?? screen} className="screen-in pb-framemain">
           <JobSearch />
         </main>
         <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
@@ -809,75 +774,38 @@ function AppBody(
     */
     if (checked && season) {
       return (
-        <div className="app-frame" style={{
-          display: 'grid', placeItems: 'center', padding: 24, textAlign: 'center',
-        }}>
-          <div>
-            <div style={{
-              font: "800 calc(24px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-            }}>Save is unreadable</div>
-            <div style={{
-              marginTop: 10, font: "400 calc(12.5px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
-            }}>
-              This save points at a program that no longer exists. Start a new
-              one to carry on.
-            </div>
-            <button
-              onClick={newDynasty}
-              className="tap"
-              style={{
-                marginTop: 16, padding: '13px 22px',
-                background: 'var(--clay)', border: '1px solid var(--clay)',
-                color: 'var(--cream)', font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-              }}
-            >NEW DYNASTY</button>
-          </div>
+        <div className="app-frame">
+          <FrameMessage
+            icon="alert"
+            title="This save cannot be read"
+            text="It points at a program that no longer exists. Start a new career to carry on."
+            action={{ label: 'Start a new career', onClick: newDynasty }}
+          />
         </div>
       );
     }
     if (stalled) {
       return (
-        <div className="app-frame" style={{
-          display: 'grid', placeItems: 'center', padding: 24, textAlign: 'center',
-        }}>
-          <div>
-            <div style={{
-              font: "800 calc(24px * var(--ts))/1 var(--display)", textTransform: 'uppercase',
-            }}>Cannot reach your saves</div>
-            <div style={{
-              marginTop: 10, font: "400 calc(12.5px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
-            }}>
-              The browser will not open the game's storage — another tab may
-              have it open, or site data is blocked here.
-            </div>
-            <div style={{
-              marginTop: 8, font: "400 calc(12.5px * var(--ts))/1.6 var(--body)", color: 'var(--dim)',
-            }}>
-              You can play anyway; nothing will be saved.
-            </div>
-            <button
-              onClick={() => {
+        <div className="app-frame">
+          <FrameMessage
+            icon="archive"
+            title="Your saves cannot be reached"
+            text="The browser will not open the game's storage: another tab may have Playball open, or site data is blocked here. You can play anyway, but nothing will be saved."
+            action={{
+              label: 'Play without saving',
+              onClick: () => {
                 useDynasty.setState({ needsTeam: true });
                 setChecked(true);
-              }}
-              className="tap"
-              style={{
-                marginTop: 16, padding: '13px 22px',
-                background: 'var(--clay)', border: '1px solid var(--clay)',
-                color: 'var(--cream)', font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.14em',
-              }}
-            >PLAY WITHOUT SAVING</button>
-          </div>
+              },
+            }}
+          />
         </div>
       );
     }
 
     return (
-      <div className="app-frame" style={{
-        display: 'grid', placeItems: 'center',
-        font: "700 calc(20px * var(--ts)) var(--display)", letterSpacing: '.08em',
-      }}>
-        BUILDING THE LEAGUE…
+      <div className="app-frame">
+        <FrameMessage busy title="Building the league…" />
       </div>
     );
   }
@@ -893,9 +821,7 @@ function AppBody(
   // played for.
   if (bracket !== null) {
     return (
-      <div className="app-frame postseason-frame" style={{
-        display: 'flex', flexDirection: 'column', minHeight: 0,
-      }}>
+      <div className="app-frame postseason-frame">
         {/*
           A slim top bar, for the one piece of furniture June cannot do
           without: the inbox. The frame used to render no header at all, which
@@ -908,22 +834,15 @@ function AppBody(
         {/* The bar steps aside while a game is being managed — the dugout owns
             the whole screen, the same rule the regular season follows. */}
         {!live && (
-          <header className={`global-header${godMode ? ' has-god' : ''}`} style={{ gridTemplateColumns: godMode ? 'minmax(0,1fr) 40px 40px' : 'minmax(0,1fr) 40px' }}>
-            <ClubSwitcher abbr={team.def.abbr} kicker="Postseason" name={team.def.school} />
-            {/*
-              The way to your own settings, in the month you are most likely to
-              want them.
-
-              June is a frame of its own and it was built without this, so for
-              the whole postseason there was no route to the coach profile, the
-              saves screen, or any setting -- text size and the tutorials switch
-              included. Found while trying to reach the tutorials toggle from
-              the bracket, which is exactly the moment somebody would go looking
-              for it.
-            */}
-            <GodBolt target={{ kind: 'tab', tab }} label="God mode for this tab" className="header-god" />
-            <CoachMenuButton />
-          </header>
+          <SchoolHeader
+            abbr={team.def.abbr}
+            kicker={`${year} postseason`}
+            name={team.def.school}
+            // June's own record: "Record" means the regular season everywhere.
+            record={`${team.w - regularRecord(team).w}–${team.l - regularRecord(team).l}`}
+            recordLabel="In June"
+            extra={<GodBolt target={{ kind: 'tab', tab }} label="God mode for this tab" className="header-god" />}
+          />
         )}
         <SaveAlert topmost />
         {/*
@@ -940,7 +859,7 @@ function AppBody(
           navigations arguing about the same space.
         */}
         {!live && tab !== 'home' && (
-          <ContextNav
+          <SectionTabs
             label={`${(TABS.find((t) => t.id === tab) ?? TABS[0]!).label} sections`}
             items={(TABS.find((t) => t.id === tab) ?? TABS[0]!).screens.filter((item) => item.id !== 'god' || godMode).map((item) => ({
               ...item,
@@ -953,9 +872,7 @@ function AppBody(
             onSelect={chooseSection}
           />
         )}
-        <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
-          flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
-        }}>
+        <main ref={mainRef} key={phase ?? screen} className="screen-in pb-framemain">
           {/* A bracket game you took yourself is managed on the same screen a
               regular season game is, so nothing about June feels like a
               different game than the one you played in April. */}
@@ -978,12 +895,10 @@ function AppBody(
           original argument holds completely.
         */}
         {!live && (
-          <PrimaryNav
+          <AreaNav
             tabs={TABS.map((t) => ({
               id: t.id,
-              label: t.id === 'home' ? 'June' : titleCase(t.label),
-              meta: t.id === 'home' ? 'THE BRACKET' : '',
-              icon: TAB_ICON[t.id],
+              label: t.id === 'home' ? 'June' : t.label,
               alert: (t.id === 'home' && unread > 0)
                 || (t.id === 'program' && trophyDot),
             }))}
@@ -1023,20 +938,16 @@ function AppBody(
 
   if (phase !== null) {
     return (
-      <div className="app-frame offseason-frame" style={{
-        display: 'flex', flexDirection: 'column', minHeight: 0,
-      }}>
-        <header className={`global-header${godMode ? ' has-god' : ''}`} style={{ gridTemplateColumns: godMode ? 'minmax(0,1fr) 40px 40px' : 'minmax(0,1fr) 40px' }}>
-          <ClubSwitcher abbr={team.def.abbr} kicker={`${year} Offseason`} name={team.def.school} />
-          {/* The bottom nav is gone from here by design, and it took HOME ·
-              INBOX with it — during the seven steps that have most to report.
-              The portrait menu carries PROFILE and SAVES, exactly the pair the
-              missing nav owes this frame; the season badge that used to fill
-              the corner is gone, because the review screen already says what
-              the year came to and a header is not a trophy shelf. */}
-          <GodBolt target={{ kind: 'tab', tab }} label="God mode for this tab" className="header-god" />
-          <CoachMenuButton />
-        </header>
+      <div className="app-frame offseason-frame">
+        <SchoolHeader
+          abbr={team.def.abbr}
+          kicker={`${year} offseason`}
+          name={team.def.school}
+          extra={<GodBolt target={{ kind: 'tab', tab }} label="God mode for this tab" className="header-god" />}
+        />
+        {/* The bottom nav is gone from here by design; the header's bell and
+            portrait menu are the inbox, the profile and the saves for the
+            steps that have the most to report. */}
         <SaveAlert />
         {/*
           The rail is the offseason this world actually runs, so a career
@@ -1046,7 +957,15 @@ function AppBody(
           rail's own shorter numbering here rather than stored twice.
         */}
         {(() => {
-          const steps = stepsFor(rules);
+          /*
+            A career that ends at this meeting does not have a draft and a
+            signing day after it. Reported: "after tapping next after season
+            review to coach points it did take me to the end of the career
+            which feels weird" — the rail was still promising four more steps
+            while the button under it was closing the book.
+          */
+          const all = stepsFor(rules);
+          const steps = ending ? all.slice(0, all.indexOf('review') + 1) : all;
           const furthest = steps.reduce(
             (n, p, i) => (PHASES.indexOf(p) <= furthestPhase ? i : n), 0,
           );
@@ -1059,9 +978,7 @@ function AppBody(
             />
           );
         })()}
-        <main ref={mainRef} key={phase ?? screen} className="screen-in" style={{
-          flex: 1, minHeight: 0, overflowY: 'auto', position: 'relative',
-        }}>
+        <main ref={mainRef} key={phase ?? screen} className="screen-in pb-framemain">
           {phase === 'awards' && <Awards />}
           {phase === 'review' && <SeasonReview />}
           {phase === 'coach' && <CoachPoints />}
@@ -1084,14 +1001,9 @@ function AppBody(
   */
   if (live && screen === 'box') {
     return (
-      <div className="app-frame" style={{
-        display: 'flex', flexDirection: 'column', minHeight: 0,
-      }}>
+      <div className="app-frame">
         <SaveAlert topmost />
-        <main ref={mainRef} style={{
-          flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative',
-          background: 'var(--field)',
-        }}>
+        <main ref={mainRef} className="pb-framemain pb-framemain--fixed">
           <Manage />
         </main>
         <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
@@ -1100,23 +1012,6 @@ function AppBody(
   }
 
   const tabDef = TABS.find((t) => t.id === tab) ?? TABS[0]!;
-
-  /*
-    One live number under each bottom-nav label — the date, the roster count,
-    the record, the program's stars. The menu reports rather than just labels,
-    which saves a trip for exactly the questions a player asks most often.
-  */
-  const today = season.schedule[season.dayIndex];
-  const menCount = uniquePlayers([
-    ...team.team.lineup, ...team.team.bench,
-    ...team.team.rotation, ...team.team.bullpen,
-  ]).length;
-  const navMeta: Record<string, string> = {
-    home: today ? seasonDate(year, today.day).split(' ').slice(1).join(' ').toUpperCase() : 'FINAL',
-    team: `${menCount} MEN`,
-    season: `${team.w}-${team.l}`,
-    program: '★'.repeat(prestigeStars(team.prestige)),
-  };
 
   return (
     <div className="app-frame playball-app">
@@ -1136,21 +1031,17 @@ function AppBody(
         day was set in the same weight as two that never change. Overall only;
         the conference record is a tap away on the standings.
       */}
-      <header className={`global-header${godMode ? ' has-god' : ''}`}>
-        <ClubSwitcher
-          abbr={team.def.abbr}
-          kicker={`${team.def.nickname} · ${leagueLabel(team.conference)}`}
-          name={team.def.school}
-        />
-        <RecordChip label={leagueLabel(team.conference)} value={`${team.w}-${team.l}`} />
-        {/* The sandbox's one fixed door: god mode for the tab you are on. */}
-        <GodBolt target={{ kind: 'tab', tab }} label="God mode for this tab" className="header-god" />
-        <CoachMenuButton />
-      </header>
+      <SchoolHeader
+        abbr={team.def.abbr}
+        kicker={`${team.def.nickname} · ${conferenceName(team.conference)}`}
+        name={team.def.school}
+        record={`${regularRecord(team).w}–${regularRecord(team).l}`}
+        extra={<GodBolt target={{ kind: 'tab', tab }} label="God mode for this tab" className="header-god" />}
+      />
 
       <SaveAlert />
 
-      <ContextNav
+      <SectionTabs
         label={`${tabDef.label} sections`}
         items={tabDef.screens.map((item) => ({
           ...item,
@@ -1163,25 +1054,19 @@ function AppBody(
         onSelect={chooseSection}
       />
 
-      <main ref={mainRef} className="app-content" style={{
-        flex: 1, minHeight: 0, overflow: 'auto', position: 'relative',
-        WebkitOverflowScrolling: 'touch', background: 'var(--field)',
-      }}>
+      <main ref={mainRef} className="app-content pb-framemain">
         <div className="screen-surface" key={`${tab}:${screen}`}>
           <Screen id={screen} />
-          <div style={{ height: 10 }} />
         </div>
       </main>
 
       {/* The dot on HOME is how unread survives being three screens away; the
           count itself is on the top-bar envelope, one tap from here, where
           there is room to print it. */}
-      <PrimaryNav
+      <AreaNav
         tabs={TABS.map((t) => ({
           id: t.id,
-          label: titleCase(t.label),
-          meta: navMeta[t.id] ?? '',
-          icon: TAB_ICON[t.id],
+          label: t.label,
           alert: (t.id === 'home' && unread > 0) || (t.id === 'program' && trophyDot),
         }))}
         active={tab}
@@ -1218,52 +1103,53 @@ function SaveAlert({ topmost }: { topmost?: boolean }) {
   // safe, because a failed run never replaced the season.
   if (simError !== null) {
     return (
-      <button
+      <AlertBar
+        topmost={topmost}
+        title="The sim stopped. Tap to run it again."
+        text="Nothing was lost: the season is exactly where it was."
         onClick={() => { void playSeason(); }}
-        className="tap"
-        style={{
-          flex: 'none', width: '100%', textAlign: 'left',
-          padding: '7px 14px 8px',
-          paddingTop: topmost ? 'calc(env(safe-area-inset-top) + 7px)' : 7,
-          background: 'var(--alert)', color: 'var(--cream)',
-        }}
-      >
-        <div style={{ font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em' }}>
-          THE SIM STOPPED · TAP TO RUN IT AGAIN
-        </div>
-        <div style={{
-          marginTop: 2, font: "400 calc(10px * var(--ts))/1.35 var(--body)",
-          color: 'rgba(var(--cream-rgb), .82)',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          Nothing was lost — the season is exactly where it was.
-        </div>
-      </button>
+      />
     );
   }
   if (saveState !== 'error') return null;
   return (
-    <button
+    <AlertBar
+      topmost={topmost}
+      title="Not saved. Tap to try again."
+      text={lastSaveError ?? 'The save did not finish.'}
       onClick={() => { void saveNow(); }}
-      className="tap"
-      style={{
-        flex: 'none', width: '100%', textAlign: 'left',
-        padding: '7px 14px 8px',
-        paddingTop: topmost ? 'calc(env(safe-area-inset-top) + 7px)' : 7,
-        background: 'var(--alert)', color: 'var(--cream)',
-      }}
-    >
-      <div style={{ font: "700 calc(9px * var(--ts)) var(--mono)", letterSpacing: '.16em' }}>
-        NOT SAVED · TAP TO TRY AGAIN
-      </div>
-      <div style={{
-        marginTop: 2, font: "400 calc(10px * var(--ts))/1.35 var(--body)",
-        color: 'rgba(var(--cream-rgb), .82)',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        {lastSaveError ?? 'The save did not complete.'}
-      </div>
+    />
+  );
+}
+
+/** A row of the frame that reports something still wrong, and retries on a tap. */
+function AlertBar(
+  { title, text, onClick, topmost }: { title: string; text: string; onClick: () => void; topmost?: boolean },
+) {
+  return (
+    <button type="button" className={`pb-alertbar${topmost ? ' is-topmost' : ''}`} onClick={onClick}>
+      <Icon name="alert" size={18} />
+      <span className="pb-alertbar__text"><b>{title}</b><small>{text}</small></span>
+      <Icon name="reset" size={18} />
     </button>
+  );
+}
+
+/**
+ * A whole frame with one thing to say: the league being built, a save that
+ * cannot be read, storage that will not open. Said plainly, with the one way on.
+ */
+function FrameMessage(
+  { icon = 'info', title, text, action, busy }:
+  { icon?: IconName; title: string; text?: string; action?: { label: string; onClick: () => void }; busy?: boolean },
+) {
+  return (
+    <div className="pb-framemsg" role={busy ? 'status' : 'alert'}>
+      <span className="pb-framemsg__icon">{busy ? <span className="pb-spinner" aria-hidden /> : <Icon name={icon} size={24} />}</span>
+      <h1 className="pb-framemsg__title">{title}</h1>
+      {text && <p className="pb-framemsg__text">{text}</p>}
+      {action && <Button variant="primary" onClick={action.onClick}>{action.label}</Button>}
+    </div>
   );
 }
 
@@ -1311,10 +1197,10 @@ function TeamOverlay({ index, onBack }: { index: number; onBack: () => void }) {
   const rival = season?.teams[index];
   return (
     <Overlay
-      eyebrow="COLLEGE PROFILE"
+      eyebrow="College profile"
       title={rival?.def.school ?? 'Program'}
       onClose={onBack}
-      floating={<GodBolt target={{ kind: 'program', team: index }} label={`Edit ${rival?.def.school ?? 'this program'} in god mode`} className="floating-god" />}
+      floating={<GodBolt target={{ kind: 'program', team: index }} label={`Edit ${rival?.def.school ?? 'this program'} in god mode`} />}
     >
       <TeamCard key={index} index={index} />
     </Overlay>
@@ -1367,24 +1253,19 @@ function TableOverlay() {
     else close();
   };
   return (
-    <div style={{
-      position: 'absolute', inset: 0, zIndex: 25,
-      background: 'var(--field)',
-      display: 'flex', flexDirection: 'column',
-    }}>
+    <div className="pb-tableoverlay">
       <BackBar onBack={back} />
-      {/* Hidden, not auto. All three of these pin their own header and scroll
-          their own body, so a scroller here would be a scroller around a
-          scroller — and the outer one is the one that drags the header. */}
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
-        {overlay === 'schedule' && <Schedule />}
-        {overlay === 'standings' && <Standings />}
-        {overlay === 'rankings' && <Rankings />}
+      {/* Hidden, not auto. Every screen in here brings its own scroller, so a
+          scroller here would be a scroller around a scroller. */}
+      <div className="pb-tableoverlay__body">
+        {overlay === 'schedule' && <div className="pb-scroll"><Schedule /></div>}
+        {overlay === 'standings' && <div className="pb-scroll"><Standings /></div>}
+        {overlay === 'rankings' && <div className="pb-scroll"><Rankings /></div>}
         {/* Not a table, but the same shape of thing: a screen laid over the one
             you were on, with the screen underneath still mounted when you close
             it. During the offseason it is the only way in — the nav is gone. */}
-        {overlay === 'saves' && <Saves />}
-        {overlay === 'settings' && <Settings />}
+        {overlay === 'saves' && <div className="pb-scroll"><Saves /></div>}
+        {overlay === 'settings' && <div className="pb-scroll" key={settingsPage}><Settings /></div>}
         {/* And the same argument again, for the three the inbox needs. The
             inbox itself, because it is a HOME tab and HOME does not exist
             during the offseason — which is precisely when it has the most to
@@ -1398,7 +1279,7 @@ function TableOverlay() {
             refusing to scroll; it was the whole tab, and the coach sheet was
             simply the first one tall enough to prove it. */}
         {overlay === 'program' && (
-          <div className="screen-scroll" style={{ height: '100%' }}><Program /></div>
+          <div className="pb-scroll"><Program /></div>
         )}
         {/* The depth chart screen is gone — removed whole in the sorting
             session ("remove it entirely"): the lineup, the rail and AUTO do
@@ -1415,10 +1296,10 @@ function TableOverlay() {
             not a list buried on the program board. Same scroller story as the
             captain below. */}
         {overlay === 'jobs' && (
-          <div className="screen-scroll" style={{ height: '100%' }}><JobMarket /></div>
+          <div className="pb-scroll"><JobMarket /></div>
         )}
         {overlay === 'captain' && (
-          <div className="screen-scroll" style={{ height: '100%' }}><Captain /></div>
+          <div className="pb-scroll"><Captain /></div>
         )}
         {/* The press room, which stopped being an interruption and became an
             errand. Here rather than in the screen switch because the overlays
@@ -1429,7 +1310,12 @@ function TableOverlay() {
             the second sheet of HISTORY, which does the pinning for it — so it
             gets the scroller the container above deliberately does not have. */}
         {overlay === 'book' && (
-          <div style={{ height: '100%', overflowY: 'auto' }}><RecordBook /></div>
+          <div className="pb-scroll">
+            <main className="pb-page">
+              <ScreenHeader title="Record book" />
+              <RecordBook />
+            </main>
+          </div>
         )}
       </div>
     </div>
@@ -1463,111 +1349,11 @@ function TableOverlay() {
  */
 function BackBar({ onBack }: { onBack: () => void }) {
   return (
-    <div style={{
-      flex: 'none', padding: '10px 14px',
-      paddingTop: 'calc(env(safe-area-inset-top) + 12px)',
-      background: 'var(--paper)', borderBottom: '1px solid var(--line)',
-    }}>
-      <button
-        onClick={onBack}
-        aria-label="Back"
-        className="tap"
-        style={{
-          width: 44, height: 44, display: 'grid', placeItems: 'center',
-          border: '1px solid var(--line)', background: 'var(--paper)',
-          color: 'var(--clay)',
-        }}
-      ><ArrowLeftIcon width={17} height={17} /></button>
+    <div className="pb-overlaybar">
+      <button type="button" className="pb-back" onClick={onBack}>
+        <Icon name="arrow-left" size={16} />Back
+      </button>
     </div>
-  );
-}
-
-/**
- * You, in the corner, and the little menu behind your face.
- *
- * The face used to be a straight door to the coach profile; it is a menu now
- * because the header could not afford a button per destination and the two
- * things a player reaches for from anywhere — who am I, and my saves — belong
- * behind the one control that is always there. Tapping the scrim or picking an
- * item puts the header back exactly as it was.
- */
-function CoachMenuButton() {
-  const coach = useDynasty((s) => s.coach);
-  const team = useUserTeam();
-  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
-  const openOverlay = useDynasty((s) => s.openOverlay);
-  // Read here rather than passed down: the menu is rendered from three
-  // different frames and none of them should have to know the inbox exists.
-  const unread = useDynasty((s) => unreadCount(s.inbox));
-  // New silverware waiting in the cabinet — the dot that replaced the
-  // achievement letters.
-  const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0);
-  const [open, setOpen] = useState(false);
-
-  const go = (run: () => void) => { setOpen(false); run(); };
-
-  return (
-    <>
-      <CoachAvatar look={coach.look} badge={unread} onClick={() => setOpen((v) => !v)} />
-      {open && (
-        <>
-          <button
-            className="popover-scrim"
-            type="button"
-            aria-label="Close coach menu"
-            onClick={() => setOpen(false)}
-          />
-          <section className="account-menu card-in" role="menu">
-            <button
-              className="account-menu-profile"
-              type="button"
-              role="menuitem"
-              data-guide="coach-profile"
-              onClick={() => go(() => { setProgramSheet("coach"); openOverlay("program"); })}
-            >
-              <span className="initial-avatar"><CoachPortrait look={coach.look} size={40} /></span>
-              <span>
-                <strong>{coach.name}</strong>
-                <small>{team ? `Head Coach · ${team.def.school}` : "Between jobs"}</small>
-              </span>
-              {trophyDot && <i className="account-profile-alert" aria-label="New coach achievement" />}
-              <ChevronRightIcon />
-            </button>
-            {/* The inbox, moved in off the bar.
-
-                It was a 40px square in every header in the game, and a header
-                is the most expensive real estate the app has — it is on screen
-                on every screen. In here it is one tap further away and carries
-                its count in words rather than on a badge, which is more room
-                than the shoulder of an envelope ever had.
-
-                What pays for the extra tap is the dot on HOME in the bottom
-                nav: that is how unread survives being three screens away, and
-                with the envelope gone it is now the only thing doing that job,
-                so it stays. */}
-            <button
-              className={unread > 0 ? 'has-count' : undefined}
-              type="button"
-              role="menuitem"
-              onClick={() => go(() => openOverlay("inbox"))}
-            >
-              <EnvelopeClosedIcon />
-              Inbox
-              {unread > 0 && <span className="menu-count">{unread}</span>}
-              <ChevronRightIcon />
-            </button>
-            {/* Saves used to sit here as a peer. It moved inside settings: one
-                place for everything about you and the app, which also stops the
-                menu growing a row every time a preference is added. */}
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => go(() => openOverlay("settings"))}
-            ><GearIcon />Settings<ChevronRightIcon /></button>
-          </section>
-        </>
-      )}
-    </>
   );
 }
 
@@ -1626,38 +1412,43 @@ function PlaybookInvite() {
   return (
     <Modal
       nudge={nudge}
-      kicker="SCOUTING REPORT READY"
-      title={`${school} report is ready`}
+      kicker="Scouting report ready"
+      title={`The ${school} report is ready`}
       lines={[
-        'Use the reads below to build an opponent plan now, or keep your standing strategy and return later.',
+        'Build a plan against them now, or keep your standing strategy and come back to it later.',
       ]}
       body={opponent ? (
-        <section className="scout-invite-body">
-          <div className="scout-invite-snapshot">
-            <span><small>RECORD</small><strong>{opponent.w}-{opponent.l}</strong></span>
-            <span><small>RUN DIFF</small><strong>{runDiff > 0 ? '+' : ''}{runDiff}</strong></span>
-            <span><small>PRESTIGE</small><strong>{'★'.repeat(prestigeStars(opponent.prestige))}</strong></span>
-          </div>
-          <div className="scout-invite-reads">
-            <small>WHAT THE REPORT FOUND</small>
-            {reads.map((read) => (
-              <div key={`${read.slot}-${read.title}`}>
-                <strong>{read.title}</strong>
-                <span>{read.text}</span>
-              </div>
-            ))}
-          </div>
-          <p className="scout-invite-note">Your opponent playbook applies automatically whenever you face them. Auto-set on the next screen can build the defensive counters from this report.</p>
-        </section>
+        <>
+          <StatGroup
+            size="sm"
+            items={[
+              { label: 'Record', value: recordText(opponent.w, opponent.l) },
+              { label: 'Run difference', value: `${runDiff > 0 ? '+' : runDiff < 0 ? '−' : ''}${Math.abs(runDiff)}` },
+              { label: 'Prestige', value: <Stars value={prestigeStars(opponent.prestige)} label="Prestige" /> },
+            ]}
+          />
+          {reads.length > 0 && (
+            <List label="What the report found">
+              {reads.map((read) => (
+                <ListRow
+                  key={`${read.slot}-${read.title}`}
+                  title={read.title === read.title.toUpperCase() ? capsWords(read.title) : read.title}
+                  subtitle={read.text}
+                />
+              ))}
+            </List>
+          )}
+          <p className="pb-note">Your plan applies whenever you face them.</p>
+        </>
       ) : undefined}
-      action="BUILD PLAYBOOK"
+      action="Build a plan"
       onClose={() => {
         dismiss();
         setFocus(invite);
         closeOverlay();
         go('program', 'strategy');
       }}
-      cancel={{ label: 'LATER', onClick: dismiss }}
+      cancel={{ label: 'Later', onClick: dismiss }}
     />
   );
 }
@@ -1691,46 +1482,34 @@ function SeasonOpener() {
     setLeaving(true);
     requestAnimationFrame(() => requestAnimationFrame(() => { setSheet('board'); openOverlay('program'); }));
   };
-  const moved = (label: string, b: number, a: number) => (
-    <span className="opener-row" key={label}>
-      <span>{label}</span>
-      <b style={a === b ? undefined : { color: a > b ? 'var(--win)' : 'var(--clay)' }}>
-        {b} → {a}
-      </b>
-    </span>
-  );
   return (
     <Modal
       nudge={nudge}
-      kicker={`${opener.year} · BEFORE FIRST PITCH`}
+      kicker={`${opener.year} · Before the first pitch`}
       title={OPENER_TITLES[opener.year % OPENER_TITLES.length]!}
       tone={opener.schoolAfter >= opener.schoolBefore ? 'win' : 'clay'}
-      lines={[
+      lines={[`${opener.headline}. ${opener.message}`]}
+      body={(
         <>
-          <span className="opener-k">THE VERDICT</span>
-          {opener.headline}. {opener.message}
-        </>,
-        <>
-          <span className="opener-k">WHAT MOVED</span>
-          {moved('SCHOOL PRESTIGE', opener.schoolBefore, opener.schoolAfter)}
-          {moved('YOURS', opener.coachBefore, opener.coachAfter)}
-        </>,
-        ...(opener.stings.length > 0
-          ? [
-            <>
-              <span className="opener-k">THE WINTER</span>
-              {opener.stings.map((t, i) => (
-                <span className="opener-line" key={i}>{t}</span>
-              ))}
-            </>,
-          ]
-          : []),
-        <>
-          <span className="opener-k">THE NEW TERMS</span>
-          They want {opener.targetWins} wins. {opener.askDetail}
-        </>,
-      ]}
-      action="READ THE BOARD'S TERMS"
+          <CompareTable
+            label="What moved"
+            labelHeader="Prestige, of 100"
+            from="Last year"
+            to="Now"
+            rows={[
+              { label: 'Your school', now: opener.schoolBefore, next: opener.schoolAfter, better: 'up' },
+              { label: 'You', now: opener.coachBefore, next: opener.coachAfter, better: 'up' },
+            ]}
+          />
+          {opener.stings.length > 0 && (
+            <Callout tone="warning" title="Over the winter">{opener.stings.join(' ')}</Callout>
+          )}
+          <Callout tone="info" icon="target" title={`This year the board wants ${opener.targetWins} wins`}>
+            {opener.askDetail}
+          </Callout>
+        </>
+      )}
+      action="Read the board's terms"
       onClose={toBoard}
     />
   );
@@ -1749,12 +1528,12 @@ function WeekStopped() {
   */
   return (
     <Modal
-      kicker="THE WEEK STOPPED"
+      kicker="The week stopped"
       title={who + " is hurt"}
       tone="clay"
-      lines={["The rest of the week is still there. Set a nine that can play it."]}
-      action="SET THE LINEUP"
-      cancel={{ label: "LATER", onClick: clear }}
+      lines={["The rest of the week is still there. Set a lineup that can play it."]}
+      action="Set the lineup"
+      cancel={{ label: "Later", onClick: clear }}
       onClose={() => { clear(); go("team", "lineup"); }}
     />
   );
@@ -1766,11 +1545,10 @@ function PlayerOverlay() {
   const name = usePlayerName(selectedPlayer);
   return (
     <Overlay
-      eyebrow="PLAYER CARD"
+      eyebrow="Player card"
       title={name}
       onClose={close}
-      className="player-card-overlay"
-      floating={selectedPlayer ? <GodBolt target={{ kind: 'player', id: selectedPlayer }} label={`Edit ${name} in god mode`} className="floating-god" /> : null}
+      floating={selectedPlayer ? <GodBolt target={{ kind: 'player', id: selectedPlayer }} label={`Edit ${name} in god mode`} /> : null}
     >
       {/*
         Keyed on the man, so opening a second card is a fresh card, on its

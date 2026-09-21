@@ -17,6 +17,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useDialogFocus } from './dialogFocus.js';
 import { LessonBody } from './Tutorial.js';
+import { Icon } from './components/ui/index.js';
 import { createPortal } from 'react-dom';
 import { assistantFor } from '../engine/program.js';
 import { facilityLevel, staffPlan } from '../engine/economy.js';
@@ -166,13 +167,13 @@ function Spotlight({ frame, step, onSkip, onSkipStep, onRead }: {
         <div className="guide-mask-part" style={{ top: box.y - PAD, left: box.x + box.w + PAD, right: 0, height: box.h + PAD * 2 }} onClick={swallow} onPointerDown={swallow} />
         <div className="guide-hole" style={{ top: box.y - PAD, left: box.x - PAD, width: box.w + PAD * 2, height: box.h + PAD * 2 }} />
       </>}
-      <div ref={panel} className="guide-caption" style={panelStyle} aria-label="Tour controls">
-        <small>{step.aside ? 'PLAYER HELP' : `STEP ${progress.current} OF ${progress.total}`}</small>
-        <p id={captionId} role="status">{caption}</p>
-        <div className="guide-controls">
-          <button className="tap" type="button" onClick={onRead}>Read again</button>
-          {!step.aside && <button className="tap" type="button" onClick={onSkipStep}>Skip step</button>}
-          <button className="tap" type="button" onClick={onSkip}>End tour</button>
+      <div ref={panel} className="guide-caption pb-tour-caption" style={panelStyle} aria-label="Tour controls">
+        <span className="pb-eyebrow">{step.aside ? 'Player help' : `Step ${progress.current} of ${progress.total}`}</span>
+        <p id={captionId} role="status" className="pb-tour-caption__text">{caption}</p>
+        <div className="pb-tour-caption__controls">
+          <button className="pb-btn pb-btn--quiet pb-btn--sm" type="button" onClick={onRead}><span className="pb-btn__label">Read again</span></button>
+          {!step.aside && <button className="pb-btn pb-btn--quiet pb-btn--sm" type="button" onClick={onSkipStep}><span className="pb-btn__label">Skip step</span></button>}
+          <button className="pb-btn pb-btn--quiet pb-btn--sm" type="button" onClick={onSkip}><span className="pb-btn__label">End tour</span></button>
         </div>
       </div>
     </div>
@@ -189,24 +190,29 @@ function TourLesson({ step, card, assistant, leaving, onSkip, onSkipStep, onCont
   const bodyId = useId();
   const progress = guideProgress(step);
   useDialogFocus(dialog, onSkip, { initial: primary, layer: false });
-  return <div ref={dialog} className={`tutorial-scrim guide-scrim${leaving ? ' leaving' : ' fade-in'}`}
+  return <div ref={dialog} className={`pb-tip-host pb-tip-host--tour${leaving ? ' leaving' : ''}`}
     role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={bodyId}>
-    <section className={`tutorial-card${leaving ? '' : ' rise-in'}`}>
-      <div className="flow-section-title">
-        <span className="label">{step.aside ? 'PLAYER HELP' : `STEP ${progress.current} OF ${progress.total}`}</span>
-        <button className="tap" type="button" disabled={leaving} onClick={onSkip}>End tour</button>
-      </div>
-      <div className="tutorial-progress" role="progressbar" aria-label="Tour progress"
+    <section className="pb-tip">
+      <header className="pb-tip__head">
+        <span className="pb-tip__mark" aria-hidden><Icon name="person" size={20} /></span>
+        <span className="pb-tip__titles">
+          <span className="pb-eyebrow">{step.aside ? 'Player help' : `Tour \u00b7 step ${progress.current} of ${progress.total}`}</span>
+          <h2 id={titleId} className="pb-tip__title">{card.title}</h2>
+        </span>
+        <button className="pb-btn pb-btn--quiet pb-btn--sm" type="button" disabled={leaving} onClick={onSkip}><span className="pb-btn__label">End tour</span></button>
+      </header>
+      <span className="pb-tip__progress" role="progressbar" aria-label="Tour progress"
         aria-valuemin={0} aria-valuemax={progress.total} aria-valuenow={progress.current - 1}>
-        <span style={{ width: `${(progress.current - 1) / progress.total * 100}%` }} />
+        <i style={{ width: `${(progress.current - 1) / progress.total * 100}%` }} />
+      </span>
+      <div id={bodyId} className="pb-tip__body">
+        <LessonBody page={card} />
+        <p className="pb-tip__byline">Your assistant, {lastName(assistant)}</p>
       </div>
-      <h2 id={titleId}>{card.title}</h2>
-      <div id={bodyId}><LessonBody page={card} /></div>
-      <p className="tutorial-byline">Your assistant, {lastName(assistant)}</p>
-      <footer>
-        {!step.aside && step.target && <button className="tutorial-back tap" type="button" disabled={leaving} onClick={onSkipStep}>Skip step</button>}
-        <button ref={primary} className="primary-command tap" type="button" disabled={leaving} onClick={onContinue}>
-          {step.target ? 'SHOW ME' : 'FINISH TOUR'}
+      <footer className="pb-tip__foot">
+        {!step.aside && step.target && <button className="pb-btn pb-btn--secondary pb-btn--md" type="button" disabled={leaving} onClick={onSkipStep}><span className="pb-btn__label">Skip step</span></button>}
+        <button ref={primary} className="pb-btn pb-btn--primary pb-btn--md" type="button" disabled={leaving} onClick={onContinue}>
+          <span className="pb-btn__label">{step.target ? 'Show me' : 'Finish the tour'}</span>
         </button>
       </footer>
     </section>

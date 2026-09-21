@@ -77,7 +77,13 @@ export type JournalAction =
     the journal all the same, because it changes confidence and confidence
     changes the game. A replay that skipped it would land somewhere else.
   */
-  | { k: 'visit' };
+  | { k: 'visit' }
+  /*
+    The bench coach taking the game, or handing it back. It changes who makes
+    the pitching changes from here on, so a replay that skipped it would pull
+    a different pitcher at a different time and land somewhere else.
+  */
+  | { k: 'coach'; on: boolean };
 
 export interface LiveJournal {
   /** The save slot this belongs to. A journal never crosses dynasties. */

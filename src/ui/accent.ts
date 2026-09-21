@@ -116,6 +116,15 @@ const ratio = (a: [number, number, number], b: [number, number, number]): number
 const DARK_PAPER: [number, number, number] = [28, 35, 29];
 const DARK_FIELD: [number, number, number] = [18, 23, 17];
 const WHITE: [number, number, number] = [255, 255, 255];
+/**
+ * The design system's own grounds (design/tokens.css): the light page, and
+ * the dark page, card and raised sheet. The accent is printed as text on all
+ * of them, so each one is a bar the walk has to clear.
+ */
+const LIGHT_BG: [number, number, number] = [246, 248, 245];
+const DARK_BG: [number, number, number] = [14, 21, 17];
+const DARK_SURFACE: [number, number, number] = [21, 31, 25];
+const DARK_RAISED: [number, number, number] = [28, 40, 33];
 /** What the announcement panels actually print on `--navy`. */
 const CREAM: [number, number, number] = [246, 241, 230];
 const GOLD: [number, number, number] = [236, 184, 61];
@@ -138,7 +147,31 @@ const GOLD: [number, number, number] = [236, 184, 61];
  * the same lesson the dark cut and the deep cut each learned separately.
  */
 function lightAccent(base: [number, number, number]): [number, number, number] {
-  return untilLegible(base, 0.34, 0.30, -0.02, (c) => ratio(c, WHITE) >= 4.5);
+  // The accent is also the text of every link, tab and selected row, on the
+  // page and on its own soft tint, so those grounds are bars as well.
+  const soft = tuned(base, 0.90, 0.94, 0.14);
+  return untilLegible(base, 0.34, 0.30, -0.02, (c) => (
+    ratio(c, WHITE) >= 4.5 && ratio(c, LIGHT_BG) >= 4.5 && ratio(c, soft) >= 4.5
+  ));
+}
+
+/** The dark cut: text on every dark ground the design system paints. */
+function darkAccent(base: [number, number, number]): [number, number, number] {
+  const softDk = tuned(base, 0.14, 0.19, 0.22);
+  return untilLegible(base, 0.54, 0.34, 0.02, (c) => (
+    ratio(c, DARK_PAPER) >= 4.6
+    && ratio(c, DARK_FIELD) >= 4.6
+    && ratio(c, softDk) >= 4.6
+    && ratio(c, DARK_BG) >= 4.6
+    && ratio(c, DARK_SURFACE) >= 4.6
+    && ratio(c, DARK_RAISED) >= 4.6
+  ));
+}
+
+/** A step further from the ground than `c`: the pressed and hovered accent. */
+function strongerThan(c: [number, number, number], step: number): [number, number, number] {
+  const [h, s, l] = toHsl(c);
+  return fromHsl([h, s, clamp(l + step, 0.06, 0.92)]);
 }
 
 function deepCut(base: [number, number, number]): [number, number, number] {
@@ -199,10 +232,21 @@ export function teamInk(colour: string): { light: string; dark: string } | null 
   };
 }
 
-/** The custom properties this file owns, for a clean reset. */
+/**
+ * The custom properties this file owns, for a clean reset.
+ *
+ * The `--school*` hooks feed the design system's tokens (design/tokens.css),
+ * which pick the light or dark one per theme. The `--accent-*` cuts below them
+ * feed the legacy stylesheets until those are gone. `--accent`, `--accent-rgb`
+ * and `--accent-soft` are tokens now, defined per theme in CSS, so this file
+ * must never write them inline: an inline value beats both theme blocks. They
+ * stay in the list only so a reset clears a value an older build wrote.
+ */
 const HOOKS = [
-  '--accent', '--accent-rgb', '--accent-deep', '--accent-soft',
-  '--accent-dk', '--accent-dk-rgb', '--accent-soft-dk', '--accent-raised-dk',
+  '--school', '--school-rgb', '--school-strong', '--school-soft',
+  '--school-dk', '--school-dk-rgb', '--school-strong-dk', '--school-soft-dk', '--school-command-dk',
+  '--accent-deep', '--accent-dk', '--accent-dk-rgb', '--accent-soft-dk', '--accent-raised-dk',
+  '--accent', '--accent-rgb', '--accent-soft',
 ] as const;
 
 /**
@@ -225,17 +269,16 @@ const HOOKS = [
 export function accentPalette(colour: string): Record<string, string> | null {
   const base = rgb(colour);
   if (!base) return null;
-  const softDk = tuned(base, 0.14, 0.19, 0.22);
+  const light = lightAccent(base);
+  const dark = darkAccent(base);
   return {
-    accent: hex(lightAccent(base)),
+    accent: hex(light),
+    accentStrong: hex(strongerThan(light, -0.07)),
     accentDeep: hex(deepCut(base)),
     accentSoft: hex(tuned(base, 0.90, 0.94, 0.14)),
-    accentSoftDk: hex(softDk),
-    accentDk: hex(untilLegible(base, 0.54, 0.34, 0.02, (c) => (
-      ratio(c, DARK_PAPER) >= 4.6
-      && ratio(c, DARK_FIELD) >= 4.6
-      && ratio(c, softDk) >= 4.6
-    ))),
+    accentSoftDk: hex(tuned(base, 0.14, 0.19, 0.22)),
+    accentDk: hex(dark),
+    accentStrongDk: hex(strongerThan(dark, 0.08)),
     accentRaisedDk: hex(untilLegible(base, 0.39, 0.32, -0.02, (c) => ratio(c, WHITE) >= 4.6)),
   };
 }
@@ -244,29 +287,31 @@ export function applyTeamAccent(colour: string | null): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   const base = colour ? rgb(colour) : null;
-  if (!base) {
-    for (const k of HOOKS) root.style.removeProperty(k);
-    return;
-  }
+  for (const k of HOOKS) root.style.removeProperty(k);
+  if (!base) return;
   const light = lightAccent(base);
   const deep = deepCut(base);
   const soft = tuned(base, 0.90, 0.94, 0.14);
   const softDk = tuned(base, 0.14, 0.19, 0.22);
-  // Bright enough to be read on a card, on the chrome, and on its own tint.
-  const dark = untilLegible(base, 0.54, 0.34, 0.02, (c) => (
-    ratio(c, DARK_PAPER) >= 4.6
-    && ratio(c, DARK_FIELD) >= 4.6
-    && ratio(c, softDk) >= 4.6
-  ));
-  // Dark enough that the white on the action button's disc survives it.
+  // Bright enough to be read on every dark ground and on its own tint.
+  const dark = darkAccent(base);
+  // Dark enough that the white on a primary button survives it.
   const raisedDk = untilLegible(base, 0.39, 0.32, -0.02, (c) => ratio(c, WHITE) >= 4.6);
 
-  root.style.setProperty('--accent', hex(light));
-  root.style.setProperty('--accent-rgb', light.join(', '));
-  root.style.setProperty('--accent-deep', hex(deep));
-  root.style.setProperty('--accent-soft', hex(soft));
-  root.style.setProperty('--accent-dk', hex(dark));
-  root.style.setProperty('--accent-dk-rgb', dark.join(', '));
-  root.style.setProperty('--accent-soft-dk', hex(softDk));
-  root.style.setProperty('--accent-raised-dk', hex(raisedDk));
+  const set = (k: (typeof HOOKS)[number], v: string): void => root.style.setProperty(k, v);
+  set('--school', hex(light));
+  set('--school-rgb', light.join(', '));
+  set('--school-strong', hex(strongerThan(light, -0.07)));
+  set('--school-soft', hex(soft));
+  set('--school-dk', hex(dark));
+  set('--school-dk-rgb', dark.join(', '));
+  set('--school-strong-dk', hex(strongerThan(dark, 0.08)));
+  set('--school-soft-dk', hex(softDk));
+  set('--school-command-dk', hex(raisedDk));
+  // The legacy cuts, for the stylesheets that still read them.
+  set('--accent-deep', hex(deep));
+  set('--accent-dk', hex(dark));
+  set('--accent-dk-rgb', dark.join(', '));
+  set('--accent-soft-dk', hex(softDk));
+  set('--accent-raised-dk', hex(raisedDk));
 }

@@ -1,231 +1,150 @@
 // Chrome.tsx
-// The furniture: the bar at the top, the tabs under it, the nav at the bottom.
+// The frame every screen sits in: the school header, the section tabs and the
+// four areas, built from the design system's chrome (components/ui/chrome.tsx).
 //
-// The proposal's markup, with the proposal's class names, wired to the store.
-// There is no styling in this file on purpose — `.global-header`,
-// `.club-switcher`, `.context-nav` and `.primary-nav` are all defined in
-// prototype.css, which is generated from the design of record. A style object
-// here would be a second opinion about a rule that already exists.
+// The header says who you are and how the year is going: the school, the
+// record, the inbox bell with its count (one way into the inbox, from
+// anywhere), and your portrait, which opens the coach menu. The top tabs are
+// the sections of the area you are in; the bottom nav is the four areas and
+// reports nothing but a dot.
 //
-// It used to live inline in App.tsx, four times over: the regular season, the
-// offseason, the postseason and the job search each drew their own header out
-// of the same handful of ideas, and two of the four had already drifted.
+// Every control keeps the `data-guide` name the first-season tour looks for:
+// `tab-<area>`, `screen-<section>`, `coach-menu`, `coach-profile`.
 
-import { useEffect, useLayoutEffect, type ReactNode } from 'react';
-import { ChevronDownIcon } from '@radix-ui/react-icons';
+import { useState, type ReactNode } from 'react';
 import { CoachPortrait } from './CoachPortrait.js';
-import { useSlide } from './slide.js';
-import type { CoachLook } from '../engine/program.js';
+import { Crest } from './Crest.js';
+import {
+  AppHeader, BottomNav, HeaderStat, Icon, IconButton, TopTabs, type IconName, type NavItem,
+} from './components/ui/index.js';
+import { useDynasty, useUserTeam } from '../state/store.js';
+import { unreadCount } from '../engine/inbox.js';
+
+/** The four areas' icons, which mean the same thing wherever they appear. */
+export const AREA_ICON: Record<string, IconName> = {
+  home: 'home',
+  team: 'id-card',
+  season: 'calendar',
+  program: 'star',
+};
 
 /**
- * The club, top left: a mark, a kicker, a name, and a chevron if it opens.
+ * The school, the record, and the two doors every screen needs.
  *
- * `onOpen` is what makes it a switcher rather than a label. Without it the
- * block is still a button in the proposal's markup, which is a control that
- * goes nowhere — so here it degrades to a plain div and the chevron goes with
- * it.
+ * `record` is omitted where there is no season to report (between jobs).
+ * `extra` sits before the bell: the god-mode bolt, in a sandbox career.
  */
-export function ClubSwitcher(
-  { abbr, kicker, name, onOpen }:
-  { abbr: string; kicker: string; name: string; onOpen?: () => void },
+export function SchoolHeader(
+  { abbr, kicker, name, record, recordLabel = 'Record', extra }:
+  { abbr?: string; kicker?: ReactNode; name: ReactNode; record?: string; recordLabel?: string; extra?: ReactNode },
 ) {
-  const inner = (
-    <>
-      <span className="club-mark">{abbr}</span>
-      <span>
-        <small>{kicker}</small>
-        <strong>{name}</strong>
-      </span>
-    </>
-  );
-  if (!onOpen) return <div className="club-switcher">{inner}</div>;
   return (
-    <button
-      className="club-switcher tap"
-      type="button"
-      aria-label={`${name} club card`}
-      onClick={onOpen}
-    >
-      {inner}
-      <ChevronDownIcon />
-    </button>
+    <AppHeader
+      mark={abbr ? <Crest abbr={abbr} size={30} /> : undefined}
+      abbr={abbr ? undefined : '—'}
+      kicker={kicker}
+      title={name}
+      trailing={(
+        <>
+          {record !== undefined && <HeaderStat label={recordLabel} value={record} />}
+          {extra}
+          <InboxBell />
+          <CoachMenuButton />
+        </>
+      )}
+    />
+  );
+}
+
+/** The inbox, from anywhere, with the unread count on the bell. */
+export function InboxBell() {
+  const unread = useDynasty((s) => unreadCount(s.inbox));
+  const openOverlay = useDynasty((s) => s.openOverlay);
+  return (
+    <IconButton
+      icon="bell"
+      label="Inbox"
+      tone="quiet"
+      badge={unread > 0 ? unread : undefined}
+      data-guide="inbox"
+      onClick={() => openOverlay('inbox')}
+    />
   );
 }
 
 /**
- * One number, right-aligned, on the club name's baseline.
- *
- * Kept through the port because of why it was added: the record rode the
- * identity line in the same weight as the nickname and the conference, and was
- * reported as hard to see and easy to lose — the one number that changes every
- * day set like two that never change.
+ * You, in the corner, and the short menu behind your face: your profile and
+ * the settings (saves live inside settings). The dot is a coach achievement
+ * you have not looked at yet.
  */
-export function RecordChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="record-chip">
-      <small>{label}</small>
-      <strong>{value}</strong>
-    </div>
-  );
-}
+export function CoachMenuButton() {
+  const coach = useDynasty((s) => s.coach);
+  const team = useUserTeam();
+  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
+  const openOverlay = useDynasty((s) => s.openOverlay);
+  const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0);
+  const [open, setOpen] = useState(false);
+  const go = (run: () => void): void => { setOpen(false); run(); };
 
-/**
- * A square in the header, and the count that rides on its shoulder.
- *
- * The badge is `--alert` rather than the accent, which is the whole reason
- * `--alert` exists: a green dot on a green-accented bar says nothing.
- */
-export function HeaderIcon(
-  { label, onClick, badge, children }:
-  { label: string; onClick: () => void; badge?: number; children: ReactNode },
-) {
-  const count = badge ?? 0;
   return (
-    <button
-      className="header-icon tap"
-      type="button"
-      aria-label={count > 0 ? `${label}, ${count} unread` : label}
-      onClick={onClick}
-    >
-      {children}
-      {count > 0 && <span>{count > 9 ? '9+' : count}</span>}
-    </button>
-  );
-}
-
-/**
- * You, in the corner.
- *
- * The proposal puts a photograph here. This app draws the face from the coach's
- * own look, the same way it draws four thousand players — see Avatar.tsx for
- * why that is worth keeping over an asset.
- */
-export function CoachAvatar(
-  { look, onClick, badge }: { look: CoachLook; onClick: () => void; badge?: number },
-) {
-  const count = badge ?? 0;
-  return (
-    /*
-      The wrapper exists for the badge. When the inbox moved into this menu it
-      took the only unread count in the header with it — reported straight
-      back: "I should get the notification number as well in the coach picture
-      up top." The count cannot ride the button itself, because .coach-avatar
-      clips its overflow to keep the portrait round, so a shoulder badge would
-      lose its top half. The slot is the un-clipped shoulder.
-    */
-    <span className="coach-slot">
+    <span className="pb-coachmenu">
       <button
-        className="coach-avatar tap"
         type="button"
+        className="pb-coachmenu__btn"
         data-guide="coach-menu"
-        aria-label={count > 0 ? `Coach menu, ${count} unread` : 'Coach menu'}
+        aria-label={trophyDot ? 'Coach menu, new achievement' : 'Coach menu'}
         aria-haspopup="menu"
-        onClick={onClick}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
       >
-        <CoachPortrait look={look} size={38} />
+        <CoachPortrait look={coach.look} size={36} />
+        {trophyDot && <span className="pb-dot pb-coachmenu__dot" aria-hidden />}
       </button>
-      {count > 0 && <span className="coach-badge" aria-hidden>{count > 9 ? '9+' : count}</span>}
+      {open && (
+        <>
+          <button className="pb-menu-scrim" type="button" aria-label="Close coach menu" onClick={() => setOpen(false)} />
+          <section className="pb-menu" role="menu" aria-label="Coach menu">
+            <button
+              type="button"
+              role="menuitem"
+              className="pb-menu__profile"
+              data-guide="coach-profile"
+              onClick={() => go(() => { setProgramSheet('coach'); openOverlay('program'); })}
+            >
+              <span className="pb-menu__face"><CoachPortrait look={coach.look} size={40} /></span>
+              <span className="pb-menu__who">
+                <strong>{coach.name}</strong>
+                <small>{team ? `Head coach · ${team.def.school}` : 'Between jobs'}</small>
+              </span>
+              {trophyDot && <span className="pb-dot" role="img" aria-label="New achievement" />}
+              <Icon name="chevron-right" size={20} />
+            </button>
+            <button type="button" role="menuitem" className="pb-menu__item" onClick={() => go(() => openOverlay('settings'))}>
+              <Icon name="gear" size={20} /><span>Settings and saves</span><Icon name="chevron-right" size={20} />
+            </button>
+          </section>
+        </>
+      )}
     </span>
   );
 }
 
-/** The sub-nav: a green underline, and a row that scrolls rather than squeezes. */
-/** Whether the bar has sections past its right edge; written as `data-more`. */
-function moreToTheRight(el: HTMLElement): void {
-  const more = el.scrollWidth - el.clientWidth - el.scrollLeft > 2;
-  if (more) el.dataset.more = 'right'; else delete el.dataset.more;
-}
-
-export function ContextNav<T extends string>(
+/** The sections of the current area, as top tabs. */
+export function SectionTabs<T extends string>(
   { label, items, active, onSelect }:
-  {
-    label: string;
-    items: ReadonlyArray<{ id: T; label: string; alert?: boolean }>;
-    active: T;
-    onSelect: (id: T) => void;
-  },
+  { label: string; items: ReadonlyArray<{ id: T; label: string; alert?: boolean }>; active: T; onSelect: (id: T) => void },
 ) {
-  // The underline slides between tabs; 12 keeps the inset the static
-  // underline always had. See slide.ts.
-  const ref = useSlide<HTMLElement>(12);
-  // Five sections do not fit a 375px phone, and a bar that scrolls with its
-  // scrollbar hidden looks finished at its edge — the reporter could not find
-  // GOD MODE at all. So the bar says when there is more: `data-more` draws a
-  // fade and a chevron at the right edge until it has been scrolled there.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = (): void => moreToTheRight(el);
-    measure();
-    el.addEventListener('scroll', measure, { passive: true });
-    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
-    ro?.observe(el);
-    return () => { el.removeEventListener('scroll', measure); ro?.disconnect(); };
-  }, [ref, items.length]);
-  // Arriving at a section from elsewhere — the coach menu, a card — brings
-  // its tab into view, so the bar agrees with the screen under it.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    const on = el?.querySelector<HTMLElement>('button.active');
-    if (!el || !on) return;
-    const left = on.offsetLeft;
-    const right = left + on.offsetWidth;
-    if (left < el.scrollLeft) el.scrollLeft = left;
-    else if (right > el.scrollLeft + el.clientWidth) el.scrollLeft = right - el.clientWidth;
-    moreToTheRight(el);
-  }, [ref, active]);
-  return (
-    <nav ref={ref} className="context-nav" aria-label={label}>
-      {items.map((item) => (
-        <button
-          className={item.id === active ? 'active' : ''}
-          key={item.id}
-          type="button"
-          data-guide={`screen-${item.id}`}
-          aria-current={item.id === active ? 'page' : undefined}
-          onClick={() => onSelect(item.id)}
-        >{item.label}{item.alert && <i className="nav-alert" aria-label="needs attention" />}</button>
-      ))}
-    </nav>
-  );
+  const tabs: NavItem<T>[] = items.map((it) => ({ value: it.id, label: it.label, alert: it.alert, guide: `screen-${it.id}` }));
+  return <TopTabs label={label} items={tabs} value={active} onChange={onSelect} />;
 }
 
-/**
- * The bottom nav: an icon, a name, and one live number under it.
- *
- * The number was already the best idea in the old bar — the date, the roster
- * count, the record, the stars — so the menu reports rather than only labels.
- * `alert` is the dot on HOME: unread has to be visible from wherever the player
- * normally is, and where he normally is is not the home tab.
- */
-export function PrimaryNav<T extends string>(
+/** The four areas. */
+export function AreaNav<T extends string>(
   { tabs, active, onSelect }:
-  {
-    tabs: ReadonlyArray<{
-      id: T; label: string; meta?: string; icon: ReactNode; alert?: boolean;
-    }>;
-    active: T;
-    onSelect: (id: T) => void;
-  },
+  { tabs: ReadonlyArray<{ id: T; label: string; alert?: boolean }>; active: T; onSelect: (id: T) => void },
 ) {
-  // "Same with the line in the main nav bar" — the top line slides too.
-  const ref = useSlide<HTMLElement>();
-  return (
-    <nav ref={ref} className="primary-nav" aria-label="Career areas">
-      {tabs.map((t) => (
-        <button
-          className={t.id === active ? 'active' : ''}
-          key={t.id}
-          type="button"
-          data-guide={`tab-${t.id}`}
-          aria-current={t.id === active ? 'page' : undefined}
-          onClick={() => onSelect(t.id)}
-        >
-          {t.icon}
-          <span>{t.label}{t.alert && <i className="nav-alert" aria-label="needs attention" />}</span>
-          <small>{t.meta}</small>
-        </button>
-      ))}
-    </nav>
-  );
+  const items = tabs.map((t) => ({
+    value: t.id, label: t.label, alert: t.alert, icon: AREA_ICON[t.id] ?? 'dot', guide: `tab-${t.id}`,
+  }));
+  return <BottomNav label="Career areas" items={items} value={active} onChange={onSelect} />;
 }

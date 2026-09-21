@@ -1,29 +1,17 @@
 // Draft.tsx
 // Who left, where they went, and the one conversation you get to have about it.
 //
-// The roadmap's central tension used to be reported here and nothing more: you
-// never keep your best players. That is still true, and it is still the point —
-// but it is no longer a screen you only read. A man with eligibility left has
-// been offered a professional contract and has not signed it yet, and what you
-// say to him in the next minute decides whether he is in your lineup in
-// February.
+// A player with eligibility left has been offered a professional contract and
+// has not signed it yet; what you say to him decides whether he is in your
+// lineup in February. The offer is paid in offseason points, the fund the
+// transfer portal also draws from, and it is spent whether it works or not.
 //
-// The money comes from the flexible offseason fund. Recruiting keeps a protected
-// reserve, so keeping the ace is a real trade without deleting the freshman class.
-//
-// Four views because the draft is a national event with a local consequence.
-// KEEP is the decision; DEPARTING is what it cost you; the BOARD is the
-// country's story, which is worth reading now that a first round pick is two or
-// three men in a year rather than sixty-four.
+// Three views: Waiting on you (the decisions), Leaving (what it cost you, with
+// the positions it leaves short), and the Draft board (the country's story).
 
-import { useMemo, useRef, useState } from 'react';
-import { useDialogFocus } from '../dialogFocus.js';
+import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
-import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { ChevronRightIcon, Cross1Icon } from '@radix-ui/react-icons';
-import { Metric, MetricStrip, ModuleIntro, Segmented } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
-import { InFrame } from '../Overlay.js';
 import { draftChance } from '../../engine/progression.js';
 import type { Departure } from '../../engine/progression.js';
 import {
@@ -31,28 +19,28 @@ import {
   KEEP_PITCHES, KEEP_LABEL, KEEP_CASE, KEEP_RESTS_ON,
   type DraftedMan, type KeepPitch,
 } from '../../engine/draft.js';
-import { prestigeStars } from '../../engine/program.js';
-import { flexibleOffseasonBudget } from '../../engine/recruiting.js';
-import { overallOf } from '../../engine/ratings.js';
+import { overallOf, naturalPos } from '../../engine/ratings.js';
 import { isTwoWay } from '../../engine/types.js';
-import type { Pitcher, Player } from '../../engine/types.js';
-import { Avatar } from '../Avatar.js';
+import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
+import {
+  Button, Callout, Chip, Chips, ConfirmButton, EmptyState, Face, List, Marquee, OptionCard,
+  OptionGroup, PlayerRow, SectionHeader, SegmentedControl, Sheet, StatGroup, StatusBadge, Step,
+  Stepper, Tag,
+} from '../components/ui/index.js';
+import { CLASS_NAME, POSITION_NAME, capsWords, plural } from '../words.js';
+import { ContinueBar, OffseasonPointsCard, StepScreen, useOffseasonPoints } from './OffseasonStep.js';
 
-type View = 'keep' | 'departing' | 'board' | 'undrafted';
+type View = 'keep' | 'leaving' | 'board';
 
-const VIEW_LABEL: Record<View, string> = {
-  keep: 'KEEP',
-  departing: 'DEPARTING',
-  board: 'BOARD',
-  undrafted: 'UNDRAFTED',
-};
-
-const slotOf = (p: Player): string =>
-  isTwoWay(p) ? 'TWO-WAY' : p.type === 'pitcher' ? (p as Pitcher).role : p.pos;
+/** His position as a short tag, with the full name for a screen reader. */
+function slotTag(p: Player): { text: string; title: string } {
+  if (isTwoWay(p)) return { text: 'Two-way', title: 'Two-way player' };
+  const code = p.type === 'pitcher' ? (p as Pitcher).role : naturalPos(p as Hitter);
+  return { text: code, title: POSITION_NAME[code as Position] ?? code };
+}
 
 export function Draft() {
   const phase = useDynasty((s) => s.phase);
-  const nextPhase = useDynasty((s) => s.nextPhase);
   const report = useDynasty((s) => s.lastOffseason);
   const season = useDynasty((s) => s.season);
   const year = useDynasty((s) => s.year);
@@ -62,27 +50,20 @@ export function Draft() {
 
   const board = season?.draft ?? null;
   const pending = board?.men.filter((m) => m.outcome === 'pending').length ?? 0;
-  const [view, setView] = useState<View>(pending > 0 ? 'keep' : 'departing');
+  const [view, setView] = useState<View>(pending > 0 ? 'keep' : 'leaving');
 
-  const { undrafted, departing, national, mineLost, mineDrafted, kept } = useMemo(() => {
+  const { undrafted, leaving, national, mineLost, mineDrafted, kept } = useMemo(() => {
     const drafted = report?.drafted ?? [];
     const graduated = report?.graduated ?? [];
     const abbr = team?.def.abbr;
     const mine = [...drafted, ...graduated].filter((d) => d.teamAbbr === abbr);
     return {
-      // The country's board, best round first. Capped because two hundred names
-      // is a scroll nobody finishes and the interesting part is the top of it.
+      // The country's board, best round first, capped where reading stops.
       national: drafted.slice(0, 80),
-      // Seniors whose names were never called. Their careers are over.
-      //
-      // Walk-ons ride in the same list because the report has two arrays and
-      // they belong in the one that is not the draft, but they are not this:
-      // nobody's career ended, a one year lease simply ran out. Filtered here
-      // rather than split upstream so the departing view still counts them as
-      // men you lost, which is what they are.
-      undrafted: graduated.filter((d) => d.reason === 'graduated')
-        .sort((a, b) => b.overall - a.overall).slice(0, 40),
-      departing: mine.sort((a, b) => b.overall - a.overall),
+      // Seniors whose names were never called; walk-ons whose year was up are
+      // not this, and stay out of it.
+      undrafted: graduated.filter((d) => d.reason === 'graduated').sort((a, b) => b.overall - a.overall).slice(0, 40),
+      leaving: mine.sort((a, b) => b.overall - a.overall),
       mineLost: mine.filter((d) => !d.returned).length,
       mineDrafted: mine.filter((d) => !d.returned && d.reason === 'drafted').length,
       kept: mine.filter((d) => d.returned).length,
@@ -91,298 +72,227 @@ export function Draft() {
 
   if (!team) return null;
 
-  // Before the offseason has run there is nothing to report, so the screen falls
-  // back to the odds — which is what it is for outside the sequence.
-  if (!report && !board) return <DraftOdds team={team} year={year} phase={phase} />;
+  // Before the offseason has run there is nothing to report, so the screen
+  // shows the odds instead: who is exposed and who is safe.
+  if (!report && !board) return <DraftOdds team={team} year={year} inSequence={phase !== null} />;
 
   const holes = report?.holes ?? [];
-  const stars = prestigeStars(team.prestige);
-  const pool = flexibleOffseasonBudget(stars);
-  const left = pool - (board?.spent ?? 0);
+  const called = board?.men.length ?? 0;
 
-  return (
-    // Title, totals and the four views stay put; the list of names scrolls
-    // under them. Same reason as the recruiting board: what you are looking at
-    // and how many there are should not scroll away from the list itself.
-    <FixedHeader header={
-      <div className="dense-head draft-compact-head" style={{ padding: '3px 14px 4px' }}>
-      <ModuleIntro kicker={`${year} · ${team.def.abbr}`} title="Draft results" />
-
-      <MetricStrip>
-        {/* Audit fix: at a program whose men graduate rather than get
-            drafted, this read "YOU LOST 6 — DRAFTED" over six graduations.
-            The note now says which door they left through. */}
-        <Metric
-          label="YOU LOST" value={String(mineLost)}
-          note={`${mineDrafted} DRAFTED · ${mineLost - mineDrafted} GRADUATED`}
-        />
-        <Metric label="TALKED ROUND" value={String(kept)} note="STAYING" />
-        <Metric label="FLEX LEFT" value={String(left)} note={`OF ${pool}`} />
-      </MetricStrip>
-
-      <Segmented<View>
-        label="Draft section"
+  const page = (
+    <main className="pb-page">
+      <FirstVisit id="draftphase" />
+      <Marquee
+        eyebrow={`${year} draft · The phone calls`}
+        title="Draft"
+      />
+      <OffseasonPointsCard />
+      <StatGroup
+        size="sm"
+        items={[
+          { label: 'You lost', value: mineLost, note: `${mineDrafted} drafted · ${mineLost - mineDrafted} graduated` },
+          { label: 'Talked into staying', value: kept },
+          { label: 'Waiting on you', value: pending, noteTone: pending > 0 ? 'warning' : undefined, note: pending > 0 ? 'Decide before you move on' : 'All decided' },
+        ]}
+      />
+      <SegmentedControl<View>
+        label="Draft"
         value={view}
         onChange={setView}
-        options={(['keep', 'departing', 'board', 'undrafted'] as View[]).map((v) => ({
-          value: v,
-          label: `${VIEW_LABEL[v].charAt(0)}${VIEW_LABEL[v].slice(1).toLowerCase()}${v === 'keep' && pending > 0 ? ` ${pending}` : ''}`,
-        }))}
+        options={[
+          { value: 'keep', label: 'Waiting on you', badge: pending > 0 ? pending : undefined },
+          { value: 'leaving', label: 'Leaving' },
+          { value: 'board', label: 'Draft board' },
+        ]}
       />
-      </div>
-    }
-      action={phase !== null && (
-    <FloatingAction
-      label="TO THE PORTAL"
-      note={pending > 0
-        ? `${pending} ${pending === 1 ? 'man is' : 'men are'} still waiting on an answer. Leaving now signs ${pending === 1 ? 'him' : 'them'}.`
-        : undefined}
-      onClick={() => void nextPhase('draft')}
-    />
-  )}
-    >
-    <FirstVisit id="draftphase" />
-    <div className="offseason-draft" style={{ padding: '10px 14px 22px' }}>
-      {view === 'keep' && (
-        <KeepList men={board?.men ?? []} left={left} pool={pool} abbr={team.def.abbr} />
-      )}
 
-      {view === 'departing' && (
+      {view === 'keep' && <KeepList men={board?.men ?? []} abbr={team.def.abbr} />}
+
+      {view === 'leaving' && (
         <>
-          {/*
-            The holes, first, above the names.
-
-            This is the whole reason the draft runs before recruiting: a list of
-            who left is a eulogy, and a list of what you are short of is a
-            shopping list. It also answers the retention screen — talk a
-            catcher out of professional ball and the catcher-shaped hole here
-            closes while you watch.
-          */}
+          {/* What you are short of, above the names: a list of who left is a
+              eulogy, a list of what you need is a shopping list. */}
           {holes.length > 0 && (
-            <>
-              <div className="label" style={{ marginBottom: 7 }}>THE HOLES THIS LEAVES</div>
-              <div className="draft-holes-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-                {holes.map((h, i) => (
-                  <div
-                    key={h.pos}
-                    className="card-in draft-hole-card"
-                    style={{
-                      padding: '7px 10px',
-                      border: '1px solid var(--clay)',
-                      background: 'rgba(var(--clay-rgb), .08)',
-                      animationDelay: `${i * 40}ms`,
-                    }}
-                  >
-                    <div style={{
-                      font: "700 calc(11px * var(--ts)) var(--mono)", letterSpacing: '.08em', color: 'var(--clay)',
-                    }}>{h.pos}</div>
-                    <div style={{
-                      marginTop: 2, font: "400 calc(8.5px * var(--ts)) var(--mono)", color: 'var(--dim)',
-                    }}>{h.count > 1 ? `${h.count} needed` : 'need one'}</div>
-                  </div>
-                ))}
-              </div>
-            </>
+            <Callout tone="warning" title="Positions this leaves short">
+              {holes.map((h) => `${POSITION_NAME[h.pos as Position] ?? h.pos}${h.count > 1 ? ` (${h.count})` : ''}`).join(', ')}.
+              
+            </Callout>
           )}
-          <Rows rows={departing} abbr={team.def.abbr} empty={
-            'Nobody left. A whole roster returns, which almost never happens.'
-          } />
+          <Departures rows={leaving} abbr={team.def.abbr} empty="Nobody left. A whole roster returns, which almost never happens." />
         </>
       )}
 
-      {view === 'board' && <NationalBoard rows={national} abbr={team.def.abbr} />}
-
-      {view === 'undrafted' && (
-        <Rows rows={undrafted} abbr={team.def.abbr} empty="Nobody here." />
+      {view === 'board' && (
+        <>
+          <NationalBoard rows={national} abbr={team.def.abbr} />
+          {undrafted.length > 0 && (
+            <section className="pb-stack">
+              <SectionHeader title="Not drafted" count={undrafted.length} />
+              <Departures rows={undrafted} abbr={team.def.abbr} empty="" />
+            </section>
+          )}
+        </>
       )}
+    </main>
+  );
 
-      {/*
-        There was a walk-on list here, and it rendered for nobody.
-
-        `lastOffseason.walkOns` is filled by `fillRosters`, which runs at the
-        year roll — and the year roll sets `phase` to null, which is what makes
-        this screen unreachable. So the array was always empty at the only
-        moment the block could have been drawn. The class review carries the
-        shortfall now, before signing day rather than after it, where it is a
-        thing you can still do something about instead of a receipt.
-      */}
-    </div>
-    </FixedHeader>
+  if (phase === null) return page;
+  return (
+    <StepScreen
+      bar={(
+        <ContinueBar
+          from="draft"
+          note={pending > 0
+            ? `${plural(pending, 'player is', 'players are')} still waiting on an answer. Moving on lets ${pending === 1 ? 'him' : 'them'} go.`
+            : undefined}
+        />
+      )}
+    >{page}</StepScreen>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Talking him out of it
+// Making the case
 // ---------------------------------------------------------------------------
 
-function KeepList(
-  { men, left, pool, abbr }:
-  { men: readonly DraftedMan[]; left: number; pool: number; abbr: string },
-) {
-  // The row is the player; the conversation lives in a sheet the row opens.
-  // Reported from testing: the inline version put four pitches, a stepper and
-  // two buttons under every name and the list stopped being a list.
+function KeepList({ men, abbr }: { men: readonly DraftedMan[]; abbr: string }) {
   const [open, setOpen] = useState<string | null>(null);
   const talking = men.find((m) => m.player.id === open) ?? null;
 
   if (men.length === 0) {
-    return (
-      <section className="empty-state">
-        <h2>Nobody to call</h2>
-        <p>No club took a man of yours who still has eligibility.</p>
-      </section>
-    );
+    return <EmptyState icon="check-circled" title="Nobody to call" text="No pro team took a player of yours who still has eligibility." />;
   }
   return (
     <>
-      <div className="flow-section-title">
-        <span className="label">THE PHONE CALLS</span>
-        <b>{left} OF {pool} RETENTION LEFT</b>
-      </div>
-      <section className="retention-list">
-        {men.map((man) => (
-          <KeepRow
-            key={man.player.id}
-            man={man}
-            abbr={abbr}
-            onOpen={() => setOpen(man.player.id)}
-          />
-        ))}
-      </section>
-      {talking && (
-        <KeepSheet man={talking} left={left} abbr={abbr} onClose={() => setOpen(null)} />
-      )}
+      <List label="Drafted players">
+        {men.map((man) => {
+          const p = man.player;
+          const status = man.outcome === 'pending'
+            ? <StatusBadge tone="warning" icon="clock">Waiting on you</StatusBadge>
+            : man.outcome === 'stayed'
+              ? <StatusBadge tone="positive">Coming back</StatusBadge>
+              : <StatusBadge tone="neutral" icon="exit">Signed with a pro team</StatusBadge>;
+          return (
+            <PlayerRow
+              key={p.id}
+              name={p.name}
+              avatar={<Face id={p.id} team={abbr} size={40} />}
+              tags={[slotTag(p), CLASS_NAME[p.classYear]]}
+              meta={`Round ${man.round} · usually takes ${keepPoints(man.round)} points`}
+              flags={status}
+              value={overallOf(p)}
+              valueLabel="Rating"
+              onClick={() => setOpen(p.id)}
+            />
+          );
+        })}
+      </List>
+      {talking && <KeepSheet man={talking} abbr={abbr} onClose={() => setOpen(null)} />}
     </>
   );
 }
 
-/** One man, one line, one state. The tap is the whole interface. */
-function KeepRow(
-  { man, abbr, onOpen }: { man: DraftedMan; abbr: string; onOpen: () => void },
-) {
-  const p = man.player;
-  const done = man.outcome !== 'pending';
-  const stayed = man.outcome === 'stayed';
-  return (
-    <button className={`tap${done ? (stayed ? ' stayed' : ' gone') : ''}`} type="button" onClick={onOpen}>
-      <span className="portrait"><Avatar id={p.id} team={abbr} size={34} /></span>
-      <span>
-        <strong>{p.name}</strong>
-        <small>{slotOf(p)} · {p.classYear} · RD {man.round} · OVR {overallOf(p)}</small>
-      </span>
-      <b>{done ? (stayed ? 'STAYING' : 'SIGNED') : 'OPEN CALL'}</b>
-      <ChevronRightIcon />
-    </button>
-  );
-}
-
 /**
- * The conversation, laid over the list.
- *
- * Everything the inline card used to hold — his hints, the four pitches, the
- * money, the handshake — in a sheet that exists only while you are actually
- * talking to him. After the answer, the same sheet reads back how the call
- * went, so a decided row still has its story.
+ * The conversation: choose the argument, then put points behind it. The
+ * points are spent whether he stays or not, so the press that spends them is
+ * a two-press button; letting him go is too. Afterwards the same sheet says
+ * how the call went.
  */
-function KeepSheet(
-  { man, left, abbr, onClose }:
-  { man: DraftedMan; left: number; abbr: string; onClose: () => void },
-) {
+function KeepSheet({ man, abbr, onClose }: { man: DraftedMan; abbr: string; onClose: () => void }) {
   const keepPlayer = useDynasty((s) => s.keepPlayer);
   const releasePlayer = useDynasty((s) => s.releasePlayer);
   const openPlayer = useDynasty((s) => s.openPlayer);
+  const pts = useOffseasonPoints();
   const [pitch, setPitch] = useState<KeepPitch | null>(null);
   const [offer, setOffer] = useState(0);
-  // A sheet a keyboard can leave: CLOSE takes focus, so Enter and Escape both close.
-  const dialog = useRef<HTMLDivElement | null>(null);
-  const closeButton = useRef<HTMLButtonElement | null>(null);
-  useDialogFocus(dialog, onClose, { initial: closeButton });
 
   const p = man.player;
+  const left = pts?.left ?? 0;
   const needs = keepPoints(man.round);
   const hints = pullHints(p);
   const done = man.outcome !== 'pending';
   const stayed = man.outcome === 'stayed';
+  const quick = [Math.round(needs / 2), needs, left]
+    .map((n) => Math.min(left, Math.max(1, n)))
+    .filter((n, i, a) => left > 0 && a.indexOf(n) === i);
 
   return (
-    <InFrame>
-      <div ref={dialog} className="sheet-scrim retention-scrim fade-in" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Talking to ${p.name}`}>
-        <section className="retention-sheet retention-call-modern rise-in" onClick={(e) => e.stopPropagation()}>
-          <header className="retention-call-hero">
-            <button className="retention-call-player tap" type="button" onClick={() => openPlayer(p.id)}>
-              <Avatar id={p.id} team={abbr} size={50} />
-              <span><small>ROUND {man.round} · {slotOf(p)} · {p.classYear}</small><strong>{p.name}</strong><em>{overallOf(p)} OVR</em></span>
-            </button>
-            <button ref={closeButton} className="retention-call-close tap" type="button" onClick={onClose}>CLOSE</button>
-          </header>
+    <Sheet
+      eyebrow={`Round ${man.round} · ${slotTag(p).title} · ${CLASS_NAME[p.classYear]}`}
+      title={p.name}
+      subtitle={`Rating ${overallOf(p)}`}
+      lead={<Face id={p.id} team={abbr} size={48} />}
+      onClose={onClose}
+      tall
+      footer={done ? <Button variant="secondary" block onClick={onClose}>Back to the draft</Button> : undefined}
+    >
+      {done ? (
+        <Callout tone={stayed ? 'positive' : 'neutral'} title={stayed ? `${p.name} is coming back` : `${p.name} signed with a pro team`}>
+          {man.pitch === null ? 'You made no case.' : `${capsWords(KEEP_LABEL[man.pitch])}: worth ${Math.round(man.made)} of the ${man.needed} needed.`}
+        </Callout>
+      ) : (
+        <>
+          <Callout tone="info" icon="chat" title="What his camp is saying">
+            &ldquo;{hints[0]}&rdquo; &ldquo;{hints[1]}&rdquo;
+          </Callout>
 
-          {!done ? (
-            <div className="retention-call-body">
-              <section className="retention-call-read">
-                <small>WHAT HIS CAMP IS SAYING</small>
-                <div><p>“{hints[0]}”</p><p>“{hints[1]}”</p></div>
-              </section>
+          <Step number={1} title="Choose your argument" state={pitch ? 'done' : 'current'} summary={pitch ? capsWords(KEEP_LABEL[pitch]) : undefined}>
+            <OptionGroup label="Your argument">
+              {KEEP_PITCHES.map((k) => (
+                <OptionCard
+                  key={k}
+                  title={capsWords(KEEP_LABEL[k])}
+                  hint={<>&ldquo;{KEEP_CASE[k]}&rdquo; Rests on: {KEEP_RESTS_ON[k].replace('TRAINING', 'Training')}</>}
+                  selected={pitch === k}
+                  onSelect={() => setPitch(k)}
+                />
+              ))}
+            </OptionGroup>
+          </Step>
 
-              <section className="retention-call-target">
-                <span><small>ROUND {man.round} MARKET</small><strong>{needs}</strong><em>what it usually takes</em></span>
-                <span><small>YOU HAVE</small><strong>{left}</strong><em>retention points</em></span>
-              </section>
-
-              <section className="retention-pitch-grid">
-                {KEEP_PITCHES.map((k) => (
-                  <button key={k} type="button" className={`retention-pitch-card tap${pitch === k ? ' selected' : ''}`} onClick={() => setPitch(k)}>
-                    <small>{pitch === k ? 'YOUR PITCH' : 'ANGLE'}</small>
-                    <strong>{KEEP_LABEL[k]}</strong>
-                    <p>{KEEP_RESTS_ON[k]}</p>
-                  </button>
+          <Step number={2} title="Put points behind it" state={pitch ? 'current' : 'upcoming'}>
+            <Stepper
+              label="Points to offer"
+              hint={`Round ${man.round} usually takes ${needs}. You have ${left}.`}
+              value={Math.min(offer, left)}
+              min={0}
+              max={Math.max(0, left)}
+              step={5}
+              onChange={setOffer}
+            />
+            {quick.length > 0 && (
+              <Chips label="Quick amounts">
+                {quick.map((n) => (
+                  <Chip key={n} selected={offer === n} onClick={() => setOffer(n)}>
+                    {n === left ? `All ${n}` : n === needs ? `The usual: ${n}` : `${n}`}
+                  </Chip>
                 ))}
-              </section>
+              </Chips>
+            )}
+            <ConfirmButton
+              block
+              icon="chat"
+              disabled={!pitch || offer <= 0 || offer > left}
+              idle={`Make the case · ${offer} points`}
+              armed="Tap again: the points are spent either way"
+              armedMeta={`${Math.max(0, left - offer)} left after`}
+              onConfirm={() => { if (pitch) keepPlayer(p.id, pitch, offer); }}
+            />
+          </Step>
 
-              {pitch ? (
-                <section className="retention-offer-board">
-                  <header><small>THE CASE YOU MAKE</small><strong>“{KEEP_CASE[pitch]}”</strong></header>
-                  <div className="retention-investment">
-                    <span><small>COMMIT</small><strong>{offer}</strong></span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={Math.max(0, left)}
-                      value={offer}
-                      onChange={(e) => setOffer(Number(e.target.value))}
-                      aria-label="Retention points to offer"
-                    />
-                    <span><small>LEFT AFTER</small><strong>{Math.max(0, left - offer)}</strong></span>
-                  </div>
-                  <div className="retention-quick-picks">
-                    {[Math.min(left, 10), Math.min(left, Math.max(1, Math.round(needs * .75))), Math.min(left, needs), left]
-                      .filter((n, i, a) => n > 0 && a.indexOf(n) === i)
-                      .map((n) => <button type="button" className="tap" key={n} onClick={() => setOffer(n)}>{n === left ? 'ALL' : n}</button>)}
-                  </div>
-                  <button className="primary-command tap" type="button" disabled={offer <= 0} onClick={() => keepPlayer(p.id, pitch, offer)}>
-                    MAKE THE CASE · {offer}
-                  </button>
-                </section>
-              ) : (
-                <p className="retention-pick-prompt">Choose the argument you want to make before you put points behind it.</p>
-              )}
-
-              <button className="retention-let-go tap" type="button" onClick={() => releasePlayer(p.id)}>
-                SHAKE HIS HAND AND LET HIM GO
-              </button>
-            </div>
-          ) : (
-            <section className={`retention-result ${stayed ? 'stayed' : 'gone'}`}>
-              <small>{stayed ? 'HE BOUGHT IT' : 'HE SIGNED'}</small>
-              <strong>{stayed ? `${p.name} is coming back.` : `${p.name} is going pro.`}</strong>
-              <p>{man.pitch === null
-                ? 'You let the decision stand without making a case.'
-                : `You sold ${KEEP_LABEL[man.pitch].toLowerCase()} and committed ${man.offered}. It was worth ${Math.round(man.made)} against the ${man.needed} he needed.`}</p>
-              <button className="primary-command tap" type="button" onClick={onClose}>BACK TO DRAFT RESULTS</button>
-            </section>
-          )}
-        </section>
-      </div>
-    </InFrame>
+          <ConfirmButton
+            block
+            variant="danger"
+            icon="exit"
+            idle="Let him go"
+            armed="Tap again to let him sign"
+            armedMeta="Costs nothing"
+            onConfirm={() => { releasePlayer(p.id); }}
+          />
+          <Button variant="quiet" size="sm" icon="id-card" onClick={() => { onClose(); openPlayer(p.id); }}>Open his card</Button>
+        </>
+      )}
+    </Sheet>
   );
 }
 
@@ -390,31 +300,45 @@ function KeepSheet(
 // The lists
 // ---------------------------------------------------------------------------
 
-function Rows({ rows, abbr, empty }: { rows: Departure[]; abbr: string; empty: string }) {
+/** How a player left, as a badge. */
+function exitBadge(d: Departure) {
+  if (d.returned) return <StatusBadge tone="positive">Stayed</StatusBadge>;
+  if (d.reason === 'drafted') return <StatusBadge tone="info" icon={false}>Drafted · round {d.round ?? '?'}</StatusBadge>;
+  if (d.reason === 'walk-on') return <StatusBadge tone="neutral" icon={false}>Walk-on, his year was up</StatusBadge>;
+  return <StatusBadge tone="neutral" icon={false}>Graduated</StatusBadge>;
+}
+
+function Departures({ rows, abbr, empty }: { rows: Departure[]; abbr: string; empty: string }) {
+  const openPlayer = useDynasty((s) => s.openPlayer);
+  const season = useDynasty((s) => s.season);
   if (rows.length === 0) {
-    return (
-      <section className="empty-state">
-        <h2>Nobody</h2>
-        <p>{empty}</p>
-      </section>
-    );
+    return empty ? <EmptyState icon="person" title="Nobody" text={empty} /> : null;
   }
+  const schoolOf = (a: string): string => season?.teams.find((t) => t.def.abbr === a)?.def.school ?? a;
   return (
-    <section className="retention-list">
+    <List label="Players">
       {rows.map((d) => (
-        <DepartureRow key={d.id} d={d} mine={d.teamAbbr === abbr} />
+        <PlayerRow
+          key={d.id}
+          name={d.name}
+          avatar={<Face id={d.id} team={d.teamAbbr} size={40} />}
+          mark={d.teamAbbr === abbr ? <Tag tone="you">Yours</Tag> : undefined}
+          tags={[CLASS_NAME[d.classYear] ?? d.classYear]}
+          meta={`${schoolOf(d.teamAbbr)} · age ${d.age}`}
+          flags={exitBadge(d)}
+          value={d.overall}
+          valueLabel="Rating"
+          onClick={() => openPlayer(d.id)}
+        />
       ))}
-    </section>
+    </List>
   );
 }
 
 /**
- * The country's draft, round by round.
- *
- * Grouped rather than numbered pick by pick, because our ninety-six programs
- * supply only a slice of each thirty-name round and printing "3" beside the
- * third of our men in round seven would be inventing a pick number nobody
- * assigned him. The round is the fact; the order inside it is best first.
+ * The country's draft, round by round. Grouped rather than numbered pick by
+ * pick: our schools supply only a slice of each round, and a pick number would
+ * be invented.
  */
 function NationalBoard({ rows, abbr }: { rows: Departure[]; abbr: string }) {
   const blocks: { round: number; men: Departure[] }[] = [];
@@ -424,157 +348,86 @@ function NationalBoard({ rows, abbr }: { rows: Departure[]; abbr: string }) {
     if (last && last.round === round) last.men.push(d);
     else blocks.push({ round, men: [d] });
   }
-  if (blocks.length === 0) {
-    return (
-      <section className="empty-state">
-        <h2>Nobody taken</h2>
-        <p>That has never happened.</p>
-      </section>
-    );
-  }
+  if (blocks.length === 0) return <EmptyState icon="person" title="Nobody taken" text="No college player was drafted this year." />;
   return (
     <>
       {blocks.map((b) => (
-        <div key={b.round} style={{ marginBottom: 10 }}>
-          <div className="flow-section-title">
-            <span className="label">ROUND {b.round}</span>
-            <b>{b.men.length}</b>
-          </div>
-          <section className="retention-list">
-            {b.men.map((d) => (
-              <DepartureRow key={d.id} d={d} mine={d.teamAbbr === abbr} />
-            ))}
-          </section>
-        </div>
+        <section key={b.round} className="pb-stack">
+          <SectionHeader title={`Round ${b.round}`} count={b.men.length} />
+          <Departures rows={b.men} abbr={abbr} empty="" />
+        </section>
       ))}
     </>
   );
 }
 
-/** What the row says he did, and what colour it says it in. */
-const EXIT: Record<Departure['reason'], { word: string; tag: string; tone: string }> = {
-  drafted: { word: 'drafted', tag: 'RD', tone: 'var(--win)' },
-  graduated: { word: 'graduated', tag: 'CAREER OVER', tone: 'var(--dim)' },
-  // Not an ending. Nobody recruited him, so nothing held him for a second year.
-  'walk-on': { word: 'walk-on', tag: 'YEAR UP', tone: 'var(--dim)' },
-};
-
-function DepartureRow({ d, mine }: { d: Departure; mine: boolean }) {
-  const openPlayer = useDynasty((s) => s.openPlayer);
-  const exit = EXIT[d.reason] ?? EXIT.graduated;
-  return (
-    <button
-      className={`tap${mine ? ' mine' : ''}`}
-      type="button"
-      onClick={() => openPlayer(d.id)}
-    >
-      <span className="portrait"><Avatar id={d.id} team={d.teamAbbr} size={34} /></span>
-      <span>
-        <strong>{d.name}</strong>
-        <small>
-          {d.teamAbbr} · {d.classYear} · {d.age} · {d.returned ? 'came back' : exit.word}
-        </small>
-      </span>
-      <b style={{ color: d.returned ? 'var(--win)' : exit.tone }}>
-        {d.returned ? 'STAYED' : d.reason === 'drafted' ? `${exit.tag} ${d.round ?? ''}` : exit.tag}
-      </b>
-      <ChevronRightIcon />
-    </button>
-  );
-}
-
 // ---------------------------------------------------------------------------
-// Outside the sequence
+// Before the draft
 // ---------------------------------------------------------------------------
 
-/** No results yet, so show who is exposed and who is safe. */
+/** No results yet: who is exposed to the draft, and who is safe. */
 function DraftOdds(
-  { team, year, phase }:
-  { team: NonNullable<ReturnType<typeof useUserTeam>>; year: number; phase: string | null },
+  { team, year, inSequence }:
+  { team: NonNullable<ReturnType<typeof useUserTeam>>; year: number; inSequence: boolean },
 ) {
-  const nextPhase = useDynasty((s) => s.nextPhase);
-  const roster: Player[] = [
-    ...team.team.lineup, ...team.team.bench,
-    ...team.team.rotation, ...team.team.bullpen,
-  ];
+  const openPlayer = useDynasty((s) => s.openPlayer);
+  const roster: Player[] = [...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen];
   const byOverall = (a: Player, b: Player) => overallOf(b) - overallOf(a);
-  // Eligibility is read against the June ahead, so everybody is a year older
-  // than the roster says. That is the whole reason a twenty-year-old sophomore
-  // is on this list and a nineteen-year-old one is not.
+  // Eligibility is read against the June ahead, a year older than today.
   const inJune = (p: Player) => ({ classYear: p.classYear, age: p.age + 1 });
-  const exposed = roster
-    .filter((p) => p.classYear !== 'SR' && draftEligible(inJune(p))).sort(byOverall);
+  const exposed = roster.filter((p) => p.classYear !== 'SR' && draftEligible(inJune(p))).sort(byOverall);
   const seniors = roster.filter((p) => p.classYear === 'SR').sort(byOverall);
   const atRisk = exposed.filter((p) => draftChance(overallOf(p)) >= 0.35).length;
 
-  return (
-    <FixedHeader header={
-      <ModuleIntro kicker={`${team.def.abbr} · ${year}`} title="The draft" />
-    }
-      action={phase !== null && (
-    <FloatingAction label="TO THE PORTAL" onClick={() => void nextPhase('draft')} />
-  )}
-    >
-    <div style={{ padding: '10px 14px 20px' }}>
-      <MetricStrip>
-        <Metric label="SENIORS" value={String(seniors.length)} note="GRADUATING" />
-        <Metric label="ELIGIBLE" value={String(exposed.length)} note="EXPOSED" />
-        <Metric label="AT RISK" value={String(atRisk)} note="PROJECTED" />
-      </MetricStrip>
+  const oddsBadge = (odds: number | null) => (odds === null
+    ? <StatusBadge tone="neutral" icon={false}>Graduating</StatusBadge>
+    : odds >= 0.7 ? <StatusBadge tone="negative">Likely to leave</StatusBadge>
+      : odds >= 0.35 ? <StatusBadge tone="warning">Could leave</StatusBadge>
+        : odds >= 0.12 ? <StatusBadge tone="neutral" icon={false}>Outside chance</StatusBadge>
+          : <StatusBadge tone="positive">Should stay</StatusBadge>);
 
+  const rows = (list: Player[], withOdds: boolean) => (
+    <List label="Players">
+      {list.map((p) => (
+        <PlayerRow
+          key={p.id}
+          name={p.name}
+          avatar={<Face id={p.id} team={team.def.abbr} size={40} />}
+          tags={[slotTag(p), CLASS_NAME[p.classYear]]}
+          meta={`Age ${p.age}`}
+          flags={oddsBadge(withOdds ? draftChance(overallOf(p)) : null)}
+          value={overallOf(p)}
+          valueLabel="Rating"
+          onClick={() => openPlayer(p.id)}
+        />
+      ))}
+    </List>
+  );
+
+  const page = (
+    <main className="pb-page">
+      <Marquee
+        eyebrow={`${team.def.school} · ${year} · Who is exposed`}
+        title="The draft"
+        numbers={[
+          { label: 'Seniors', value: seniors.length, note: 'Graduating' },
+          { label: 'Eligible', value: exposed.length, note: 'Can be drafted' },
+          { label: 'At risk', value: atRisk, note: 'Likely or could leave', tone: atRisk > 0 ? 'warning' : undefined },
+        ]}
+      />
       {exposed.length > 0 && (
-        <>
-          <div className="flow-section-title" style={{ marginTop: 16 }}>
-            <span className="label">DRAFT ELIGIBLE</span>
-          </div>
-          <section className="retention-list">
-            {exposed.map((p) => <OddsRow key={p.id} player={p} odds={draftChance(overallOf(p))} />)}
-          </section>
-        </>
+        <section className="pb-stack">
+          <SectionHeader title="Eligible for the draft" count={exposed.length} />
+          {rows(exposed, true)}
+        </section>
       )}
-
       {seniors.length > 0 && (
-        <>
-          <div className="flow-section-title" style={{ marginTop: 16 }}>
-            <span className="label">LEAVING REGARDLESS</span>
-          </div>
-          <section className="retention-list">
-            {seniors.map((p) => <OddsRow key={p.id} player={p} odds={null} />)}
-          </section>
-        </>
+        <section className="pb-stack">
+          <SectionHeader title="Leaving anyway" count={seniors.length} />
+          {rows(seniors, false)}
+        </section>
       )}
-
-      {/*
-        A way out, because this screen is reachable *inside* the sequence.
-
-        A reload during the offseason comes back on the step it was left on and
-        without the report that step is about, so this fallback can be the whole
-        draft phase — and without a button it was a dead end with the dynasty
-        behind it.
-      */}
-    </div>
-    </FixedHeader>
+    </main>
   );
+  return inSequence ? <StepScreen bar={<ContinueBar from="draft" />}>{page}</StepScreen> : page;
 }
-
-function OddsRow({ player, odds }: { player: Player; odds: number | null }) {
-  const openPlayer = useDynasty((s) => s.openPlayer);
-  const word = odds === null ? 'GRADUATING'
-    : odds >= 0.7 ? 'GONE' : odds >= 0.35 ? 'AT RISK'
-    : odds >= 0.12 ? 'OUTSIDE SHOT' : 'SAFE';
-  const tone = odds === null ? 'var(--dim)'
-    : odds >= 0.35 ? 'var(--clay)' : odds >= 0.12 ? 'var(--ink)' : 'var(--win)';
-
-  return (
-    <button className="tap" type="button" onClick={() => openPlayer(player.id)}>
-      <span className="portrait"><Avatar id={player.id} size={34} /></span>
-      <span>
-        <strong>{player.name}</strong>
-        <small>{slotOf(player)} · {player.classYear} · AGE {player.age} · {overallOf(player)} OVR</small>
-      </span>
-      <b style={{ color: tone }}>{word}</b>
-      <ChevronRightIcon />
-    </button>
-  );
-}
-

@@ -1,23 +1,26 @@
 // RetrainModal.tsx
 // Where a man could play, and the odds a winter makes him a natural there.
 //
-// One sheet, two doors: the POSITIONS row on the profile, always there, and
-// the retrain card in the moves panel. Asked for 2026-09-10: "leave it there
-// but open, so we can tap on it and it opens a modal showing us more
-// information about the positions the player can play at." The move itself
-// is the coach's, on his own man, any day of the year -- made now in the
-// winter, written down for the roll during the season (2026-09-16: "leave
-// this button available all year round but the outcome of it happening is
-// decided when the season ends"); everybody else reads.
+// One sheet, two doors: the Positions row on another program's card, and the
+// Position decision on your own. Every row says the two numbers a coach weighs
+// — how he would rate there today, and the chance the move sticks — with their
+// names on them. The move is permanent, so it takes two presses: in the winter
+// it is made at once, and during the season it is written down for the roll
+// and can be taken back until then.
 
-import { Modal } from './Modal.js';
 import { useDynasty } from '../state/store.js';
 import { coverTier, fieldingAt, retrainOdds, retrainablePositions } from '../engine/positions.js';
 import { overallOf } from '../engine/ratings.js';
 import { promiseSpent } from '../engine/morale.js';
-import type { Hitter } from '../engine/types.js';
+import type { Hitter, Position } from '../engine/types.js';
+import {
+  Button, ConfirmButton, EmptyState, List, ListRow, Sheet, StatusBadge, Tag,
+} from './components/ui/index.js';
+import { POSITION_NAME } from './words.js';
 
-export function RetrainModal(
+const posName = (pos: string): string => POSITION_NAME[pos as Position] ?? pos;
+
+export function RetrainSheet(
   { p, canMove, onClose }: { p: Hitter; canMove: boolean; onClose: () => void },
 ) {
   const changePosition = useDynasty((s) => s.changePosition);
@@ -25,66 +28,88 @@ export function RetrainModal(
   // A plan written on the man re-renders the sheet through the version.
   const version = useDynasty((s) => s.version);
   void version;
-  const planned = (p as Hitter & { retrainTo?: Hitter['pos'] }).retrainTo;
+  const planned = (p as Hitter & { retrainTo?: Position }).retrainTo;
   const promise = !promiseSpent(p.recruitPromise) ? p.recruitPromise : undefined;
   const promisedPos = promise?.kind === 'keepPosition' ? promise.promisedPos : undefined;
   const spots = retrainablePositions(p);
-  const home = (p as Hitter & { homePos?: Hitter['pos'] }).homePos ?? p.pos;
+  const home = (p as Hitter & { homePos?: Position }).homePos ?? p.pos;
   const own = home === p.pos ? p : { ...p, pos: home };
 
+  const how = !canMove
+    ? 'What a winter could make of him, if he were yours to move.'
+    : winter
+      ? 'A move is permanent. He learns the new spot over the winter and opens next season there, a step behind until it takes.'
+      : planned
+        ? `Planned: he finishes the season at ${posName(home).toLowerCase()} and moves to ${posName(planned).toLowerCase()} when it ends. You can cancel or change the plan until then.`
+        : 'A move is permanent. Choose now and it happens when the season ends: he learns the new spot over the winter.';
+
   return (
-    <Modal
-      kicker="POSITIONS"
-      title={`${p.name} · ${home}`}
-      lines={[canMove
-        ? (winter
-          ? 'A move is permanent. He spends the winter learning the spot and opens next season there, a step behind until it takes.'
-          : planned
-            ? `Planned: he finishes the season at ${home} and moves to ${planned} when it ends. Tap the plan to cancel it, or another spot to change it.`
-            : 'A move is permanent. Chosen now, it is made when the season ends: he spends the winter learning the spot and opens next season there, a step behind until it takes.')
-        : 'What a winter could make of him, if he were yours to move.']}
-      body={(
-        <div className="retrain-list">
-          <div className="retrain-row is-own">
-            <span><b>{home}</b><small>his own spot · plays as {overallOf(own)}</small></span>
-            <strong>—</strong>
-            <i />
-          </div>
-          {spots.map((spot) => {
-            const odds = retrainOdds(own, spot);
-            const tier = coverTier(own, spot);
-            const plays = overallOf(fieldingAt(own, spot));
-            const breaks = promisedPos !== undefined && spot !== promisedPos;
-            return (
-              <div key={spot} className={`retrain-row${tier >= 2 ? ' is-stretch' : ''}`}>
-                <span>
-                  <b>{spot}</b>
-                  <small>{tier === 1 ? 'natural cover' : 'a stretch'} · plays as {plays} today</small>
-                </span>
-                <strong>{Math.round(odds * 100)}%</strong>
-                {canMove ? (
-                  <button
-                    type="button"
-                    className={`tap${planned === spot ? ' is-planned' : ''}`}
-                    // In the winter the move is made and the sheet closes; in
-                    // season the plan is written and the sheet stays, showing
-                    // it. It read IN THE WINTER, greyed, for eleven months.
-                    onClick={() => { changePosition(p.id, spot); if (winter) onClose(); }}
-                  >
-                    {winter
-                      ? (breaks ? 'MOVE · BREAKS PROMISE' : 'MOVE')
-                      : planned === spot ? 'PLANNED · CANCEL'
-                        : breaks ? 'AT SEASON\'S END · BREAKS PROMISE' : 'AT SEASON\'S END'}
-                  </button>
-                ) : <i />}
-              </div>
-            );
-          })}
-          {spots.length === 0 && <p>There is no realistic spot to train him for.</p>}
-        </div>
+    <Sheet eyebrow={p.name} title="Positions" subtitle={how} onClose={onClose} tall>
+      <List label="Positions he could play">
+        <ListRow
+          icon="check-circled"
+          title={posName(home)}
+          subtitle={`His own spot · rating there ${overallOf(own)}`}
+          status={<Tag>Current</Tag>}
+        />
+        {spots.map((spot) => {
+          const odds = Math.round(retrainOdds(own, spot) * 100);
+          const tier = coverTier(own, spot);
+          const plays = overallOf(fieldingAt(own, spot));
+          const breaks = promisedPos !== undefined && spot !== promisedPos;
+          const isPlan = planned === spot;
+          return (
+            <ListRow
+              key={spot}
+              icon="swap"
+              markTone={tier >= 2 ? 'warning' : undefined}
+              title={posName(spot)}
+              subtitle={`Rating there today: ${plays} · Chance it sticks: ${odds}%`}
+              status={(
+                <>
+                  <Tag tone={tier >= 2 ? 'warning' : undefined}>{tier === 1 ? 'Natural cover' : 'A stretch'}</Tag>
+                  {isPlan && <StatusBadge tone="info" icon="calendar">Planned for the offseason</StatusBadge>}
+                  {breaks && <StatusBadge tone="warning">Breaks your position promise</StatusBadge>}
+                </>
+              )}
+            >
+              {canMove && (winter ? (
+                <ConfirmButton
+                  size="sm"
+                  variant={breaks ? 'danger' : 'secondary'}
+                  idle={`Move to ${posName(spot).toLowerCase()}`}
+                  armed="Tap again to move him"
+                  armedMeta="Permanent"
+                  onConfirm={() => {
+                    const ok = changePosition(p.id, spot);
+                    if (ok) onClose();
+                    return ok;
+                  }}
+                />
+              ) : isPlan ? (
+                <Button size="sm" variant="quiet" icon="cross" onClick={() => changePosition(p.id, spot)}>
+                  Cancel the plan
+                </Button>
+              ) : (
+                <ConfirmButton
+                  size="sm"
+                  variant={breaks ? 'danger' : 'secondary'}
+                  idle="Move at season's end"
+                  armed="Tap again to plan the move"
+                  armedMeta={planned ? `Replaces ${posName(planned).toLowerCase()}` : 'Permanent'}
+                  onConfirm={() => changePosition(p.id, spot)}
+                />
+              ))}
+            </ListRow>
+          );
+        })}
+      </List>
+      {spots.length === 0 && (
+        <EmptyState icon="info" title="Nowhere else to train him" text="There is no realistic spot for him to learn." />
       )}
-      action="CLOSE"
-      onClose={onClose}
-    />
+    </Sheet>
   );
 }
+
+/** The old name, for the doors that still use it. */
+export const RetrainModal = RetrainSheet;

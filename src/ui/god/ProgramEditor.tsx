@@ -1,12 +1,13 @@
-// god/ProgramEditor.tsx — program identity and prestige only.
+// god/ProgramEditor.tsx — a program's name and prestige only.
 //
-// Roster management is its own editor and league membership lives under the
-// Leagues tool. Keeping this surface narrow makes it obvious what a change does.
+// Its roster is its own editor and league membership lives under Leagues, so
+// this page stays narrow and it is obvious what a change here does.
 
 import { useDynasty } from '../../state/store.js';
-import { leagueName } from '../../engine/leagueNames.js';
 import { prestigeStars } from '../../engine/program.js';
-import { Field, Slider } from './controls.js';
+import { Card, List, ListRow, StatGroup, Stars } from '../components/ui/index.js';
+import { conferenceName } from '../words.js';
+import { Field, GodPage, Slider } from './controls.js';
 
 export function ProgramEditor({ team }: { team: number }) {
   const season = useDynasty((s) => s.season);
@@ -18,29 +19,31 @@ export function ProgramEditor({ team }: { team: number }) {
   if (!season || !record) return null;
 
   return (
-    <main className="module-workspace god-desk">
-      <section className="god-summary-card program-summary">
-        <div><small>PRESTIGE</small><strong>{Math.round(record.prestige)}</strong><span>{'★'.repeat(prestigeStars(record.prestige))}</span></div>
-        <div><small>LEAGUE</small><strong className="god-summary-text">{leagueName(record.conference)}</strong><span>membership edited elsewhere</span></div>
-      </section>
+    <GodPage
+      eyebrow="God mode · Program"
+      title={record.def.school}
+      description={`${conferenceName(record.conference)} · crest ${record.def.abbr}${record.index === userTeam ? ' · your program' : ''}`}
+    >
+      <StatGroup
+        size="sm"
+        items={[
+          { label: 'Prestige', value: Math.round(record.prestige), unit: '/100', note: <Stars value={prestigeStars(record.prestige)} label="Program prestige" /> },
+        ]}
+      />
 
-      <section className="god-card">
-        <Field label="SCHOOL" value={record.def.school} onCommit={(v) => rename(record.index, v, record.def.nickname)} />
-        <Field label="NICKNAME" value={record.def.nickname} onCommit={(v) => rename(record.index, record.def.school, v)} />
-        <Slider label="PRESTIGE" value={record.prestige} min={1} max={100} onCommit={(v) => setPrestige(record.index, v)} />
-        <p className="god-note">The crest keeps the abbreviation {record.def.abbr}. League names and program movement are controlled from the Leagues menu.</p>
-      </section>
+      <Card title="Name and prestige">
+        <Field label="School" value={record.def.school} onCommit={(v) => rename(record.index, v, record.def.nickname)} />
+        <Field label="Nickname" value={record.def.nickname} onCommit={(v) => rename(record.index, record.def.school, v)} />
+        <Slider label="Prestige" value={record.prestige} min={1} max={100} onCommit={(v) => setPrestige(record.index, v)} hint="How big the name is: who recruits listen to, and what the board expects." />
+        <p className="pb-note">The crest keeps the letters {record.def.abbr}.</p>
+      </Card>
 
-      <section className="god-linked-actions">
-        <button type="button" className="god-link-card tap" onClick={() => openGod({ kind: 'roster', team: record.index })}>
-          <small>ROSTER</small><strong>Manage players</strong><span>Add, browse and edit this program's roster.</span>
-        </button>
-        <button type="button" className="god-link-card tap" onClick={() => openGod({ kind: 'leagues' })}>
-          <small>LEAGUES</small><strong>League membership</strong><span>Rename leagues or move programs between them.</span>
-        </button>
-      </section>
+      <List label="Related tools">
+        <ListRow icon="person" title="Roster" subtitle="Add, browse and edit this program's players" onClick={() => openGod({ kind: 'roster', team: record.index })} />
+        <ListRow icon="globe" title="Leagues" subtitle="Rename leagues or move programs between them" onClick={() => openGod({ kind: 'leagues' })} />
+      </List>
 
-      {record.index === userTeam && <p className="god-note god-context-note">This is your program. Coach, budget and staff are separate tools in the Program category of the Control Center.</p>}
-    </main>
+      
+    </GodPage>
   );
 }

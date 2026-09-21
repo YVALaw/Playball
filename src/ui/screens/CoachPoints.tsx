@@ -1,94 +1,93 @@
 // CoachPoints.tsx
 // What you got better at this year.
 //
-// Called "Coach" and not "Your staff": there is no staff in this game, there is
-// you, and naming a screen after people who do not exist is the sort of thing
-// that makes a player go looking for them.
+// Four skills on a board, each with the number set large and two keys under
+// it. A point can be taken back until the step is left, by any route; unspent
+// points carry over. What your assistant coaches add shows on the skill they
+// add to, as the number the engine will actually use in games.
 //
-// Four attributes, and every one of them is wired to something the engine
-// already does — a skill tree whose branches do not change the simulation is a
-// menu, not a decision. The screen says what each point actually buys, in the
-// same terms the rest of the game uses, so the choice can be made on evidence
-// rather than on which word sounds strongest.
+// The tiles do not explain what a point does. The place to read that is the
+// coach profile; here the number, the room left on the bar and the staff line
+// are the whole story.
 
 import { useDynasty } from '../../state/store.js';
-import { FixedHeader, FloatingAction } from '../Sticky.js';
-import { ModuleIntro } from '../components/Kit.js';
 import { FirstVisit } from '../Tutorial.js';
-import { SKILLS, SKILL_LABEL, SKILL_BLURB } from '../../engine/program.js';
+import { SKILLS } from '../../engine/program.js';
+import { staffBonus } from '../../engine/economy.js';
+import type { CoachSkills } from '../../engine/program.js';
+import { Marquee, SpendTile, TileGrid } from '../components/ui/index.js';
+import { plural } from '../words.js';
+import { ContinueBar, StepScreen } from './OffseasonStep.js';
+
+const SKILL_NAME: Record<keyof CoachSkills, string> = {
+  offense: 'Offense',
+  defense: 'Defense',
+  training: 'Training',
+  recruiting: 'Recruiting',
+};
+
+/** Which assistant adds to which skill. */
+const STAFF_SEAT: Partial<Record<keyof CoachSkills, string>> = {
+  offense: 'Hitting',
+  defense: 'Pitching',
+  recruiting: 'Recruiting',
+};
 
 export function CoachPoints() {
   const coach = useDynasty((s) => s.coach);
+  const economy = useDynasty((s) => s.economy);
   const spend = useDynasty((s) => s.spendSkill);
   const refund = useDynasty((s) => s.refundSkill);
   const spentThisStep = useDynasty((s) => s.spentThisStep);
-  const next = useDynasty((s) => s.nextPhase);
   const version = useDynasty((s) => s.version);
   void version;
 
   const left = coach.skillPoints;
-  const back = SKILLS.reduce((n, k) => n + (spentThisStep[k] ?? 0), 0);
+  const added = SKILLS.reduce((n, k) => n + (spentThisStep[k] ?? 0), 0);
+  const bonus = staffBonus(economy.staff, coach.skills);
 
   return (
-    <FixedHeader
-      header={<ModuleIntro kicker={`${coach.name} · YEAR ${coach.tenure}`} title="Coach development" />}
-      action={<FloatingAction
-        label={left > 0 ? `CONTINUE · ${left} UNSPENT` : 'TO THE DRAFT'}
-        onClick={() => void next('coach')}
-      />}
+    <StepScreen
+      bar={(
+        <ContinueBar
+          from="coach"
+          note={added > 0
+            ? 'Leaving this step, by any route, locks in the points you added.'
+            : left > 0 ? `${plural(left, 'point')} unspent: they carry over to next year.` : undefined}
+        />
+      )}
     >
-      <FirstVisit id="coachpoints" />
-      <main className="module-workspace coach-development-workspace offseason-coach">
-        <section className={`coach-points-command${left > 0 ? ' has-points' : ''}`}>
-          <div>
-            <small>AVAILABLE</small>
-            <strong>{left}</strong>
-            <span>{left === 1 ? 'point' : 'points'}</span>
-          </div>
-          <p>{left > 0
-            ? 'Invest in the part of coaching you want to become known for. Unspent points carry forward.'
-            : 'This year’s growth is allocated. Review the shape of your coaching profile before moving on.'}</p>
-          <div className="coach-points-session">
-            <small>THIS SESSION</small>
-            <strong>{back > 0 ? `+${back} allocated` : 'No changes yet'}</strong>
-            <span>{back > 0 ? 'You can undo these until you continue.' : 'Nothing is locked until you move on.'}</span>
-          </div>
-        </section>
-
-        <section className="coach-skill-grid" aria-label="Coach skills">
-          {SKILLS.map((k) => {
-            const value = coach.skills[k];
-            const added = spentThisStep[k] ?? 0;
-            const maxed = value >= 99;
-            return (
-              <article className={`coach-skill-card${added > 0 ? ' invested' : ''}${maxed ? ' maxed' : ''}`} key={k}>
-                <header>
-                  <span><small>{SKILL_LABEL[k]}</small><strong>{value}</strong></span>
-                  <em>{maxed ? 'MAX' : added > 0 ? `+${added} THIS YEAR` : `NEXT ${Math.min(99, value + 1)}`}</em>
-                </header>
-                <div className="coach-skill-meter" aria-label={`${SKILL_LABEL[k]} ${value} of 99`}>
-                  <i style={{ width: `${value}%` }} />
-                </div>
-                <p>{SKILL_BLURB[k]}</p>
-                <footer>
-                  <button
-                    className="tap"
-                    type="button"
-                    disabled={added === 0}
-                    onClick={() => refund(k)}
-                  >Undo −1</button>
-                  <button
-                    className="tap primary"
-                    type="button"
-                    disabled={left <= 0 || maxed}
-                    onClick={() => spend(k)}
-                  >{maxed ? 'Maxed' : 'Invest +1'}</button>
-                </footer>
-              </article>
-            );
-          })}
-        </section>
+      <main className="pb-page">
+        <FirstVisit id="coachpoints" />
+        <Marquee
+          eyebrow={`${coach.name} · Year ${coach.tenure}`}
+          title="Coach points"
+          numbers={[
+            { label: 'To spend', value: left },
+            {
+              label: 'Added',
+              value: added,
+              note: added > 0 ? 'Undo until you continue' : 'Nothing locked yet',
+            },
+          ]}
+        />
+        <TileGrid label="Coaching skills">
+          {SKILLS.map((k) => (
+            <SpendTile
+              key={k}
+              name={SKILL_NAME[k]}
+              value={coach.skills[k]}
+              max={99}
+              added={spentThisStep[k] ?? 0}
+              bonus={bonus[k]}
+              bonusLabel={STAFF_SEAT[k]}
+              canAdd={left > 0}
+              onAdd={() => spend(k)}
+              onUndo={() => refund(k)}
+            />
+          ))}
+        </TileGrid>
       </main>
-    </FixedHeader>
+    </StepScreen>
   );
 }

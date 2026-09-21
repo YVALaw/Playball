@@ -11,7 +11,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { KEEP_PITCHES, type DraftBoard } from '../src/engine/draft.js';
 import { useDynasty, PHASES } from '../src/state/store.js';
 import { simSeason } from '../src/engine/season.js';
-import type { AlumnusNote } from '../src/engine/legacy.js';
+import {
+  levelWords, onTheLadder, playedIn, proSeasons, proCareer, type AlumnusNote,
+} from '../src/engine/legacy.js';
 
 // IndexedDB is not in node; the same Map-backed stand-in the saves suite uses.
 const disk = vi.hoisted(() => new Map<string, unknown>());
@@ -104,5 +106,65 @@ describe('the alumni book', () => {
     const book = useDynasty.getState().alumni;
     expect(book[String(man.id)]).toBeUndefined();
     expect(book.ghost).toBeDefined();
+  });
+});
+
+/*
+  Where a career actually went, as the screens have to read it.
+
+  Reported 2026-09-20: "on the pros it is not registering the ones that went
+  other leagues like Venezuela, Dominican Republic, Japan, Korea etc." The
+  ladder is five rungs and the world sends undrafted men to thirteen other
+  places; a screen that knew only the five listed the rest as nothing. And the
+  two rows that are not summers at all — the June the baseball stopped, and the
+  man who came back to coach — must never be counted as professional seasons.
+*/
+describe('every place a career can end', () => {
+  it('names the ladder the way the sport spells it', () => {
+    expect(levelWords('THE SHOW')).toBe('The Show');
+    expect(levelWords('TRIPLE-A')).toBe('Triple-A');
+    expect(levelWords('ROOKIE BALL')).toBe('Rookie ball');
+  });
+
+  it('names the places a man goes when nobody drafts him', () => {
+    expect(levelWords('JAPAN')).toBe('Japan');
+    expect(levelWords('KOREA')).toBe('Korea');
+    expect(levelWords('THE DOMINICAN')).toBe('The Dominican Republic');
+    expect(levelWords('VENEZUELA')).toBe('Venezuela');
+    expect(levelWords('INDEPENDENT BALL')).toBe('The independent leagues');
+  });
+
+  it('knows which of them are rungs and which are somewhere else', () => {
+    expect(onTheLadder('TRIPLE-A')).toBe(true);
+    expect(onTheLadder('THE SHOW')).toBe(true);
+    expect(onTheLadder('JAPAN')).toBe(false);
+    expect(onTheLadder('INDEPENDENT BALL')).toBe(false);
+  });
+
+  it('does not count going home, or coaching, as playing', () => {
+    expect(playedIn('HOME')).toBe(false);
+    expect(playedIn('COACHING')).toBe(false);
+    expect(playedIn('VENEZUELA')).toBe(true);
+    expect(proSeasons([
+      { level: 'SINGLE-A' }, { level: 'MEXICO' }, { level: 'HOME' }, { level: 'COACHING' },
+    ])).toBe(2);
+  });
+
+  /*
+    And the undrafted man really does reach those places: the whole point of
+    the report is that the world was already sending men there.
+  */
+  it('sends undrafted men abroad, somewhere in a hundred careers', () => {
+    const places = new Set<string>();
+    for (let i = 0; i < 200; i++) {
+      const note: AlumnusNote = {
+        name: `Man ${i}`, teamAbbr: 'TST', year: 2030, reason: 'graduated',
+        overall: 60 + (i % 20), classYear: 'Senior',
+      };
+      for (const row of proCareer(`u${i}`, note, 2040)) {
+        if (playedIn(row.level) && !onTheLadder(row.level)) places.add(row.level);
+      }
+    }
+    expect(places.size).toBeGreaterThan(3);
   });
 });
