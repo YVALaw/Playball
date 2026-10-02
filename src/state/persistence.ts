@@ -163,6 +163,19 @@ export interface SaveFile {
   arguedTerms?: boolean;
   /** The season opener still owed, until it is accepted. Absent otherwise. */
   seasonOpener?: unknown;
+  /** The season whose plan was put to the coach. Absent: owed one. */
+  seasonPlanYear?: number;
+  /**
+   * The winter's report: who graduated, the country's draft, the holes it
+   * left, and once the year has turned, the class that arrived.
+   *
+   * The store holds it from the draft step to the next one, and the draft
+   * step's tabs, a departed man's card, the season opener and the case put to
+   * the board all read it. It lived only in the store, so a career reopened
+   * mid-offseason came back to an empty Draft board tab. Absent on older saves
+   * and on a career that has not reached its first draft.
+   */
+  lastOffseason?: unknown;
   /** The watchlists — programs followed and chairs the career points at. */
   watch?: unknown;
   /** The staff, the facilities and the year's spending. */
@@ -183,6 +196,11 @@ export interface SaveFile {
    * be taking something away from a career already in progress.
    */
   depth?: unknown;
+  /**
+   * Whether the staff replaces a starred recruit who signs elsewhere. Written
+   * only when off; absent is on.
+   */
+  replaceLost?: boolean;
   /** A sandbox career (05 §61). Absent is off. */
   godMode?: boolean;
   /**
@@ -422,6 +440,10 @@ export interface SaveExtras {
   arguedTerms?: boolean;
   /** The season opener still owed, or absent once read and on older saves. */
   seasonOpener?: unknown;
+  /** The season whose plan was put to the coach; null while one is owed. */
+  seasonPlanYear?: number | null;
+  /** The winter's report, from the draft step to the next. See `SaveFile`. */
+  lastOffseason?: unknown;
   /** The program and job-path watchlists, by school abbreviation. */
   watch?: unknown;
   /** The program's money: staff, facilities, the year's ledger. Stage 11. */
@@ -432,6 +454,11 @@ export interface SaveExtras {
   alumni?: unknown;
   /** How deep a game this career is. See `SaveFile.depth`. */
   depth?: unknown;
+  /**
+   * Whether the staff replaces a starred recruit who signs elsewhere. Written
+   * only when off; absent is on.
+   */
+  replaceLost?: boolean;
   /** A sandbox career (05 §61). Absent is off. */
   godMode?: boolean;
   /**
@@ -531,6 +558,13 @@ export function buildSaveFile(
     ...(extras.boardAsk ? { boardAsk: extras.boardAsk } : {}),
     ...(extras.arguedTerms === true ? { arguedTerms: true } : {}),
     ...(extras.seasonOpener ? { seasonOpener: extras.seasonOpener } : {}),
+    // Only a year: absent is "owed one", which is also what an older save says.
+    ...(typeof extras.seasonPlanYear === 'number' ? { seasonPlanYear: extras.seasonPlanYear } : {}),
+    // Whole, the country's lists included: a departed man's card and the
+    // count the board hears read them end to end, and your own drafted men
+    // sit well down the national order. Under a hundred kilobytes, against a
+    // file of two or three megabytes.
+    ...(extras.lastOffseason ? { lastOffseason: extras.lastOffseason } : {}),
     ...(extras.watch ? { watch: extras.watch } : {}),
     ...(extras.economy ? { economy: extras.economy } : {}),
     ...(extras.rivalry ? { rivalry: extras.rivalry } : {}),
@@ -542,6 +576,8 @@ export function buildSaveFile(
     // which is fine today and would stop being fine the moment the default
     // changed. Two keys is a cheap way to never have that conversation.
     ...(extras.depth ? { depth: extras.depth } : {}),
+    // Only the "no": absent is on, which is also what every older save says.
+    ...(extras.replaceLost === false ? { replaceLost: false } : {}),
     ...(extras.godMode ? { godMode: true } : {}),
     ...(extras.portal ? { portal: extras.portal } : {}),
     ...(extras.approaches ? { approaches: extras.approaches } : {}),
@@ -601,6 +637,10 @@ export interface LoadedDynasty {
   arguedTerms: boolean;
   /** The season opener still owed, or undefined. */
   seasonOpener: unknown;
+  /** The season whose plan was put to the coach, or undefined while one is owed. */
+  seasonPlanYear: unknown;
+  /** The winter's report, or null on saves that predate keeping it. */
+  lastOffseason: unknown;
   /** The watchlists, or undefined on saves that predate them. */
   watch: unknown;
   /** The economy, or undefined on saves that predate stage 11. */
@@ -611,6 +651,8 @@ export interface LoadedDynasty {
   alumni: unknown;
   /** The depth preset and its overrides. Null on saves that predate the mode. */
   depth: unknown;
+  /** Whether the staff replaces lost recruits. True unless the file says false. */
+  replaceLost: boolean;
   /** Whether this career is a sandbox. Off on every save from before god mode. */
   godMode: boolean;
   /** League renames, empty on every save from before. */
@@ -687,11 +729,14 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
     boardAsk: file.boardAsk,
     arguedTerms: file.arguedTerms === true,
     seasonOpener: file.seasonOpener,
+    seasonPlanYear: file.seasonPlanYear,
+    lastOffseason: file.lastOffseason ?? null,
     watch: file.watch,
     economy: file.economy,
     rivalry: file.rivalry,
     alumni: file.alumni,
     depth: file.depth ?? null,
+    replaceLost: file.replaceLost !== false,
     godMode: file.godMode === true,
     leagueNames: file.leagueNames ?? null,
     portal: file.portal ?? null,

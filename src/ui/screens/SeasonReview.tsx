@@ -14,15 +14,20 @@ import { GoalGrid } from './BoardGoals.js';
 import { badgeOf } from '../../data/badges.js';
 import { FirstVisit } from '../Tutorial.js';
 import { rpiOrder, standings, regularRecord } from '../../engine/season.js';
-import { objectiveMet, prestigeStars, STAR_MARKS } from '../../engine/program.js';
+import { objectiveMet, prestigeStars, resignationCost, STAR_MARKS } from '../../engine/program.js';
 import type { Finish } from '../../engine/postseason.js';
 import type { Hitter, PlayerId } from '../../engine/types.js';
+import { Trophy, type TrophyKind } from '../Honours.js';
 import {
-  Button, Callout, Card, CompareTable, Face, List, ListRow, Marquee, Medal, PlayerRow, StatGroup,
+  Button, Callout, Card, CompareTable, Face, List, ListRow, Marquee, PlayerRow, StatGroup,
   StatusBadge, Table, Tag,
 } from '../components/ui/index.js';
-import { conferenceName, ordinal, plural, recordText, sentence } from '../words.js';
+import { conferenceName, ordinal, plural, recordText, sentence, stateName } from '../words.js';
 import { ContinueBar, StepScreen } from './OffseasonStep.js';
+import type { StaffSeat } from '../../engine/economy.js';
+
+/** The staff work card's order: the bats, the arms, then the network. */
+const STAFF_ORDER: StaffSeat[] = ['hitting', 'pitching', 'recruiting'];
 
 /** How far a season went, in the postseason's own words. */
 const FINISH_WORDS: Record<Finish, string> = {
@@ -49,6 +54,7 @@ export function SeasonReview() {
   const endCareer = useDynasty((s) => s.endCareer);
   const ask = useDynasty((s) => s.boardAsk);
   const outcome = useDynasty((s) => s.lastOutcome);
+  const economy = useDynasty((s) => s.economy);
   const team = useUserTeam();
   // Read once and cleared on mount: leaving without pressing anything still
   // counts as having been told.
@@ -125,15 +131,15 @@ export function SeasonReview() {
 
   // What the year is remembered as; nothing, for most of them.
   const wonConference = post?.conferenceChampions.includes(team.index) ?? false;
-  const banner: { title: string; note: string; medal?: 'gold' | 'silver' | 'bronze' } | null =
+  const banner: { title: string; note: string; trophy?: TrophyKind } | null =
     post?.champion === team.index
-      ? { title: 'National champions', note: `${team.def.school} win it all. Nothing moves a program further.`, medal: 'gold' }
+      ? { title: 'National champions', note: `${team.def.school} win it all. Nothing moves a program further.`, trophy: 'national' }
       : finish === 'runner-up'
-        ? { title: 'National runners-up', note: 'The last series of the year, and the wrong end of it. It counts, and it stings.', medal: 'silver' }
+        ? { title: 'National runners-up', note: 'The last series of the year, and the wrong end of it. It counts, and it stings.', trophy: 'runnerUp' }
         : finish === 'omaha'
           ? { title: 'National tournament', note: `You reached the national tournament: the last 20 of ${season.teams.length}.` }
           : wonConference
-            ? { title: `${confName} champions`, note: 'Won the conference tournament.', medal: 'bronze' }
+            ? { title: `${confName} champions`, note: 'Won the conference tournament.', trophy: 'conference' }
             // A finish of 'regional' is written for every team that played a
             // regional and overwritten once one is won, so it means the run
             // ended there.
@@ -142,12 +148,9 @@ export function SeasonReview() {
               : displayFinish === 'conference'
                 ? { title: 'Conference tournament', note: 'You made the postseason. The run ended before the regionals.' }
                 : confRank === 1
-                  ? { title: `${confName} regular-season champions`, note: 'The best record in the conference over the games that count for seeding.', medal: 'bronze' }
+                  ? { title: `${confName} regular-season champions`, note: 'The best record in the conference over the games that count for seeding.', trophy: 'conference' }
                   : null;
 
-  // A coach the board has let go is not continuing to anything: leaving this
-  // page ends the tenure and puts him on the market, and the button says so.
-  const leaving = review?.fired === true;
   /*
     And the other way a tenure ends. `last` is a career that is already over —
     he said so in the spring, or the years have run out — so leaving this page
@@ -158,7 +161,18 @@ export function SeasonReview() {
   const seasons = Math.max(history.length, coach.tenure);
   const years = retirementStatus({ age: coach.age, seasons });
   const last = coach.farewellYear === year || years === 'over';
-  const asked = !last && !leaving && years === 'asked';
+  // He handed in his notice, and this meeting is his last here (2026-09-30).
+  const resigning = !last && coach.resignYear === year;
+  // A coach the board has let go, or one who resigned, is not continuing to
+  // anything: leaving this page ends the tenure and puts him on the market,
+  // and the button says so.
+  const leaving = review?.fired === true || resigning;
+  // What the resignation costs as he leaves: the years after this season, read
+  // off the coach exactly as `chargeResignation` reads them, so a review card
+  // dismissed from the Board room cannot hide the price.
+  const cost = resigning ? resignationCost(coach.contractYears) : 0;
+  // Still asked when he resigned: Walk away ends it, Continue is the market.
+  const asked = !last && !review?.fired && years === 'asked';
   const through = review ? year + review.contractYears : year;
   const job: { tone: 'positive' | 'warning' | 'negative' | 'info'; title: string } | null = !review ? null
     // A last meeting is about the career, not the contract. Everything below
@@ -170,12 +184,20 @@ export function SeasonReview() {
         ? 'Your last meeting with the board'
         : `The years call it at ${coach.age}`,
     }
+    : resigning ? { tone: 'info', title: `Your last meeting at ${team.def.school}` }
     : review.fired ? { tone: 'negative', title: 'The board has let you go' }
       : review.notRenewed ? { tone: 'negative', title: 'The board did not renew your contract' }
         : review.renewed ? { tone: 'positive', title: `The board renewed your contract through ${through}` }
           : review.extended ? { tone: 'positive', title: `The board extended your contract through ${through}` }
             : review.securityAfter < 35 ? { tone: 'warning', title: 'You are on notice' }
               : { tone: review.verdict === 'exceeded' || review.verdict === 'met' ? 'positive' : 'info', title: review.headline ?? 'The board has reviewed your season' };
+
+  // What the staff's season work added, man by man (and state by state); only what moved.
+  const work = (economy.projectHistory ?? [])
+    .filter((r) => r.season === true && r.year === year)
+    .sort((a, b) => STAFF_ORDER.indexOf(a.seat) - STAFF_ORDER.indexOf(b.seat))
+    .flatMap((r) => r.changes.map((c) => ({ r, c, b: Math.round(c.before), a: Math.round(c.after) })))
+    .filter((x) => x.a > x.b);
 
   const delta = review ? review.prestigeAfter - review.prestigeBefore : 0;
   const nextMark = review ? STAR_MARKS.find((mark) => review.prestigeAfter < mark) : undefined;
@@ -189,7 +211,8 @@ export function SeasonReview() {
           label={last ? 'See what you built' : leaving ? 'Look for a new job' : undefined}
           note={last
             ? `${seasons} seasons. Leaving this page closes the career.`
-            : leaving ? 'Leaving this page ends your time here and puts you on the job market.' : undefined}
+            : resigning && cost > 0 ? `Leaving this page ends your time here. −${cost} prestige.`
+              : leaving ? 'Leaving this page ends your time here and puts you on the job market.' : undefined}
         />
       )}
     >
@@ -205,7 +228,7 @@ export function SeasonReview() {
             {review.message}
             {/* A contract that runs through 2033 is not news to a man who
                 finishes in 2028. */}
-            {!last && !review.fired && !review.notRenewed && !review.renewed && !review.extended
+            {!last && !resigning && !review.fired && !review.notRenewed && !review.renewed && !review.extended
               ? ` Your contract runs through ${through}.` : ''}
           </Callout>
         )}
@@ -213,7 +236,7 @@ export function SeasonReview() {
         <Card
           eyebrow="How the year ended"
           title={banner?.title ?? (displayFinish ? FINISH_WORDS[displayFinish] : `${year} season`)}
-          trailing={banner?.medal ? <Medal metal={banner.medal} size={40} label={banner.title} /> : undefined}
+          trailing={banner?.trophy ? <Trophy kind={banner.trophy} size={56} label={banner.title} /> : undefined}
           footer={(
             <div className="pb-june__tools">
               <Button size="sm" variant="quiet" iconAfter="chevron-right" onClick={() => openOverlay('rankings')}>National ranking</Button>
@@ -291,6 +314,32 @@ export function SeasonReview() {
           </Card>
         )}
 
+        {work.length > 0 && (
+          <Card title="Staff work" flush>
+            <List className="pb-list--inset" label="Staff work">
+              {work.map(({ r, c, b, a }, i) => (c.id ? (
+                <PlayerRow
+                  key={`${r.seat}-${c.id}`}
+                  name={c.name}
+                  avatar={<Face id={c.id} team={team.def.abbr} size={40} />}
+                  meta={`${c.attribute} ${b} → ${a}`}
+                  value={`+${a - b}`}
+                  onClick={() => openPlayer(c.id as PlayerId)}
+                />
+              ) : (
+                <ListRow
+                  key={`${r.seat}-${i}`}
+                  icon="globe"
+                  markTone="info"
+                  title={stateName(c.name)}
+                  subtitle={`Pipeline strength ${b} → ${a}`}
+                  value={`+${a - b}`}
+                />
+              )))}
+            </List>
+          </Card>
+        )}
+
         {review && (
           <Card eyebrow="What the season moved" title="Program prestige">
             <CompareTable
@@ -315,13 +364,7 @@ export function SeasonReview() {
                   key: `${r.label}-${i}`,
                   cells: [r.label, `${r.amount > 0 ? '+' : r.amount < 0 ? '−' : ''}${Math.abs(r.amount)}`],
                 }))}
-                caption={`${delta > 0 ? 'Up' : delta < 0 ? 'Down' : 'No change'}${delta !== 0 ? ` ${Math.abs(delta)} in all` : ''}.`}
               />
-            )}
-            {nextMark !== undefined && (
-              <p className="pb-note">
-                {prestigeStars(review.prestigeAfter) + 1} stars at {nextMark}. You are at {review.prestigeAfter}.
-              </p>
             )}
           </Card>
         )}

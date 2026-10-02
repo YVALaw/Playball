@@ -16,7 +16,7 @@ import { era, type BattingSeason, type PitchingSeason } from '../../engine/seaso
 import type { Arm } from '../../engine/types.js';
 import { battingAverage } from '../../engine/season.js';
 import { pct } from '../format.js';
-import { useDynasty } from '../../state/store.js';
+import { blockingCardUp, useDynasty } from '../../state/store.js';
 import { handles } from '../../state/depth.js';
 import {
   buzz, crowdLeverage, crowdStart, crowdStop, crowdSwell, sfx,
@@ -45,7 +45,8 @@ import type { Hitter, PlayerId } from '../../engine/types.js';
 /** The game PLAY BALL has been called for. */
 let announcedGame: unknown = null;
 
-type Modal = 'pinch' | 'pen' | 'dugout' | 'log' | null;
+type Modal = 'dugout' | 'log' | null;
+type Pick = 'pinch' | 'pen' | null;
 
 /** The engine's calls, in the words and hints the screen uses. */
 const CALL_NAME: Record<string, string> = {
@@ -88,7 +89,36 @@ export function Manage() {
   const bracket = useDynasty((s) => s.bracket);
   const go = useDynasty((s) => s.go);
   const saveNow = useDynasty((s) => s.saveNow);
-  const [modal, setModal] = useState<Modal>(null);
+  /*
+    The dugout stays mounted under its pickers, covered (2026-09-30), so the
+    back gesture peels the picker and finds the dugout's layer already there.
+    Swapped out, the dugout remounted during the pop and its entry was lost.
+    Any other change of sheet closes both; a pick does too.
+  */
+  const [sheets, setSheets] = useState<{ base: Modal; top: Pick }>({ base: null, top: null });
+  const modal = sheets.base;
+  const picker = sheets.top;
+  const setModal = (base: Modal): void => setSheets({ base, top: null });
+  const setPicker = (top: Pick): void => setSheets((s) => ({ ...s, top }));
+  /*
+    A back press a June game refuses (nav's guard bumps `cardNudge`): the way
+    on shakes, Dugout or Record the game. Motion only; a card up answers for
+    itself (PF, 2026-09-30).
+  */
+  const liveEl = useRef<HTMLDivElement | null>(null);
+  const nudge = useDynasty((s) => s.cardNudge);
+  const nudgedAt = useRef(nudge);
+  useEffect(() => {
+    if (nudge === nudgedAt.current) return;
+    nudgedAt.current = nudge;
+    const s = useDynasty.getState();
+    if (s.bracket === null || s.live === null || blockingCardUp(s)) return;
+    const el = liveEl.current?.querySelector<HTMLElement>('.pb-live__bar :is([data-guide="dugout"], [data-guide="record-game"])');
+    if (!el) return;
+    el.classList.remove('is-nudged');
+    void el.offsetWidth;
+    el.classList.add('is-nudged');
+  }, [nudge]);
   const [scoreTick, setScoreTick] = useState(0);
   const [ball, setBall] = useState<BallHit | null>(null);
   /*
@@ -468,7 +498,7 @@ export function Manage() {
   const userWon = live.over && ((meta.home === userTeam) === (homeRuns > awayRuns));
 
   return (
-    <div className={`pb-live${nono ? ' is-nono' : late ? ' is-late' : ''}`}>
+    <div ref={liveEl} className={`pb-live${nono ? ' is-nono' : late ? ' is-late' : ''}`}>
       <FirstVisit id="manage" />
 
       <header className="pb-live__top">
@@ -596,6 +626,7 @@ export function Manage() {
           title={d.side === 'offense' ? 'Create the next edge' : 'Protect this inning'}
           subtitle={`${away?.def.school} ${awayRuns}, ${home?.def.school} ${homeRuns} · ${baseStateText(d.bases, d.outs)}`}
           onClose={() => setModal(null)}
+          covered={picker !== null}
         >
           <List label="This inning">
             {d.side === 'offense' && (
@@ -604,7 +635,7 @@ export function Manage() {
                 title={`Pinch hit for ${d.batter.name}`}
                 subtitle={live.benchAvailable.length > 0 ? `${plural(live.benchAvailable.length, 'bench player')} available` : 'Nobody left on the bench'}
                 disabled={playing || changingSides || live.benchAvailable.length === 0}
-                onClick={() => setModal('pinch')}
+                onClick={() => setPicker('pinch')}
               />
             )}
             {d.side === 'defense' && myPen && (
@@ -613,7 +644,7 @@ export function Manage() {
                 title="Go to the bullpen"
                 subtitle={live.bullpenAvailable.length > 0 ? `${plural(live.bullpenAvailable.length, 'arm')} ready` : 'Nobody is ready'}
                 disabled={playing || changingSides || live.bullpenAvailable.length === 0}
-                onClick={() => setModal('pen')}
+                onClick={() => setPicker('pen')}
               />
             )}
             {d.side === 'defense' && myVisits && (
@@ -660,8 +691,9 @@ export function Manage() {
               onConfirm={() => { setModal(null); once(autoFinish)(); }}
             />
             {/* The way out without ending anything: the game keeps in memory
-                and Play ball resumes it. June does not get this door, because
-                mid-bracket saving is limited to stage boundaries. */}
+                and Play ball resumes it. June does not get this door; a June
+                game holds the back gesture until it is over (2026-09-30). The
+                old reason, that June could not save mid-bracket, is gone. */}
             {bracket === null && (
               <Button variant="quiet" block icon="arrow-left" onClick={() => { setModal(null); void saveNow(); go('home'); }}>
                 Back to Today (the game waits)
@@ -690,12 +722,12 @@ export function Manage() {
         </Sheet>
       )}
 
-      {(modal === 'pinch' || modal === 'pen') && d && (
+      {modal === 'dugout' && picker !== null && d && (
         <Picker
-          title={modal === 'pinch' ? `Pinch hit for ${d.batter.name}` : 'Go to the bullpen'}
+          title={picker === 'pinch' ? `Pinch hit for ${d.batter.name}` : 'Go to the bullpen'}
           eyebrow="Dugout decision"
           // The whole pen, with every resting arm greyed and saying why.
-          rows={modal === 'pinch'
+          rows={picker === 'pinch'
             ? live.benchAvailable.map((h: Hitter) => ({
               id: h.id, name: h.name, note: batLine(h, season.batting.get(h.id)), rating: overallOf(h),
             }))
@@ -706,16 +738,17 @@ export function Manage() {
               ...restingPen(),
             ]}
           onPick={(id) => {
-            if (modal === 'pinch') {
+            if (picker === 'pinch') {
               const h = live.benchAvailable.find((x) => x.id === id);
               if (h) pinchHitFor(h);
             } else {
               const p = live.bullpenAvailable.find((x) => x.id === id);
               if (p) bringIn(p);
             }
+            // Picker and dugout close in one commit: one history write, not two.
             setModal(null);
           }}
-          onClose={() => setModal('dugout')}
+          onClose={() => setPicker(null)}
         />
       )}
     </div>

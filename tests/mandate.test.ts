@@ -145,8 +145,8 @@ describe('asking the board to reconsider', () => {
     await useDynasty.getState().rollYear();
     const before = useDynasty.getState().boardAsk!;
     const report = useDynasty.getState().lastOffseason!;
-    // A winter that took a whole side apart: seven men who would have played.
-    const gone = Array.from({ length: 7 }, (_, i) => ({ id: `g${i}`, name: `Man ${i}`, pos: 'SS' }));
+    // A winter that took a whole side apart: seven of his men who would have played.
+    const gone = Array.from({ length: 7 }, (_, i) => ({ id: `g${i}`, name: `Man ${i}`, pos: 'SS', team: 0 }));
     useDynasty.setState({
       lastOffseason: { ...report, graduated: gone as unknown as typeof report.graduated, drafted: [] },
     });
@@ -170,5 +170,31 @@ describe('asking the board to reconsider', () => {
     expect(await useDynasty.getState().loadSlot('argued')).toBe(true);
     expect(useDynasty.getState().boardAsk!.targetWins).toBe(target);
     expect(useDynasty.getState().arguedTerms).toBe(true);
+  });
+
+  /*
+    The winter's report lists every program's departures — the draft board is
+    read off it — and the case used to count all of them, so a push back found
+    hundreds gone and always won the largest cut there is (found 2026-09-25).
+  */
+  it('hears his own winter, not the whole country\'s', async () => {
+    useDynasty.getState().start(4242, 0);
+    useDynasty.getState().settleSeason();
+    await useDynasty.getState().rollYear();
+    const before = useDynasty.getState().boardAsk!.targetWins;
+    const report = useDynasty.getState().lastOffseason!;
+    // Forty men gone elsewhere, two of his: nowhere near a side taken apart.
+    const row = (i: number, team: number) => ({ id: `w${i}`, name: `Man ${i}`, pos: 'SS', team });
+    const winter = [
+      ...Array.from({ length: 40 }, (_, i) => row(i, 1 + (i % 5))),
+      row(40, 0), row(41, 0),
+    ];
+    useDynasty.setState({
+      lastOffseason: { ...report, graduated: winter as unknown as typeof report.graduated, drafted: [] },
+      arguedTerms: false,
+    });
+
+    expect(useDynasty.getState().argueTerms()).toBe(0);
+    expect(useDynasty.getState().boardAsk!.targetWins).toBe(before);
   });
 });

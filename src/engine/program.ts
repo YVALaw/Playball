@@ -156,6 +156,25 @@ export interface SeasonOutcome {
    * treats the year on its own merits.
    */
   sinceTitle?: number;
+  /*
+    The facts the rotating bonuses read (`boardExtras`). All optional: a save
+    from before them, and the board room's mid-season reading, carry none, and
+    an absent fact is an unmet box rather than a met one.
+  */
+  /** The season series with the program's rival, from its own results. */
+  rivalSeries?: { w: number; l: number };
+  /** Where the final poll had them; 0 outside the ranking. */
+  finalRank?: number;
+  conferenceWins?: number;
+  /** Runs scored less runs allowed, over the year. */
+  runDiff?: number;
+  /** Men on the All-Conference first team. */
+  firstTeamMen?: number;
+  /** The stars on the best recruit who committed this cycle; 0 for nobody. */
+  bestRecruitStars?: number;
+  /** Conference series won without dropping a game. */
+  sweeps?: number;
+  longestStreak?: number;
 }
 
 export const winPct = (o: SeasonOutcome): number =>
@@ -409,9 +428,28 @@ export function prestigeChange(
   const clamp = (n: number): number => Math.max(5, Math.min(95, Math.round(n)));
   const reasons: PrestigeReason[] = [];
 
-  // First price the season itself.
+  // First price the season itself — named for what it was, not "season
+  // performance" every spring ("it lists the same thing always"): the best
+  // thing the year showed the country when the program climbed, and what it
+  // lacked when it fell. The number is the same drift either way.
   let after = clamp(current + drift);
-  if (after !== current) reasons.push({ label: 'Season performance', amount: after - current });
+  if (after !== current) {
+    const record = `A ${o.wins}–${o.losses} record`;
+    const shown = o.wonTitle ? 'Won the national title'
+      : o.reachedOmaha ? 'Reached the national showdown'
+        : o.wonRegional ? 'Won the regional'
+          : o.wonConference ? 'Won the conference'
+            : o.madeTournament ? 'Made the national tournament'
+              : o.madeRegionals === true ? 'Played a regional'
+                : o.madeConferenceTournament === true ? 'Made the conference tournament'
+                  : record;
+    const label = after > current ? shown
+      : winPct(o) < 0.5 ? record
+        : sheltered ? 'Patience for a rebuild, for now'
+          : achieved ? 'Less than the name expects'
+            : 'No postseason to show for it';
+    reasons.push({ label, amount: after - current });
+  }
 
   // Then bank the existing small-program postseason lift. Kept separate so the
   // Season Report can explain why a rebuild moved even when generic drift rounded.
@@ -491,7 +529,10 @@ export type Mandate = 'develop' | 'build' | 'compete' | 'contend' | 'championshi
 export type ObjectiveKey =
   | 'wins' | 'stretchWins' | 'winningSeason' | 'notLast'
   | 'topHalf' | 'topThree' | 'conferenceTitle' | 'regionalTitle'
-  | 'tournament' | 'omaha' | 'title';
+  | 'tournament' | 'omaha' | 'title'
+  // The rotating bonuses — see `boardExtras`.
+  | 'rivalSeries' | 'top25' | 'top10' | 'confWins' | 'runDiff'
+  | 'firstTeam' | 'starRecruit' | 'sweep' | 'streak';
 
 export interface Objective {
   key: ObjectiveKey;
@@ -581,7 +622,67 @@ export interface Expectation {
  * banner, protection or an at-large. It stays a bonus at every mandate: a
  * required bid would ask the selection committee rather than the team.
  */
-export function objectivesFor(mandate: Mandate, targetWins: number): Objective[] {
+/**
+ * Two more boxes a year, different every year.
+ *
+ * The lists below are what the mandate is, and they read the same every
+ * spring by design; but a coach who sits in one chair for six seasons saw the
+ * same five lines with a different number in the first, and said so: "each
+ * year we have the same thing, the only thing that changes is the amount of
+ * wins". So each year's board also picks two from a pool of eight, all
+ * bonuses — the job stays the job, and none of these can fail a review — with
+ * the size of the ask following the mandate: a rebuild is asked to outscore
+ * its opponents, a championship program to do it by sixty.
+ *
+ * Chosen by the seed, which the store builds from the year and the chair, so
+ * the pair is the same every time the board is read or argued with that
+ * spring and different the next. A seed of 0 — the tests, and any caller
+ * with no year in hand — adds nothing, so the seat arithmetic the tests pin
+ * is exactly the lists below.
+ */
+export function boardExtras(mandate: Mandate, targetWins: number, seed: number): Objective[] {
+  if (seed === 0) return [];
+  const rung = { develop: 0, build: 0, compete: 1, contend: 2, championship: 3 }[mandate];
+  const confWins = Math.max(1, Math.round(targetWins * 0.73));
+  const diff = [0, 20, 40, 60][rung]!;
+  const stars = [3, 3, 4, 5][rung]!;
+  const sweeps = [1, 1, 1, 2][rung]!;
+  const streak = [4, 4, 5, 6][rung]!;
+  const firstTeam = rung === 3 ? 2 : 1;
+  const pool: Objective[] = [
+    { key: 'rivalSeries', label: 'Win the season series with your rival', required: false },
+    rung === 3
+      ? { key: 'top10', label: 'Finish ranked in the top 10', required: false }
+      : { key: 'top25', label: 'Finish ranked in the top 25', required: false },
+    { key: 'confWins', label: `Win ${confWins} conference games`, required: false, target: confWins },
+    diff === 0
+      ? { key: 'runDiff', label: 'Outscore your opponents', required: false, target: 1 }
+      : { key: 'runDiff', label: `Outscore your opponents by ${diff}`, required: false, target: diff },
+    firstTeam === 1
+      ? { key: 'firstTeam', label: 'Put a player on the All-Conference first team', required: false, target: 1 }
+      : { key: 'firstTeam', label: 'Put two players on the All-Conference first team', required: false, target: 2 },
+    { key: 'starRecruit', label: `Land a ${stars}-star recruit`, required: false, target: stars },
+    sweeps === 1
+      ? { key: 'sweep', label: 'Sweep a conference series', required: false, target: 1 }
+      : { key: 'sweep', label: `Sweep ${sweeps} conference series`, required: false, target: sweeps },
+    { key: 'streak', label: `Win ${streak} in a row`, required: false, target: streak },
+  ];
+  // Two distinct picks off a mixed seed. Unsigned at every step: `^` hands
+  // back a signed 32-bit value, and a negative remainder indexes nothing.
+  let h = Math.imul(seed | 0, 2654435761) >>> 0;
+  h = (h ^ (h >>> 15)) >>> 0;
+  h = Math.imul(h, 2246822519) >>> 0;
+  h = (h ^ (h >>> 13)) >>> 0;
+  const first = h % pool.length;
+  const second = (first + 1 + (Math.floor(h / pool.length) % (pool.length - 1))) % pool.length;
+  return [pool[first]!, pool[second]!];
+}
+
+export function objectivesFor(mandate: Mandate, targetWins: number, seed = 0): Objective[] {
+  return [...baseObjectives(mandate, targetWins), ...boardExtras(mandate, targetWins, seed)];
+}
+
+function baseObjectives(mandate: Mandate, targetWins: number): Objective[] {
   const wins: Objective = {
     key: 'wins', label: `Win ${targetWins} games`, required: true, target: targetWins,
   };
@@ -701,6 +802,16 @@ export function objectiveMet(objective: Objective, o: SeasonOutcome): boolean {
     case 'tournament': return o.madeTournament;
     case 'omaha': return o.reachedOmaha;
     case 'title': return o.wonTitle;
+    // The rotating bonuses. An absent fact is an unmet box.
+    case 'rivalSeries': return !!o.rivalSeries && o.rivalSeries.w + o.rivalSeries.l > 0 && o.rivalSeries.w > o.rivalSeries.l;
+    case 'top25': return (o.finalRank ?? 0) >= 1 && (o.finalRank ?? 0) <= 25;
+    case 'top10': return (o.finalRank ?? 0) >= 1 && (o.finalRank ?? 0) <= 10;
+    case 'confWins': return (o.conferenceWins ?? 0) >= (objective.target ?? 0);
+    case 'runDiff': return (o.runDiff ?? -1) >= (objective.target ?? 1);
+    case 'firstTeam': return (o.firstTeamMen ?? 0) >= (objective.target ?? 1);
+    case 'starRecruit': return (o.bestRecruitStars ?? 0) >= (objective.target ?? 4);
+    case 'sweep': return (o.sweeps ?? 0) >= (objective.target ?? 1);
+    case 'streak': return (o.longestStreak ?? 0) >= (objective.target ?? 5);
   }
 }
 
@@ -1085,12 +1196,17 @@ export function judge(o: SeasonOutcome, e: Expectation): Verdict {
   const graded = gradeObjectives(e, o);
   const missed = graded.filter((g) => g.objective.required && !g.met).length;
   const bonuses = graded.filter((g) => !g.objective.required && g.met).length;
+  const offered = graded.filter((g) => !g.objective.required).length;
 
   // Two bonuses, not one. Every mandate carries three, and one of them is
   // ordinary enough that a single hit is just a good season inside the mandate —
   // treating it as overachievement made "met" almost extinct (8.9% of reviews)
   // and left the board with no way to say "you did the job" without praise.
-  if (missed === 0) return bonuses >= 2 ? 'exceeded' : 'met';
+  // Half of them, once the rotating pair is on the list (`boardExtras`): two
+  // of three is the bar above, and two of five would have handed the praise
+  // to most seasons that merely did the job.
+  const bar = Math.max(2, Math.ceil(offered / 2));
+  if (missed === 0) return bonuses >= bar ? 'exceeded' : 'met';
   if (missed === 1) return 'missed';
   return 'failed';
 }
@@ -1435,6 +1551,15 @@ export interface CoachState extends CoachProfile {
   farewellYear?: number;
   /** The year it ended. Set once; the man in this slot is finished. */
   retiredYear?: number;
+  /**
+   * The year he handed in his notice at this chair (2026-09-30: "a way to
+   * resign ... before our contract is up"). The meeting that closes that
+   * season is his last here, and then the job market; handed in after the
+   * meeting, he goes the same day. The year rather than a flag, like
+   * `farewellYear`, so it cannot outlive its season, and `takeChair` clears
+   * it: a notice belongs to the board it was handed to.
+   */
+  resignYear?: number;
 }
 
 /**
@@ -1784,6 +1909,8 @@ export function takeChair(coach: CoachState, programPrestige: number): CoachStat
     stints: (coach.stints ?? 0) + 1,
     rebuilds: (coach.rebuilds ?? 0) + (programPrestige < REBUILD ? 1 : 0),
     bestBuild: built,
+    // A notice was handed to the last board; the new one never saw it.
+    resignYear: undefined,
   };
 }
 
@@ -1893,6 +2020,18 @@ export function badRunPenalty(badRun: number): number {
 }
 
 /**
+ * Coach prestige lost per contract year walked out on. The user's pick of
+ * 2026-09-30, "small hit per year left": a word broken costs a name a little,
+ * and the last year of a deal is nobody's word at all.
+ */
+export const RESIGN_COST_PER_YEAR = 2;
+
+/** What walking out on `yearsLeft` years of a deal costs a name. */
+export function resignationCost(yearsLeft: number): number {
+  return RESIGN_COST_PER_YEAR * Math.max(0, Math.floor(yearsLeft));
+}
+
+/**
  * Personal standing moves on what you did *relative to the job*. Winning 20 games
  * at a powerhouse is expected; winning 20 at a cellar program is the reason
  * somebody better calls you. Overachievement is the whole signal.
@@ -1965,6 +2104,9 @@ export interface Reviewable {
    * no chair to save and nothing to send a message about, and being let go on
    * the way out would make an announcement read as a bluff the board called.
    * He still gets the verdict; what he does not get is the door.
+   *
+   * Also true for a man who has handed in his notice (`resignYear`): he is
+   * just as gone, and a board does not renew a man who has said no.
    */
   farewell?: boolean;
 }

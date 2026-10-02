@@ -27,8 +27,9 @@ import {
 import type { PlayerId } from '../../engine/types.js';
 import { programAlumni } from '../programAlumni.js';
 import {
-  Card, Chip, Chips, EmptyState, List, ListRow, Medal, SectionHeader, Sheet, StatGroup, StatusBadge, Tag,
+  Card, Chip, Chips, EmptyState, List, ListRow, SectionHeader, Sheet, StatGroup, StatusBadge, Tag,
 } from '../components/ui/index.js';
+import { AwardEmblem, Trophy } from '../Honours.js';
 import { plural, recordText, sentence } from '../words.js';
 import { pct } from '../format.js';
 import { CoachesList } from './CoachesList.js';
@@ -97,7 +98,7 @@ export function YearsSheet(
               key={y.year}
               title={String(y.year)}
               subtitle={`${y.school} · ${finishWords(y)}`}
-              status={y.finish === 'champion' ? <Medal metal="gold" size={20} label="National champions" /> : undefined}
+              status={y.finish === 'champion' ? <Trophy kind="national" size={28} label="National champions" /> : undefined}
               value={recordText(y.w, y.l)}
               onClick={() => onOpen(y.year)}
             />
@@ -207,7 +208,7 @@ export function SeasonSheet(
             {awards.map((a) => (
               <ListRow
                 key={`${a.title}-${a.id}`}
-                lead={<Medal metal="gold" size={24} />}
+                lead={<AwardEmblem title={a.title} size={40} />}
                 title={a.name}
                 subtitle={a.title}
                 onClick={() => openPlayer(a.id as PlayerId)}
@@ -297,7 +298,7 @@ export function SchoolSheet(
                 key={y.year}
                 title={String(y.year)}
                 subtitle={finishWords(y)}
-                status={y.finish === 'champion' ? <Medal metal="gold" size={20} label="National champions" /> : undefined}
+                status={y.finish === 'champion' ? <Trophy kind="national" size={28} label="National champions" /> : undefined}
                 value={recordText(y.w, y.l)}
                 onClick={() => onOpen(y.year)}
               />

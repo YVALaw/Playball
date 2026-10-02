@@ -1,10 +1,15 @@
 // Crest.tsx
-// Ninety six schools, ninety six shields, zero image files.
+// Ninety six schools, ninety six logos, and a drawn shield behind them.
 //
-// The letter-squares said "a school" the way a spreadsheet does. A collegiate
-// shield says it the way a letterman jacket does — and drawn procedurally from
-// the abbreviation and the school's own colour, every save agrees on every
-// crest forever and the app ships not one asset.
+// Every school wears its own artwork: one webp per abbreviation in ./logos,
+// cut from the eight conference sheets. A school with no file — a test's
+// invented team, anything added to the world later — falls back to the
+// procedural shield below, so no row ever renders a hole.
+//
+// The shield came first. The letter-squares said "a school" the way a
+// spreadsheet does; a collegiate shield says it the way a letterman jacket
+// does, drawn from the abbreviation and the school's own colour so every save
+// agrees on every crest forever.
 //
 // Stage 25 made the generator worth looking at rather than replacing it — the
 // reporter's call, verbatim: "they are generated, don't worry about them being
@@ -64,7 +69,39 @@ const SHAPES = [
 */
 const METALS = ['#d9b64e', '#f2ead8', '#c9cdd2'] as const;
 
+/*
+  The logos, as built URLs keyed by path. Vite expands the glob at build time;
+  the cast is how this codebase reads import.meta without vite/client's
+  globals (main.tsx does the same for env).
+*/
+type UrlGlob = (pattern: string, options: { eager: true; query: '?url'; import: 'default' }) => Record<string, string>;
+const LOGOS = (import.meta as unknown as { glob: UrlGlob }).glob('./logos/*.webp', {
+  eager: true, query: '?url', import: 'default',
+});
+
+/** The school's own logo, when it has one. */
+function logoUrl(abbr: string): string | undefined {
+  return LOGOS[`./logos/${abbr}.webp`];
+}
+
 export function Crest({ abbr, size = 34 }: { abbr: string; size?: number }) {
+  /*
+    Same footprint as the shield (64 by 76), so no layout moves. The logos
+    run square to wide, so they fill the width and centre in the height.
+  */
+  const logo = logoUrl(abbr);
+  if (logo) {
+    // Decoded with the page, not after it: an async decode let a screen paint
+    // its first frame with empty crests, and a screen the back swipe brought
+    // back then filled them in a beat later (2026-09-24). They are small.
+    return (
+      <img
+        className="pb-crest" src={logo} alt="" draggable={false} decoding="sync"
+        style={{ width: size, height: size * (76 / 64), objectFit: 'contain' }}
+      />
+    );
+  }
+
   const colour = teamColour(abbr);
   const dark = shade(colour, 0.62);
   const h = hash(abbr);

@@ -12,20 +12,20 @@
 import { describe, it, expect } from 'vitest';
 import {
   AI_KEEP_EDGE, AVERAGE_STAFF, DRAFT_AGE, DRAFT_ROUNDS,
-  bestCase, draftContext, draftEligible, draftRound, keepPoints, keepPrice,
+  bestCase, draftContext, draftEligible, draftRound, draftStock, keepPoints, keepPrice,
   letHimGo, makeTheCase, offerWorth, pitchCredibility, prioritiesOf, pullHints,
   rivalKeeps, sceneFrom, seasonForm, visibleValue, yearsCompleted,
   KEEP_PITCHES,
   type DraftedMan, type KeepScene, type RivalKeep,
 } from '../src/engine/draft.js';
-import { reinstate } from '../src/engine/progression.js';
-import { makeHitter, makePitcher, arrivalAge, ageFor } from '../src/engine/players.js';
-import { overallOf } from '../src/engine/ratings.js';
+import { draftChance, reinstate } from '../src/engine/progression.js';
+import { makeHitter, makePitcher, makeTwoWay, arrivalAge, ageFor } from '../src/engine/players.js';
+import { armValue, overallOf } from '../src/engine/ratings.js';
 import { PRIORITIES } from '../src/engine/recruiting.js';
 import { createSeason, simSeason } from '../src/engine/season.js';
 import { makeRng } from '../src/engine/rng.js';
 import { CONFERENCES } from '../src/data/schools.js';
-import type { Hitter, Priorities } from '../src/engine/types.js';
+import type { Hitter, Priorities, TwoWay } from '../src/engine/types.js';
 
 const SMALL = CONFERENCES.slice(0, 2);
 
@@ -155,6 +155,72 @@ describe('what the clubs can see', () => {
     const plain = seasonForm(p, season, ctx);
     season.pitching.set(p.id, { ...line, k: 130 });
     expect(seasonForm(p, season, ctx)).toBeGreaterThan(plain);
+    season.pitching.delete(p.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('whether a club calls his name at all', () => {
+  // Reported 2026-09-26 of a two-way junior who hit .419 and went 8–0 with a
+  // 2.78 ERA: "I had this amazing guy and he went undrafted." The odds read
+  // his rating alone, which is the bat for a man typed a hitter, and no
+  // season moved them. `draftStock` is what they read now.
+  const season = createSeason(makeRng(4242), undefined, SMALL);
+  simSeason(season);
+  const ctx = draftContext(season);
+  // A man in the middle of the board, where the odds have room to move both
+  // ways: at 76 and up they are already at their ceiling.
+  const midHitter = (): Hitter => {
+    for (let seed = 1; seed < 400; seed++) {
+      const p = makeHitter(makeRng(seed), 50);
+      if (overallOf(p) >= 56 && overallOf(p) <= 68) return p;
+    }
+    throw new Error('no mid-board hitter in four hundred draws');
+  };
+
+  it('is his rating when there is no season to read', () => {
+    const p = midHitter();
+    expect(draftStock(p)).toBe(overallOf(p));
+    // A man with no at bats is graded at exactly average, which moves nothing.
+    expect(draftStock(p, season, ctx)).toBe(overallOf(p));
+  });
+
+  it('rises with a great season and falls with a poor one', () => {
+    const p = midHitter();
+    season.batting.set(p.id, {
+      g: 45, ab: 180, r: 55, h: 75, d: 14, t: 1, hr: 11,
+      rbi: 47, bb: 30, k: 25, hbp: 2, sb: 6, cs: 1,
+    });
+    const great = draftStock(p, season, ctx);
+    season.batting.set(p.id, {
+      g: 45, ab: 180, r: 12, h: 32, d: 4, t: 0, hr: 0,
+      rbi: 9, bb: 6, k: 60, hbp: 0, sb: 0, cs: 2,
+    });
+    const poor = draftStock(p, season, ctx);
+    season.batting.delete(p.id);
+    expect(great, 'a great season did not lift him').toBeGreaterThan(overallOf(p) + 3);
+    expect(poor, 'a poor season did not drag him').toBeLessThan(overallOf(p));
+    expect(draftChance(great)).toBeGreaterThan(draftChance(overallOf(p)));
+  });
+
+  it('judges a two-way man on his better half', () => {
+    // A two-way man whose arm is plainly the better half.
+    let man: TwoWay | null = null;
+    for (let seed = 1; seed <= 400 && !man; seed++) {
+      const p = makeTwoWay(makeRng(seed), 58);
+      if (armValue(p) > overallOf(p) + 6) man = p;
+    }
+    expect(man, 'no two-way man with the better arm in four hundred draws').not.toBeNull();
+    const p = man!;
+    // With no season, the arm's rating, where the bat alone read the bat.
+    expect(draftStock(p)).toBe(armValue(p));
+    // A great spring on the mound counts for him, whatever the bat did.
+    season.pitching.set(p.id, {
+      g: 14, gs: 14, w: 8, l: 0, sv: 0, outs: 240, h: 60, r: 27, er: 25,
+      bb: 24, k: 104, hr: 5, pitches: 1250, bf: 330,
+    });
+    expect(draftStock(p, season, ctx)).toBeGreaterThan(armValue(p) + 3);
     season.pitching.delete(p.id);
   });
 });

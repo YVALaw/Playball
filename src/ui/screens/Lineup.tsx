@@ -4,18 +4,24 @@
 // Every change writes straight to the team the engine reads, so nothing here
 // needs saving. The grammar is one gesture everywhere: tap a player, then the
 // spot he should take. It works between batting spots (a swap), from the bench
-// into the order (he starts instead), from a position chip to a player (he
-// plays there), between rotation days, and from the bullpen to a rotation day.
-// The position chips stay pinned at the top while you scroll, and while a
-// player is picked the same bar says what the next tap does. Holding a row
-// still opens his stats; "Card" in the bar is the visible way.
+// into the order (he starts instead), between a position on the field and a
+// player (he plays there, either way round), between two positions (their men
+// trade), between rotation days, and from the bullpen to a rotation day.
+//
+// The field over the batting order is a ballpark with each starter's name at
+// his position (LineupField.tsx). It replaced a row of position chips: "make
+// it look more like the ball park and compact a bit the names and locate them
+// in the positions" (the UI clarity review, 2026-09-25). While a player or a
+// position is picked, the bar pinned to the foot of the lists says what the
+// next tap does. Holding a row or a name still opens his stats; "Card" in the
+// bar is the visible way.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useDynasty, useUserTeam } from '../../state/store.js';
+import { blockingCardUp, lineupHolds, useDynasty, useUserTeam } from '../../state/store.js';
 import { FirstVisit } from '../Tutorial.js';
 import { returnPending, whyOut } from '../Needs.js';
 import { Modal } from '../Modal.js';
-import { armValue, overallOf } from '../../engine/ratings.js';
+import { armValue, batScore, gloveOf, overallOf } from '../../engine/ratings.js';
 import { isTwoWay, uniquePlayers } from '../../engine/types.js';
 import { captainOf } from '../../engine/captains.js';
 import {
@@ -28,11 +34,13 @@ import { coverTier, fieldingAt, positionPenalty } from '../../engine/positions.j
 import { useHold } from '../useLongPress.js';
 import type { Arm, Hitter, Player, PlayerId, Position } from '../../engine/types.js';
 import {
-  Button, Callout, Chip, Chips, Face, Icon, List, Marquee, PlayerRow, SectionHeader,
+  Button, Callout, Face, Icon, List, Marquee, PlayerRow, SectionHeader,
   SegmentedControl, StatusBadge, Tag,
 } from '../components/ui/index.js';
+import { LineupField, type FieldMan } from '../LineupField.js';
+import { PositionPicker, type PickerMan } from '../PositionPicker.js';
 import { POSITION_NAME, plural } from '../words.js';
-import { pct } from '../format.js';
+import { ordinal, pct, shortName } from '../format.js';
 
 /**
  * What each rotation slot is called, for a weekend of `weekend` games. The
@@ -50,8 +58,6 @@ const SLOT_WORD: Record<string, string> = {
   THU: 'Thu', FRI: 'Fri', SAT: 'Sat', SUN: 'Sun', MID: 'Midweek', DEPTH: 'Depth',
 };
 
-/** The positions to find, outfield first, the way the field reads from the dugout. */
-const POSITIONS = ['CF', 'RF', 'LF', '2B', 'SS', '3B', '1B', 'C', 'DH'] as const;
 const posName = (p: string): string => POSITION_NAME[p as keyof typeof POSITION_NAME] ?? p;
 const sentence = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -75,12 +81,49 @@ export function Lineup() {
   const myBracket = useDynasty((s) => s.myBracket);
   const keepCover = useDynasty((s) => s.keepCover);
   const team = useUserTeam();
-  const [view, setView] = useState<'bat' | 'pitch'>('bat');
+  /*
+    Open on the part that needs a hand. A starter who cannot go, with the
+    batting order fine, is a pitching problem — and the screen opened on the
+    batting order anyway from tonight's card, which carries no player
+    ("when a pitcher gets injured and you tap to go set the lineup it drops
+    you in the batting order instead of the pitching"). A flagged man still
+    picks his own tab below.
+  */
+  const [view, setView] = useState<'bat' | 'pitch'>(() => {
+    const s = useDynasty.getState();
+    const t = s.season?.teams[s.userTeam]?.team;
+    if (!s.season || !t) return 'bat';
+    /*
+      Sent here about one man: his side of the card. Reported 2026-09-24: a
+      hurt catcher's SET THE LINEUP opened on the pitching order, because the
+      guess below saw an arm it thought needed looking at.
+    */
+    const sentFor = s.focusPlayer;
+    if (sentFor) {
+      if ([...t.lineup, ...t.bench].some((p) => p.id === sentFor)) return 'bat';
+      if ([...t.rotation, ...t.bullpen].some((p) => p.id === sentFor)) return 'pitch';
+    }
+    const day = injuryClock(s.season);
+    const gaps = cardGaps(t.lineup);
+    const batNeeds = gaps.missing.length > 0 || gaps.doubled.length > 0 || t.lineup.some((p) => !available(p, day));
+    /*
+      Only a starter who is genuinely out — hurt or ineligible. A redshirt is
+      never available, and a reliever resting after last night is not out, so
+      counting either sent every visit to the pitching order.
+    */
+    const genuinelyOut = (p: Player): boolean => {
+      const u = p as Player & { why?: string; outUntil?: number };
+      return (u.why === 'injury' || u.why === 'academic') && typeof u.outUntil === 'number' && day < u.outUntil;
+    };
+    const armNeeds = t.rotation.some(genuinelyOut);
+    return armNeeds && !batNeeds ? 'pitch' : 'bat';
+  });
   const [picked, setPicked] = useState<number | null>(null);
   const [pickedArm, setPickedArm] = useState<number | null>(null);
   const [pickedPen, setPickedPen] = useState<PlayerId | null>(null);
   const [pickedBench, setPickedBench] = useState<PlayerId | null>(null);
-  const [spot, setSpot] = useState<Position | null>(null);
+  /** The position whose picker is open, and the label on the field it grew from. */
+  const [choosing, setChoosing] = useState<{ pos: Position; from: DOMRect | null } | null>(null);
   const [dealt, setDealt] = useState(false);
   /** Bumped on every auto lineup, so the list re-keys and animates in. */
   const [deal, setDeal] = useState(0);
@@ -165,17 +208,42 @@ export function Lineup() {
     if (mine) warnIfBroken();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gateTick, mine]);
+  /*
+    A back press refused because the card has a hole (the store's `goBack`
+    bumps `cardNudge`; it opens no modal, since nothing may mount during a
+    pop). The "Nobody at ..." line that says why shakes, or on the Pitching
+    tab the Batting order tab its dot sits on. Motion only: no words, nothing
+    moves out of its place. Driven off the DOM so a second press shakes too.
+  */
+  const pageEl = useRef<HTMLElement | null>(null);
+  const nudge = useDynasty((s) => s.cardNudge);
+  const nudgedAt = useRef(nudge);
+  useEffect(() => {
+    if (nudge === nudgedAt.current) return;
+    nudgedAt.current = nudge;
+    const s = useDynasty.getState();
+    if (!lineupHolds(s) || blockingCardUp(s)) return;
+    const root = pageEl.current;
+    const el = root?.querySelector<HTMLElement>('.pb-lineup-gap')
+      ?? root?.querySelector<HTMLElement>('.pb-lineup-part > .pb-seg__opt:first-child');
+    if (!el) return;
+    el.classList.remove('is-nudged');
+    void el.offsetWidth;
+    el.classList.add('is-nudged');
+  }, [nudge]);
   useEffect(() => {
     if (!flaggedId) return;
     const t = window.setTimeout(() => flagged.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60);
     return () => window.clearTimeout(t);
   }, [flaggedId]);
-  // A flagged pitcher opens the Pitching tab.
+  // A flagged man opens his own side of the card: pitchers the Pitching tab,
+  // everybody else the batting order.
   useEffect(() => {
     if (!flaggedId || !team) return;
-    const arm = [...team.team.rotation, ...team.team.bullpen].some((p) => p.id === flaggedId)
-      && ![...team.team.lineup, ...team.team.bench].some((p) => p.id === flaggedId);
-    if (arm) setView('pitch');
+    const bat = [...team.team.lineup, ...team.team.bench].some((p) => p.id === flaggedId);
+    const arm = [...team.team.rotation, ...team.team.bullpen].some((p) => p.id === flaggedId);
+    if (arm && !bat) setView('pitch');
+    else if (bat) setView('bat');
   }, [flaggedId, team]);
 
   void version;
@@ -187,16 +255,10 @@ export function Lineup() {
   const gaps = cardGaps(order);
   const broken = gaps.missing.length > 0 || gaps.doubled.length > 0;
   const captainId = captainOf(team.team)?.id;
-  const clearPicks = (): void => { setPicked(null); setPickedArm(null); setPickedPen(null); setPickedBench(null); setSpot(null); };
+  const clearPicks = (): void => { setPicked(null); setPickedArm(null); setPickedPen(null); setPickedBench(null); };
 
   const tap = (i: number): void => {
     setPickedArm(null); setPickedPen(null);
-    if (spot !== null) {
-      const man = order[i];
-      if (man) assignPosition(man.id, spot);
-      setSpot(null); setPicked(null);
-      return;
-    }
     if (pickedBench !== null) {
       swapStarter(i, pickedBench);
       warnIfBroken();
@@ -211,12 +273,6 @@ export function Lineup() {
 
   const tapBench = (id: PlayerId): void => {
     setPickedArm(null); setPickedPen(null);
-    if (spot !== null) {
-      const ok = assignPosition(id, spot);
-      if (ok) setSpot(null);
-      setPickedBench(null); setPicked(null);
-      return;
-    }
     if (picked !== null) {
       swapStarter(picked, id);
       warnIfBroken();
@@ -225,6 +281,24 @@ export function Lineup() {
     }
     if (pickedBench === id) { setPickedBench(null); return; }
     setPickedBench(id);
+  };
+
+  /*
+    A tap on the field. A man already picked, in the order or on the bench,
+    takes this position; otherwise the men who can play it open over the
+    field, grown out of the name that was tapped (PositionPicker.tsx).
+  */
+  const tapSpot = (pos: Position, from: DOMRect | null): void => {
+    setPickedArm(null); setPickedPen(null);
+    const man = picked !== null ? order[picked] ?? null
+      : pickedBench !== null ? team.team.bench.find((p) => p.id === pickedBench) ?? null
+        : null;
+    if (man) {
+      assignPosition(man.id, pos);
+      setPicked(null); setPickedBench(null);
+      return;
+    }
+    setChoosing({ pos, from });
   };
 
   const tapArm = (i: number): void => {
@@ -265,7 +339,6 @@ export function Lineup() {
   const closerTonight = closerFrom(penTonight, team.team.penByHand);
   const slots = slotNames(seriesGames(season.config), team.team.rotation.length);
 
-  const atSpot = spot === null ? -1 : order.findIndex((p) => p.pos === spot);
   const pickedMan: Player | null = picked !== null ? order[picked] ?? null
     : pickedBench !== null ? team.team.bench.find((p) => p.id === pickedBench) ?? null
       : pickedArm !== null ? team.team.rotation[pickedArm] ?? null
@@ -273,14 +346,14 @@ export function Lineup() {
 
   /* What the next tap does, said in the pinned bar. */
   const selection = (() => {
-    if (spot !== null) {
-      return { title: posName(spot), text: 'tap who plays there' };
-    }
     if (!pickedMan) return null;
-    if (pickedBench !== null) return { title: `Starting ${pickedMan.name}`, text: 'tap a batting spot' };
-    if (picked !== null) return { title: `Moving ${pickedMan.name}`, text: 'tap a spot or a bench player' };
+    if (pickedBench !== null) return { title: `Starting ${pickedMan.name}`, text: 'tap a batter or a position' };
+    if (picked !== null) return { title: `Moving ${pickedMan.name}`, text: 'tap a batter, a position or the bench' };
     return { title: `Moving ${pickedMan.name}`, text: 'tap a day or a reliever' };
   })();
+  /* Pinned to the foot of the screen, over the lists. It sat in the bar above
+     the order first, and appearing there pushed every row down by its own
+     height on the very tap that picked one ("the whole thing moves around"). */
   const hint = selection && (
     <div className="pb-pickhint" role="status">
       <Icon name="swap" size={16} />
@@ -310,9 +383,78 @@ export function Lineup() {
   const outBadge = (p: Player) => (available(p, clock) ? undefined
     : <StatusBadge tone="negative" icon="cross-circled">{sentence(whyOut(p, clock))}</StatusBadge>);
 
+  /*
+    Where a man stands against where he is at home: the same reading the
+    order's warning line makes, so the field and the row never disagree.
+  */
+  const fit = (p: (typeof order)[number]) => {
+    const home = (p as typeof p & { homePos?: Position }).homePos ?? p.pos;
+    const asHome = home === p.pos ? p : { ...p, pos: home };
+    const tier = coverTier(asHome, p.pos);
+    const stuck = (p as typeof p & { stuck?: boolean }).stuck === true;
+    return {
+      tier, stuck,
+      settling: tier === 0 && positionPenalty(p, p.pos) > 0,
+      plays: overallOf(fieldingAt(asHome, p.pos)),
+    };
+  };
+
+  // The nine on the field: his average under his name, or, playing out of
+  // position, the rating he is worth where he stands.
+  const fieldMen: FieldMan[] = order.map((p, i) => {
+    const f = fit(p);
+    const offPos = f.stuck || f.tier > 0;
+    const bat = season.batting.get(p.id);
+    return {
+      id: String(p.id),
+      name: p.name,
+      pos: p.pos as Position,
+      order: i + 1,
+      line: offPos ? String(f.plays) : bat && bat.ab > 0 ? pct(battingAverage(bat)) : '—',
+      out: !available(p, clock),
+      offPos,
+      guide: choosing === null && p.pos === 'CF' ? 'lineup-spot' : undefined,
+      hold: holdStats(p.id),
+    };
+  });
+
+  /*
+    Everyone who could be sent to a position, for its picker: the nine and the
+    bench, each with what his glove would be worth there (`gloveOf`, taxed for
+    the spot), and at the DH his bat alone (`batScore`). Not the overall at
+    the spot, which is mostly bat: it had a first baseman who has never caught
+    out-scoring the catcher at catcher.
+  */
+  const pickerMen = (pos: Position): PickerMan[] => [
+    ...order.map((p, i) => ({ p, where: `Batting ${ordinal(i + 1)} · ${p.pos}`, starting: true })),
+    ...team.team.bench.map((p) => ({ p, where: 'Bench', starting: false })),
+  ].map(({ p, where, starting }) => {
+    const home = (p as typeof p & { homePos?: Position }).homePos ?? p.pos;
+    const asHome = home === p.pos ? p : { ...p, pos: home };
+    const bat = season.batting.get(p.id);
+    return {
+      id: String(p.id),
+      name: shortName(p.name),
+      team: team.def.abbr,
+      where,
+      avg: bat && bat.ab > 0 ? pct(battingAverage(bat)) : '—',
+      rating: pos === 'DH' ? batScore(p as Hitter) : gloveOf({ ...fieldingAt(asHome, pos), pos }),
+      tier: coverTier(asHome, pos),
+      here: starting && p.pos === pos,
+      out: available(p, clock) ? undefined : sentence(whyOut(p, clock)),
+    };
+  });
+  const starter = tonightSlot === null ? null : team.team.rotation[tonightSlot] ?? null;
+  const starterLine = starter ? season.pitching.get(starter.id) : undefined;
+  const onMound = starter ? {
+    name: starter.name,
+    line: starterLine && starterLine.outs > 0 ? `${era(starterLine).toFixed(2)} ERA` : 'Tonight',
+    out: !available(starter, clock),
+  } : null;
+
   return (
     <>
-      <main className="pb-page">
+      <main className="pb-page" ref={pageEl}>
         <FirstVisit id="lineup" />
         <Marquee
           eyebrow="Tonight's card"
@@ -335,6 +477,7 @@ export function Lineup() {
         )}
         <SegmentedControl<'bat' | 'pitch'>
           label="Lineup part"
+          className="pb-lineup-part"
           value={view}
           onChange={(v) => { clearPicks(); setView(v); }}
           options={[
@@ -346,61 +489,39 @@ export function Lineup() {
 
         {view === 'bat' && (
           <>
-            {broken && mine && (
-              <Callout
-                tone="warning"
-                title={gaps.missing.length > 0
-                  ? `Nobody at ${gaps.missing.map((p) => posName(p).toLowerCase()).join(', ')}`
-                  : `Two players at ${[...new Set(gaps.doubled)].map((p) => posName(p).toLowerCase()).join(', ')}`}
-                action={{ label: 'Let auto fix it', variant: 'secondary', onClick: auto }}
-              >
-                The game can&rsquo;t start until every position is covered.
-              </Callout>
-            )}
-
             <div className="pb-stack pb-lineup-scope">
-              {(mine || hint) && (
-                <div className="pb-stickybar">
-                  {mine && (
-                    <Chips label="Find a position">
-                      {POSITIONS.map((pos) => (
-                        <span key={pos} className="pb-contents" data-guide={spot === null && pos === 'CF' ? 'lineup-spot' : undefined}>
-                          <Chip selected={spot === pos} onClick={() => { setPicked(null); setPickedBench(null); setSpot(spot === pos ? null : pos); }}>
-                            {pos}
-                          </Chip>
-                        </span>
-                      ))}
-                    </Chips>
-                  )}
-                  {hint}
-                </div>
-              )}
+              <LineupField
+                className="pb-lineup-field"
+                men={fieldMen}
+                missing={gaps.missing as Position[]}
+                spot={choosing?.pos ?? null}
+                picked={picked !== null || pickedBench !== null ? pickedMan?.id ?? null : null}
+                pitcher={onMound}
+                interactive={mine}
+                onSpot={(pos, from) => { if (consumed()) return; tapSpot(pos, from); }}
+                onMan={(id) => { if (consumed()) return; openPlayer(id as PlayerId, 'stats'); }}
+                onPitcher={() => { clearPicks(); setView('pitch'); }}
+              />
               <List label="Batting order" key={`order-${deal}`}>
                 {order.map((p, i) => {
                   const on = picked === i;
-                  const marked = i === atSpot;
-                  // The tour teaches the two-tap grammar by hand.
-                  const guide = spot !== null
-                    ? (p.pos !== spot ? 'lineup-assign' : undefined)
-                    : picked === null
-                      ? (i === 0 ? 'lineup-first' : undefined)
-                      : (i === (picked === 0 ? 1 : 0) ? 'lineup-second' : undefined);
-                  const home = (p as typeof p & { homePos?: Position }).homePos ?? p.pos;
-                  const asHome = home === p.pos ? p : { ...p, pos: home };
-                  const tier = coverTier(asHome, p.pos);
-                  const stuck = (p as typeof p & { stuck?: boolean }).stuck === true;
-                  const settling = tier === 0 && positionPenalty(p, p.pos) > 0;
-                  const plays = overallOf(fieldingAt(asHome, p.pos));
-                  const ovr = overallOf(asHome);
-                  const warning = stuck ? `Never took to ${p.pos} · ${plays} here, ${ovr} at ${home}`
+                  // The tour teaches the two-tap grammar by hand. Its position
+                  // lesson lights a man inside the picker instead (lineup-assign).
+                  const guide = picked === null
+                    ? (i === 0 ? 'lineup-first' : undefined)
+                    : (i === (picked === 0 ? 1 : 0) ? 'lineup-second' : undefined);
+                  const { tier, stuck, settling, plays } = fit(p);
+                  // One short line, so the row stays the height of its neighbours:
+                  // the state and what he is worth where he stands.
+                  const warning = stuck ? `Never took to ${p.pos} · ${plays}`
                     : settling ? `Settling in at ${p.pos}`
-                      : tier > 0 ? `Out of position · ${plays} at ${p.pos}, ${ovr} at ${home}`
+                      : tier > 0 ? `Out of position · ${plays}`
                         : undefined;
                   return (
                     <PlayerRow
                       key={p.id}
                       lead={i + 1}
-                      name={p.name}
+                      name={shortName(p.name)}
                       avatar={<Face id={p.id} team={team.def.abbr} size={36} />}
                       mark={captainId === p.id ? <Tag tone="positive" title="Team captain">Captain</Tag> : undefined}
                       tags={[
@@ -410,7 +531,7 @@ export function Lineup() {
                       flags={outBadge(p)}
                       warning={warning}
                       stats={statCells(p)}
-                      selected={on || marked}
+                      selected={on}
                       chevron={!mine}
                       guide={guide}
                       className={`${p.id === flaggedId ? 'is-flagged' : ''}${held(p.id)}`.trim() || undefined}
@@ -445,7 +566,7 @@ export function Lineup() {
                   return (
                     <PlayerRow
                       key={p.id}
-                      name={p.name}
+                      name={shortName(p.name)}
                       avatar={<Face id={p.id} team={team.def.abbr} size={36} />}
                       mark={captainId === p.id ? <Tag tone="positive" title="Team captain">Captain</Tag> : undefined}
                       tags={[{ text: p.pos, title: posName(p.pos) }]}
@@ -462,6 +583,26 @@ export function Lineup() {
                   );
                 })}
               </List>
+              {/* The card's warning rides in the pinned bar with the hint: it
+                  used to appear over the order the moment a swap opened a
+                  hole, and pushed every row down as it came. */}
+              {(hint || (broken && mine)) && (
+                <div className="pb-pickbar">
+                  {broken && mine && (
+                    <Callout
+                      tone="warning"
+                      className="pb-lineup-gap"
+                      title={gaps.missing.length > 0
+                        ? `Nobody at ${gaps.missing.map((p) => posName(p).toLowerCase()).join(', ')}`
+                        : `Two players at ${[...new Set(gaps.doubled)].map((p) => posName(p).toLowerCase()).join(', ')}`}
+                      action={{ label: 'Let auto fix it', variant: 'secondary', onClick: auto }}
+                    >
+                      The game can&rsquo;t start until every position is covered.
+                    </Callout>
+                  )}
+                  {hint}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -469,7 +610,6 @@ export function Lineup() {
         {view === 'pitch' && (
           <>
             <div className="pb-stack pb-lineup-scope">
-              {hint && <div className="pb-stickybar">{hint}</div>}
               <SectionHeader
                 title="Rotation"
                 count={plural(team.team.rotation.length, 'starter')}
@@ -489,7 +629,7 @@ export function Lineup() {
                     <PlayerRow
                       key={p.id}
                       lead={<span className="pb-prow__day">{SLOT_WORD[slots[i] ?? 'DEPTH'] ?? slots[i]}</span>}
-                      name={p.name}
+                      name={shortName(p.name)}
                       avatar={<Face id={p.id} team={team.def.abbr} size={36} />}
                       mark={captainId === p.id ? <Tag tone="positive" title="Team captain">Captain</Tag> : undefined}
                       meta={`Rating ${armValue(p)}${line && line.outs > 0 ? ` · ${era(line).toFixed(2)} ERA` : ''}`}
@@ -535,7 +675,7 @@ export function Lineup() {
                     <PlayerRow
                       key={p.id}
                       lead={team.team.penByHand ? idx + 1 : undefined}
-                      name={p.name}
+                      name={shortName(p.name)}
                       avatar={<Face id={p.id} team={team.def.abbr} size={36} />}
                       mark={closer ? <Tag tone="positive" title="Pitches the ninth">Closer</Tag> : undefined}
                       meta={`Rating ${armValue(p)}${line && line.outs > 0 ? ` · ${era(line).toFixed(2)} ERA · ${Math.round(inningsPitched(line))} innings` : ''}`}
@@ -550,6 +690,7 @@ export function Lineup() {
                   );
                 })}
               </List>
+              {hint && <div className="pb-pickbar">{hint}</div>}
             </div>
           </>
         )}
@@ -566,7 +707,7 @@ export function Lineup() {
                 {hurt.map((p) => (
                   <PlayerRow
                     key={p.id}
-                    name={p.name}
+                    name={shortName(p.name)}
                     avatar={<Face id={p.id} team={team.def.abbr} size={36} />}
                     tags={[{ text: p.type === 'pitcher' ? (p as Arm).role : (p as Hitter).pos }]}
                     flags={outBadge(p)}
@@ -578,6 +719,16 @@ export function Lineup() {
           );
         })()}
       </main>
+
+      {choosing && (
+        <PositionPicker
+          pos={choosing.pos}
+          from={choosing.from}
+          men={pickerMen(choosing.pos)}
+          onPick={(id) => { assignPosition(id as PlayerId, choosing.pos); }}
+          onClose={() => setChoosing(null)}
+        />
+      )}
 
       {gapWarn && (
         <Modal

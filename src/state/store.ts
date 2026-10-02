@@ -1,4 +1,4 @@
-import { newStaffProject, progressStaffProjects, projectResultText, projectCandidates, PROJECT_FOCUS } from '../engine/staffProjects.js';
+import { progressStaffProjects, projectCandidates, PROJECT_FOCUS, newSeasonWork, staffPicksSeasonWork, suggestedTargets, seasonGainFull, SEASON_GROUP_MAX, staffPickFor, type StaffPick } from '../engine/staffProjects.js';
 import { recruitingPlan, programRecruitingPitch, delegateEffort } from '../engine/recruitingPlan.js';
 // store.ts
 // The app's state. Thin on purpose: the engine owns the simulation, this owns
@@ -17,7 +17,7 @@ import {
   appliedStrategy,
   injuryClock, currentDay, startableSlot, shortRest, dayInTheLegs, seasonInTheArm, fitBench,
   createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
-  seasonLength, regularRecord, archiveSeason, recordSeasonMarks,
+  seasonLength, regularRecord, archiveSeason, recordSeasonMarks, nationalRank, onBase, slugging,
   recordCareerMarks, recordResult, restedFirst, closerFrom, seedTeams,
   rulesOf, configForRules, DEFAULT_RULES,
   type SeasonState, type TeamRecord, type SeasonRules,
@@ -30,7 +30,7 @@ import { armValue, overallOf } from '../engine/ratings.js';
 import type { GameResult } from '../engine/game.js';
 import { playerId } from '../engine/types.js';
 import { isTwoWay, uniquePlayers } from '../engine/types.js';
-import type {Arm, Hitter, Pitcher, Player, PlayerId, Position, Tactic } from '../engine/types.js';
+import type {Arm, Hitter, Pitcher, Player, PlayerId, Position, Rng, Tactic } from '../engine/types.js';
 import type { ClassYear, PitcherRole } from '../engine/types.js';
 import {
   addToTeam, authorPlayer, editPlayer, findPlayer, grantMoney, grantRecruiting, renameProgram,
@@ -59,19 +59,22 @@ function sameGodTarget(a: GodTarget | undefined, b: GodTarget): boolean {
 import { setStarGateOpen, type RecruitingPriorities } from '../engine/recruiting.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
 import {
-  departAndDevelop, fillRosters, holesFor as rosterHoles, reinstate,
+  departAndDevelop, fillRosters, holesFor as rosterHoles, reinstate, walkOnShortfall, departureOdds,
   type OffseasonReport,
 } from '../engine/progression.js';
 import {
-  letHimGo, makeTheCase, sceneFrom, type KeepPitch, type KeepScene,
+  letHimGo, makeTheCase, sceneFrom, draftContextOf, type KeepPitch, type KeepScene,
 } from '../engine/draft.js';
+import {
+  planStaffWeek, tendStaffList, suggestStaffList, staffWeekRng, STAFF_LIST_MAX,
+} from '../engine/staffRecruiting.js';
 import {
   newCoach, restoreCoach, reviewSeason, boardWords, jobOffers, rosterStrength, contractFor, playerBoard,
   startingOffers, ROOKIE_PRESTIGE,
   leagueShape,
   canBeHired,
   approachSchool, APPROACHES_PER_SEASON, CAUGHT_SECURITY_COST, type ApproachOutcome,
-  prestigeStars, skillPoints, takeChair, bankStint, objectivesFor,
+  prestigeStars, skillPoints, takeChair, bankStint, objectivesFor, resignationCost,
   type CoachState, type CoachSkills, type CoachProfile, type JobOffer, type Review,
   type SeasonOutcome, type Expectation,
 } from '../engine/program.js';
@@ -98,9 +101,9 @@ import {
   devBonus, armCareFor, buildingSpec, builtBonus, facilityEffects, facilityLevel,
   facilityUpgradeCost, FACILITY_MAX_LEVEL, pipelineStrength, addPipelineSigning, agePipelines,
   recruitingFacilityScore, DEFAULT_DIRECTIVE, staffPlan, projectFacility,
-  staffProjectWeeks, staffProjectInjuryGuard, PIPELINE_MIN,
+  staffProjectInjuryGuard, PIPELINE_MIN,
   SEAT_LABEL, BUILDINGS, type Assistant, type Economy, type StaffSeat, type Building,
-  PROJECT_LABEL, type StaffDirective, type StaffProjectKind,
+  type StaffDirective, type StaffProjectKind,
 } from '../engine/economy.js';
 import {
   readJournal, writeJournal, noteAction, clearJournal, journalMatches, reconcileJournal,
@@ -136,7 +139,7 @@ import {
   leadersAtWeekStart, totalWeekSpend, weekActionCost, majorActionCost,
   hasRecruitingRelationship, swayRecruit, planAiRecruitActions, availableRecruitPromises,
   askBlocked, askForCommitment,
-  type RecruitingFactor, type RecruitMajorAction, type RecruitMajorInput,
+  type RecruitingFactor, type RecruitMajorAction, type RecruitMajorInput, type Pitch,
   boardsByTier,
 } from '../engine/recruiting.js';
 import { pitchFor, developmentScore } from '../engine/pitch.js';
@@ -177,6 +180,13 @@ export function seedRivalInterest(
    * documented to be — in the size of his week, and nowhere else.
    */
   alsoSeedUser = false,
+  /**
+   * The coached programme's own pitch, pipelines and all, for a board its
+   * staff works (2026-09-28). Without it the seed reads the programme the way
+   * a rival's is read — home state only — and the staff that then works the
+   * board reaches through the pipelines the seed never looked at.
+   */
+  userPitch?: Pitch,
 ): void {
   // Two passes, not one. A single pass leaves the top of the class half
   // covered — every board is picked against an empty field, so the elite
@@ -189,30 +199,189 @@ export function seedRivalInterest(
     const snapshot = leadersAtWeekStart(season.recruiting);
     for (const record of season.teams) {
       if (record.index === userTeam && !alsoSeedUser) continue;
-      const conf = CONFERENCES.find((c) => c.id === record.conference);
-      const pitch = pitchFor(season, record, conf?.region ?? 'Gulf', developmentScore(record));
-      // His own coach, where the world has been seated with them: a program run
-      // by a recruiter opens the window ahead of one that is not, which is the
-      // same head start the user's own reputation buys him. Forty five and
-      // twenty are what a chair with nobody in it is worth.
-      const staff = record.coach;
-      for (const { prospect, actions } of aiTargets(
-        record.index, pitch, staff?.prestige ?? 45, season.recruiting.prospects,
-        holesFor(record), season.rng, snapshot,
-        season.draft?.rivalSpend[record.index] ?? 0,
-        0, 1, boardsByTier(season.teams.map((t) => prestigeStars(t.prestige))),
-      )) {
-        prospect.points[record.index] =
-          (prospect.points[record.index] ?? 0)
-          + weeklyPoints(
-            prospect, pitch, actions,
-            staff?.prestige ?? 45, staff?.skills.recruiting ?? 20,
-          ) * scale;
-      }
+      const pitch = record.index === userTeam && userPitch
+        ? userPitch
+        : pitchFor(season, record, regionOfTeam(season, record.index), developmentScore(record));
+      seedPass(season, record, pitch, snapshot, scale, season.rng);
     }
   }
   // The spend is the AI's own; the player's budget is untouched.
   resetWeeklySpend(season.recruiting);
+}
+
+/**
+ * One program's head start, for a chair that was the coached one when the
+ * window opened and is a rival's now — the school a coach has just left.
+ *
+ * `seedRivalInterest` skips the coached programme, and `aiTargets` walks away
+ * from a board nobody seeded (the three-against-6.85 measured above), so the
+ * school he left recruited almost nobody the year after. Only while the
+ * window is open, and only a board with no interest on it anywhere: the
+ * seeding is additive.
+ */
+function seedLeftBehind(season: SeasonState, index: number): void {
+  const record = season.teams[index];
+  const week = season.recruiting.week;
+  if (!record || week < 1 || week > RECRUITING_WEEKS) return;
+  if (season.recruiting.prospects.some((p) => (p.points[index] ?? 0) > 0)) return;
+  const pitch = pitchFor(season, record, regionOfTeam(season, index), developmentScore(record));
+  for (const scale of [0.5, 0.25]) {
+    seedPass(season, record, pitch, leadersAtWeekStart(season.recruiting), scale, season.rng);
+  }
+}
+
+/** A program's region, off its conference. */
+function regionOfTeam(season: SeasonState, teamIndex: number): Region {
+  const rec = season.teams[teamIndex];
+  const conf = CONFERENCES.find((c) => c.id === rec?.conference);
+  return conf?.region ?? 'Gulf';
+}
+
+/**
+ * One program's seeding pass: its board picked against the snapshot, and a
+ * week's interest banked at `scale`. Points only; nothing lands in `spent`.
+ * Returns how many men it banked interest on.
+ */
+function seedPass(
+  season: SeasonState, record: TeamRecord, pitch: Pitch,
+  snapshot: Record<string, number>, scale: number, rng: Rng,
+): number {
+  // His own coach, where the world has been seated with them: a program run
+  // by a recruiter opens the window ahead of one that is not, which is the
+  // same head start the user's own reputation buys him. Forty five and
+  // twenty are what a chair with nobody in it is worth.
+  const staff = record.coach;
+  const board = aiTargets(
+    record.index, pitch, staff?.prestige ?? 45, season.recruiting.prospects,
+    holesFor(record), rng, snapshot,
+    season.draft?.rivalSpend[record.index] ?? 0,
+    0, 1, boardsByTier(season.teams.map((t) => prestigeStars(t.prestige))),
+  );
+  for (const { prospect, actions } of board) {
+    prospect.points[record.index] =
+      (prospect.points[record.index] ?? 0)
+      + weeklyPoints(
+        prospect, pitch, actions,
+        staff?.prestige ?? 45, staff?.skills.recruiting ?? 20,
+      ) * scale;
+  }
+  return board.length;
+}
+
+/**
+ * Who will still be here when the class arrives, and how many will not.
+ *
+ * Until the draft step runs the departures, seniors and anyone likelier than
+ * not to be drafted (`departureOdds`, the odds the draw is made against, his
+ * season so far included) count as gone. Moved here from the board so the
+ * staff's suggested list reads the same roster the board's needs do.
+ */
+export function classSurvivors(
+  season: SeasonState, team: number, phase: Phase,
+): { survivors: Player[]; leaving: number } {
+  const rec = season.teams[team];
+  const roster: Player[] = rec
+    ? [...rec.team.lineup, ...rec.team.bench, ...rec.team.rotation, ...rec.team.bullpen]
+    : [];
+  const departed = phase !== null && PHASES.indexOf(phase) >= PHASES.indexOf('draft');
+  const ctx = departed ? null : draftContextOf(season);
+  const survivors = departed
+    ? roster
+    : roster.filter((p) => p.classYear !== 'SR' && departureOdds(p, season, ctx) < 0.5);
+  return { survivors, leaving: roster.length - survivors.length };
+}
+
+/**
+ * The list the staff would star for this program this week, sized to the
+ * scholarships still open (and two spare). Empty outside the window and for a
+ * full class. The board's "Use these" and the Season plan both read this.
+ */
+export function suggestedStaffList(
+  season: SeasonState | null, userTeam: number, coach: CoachState, economy: Economy, phase: Phase,
+): PlayerId[] {
+  if (!season) return [];
+  const rec = season.teams[userTeam];
+  const recruits = season.recruiting;
+  if (!rec || recruits.week < 1 || recruits.week > RECRUITING_WEEKS) return [];
+  const signed = recruits.prospects.filter((p) => p.signedBy === userTeam);
+  if (signed.length >= SCHOLARSHIPS) return [];
+  const { survivors } = classSurvivors(season, userTeam, phase);
+  const needs = walkOnShortfall(survivors, signed.map((p) => p.player));
+  const pitch = programRecruitingPitch(season, rec, regionOfTeam(season, userTeam), coach.prestige, economy);
+  const size = Math.min(STAFF_LIST_MAX, SCHOLARSHIPS - signed.length + 2);
+  return suggestStaffList(recruits.prospects, userTeam, pitch, needs, recruits.week, size);
+}
+
+/** The shared empty list, so a selector with nothing starred returns one stable reference. */
+const NO_STAFF_LIST: readonly PlayerId[] = Object.freeze([]);
+
+/** The coach's staff list, in order. The stored array itself, or one shared empty one. */
+export const staffListOf = (s: DynastyStore): readonly PlayerId[] =>
+  s.season?.recruiting.staffList ?? NO_STAFF_LIST;
+
+/**
+ * The athletic director fills the empty seats, the day a chair is taken.
+ *
+ * A career that leaves the staff to its AD had its seats filled only at the
+ * winter roll, so its whole first season, and every season after a move to a
+ * school with holes, ran with nobody in them and nobody who could hire
+ * (2026-09-29: "there are two positions empty and it wont let me click any of
+ * them to try and hire them"). The same pick the roll makes — the best man the
+ * market prices under what is left — signed the way a coach signs one.
+ */
+function adFillsSeats(economy: Economy, seed: string, year: number, prestige: number): Economy {
+  let eco = economy;
+  for (const seat of SEATS) {
+    if (eco.staff[seat]) continue;
+    const man = marketFor(seed, year, seat)
+      .filter((m) => remaining(eco, prestige) >= m.wage)
+      .sort((a, b) => b.rating - a.rating)[0];
+    if (!man) continue;
+    const signed: Assistant = { ...man, joinedYear: year, until: year + 2 };
+    eco = { ...eco, staff: { ...eco.staff, [seat]: signed } };
+  }
+  return eco;
+}
+
+/**
+ * The athletic director staffs up now, wherever he runs the staff and a seat
+ * is empty: a career loaded mid-season from a save written before he hired on
+ * day one, and the staff handed to him in Settings. Nothing, where the coach
+ * hires his own or every seat is filled.
+ *
+ * The review of 2026-09-29 found the reporter's own casual save would have
+ * kept its empty seats all season: the row said "Your AD hires", and nobody
+ * could.
+ */
+function adStaffsUp(get: () => DynastyStore, set: (patch: Partial<DynastyStore>) => void): void {
+  const s = get();
+  const season = s.season;
+  const me = season?.teams[s.userTeam];
+  if (!season || !me || s.jobSearch || handles(s.depth, 'assistants')) return;
+  if (SEATS.every((seat) => s.economy.staff[seat])) return;
+  const staffed = adFillsSeats(s.economy, String(season.seed ?? 0), s.year, me.prestige);
+  if (staffed === s.economy) return;
+  applyCoachMods(season, s.userTeam, s.coach, staffed);
+  set({ economy: staffed, version: s.version + 1 });
+}
+
+/**
+ * The staff takes the board over from the coach, mid-window.
+ *
+ * A board with no interest on it anywhere is seeded first, on the staff's own
+ * generator (bug 1: a switch mid-season used to leave the staff walking away
+ * from every man somebody else led). Then the week is planned — unless the
+ * coach already planned it, in which case his week stands and the staff's
+ * starts at the next open.
+ */
+function staffTakesTheBoard(get: () => DynastyStore): void {
+  const s = get();
+  const season = s.season;
+  if (!season || s.busy || s.jobSearch) return;
+  const week = season.recruiting.week;
+  if (week < 1 || week > RECRUITING_WEEKS) return;
+  // No seeding: the staff works only the men the coach stars (2026-09-30).
+  get().staffPlanWeek();
 }
 
 /**
@@ -337,6 +506,38 @@ function unresolvedRosterDecision(season: SeasonState, userTeam: number, depth: 
   return squad(team).find((p) => !active.has(String(p.id)) && returnDecisionOpen(p, day)) ?? null;
 }
 
+/** A roster change worth a card. See `rosterAlert`. */
+export interface RosterAlert {
+  kind: 'hurt' | 'fit';
+  id: string;
+  name: string;
+  /** How long he is out, in the trainer's words, for a hurt man. */
+  what?: string;
+  /** Other men the same stretch hurt or brought back. */
+  more: number;
+  /** A simulated week stopped for it. */
+  stopped?: boolean;
+}
+
+/** Who on the coach's roster is out hurt, and who is fit and waiting on his call. */
+function rosterWatch(season: SeasonState, userTeam: number): { hurt: Set<string>; back: Set<string> } {
+  const hurtIds = new Set<string>();
+  const backIds = new Set<string>();
+  const team = season.teams[userTeam]?.team;
+  if (!team) return { hurt: hurtIds, back: backIds };
+  const day = injuryClock(season);
+  const active = new Set([...team.lineup, ...team.rotation].map((p) => String(p.id)));
+  for (const p of [...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen]) {
+    const id = String(p.id);
+    if (isHurt(p, day)) hurtIds.add(id);
+    else if (!active.has(id) && returnDecisionOpen(p, day)) backIds.add(id);
+  }
+  return { hurt: hurtIds, back: backIds };
+}
+
+/** The roster as it was last looked at, keyed to the career and year it belongs to. */
+let rosterSeen: { key: string; hurt: Set<string>; back: Set<string> } | null = null;
+
 /** Roughly how many bodies a program has to replace, which sizes its board. */
 const holesFor = (record: { team: { lineup: unknown[]; bench: unknown[]; rotation: unknown[]; bullpen: unknown[] } }): number => {
   const roster = [
@@ -364,7 +565,7 @@ import {
   canRedshirt, redshirt, unRedshirt, redshirtCount, MAX_REDSHIRTS, staffRedshirts,
 } from '../engine/redshirt.js';
 import { movePosition, settleIn, secondaryPositions } from '../engine/positions.js';
-import { stampLayer, unstampLayer } from './backLayers.js';
+import { withNav, frameOf, eraKey, nextVisit } from './era.js';
 import { healUp, isHurt, prognosis } from '../engine/injury.js';
 import { resetWorkload, legWeariness } from '../engine/workload.js';
 import {
@@ -397,31 +598,24 @@ import {
 } from './simClient.js';
 import type { SimProgress } from './simWorker.js';
 
-export type Tab = 'home' | 'team' | 'season' | 'program';
+export type Tab = 'home' | 'team' | 'office' | 'program';
 
 /** A screen laid over whatever frame the game is in. See `overlay` below. */
 /** The settings screen's four pages, plus the list that leads to them. */
 export type SettingsPage = 'index' | 'display' | 'sound' | 'play' | 'god';
 
+/**
+ * Everything that can be laid over a frame. The rooms (see `Room`) are
+ * overlays in their own right: the coach profile opened from the portrait,
+ * the board from a letter, the staff room in the offseason. Each is one
+ * layer with one history entry, and none of them borrows Program's frame.
+ */
 export type Overlay =
-  'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'program' | 'book'
-  | 'settings' | 'captain' | 'jobs';
+  'schedule' | 'standings' | 'rankings' | 'saves' | 'inbox' | 'book'
+  | 'settings' | 'captain' | 'jobs' | Room;
 
-/**
- * A page of the program room, addressable from the inbox and from the four
- * direct cards on its own overview. `money`, `staff`, `facilities` and
- * `network` are the everyday management rooms; the rest are the career ones.
- */
-export type ProgramSheet = 'overview' | 'board' | 'money' | 'staff' | 'facilities' | 'network' | 'watchlist' | 'coach' | 'hall';
-
-/**
- * A page of the program archive. HISTORY is already a screen of its own beside
- * OVERVIEW in the program strip, so the hub's two legacy doors send you there
- * rather than growing a second copy of the archive inside a program sheet —
- * one record book, one back button, and the strip keeps telling the truth
- * about where you are.
- */
-export type ArchiveSheet = 'seasons' | 'book' | 'alumni';
+/** A page of the program archive: its seasons and its record book. Alumni is a screen of its own. */
+export type ArchiveSheet = 'seasons' | 'book';
 
 /**
  * The offseason, as a sequence you are walked through rather than a set of tabs
@@ -478,22 +672,11 @@ export type ArchiveSheet = 'seasons' | 'book' | 'alumni';
  * budget roughly 120–200ms there — still inside a transition nobody is waiting
  * on, and the reason this was safe to add at all.
  */
-/**
- * Tell the browser shell to create a visual history checkpoint before a
- * forward UI navigation mutates the SPA. Safari/WebKit builds the edge-swipe
- * preview from browser history, so pushing only after the route changed showed
- * HOME during the drag and corrected to the real previous screen after commit.
- * Android ignores this event and uses the native Back plugin.
- */
-function browserHistoryCheckpoint(): void {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new Event('playball:history-checkpoint'));
-}
-
-function browserHistoryConsume(count = 1, route = false): void {
-  if (typeof window === 'undefined' || count <= 0) return;
-  window.dispatchEvent(new CustomEvent('playball:history-consume', { detail: { count, route } }));
-}
+/*
+  No history events any more (CL, 2026-09-30): the store only changes state.
+  `nav.ts` reads the levels off it and `historySync.ts` keeps the browser's
+  entries in step, so no action here spends or gives back an entry.
+*/
 
 /**
  * The next navigation swaps screens instantly, with no view transition.
@@ -527,6 +710,19 @@ function navMark(back: boolean): void {
 }
 
 export function nextNavInstant(): void { navInstant = true; navMark(true); }
+
+/**
+ * `fn` once the frame being committed now has painted: two frames on, or
+ * 100 ms on a page that runs none. With no document (node), at once. Used by
+ * the two-step Resume (back plan V2, 2026-09-30).
+ */
+export function afterPaint(fn: () => void): void {
+  if (typeof document === 'undefined' || typeof requestAnimationFrame !== 'function') { fn(); return; }
+  let done = false;
+  const run = (): void => { if (!done) { done = true; fn(); } };
+  requestAnimationFrame(() => requestAnimationFrame(run));
+  setTimeout(run, 100);
+}
 
 /**
  * The next few hundred milliseconds belong to a back gesture.
@@ -692,6 +888,13 @@ function crossfade(run: () => void): void {
   setTimeout(done, 600);
 }
 
+/**
+ * A back move overtakes a crossfade the way a newer `go` does. Without this a
+ * `go` still waiting on its capture ran after the back and undid it, with a
+ * stop pushed on top (T fix, 2026-09-30).
+ */
+function supersedeNav(): void { navGen++; }
+
 export type Phase =
   | null            // the season is on
   | 'awards'
@@ -771,39 +974,47 @@ export const TABS: readonly TabDef[] = [
   // a control an inch away is one more thing to read on a phone.
   { id: 'home', label: 'Home', screens: [
     { id: 'today', label: 'Today' }, { id: 'wire', label: 'News' }] },
-  // Statistics are your players, so they live with your players. Strategy is a
-  // standing policy rather than a thing you check, so it sits with the program.
-  // Awards are now part of the record books: only the ones your program won,
-  // year by year, which is the only version of that list anybody cares about.
+  // Your players and how the team stands (2026-09-24). The SEASON tab went:
+  // Home's wheel is the schedule now (the full list is an overlay), and the
+  // conference and national tables are one screen with a switch. Strategy is
+  // how this team plays, so it sits beside the lineup.
   { id: 'team', label: 'Team', screens: [
-    { id: 'roster', label: 'Roster' }, { id: 'lineup', label: 'Lineup' }, { id: 'stats', label: 'Stats' }] },
-  { id: 'season', label: 'Season', screens: [
-    // CONFERENCE, not STANDINGS: the tab beside it is the national table, and
-    // two tabs that both mean "the standings" leave the player working out
-    // which one he is looking at from the contents rather than the name.
-    { id: 'sched', label: 'Schedule' }, { id: 'stand', label: 'Conference' }, { id: 'rankings', label: 'National' }] },
-
-  // Saves sit here because this tab is the one that is about the career rather
-  // than about the season: the board, the record books, the standing policies.
-  // Which dynasty you are coaching, and whether there are others, is the same
-  // kind of question — and it is the one place in the app where the bottom nav
-  // is present and nothing is half-decided, which is the only safe moment to
-  // put a career down and pick a different one up.
-  // SAVES left this strip when the coach portrait grew a menu: the menu is on
-  // every frame, the offseason included, and a second door to the same room
-  // was one more label sharing 360 pixels. The 'saves' screen id still
-  // resolves — the menu and the overlay both route to it.
+    { id: 'roster', label: 'Roster' }, { id: 'lineup', label: 'Lineup' }, { id: 'stats', label: 'Stats' },
+    { id: 'stand', label: 'Standings' }, { id: 'strategy', label: 'Strategy' }] },
+  // Running the program, every week: the rooms that used to hide as sheets
+  // behind Program's overview, each a screen of its own.
+  { id: 'office', label: 'Office', screens: [
+    { id: 'recruiting', label: 'Recruiting' }, { id: 'staff', label: 'Staff' },
+    { id: 'facilities', label: 'Facilities' }, { id: 'budget', label: 'Budget' }, { id: 'board', label: 'Board' }] },
+  // What the program has become: the silverware, the seasons, the Hall, the
+  // men who went on, and the rest of the country.
   { id: 'program', label: 'Program', screens: [
-    // OVERVIEW, because that is what it is — asked for by name. PROGRAM as a
-    // sub-tab of PROGRAM also said nothing the strip above had not already.
     { id: 'records', label: 'Overview' },
-    // The whole country, one door. Every other route to a rival's page goes
-    // through a table that happens to mention them; this one is the directory.
-    { id: 'colleges', label: 'Colleges' },
     { id: 'history', label: 'History' },
-    { id: 'recruiting', label: 'Recruiting' },
-    { id: 'strategy', label: 'Strategy' }] },
+    { id: 'hall', label: 'Hall' },
+    { id: 'alumni', label: 'Alumni' },
+    { id: 'colleges', label: 'Colleges' }] },
 ];
+
+/**
+ * A room: a page of the office or the program with a home on a tab, or one
+ * that only ever opens over something (the coach profile, the watchlist, the
+ * recruiting network). `openRoom` shows it on its tab when the frame has a
+ * nav and nothing is laid over the screen, and as an overlay otherwise.
+ */
+export type Room = 'staff' | 'facilities' | 'budget' | 'board' | 'network' | 'watchlist' | 'hall' | 'coach';
+
+export const ROOM_HOME: Partial<Record<Room, { tab: Tab; screen: string }>> = {
+  staff: { tab: 'office', screen: 'staff' },
+  facilities: { tab: 'office', screen: 'facilities' },
+  budget: { tab: 'office', screen: 'budget' },
+  board: { tab: 'office', screen: 'board' },
+  hall: { tab: 'program', screen: 'hall' },
+};
+
+/** Which room an overlay id is, when it is one. */
+export const ROOMS: readonly Room[] = ['staff', 'facilities', 'budget', 'board', 'network', 'watchlist', 'hall', 'coach'];
+export const isRoom = (o: string | null): o is Room => o !== null && (ROOMS as readonly string[]).includes(o);
 
 /** How far through the postseason we are, and what has happened so far. */
 /**
@@ -948,6 +1159,8 @@ export interface SeasonRecord {
    * the statistics go with them.
    */
   awards?: { title: string; name: string; id: PlayerId }[];
+  /** He resigned the chair at the meeting that closed this season, or just after it. */
+  resigned?: boolean;
 }
 
 /**
@@ -1001,6 +1214,13 @@ export interface DynastyStore {
    * already graded there is nothing left to play and it ends there.
    */
   announceRetirement: () => void;
+  /**
+   * Hand in his notice. With a season still to coach it is notice, and the June
+   * meeting is his last here; with the season already graded he leaves today
+   * for the job market. No take-backs. Costs `resignationCost` of the years
+   * left, charged when the tenure ends. See `resignTerms`.
+   */
+  resign: () => Promise<void>;
   /** Put the career in the book and let go of the chair. */
   endCareer: () => Promise<void>;
   /** The next man, in the same world, with the doors your name opens. */
@@ -1021,6 +1241,7 @@ export interface DynastyStore {
   /** Bumped whenever the engine mutates in place. See the note at the top. */
   version: number;
   busy: boolean;
+  /** The winter's report, held from the draft step to the next one, and saved with it. */
   lastOffseason: OffseasonReport | null;
   /** Which step of the offseason is on screen, or null during the season. */
   phase: Phase;
@@ -1213,6 +1434,12 @@ export interface DynastyStore {
      * never written again: they are what the record book is comparable across.
      */
     rules?: SeasonRules,
+    /**
+     * Systems the creation step answered differently from the preset —
+     * today the recruiting rule ("I run it / Staff runs it"). Left out, the
+     * career follows its preset exactly.
+     */
+    overrides?: Partial<Record<SystemKey, boolean>>,
   ) => void;
   /** True before a job has been taken, so the app can show the setup screen. */
   needsTeam: boolean;
@@ -1224,6 +1451,30 @@ export interface DynastyStore {
    * stand, even when the destination renders the same component.
    */
   navEpoch: number;
+  /*
+    The route trail, written by intent (back-plan T, 2026-09-30): `go` and
+    `setScreen` record the route they leave, `goBack` takes the newest of this
+    era's stops. Nothing reads it for history until the switch (SW). None of
+    these is saved.
+  */
+  /** Routes left in the nav frames (season, June), oldest first, each with its era. */
+  navTrail: NavStop[];
+  /** The visit on screen: a fresh number per arrival, the stop's own on a back. */
+  routeVisit: number;
+  /** The visit `goBack` returned to, until the next forward move. */
+  restoringVisit: number | null;
+  /** The winter step this era began at; back walks the rail no lower. */
+  stepBase: Phase;
+  /** The rival school's card open over the screen, by team index. */
+  teamCard: number | null;
+  openTeamCard: (index: number) => void;
+  closeTeamCard: () => void;
+  /** Back to this era's newest stop; 'refused' on a broken nine (the pickbar shakes). */
+  goBack: () => PeelResult;
+  /** Out of a managed season game to Today; the game waits. */
+  leaveGame: () => PeelResult;
+  /** One winter step back along the rail, no lower than `stepBase`. */
+  stepBack: () => PeelResult;
   /**
    * Trophies earned and not yet looked at. The PROGRAM tab wears a red dot
    * while any exist; opening the cabinet clears them. Replaced the
@@ -1256,8 +1507,28 @@ export interface DynastyStore {
     coachBefore: number; coachAfter: number;
     askSummary: string; askDetail: string; targetWins: number;
     stings: string[];
+    /**
+     * Men who would have played and left over the winter, graduated or
+     * drafted: the case `argueTerms` puts to the board. Kept here because the
+     * winter's own report is not saved, and a push back made after the app
+     * was reopened met a board that saw nobody leave (2026-09-25).
+     */
+    departed?: number;
   } | null;
   dismissSeasonOpener: () => void;
+  /**
+   * The season whose plan was put to the coach at the chair he holds: the
+   * year stamped when the Season plan closed. Null on a new career, a new job
+   * and a save from before the sheet, each of which is owed one.
+   */
+  seasonPlanYear: number | null;
+  /**
+   * Close the Season plan for this season, by either of its buttons or any
+   * dismissal. The defaults apply: the staff's own picks start on every idle
+   * seat (`letStaffPick`), in every mode. Everything else on the sheet took
+   * effect when it was tapped. Once a season; a second call does nothing.
+   */
+  closeSeasonPlan: () => void;
 
   /**
    * A man the screen you are about to land on should point at.
@@ -1460,30 +1731,20 @@ export interface DynastyStore {
    */
   overlay: Overlay | null;
   /**
-   * The program sheet that was showing when the current overlay opened.
-   *
-   * The back press peels a Program sheet back to this rather than to
-   * 'overview': a coach sent straight to the board by an opener card or an
-   * inbox letter has no overview behind him, and peeling to one costs a press
-   * and lands him somewhere he never chose. Session state — it describes a
-   * layer that is open right now and never reaches a save file.
-   */
-  overlayEntrySheet: ProgramSheet;
-  /**
    * The layers underneath `overlay`, bottom first.
    *
    * `overlay` was a single value, so a letter that opened the board REPLACED
    * the inbox, and the back press from the board landed on whatever screen
    * the inbox had been over rather than on the inbox: a coach reading his
    * mail followed one letter and could not get back to the pile (06 §AE.2).
-   * Each entry is a layer he opened and has not closed, carrying the two
-   * things a Program layer needs to come back exactly as it was left — the
-   * sheet it was showing, and the sheet it was opened at.
+   * Each entry is a layer he opened and has not closed. A room opened from a
+   * room (the budget's Staff door, in the offseason) stacks the same way, so
+   * the back press walks them in the order he opened them.
    *
-   * Session state, like `overlayEntrySheet`: it describes what is open right
-   * now and never reaches a save file.
+   * Session state: it describes what is open right now and never reaches a
+   * save file.
    */
-  overlayStack: { overlay: Overlay; sheet: ProgramSheet; entrySheet: ProgramSheet }[];
+  overlayStack: { overlay: Overlay }[];
   /**
    * Programmes approached this season, and the ones that bit.
    *
@@ -1509,6 +1770,8 @@ export interface DynastyStore {
   noteHabit: (key: HabitKey, n?: number) => void;
   openOverlay: (o: Overlay) => void;
   closeOverlay: () => void;
+  /** A room, on its tab when the frame allows it and as an overlay otherwise. See `Room`. */
+  openRoom: (room: Room) => void;
   /**
    * Which page of settings is open.
    *
@@ -1521,18 +1784,8 @@ export interface DynastyStore {
    */
   settingsPage: SettingsPage;
   setSettingsPage: (p: SettingsPage) => void;
-  /**
-   * Which sheet the program page opens on.
-   *
-   * In the store rather than in `Program.tsx`'s own state because it is now
-   * addressed from outside — a board verdict in the inbox opens the board, an
-   * achievement opens the cabinet — and a component that owns its tab cannot be
-   * told which tab to be on.
-   */
-  programSheet: ProgramSheet;
-  setProgramSheet: (s: ProgramSheet) => void;
 
-  /** Which page of the archive HISTORY opens on, so the hub can aim its doors. */
+  /** Which page of the archive HISTORY opens on, so the overview can aim its doors. */
   historySheet: ArchiveSheet;
   setHistorySheet: (s: ArchiveSheet) => void;
 
@@ -1564,6 +1817,27 @@ export interface DynastyStore {
   recruitMajor: (prospectId: PlayerId, action: RecruitMajorInput | null) => boolean;
   /** Bank the week, let recruits commit, and move to the next one. */
   advanceRecruitingWeek: () => void;
+  /**
+   * Whether the staff replaces a starred recruit who signs elsewhere with a
+   * similar one. Per career; on by default. Acts at the next tending.
+   */
+  replaceLostRecruits: boolean;
+  setReplaceLostRecruits: (on: boolean) => void;
+  /**
+   * Put the staff's week on the board, when the staff runs recruiting. Tends
+   * the list every time; plans only a week nobody has planned, unless forced
+   * (a list change replans the whole week). Idempotent. Does not save.
+   */
+  staffPlanWeek: (force?: boolean) => void;
+  /**
+   * Star a recruit for the staff, or unstar him. Refused (false) for a man
+   * who is gone, out of reach, or when the list already holds eight.
+   */
+  starRecruit: (id: PlayerId) => boolean;
+  /** Move a starred recruit one place up (-1) or down (1) the list. */
+  moveStaffRecruit: (id: PlayerId, by: -1 | 1) => void;
+  /** Replace the whole list: open, reachable men only, at most eight, in this order. */
+  setStaffList: (ids: readonly PlayerId[]) => void;
   /** Close any recruiting weeks the regular-season calendar has passed. */
   syncRecruitingCalendar: () => void;
   /**
@@ -1643,6 +1917,19 @@ export interface DynastyStore {
    */
   weekStoppedBy: string | null;
   clearWeekStop: () => void;
+  /**
+   * A roster change the coach hears about the moment it happens, however the
+   * day was played: a man newly hurt, or a hurt man fit again and waiting on
+   * the coach's call (2026-09-24: "when a player gets injured I still want the
+   * warning like the card warning, same thing once they are fit to return to
+   * the lineup"). It used to exist only when SIM WEEK stopped, so a man hurt
+   * in a simmed game, a coached game or June came with no card at all.
+   * Session state, never saved.
+   */
+  rosterAlert: RosterAlert | null;
+  clearRosterAlert: () => void;
+  /** Look at the roster before time moves ('prime'), and say what changed after ('report'). */
+  noteRoster: (mode: 'prime' | 'report', opts?: { stopped?: boolean }) => void;
 
   /**
    * Which first-visit tutorials have been shown, by screen id.
@@ -1696,11 +1983,16 @@ export interface DynastyStore {
   renewAssistant: (seat: StaffSeat) => boolean;
   /** Set the standing instruction for one assistant. */
   setStaffDirective: (seat: StaffSeat, directive: StaffDirective) => boolean;
-  /** Start one multi-week staff project. Recruiting projects require a state. */
-  /** A pipeline project names a state; a hitting or pitching project names one of your men. */
-  startStaffProject: (seat: StaffSeat, kind: StaffProjectKind, state?: string, playerId?: string) => boolean;
-  /** Stop the active project without refunding elapsed weeks. */
+  /** Start this season's work. A coordinator names a state; a coach names 1-3 of his men (none: the staff's suggestion). */
+  startStaffProject: (seat: StaffSeat, kind: StaffProjectKind, state?: string, playerIds?: readonly string[]) => boolean;
+  /** Stop the season's work; its weeks are lost (pipeline strength already added stays). */
   cancelStaffProject: (seat: StaffSeat) => void;
+  /**
+   * Let the staff pick its own season work on these seats (all by default):
+   * seats with a man, a building at L1 or higher and nothing running. Works in
+   * both modes. Returns the seats started. The Season plan's defaults.
+   */
+  letStaffPick: (seats?: readonly StaffSeat[]) => StaffSeat[];
   /** One rung up, paid once, forever. */
   /**
    * Put one of the three buildings up.
@@ -2315,6 +2607,10 @@ function usableEconomy(saved: unknown): Economy {
           ...(Array.isArray(r.targetIds) ? { targetIds: r.targetIds.filter((id): id is string => typeof id === 'string').slice(0, 10) } : {}),
           ...(typeof r.alignedWeeks === 'number' ? { alignedWeeks: Math.max(0, Math.min(r.weeksTotal, r.alignedWeeks)) } : {}),
           ...(typeof r.state === 'string' ? { state: r.state } : {}),
+          // Season work (2026-09-28). Absent: a legacy project, finished the old way.
+          ...(r.season === true ? { season: true as const } : {}),
+          ...(typeof r.weeksRun === 'number' ? { weeksRun: Math.max(0, Math.min(RECRUITING_WEEKS, Math.round(r.weeksRun))) } : {}),
+          ...(typeof r.from === 'number' ? { from: Math.max(0, Math.min(100, r.from)) } : {}),
           weeksTotal: Math.max(1, Math.round(r.weeksTotal)),
           weeksLeft: Math.max(0, Math.round(r.weeksLeft)),
           startedWeek: typeof r.startedWeek === 'number' ? Math.max(1, Math.round(r.startedWeek)) : 1,
@@ -2348,6 +2644,19 @@ function usableEconomy(saved: unknown): Economy {
   };
 }
 
+/**
+ * His men who would have played and left over a winter: graduated, or drafted
+ * and not kept. The report lists the whole country's departures (the draft
+ * board is read off it), and the case put to the board counted all of them,
+ * so every push back found seven hundred men gone and won the largest cut
+ * there is (found 2026-09-25). It is his own side the board is asked about.
+ */
+function winterLosses(report: DynastyStore['lastOffseason'] | undefined, team: number): number {
+  if (!report) return 0;
+  const his = (d: { team: number }): boolean => d.team === team;
+  return report.graduated.filter(his).length + report.drafted.filter((d) => his(d) && !d.returned).length;
+}
+
 /** The alumni book, from whatever an older save carries. */
 /** The season opener as the save wrote it, or null for anything else. */
 function usableOpener(raw: unknown): DynastyStore['seasonOpener'] {
@@ -2362,6 +2671,63 @@ function usableOpener(raw: unknown): DynastyStore['seasonOpener'] {
     coachBefore: num('coachBefore'), coachAfter: num('coachAfter'),
     askSummary: str('askSummary'), askDetail: str('askDetail'), targetWins: num('targetWins'),
     stings: Array.isArray(o['stings']) ? o['stings'].filter((s): s is string => typeof s === 'string') : [],
+    ...(typeof o['departed'] === 'number' ? { departed: o['departed'] } : {}),
+  };
+}
+
+/** The season whose plan was put to the coach, or null (owed one) for anything else. */
+function usableSeasonPlanYear(raw: unknown): number | null {
+  return typeof raw === 'number' && Number.isInteger(raw) ? raw : null;
+}
+
+/**
+ * The winter's report as the save wrote it, or null for anything else.
+ *
+ * Null when it is not a report at all, which is what a save from before it was
+ * kept looks like too. A row that is not a whole departure, walk-on, badge or
+ * hole is dropped rather than guessed at, and a missing count reads nought.
+ */
+function usableOffseason(raw: unknown): OffseasonReport | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (!Array.isArray(o['graduated']) || !Array.isArray(o['drafted'])) return null;
+  type Row = Record<string, unknown>;
+  const rows = <T>(key: string, whole: (r: Row) => boolean): T[] => {
+    const list = o[key];
+    if (!Array.isArray(list)) return [];
+    return list.filter((r): r is Row => !!r && typeof r === 'object' && whole(r as Row)) as unknown as T[];
+  };
+  const count = (key: string): number => {
+    const v = o[key];
+    return typeof v === 'number' && Number.isFinite(v) ? v : 0;
+  };
+  const classes: readonly unknown[] = ['FR', 'SO', 'JR', 'SR'];
+  const reasons: readonly unknown[] = ['graduated', 'drafted', 'walk-on'];
+  const departure = (d: Row): boolean =>
+    typeof d['id'] === 'string' && typeof d['name'] === 'string'
+    && typeof d['team'] === 'number' && typeof d['teamAbbr'] === 'string'
+    && classes.includes(d['classYear']) && typeof d['age'] === 'number'
+    && typeof d['overall'] === 'number' && reasons.includes(d['reason'])
+    && (d['round'] === undefined || typeof d['round'] === 'number')
+    && (d['returned'] === undefined || typeof d['returned'] === 'boolean');
+  type Report = OffseasonReport;
+  return {
+    graduated: rows<Report['graduated'][number]>('graduated', departure),
+    drafted: rows<Report['drafted'][number]>('drafted', departure),
+    recruits: count('recruits'),
+    signed: rows<Report['signed'][number]>('signed', (p) =>
+      typeof p['id'] === 'string' && !!p['player'] && typeof p['player'] === 'object'),
+    walkOns: rows<Report['walkOns'][number]>('walkOns', (w) =>
+      typeof w['id'] === 'string' && typeof w['name'] === 'string'
+      && typeof w['pos'] === 'string' && typeof w['overall'] === 'number'),
+    developmentNet: count('developmentNet'),
+    improved: count('improved'),
+    declined: count('declined'),
+    badges: rows<Report['badges'][number]>('badges', (b) =>
+      typeof b['id'] === 'string' && typeof b['name'] === 'string' && typeof b['badge'] === 'string'
+      && (b['tier'] === 1 || b['tier'] === 2 || b['tier'] === 3)),
+    holes: rows<Report['holes'][number]>('holes', (h) =>
+      typeof h['pos'] === 'string' && typeof h['count'] === 'number'),
   };
 }
 
@@ -2410,6 +2776,9 @@ function usableRivalry(saved: unknown): { w: number; l: number } {
     l: typeof r.l === 'number' && r.l >= 0 ? r.l : 0,
   };
 }
+
+/** Whether the staff replaces lost recruits: only an explicit false is off. */
+const usableReplaceLost = (v: unknown): boolean => v !== false;
 
 /** The watchlists, from whatever an older save carries. */
 function usableWatch(saved: unknown): { programs: string[]; jobs: string[] } {
@@ -2533,6 +2902,160 @@ export function careerFinished(s: {
   if (s.coach.retiredYear !== undefined) return false;
   if (s.coach.farewellYear === s.year) return true;
   return retirementStatus({ age: s.coach.age, seasons: careerSeasons(s) }) === 'over';
+}
+
+/**
+ * The offseason's season has been through the June meeting: the review is in
+ * hand, the year is in the book, or the rail is already past the review step
+ * (a save from before the grading was written can land there with neither).
+ */
+function seasonGraded(s: {
+  phase: Phase; lastReview: Review | null; history: SeasonRecord[]; year: number; furthestPhase: number;
+}): boolean {
+  if (s.phase === null) return false;
+  const review = PHASES.indexOf('review');
+  return s.lastReview !== null
+    || s.history.some((h) => h.year === s.year)
+    || PHASES.indexOf(s.phase) > review
+    || s.furthestPhase > review;
+}
+
+type ResignState = Pick<DynastyStore,
+  'season' | 'coach' | 'year' | 'phase' | 'lastReview' | 'history' | 'jobSearch' | 'furthestPhase'>;
+
+/**
+ * The years will call it at this year's meeting, read before it: the season in
+ * hand is not in the book yet, so an ungraded year counts it. Age needs no look
+ * ahead — it rolls after the meeting. Retirement wins over a resignation, so a
+ * man in his last season is never offered a price and a market he will not get.
+ */
+function careerEndsAtMeeting(s: ResignState): boolean {
+  if (careerFinished(s)) return true;
+  if (s.coach.retiredYear !== undefined || seasonGraded(s)) return false;
+  return retirementStatus({ age: s.coach.age, seasons: careerSeasons(s) + 1 }) === 'over';
+}
+
+/**
+ * He has handed in his notice and it still stands as a resignation: no farewell
+ * or finished career has overtaken it, and he is not already on the market.
+ * The coach page's callout and the Board's signpost row both read this.
+ */
+export function resignPending(s: ResignState): boolean {
+  return s.coach.resignYear === s.year
+    && s.coach.farewellYear === undefined && s.coach.retiredYear === undefined
+    && !s.jobSearch && !careerEndsAtMeeting(s);
+}
+
+/**
+ * Contract years he walks out on if he resigns now: the years after the season
+ * he leaves in. Before the meeting `contractYears` still counts this season.
+ */
+export function resignYearsLeft(s: ResignState): number {
+  return seasonGraded(s)
+    ? Math.max(0, s.coach.contractYears)
+    : Math.max(0, s.coach.contractYears - 1);
+}
+
+/**
+ * Whether he can resign, and what it means today; null when he cannot.
+ *
+ * 'notice' while a season is still to be coached — the spring, or an offseason
+ * whose meeting has not graded it — and the meeting is his last. 'now' once it
+ * has, and he goes today. Retirement wins over it: a farewell, a finished
+ * career or the years calling it hide the door. Not gated on `busy`, so the
+ * control does not blink out during a sim; `resign` refuses then instead.
+ *
+ * A new object each call: select its fields, never the whole thing.
+ */
+export function resignTerms(s: ResignState): { when: 'notice' | 'now'; years: number; cost: number } | null {
+  if (!s.season || s.jobSearch) return null;
+  if (s.coach.retiredYear !== undefined || s.coach.farewellYear !== undefined) return null;
+  if (s.coach.resignYear === s.year) return null;
+  if (s.lastReview?.fired) return null;
+  if (careerEndsAtMeeting(s)) return null;
+  const years = resignYearsLeft(s);
+  return { when: seasonGraded(s) ? 'now' : 'notice', years, cost: resignationCost(years) };
+}
+
+// ---------------------------------------------------------------------------
+// The route trail's reads (back-plan T, 2026-09-30)
+// ---------------------------------------------------------------------------
+
+/** A route left behind: where it was, which visit, and the era it belongs to. */
+export type NavStop = { tab: Tab; screen: string; visit: number; era: string };
+
+/** What one back press did: took a level, was held, or found nothing to take. */
+export type PeelResult = 'peeled' | 'refused' | 'none';
+
+/**
+ * The broken nine holds the door: the lineup is on screen, the card is the
+ * coach's to fix, and it has a hole or a man twice. One read for `go`,
+ * `setScreen`, `openOverlay` and `goBack`, the same `cardGaps` the lineup's
+ * own warning prints from.
+ */
+export function lineupHolds(s: Pick<DynastyStore, 'screen' | 'depth' | 'season' | 'userTeam'>): boolean {
+  if (s.screen !== 'lineup' || !handles(s.depth, 'lineups')) return false;
+  const team = s.season?.teams[s.userTeam]?.team;
+  if (!team) return false;
+  const gaps = cardGaps(team.lineup);
+  return gaps.missing.length > 0 || gaps.doubled.length > 0;
+}
+
+/**
+ * The offseason rail as this career walks it. A career that ends at this
+ * meeting, or a tenure he has resigned, stops at the review: no draft and no
+ * signing day come after it. App's StepRail and `stepBack` both read this.
+ */
+export function railSteps(s: Pick<DynastyStore, 'season' | 'history' | 'coach' | 'year'>): Exclude<Phase, null>[] {
+  const all = stepsFor(rulesOf(s.season));
+  return careerFinished(s) || s.coach.resignYear === s.year ? all.slice(0, all.indexOf('review') + 1) : all;
+}
+
+/** This era's stops, oldest first. Other eras' stay in the trail and are not walked. */
+export function eraStops(s: DynastyStore): NavStop[] {
+  const era = eraKey(s);
+  return s.navTrail.filter((x) => x.era === era);
+}
+
+/**
+ * The winter steps back can take: each rail step after `stepBase`, up to the
+ * step on screen. Derived, never pushed, so a rail tap backwards cannot leave
+ * a step for back to walk forward into. No base yet means the rail's first.
+ */
+export function stepStops(s: DynastyStore): Exclude<Phase, null>[] {
+  if (frameOf(s) !== 'winter' || s.phase === null) return [];
+  const rail = railSteps(s);
+  const at = PHASES.indexOf(s.phase);
+  const base = PHASES.indexOf(s.stepBase ?? rail[0] ?? 'awards');
+  return rail.filter((p) => PHASES.indexOf(p) > base && PHASES.indexOf(p) <= at);
+}
+
+/** Where a move lands the trail: the stop it leaves and a fresh visit, or nothing. */
+function trailStep(s: DynastyStore, tab: Tab, screen: string): Partial<DynastyStore> {
+  const frame = frameOf(s);
+  if (frame !== 'season' && frame !== 'june') return {};
+  // June Home ignores `screen`: all of it is one route.
+  const key = (t: Tab, sc: string): string => (frame === 'june' && t === 'home' ? 'home' : `${t}|${sc}`);
+  if (key(s.tab, s.screen) === key(tab, screen)) return {};
+  // The game is a level over the route, never a stop, going in or coming out.
+  const box = s.screen === 'box' || screen === 'box';
+  return {
+    navTrail: box ? s.navTrail : [...s.navTrail, { tab: s.tab, screen: s.screen, visit: s.routeVisit, era: eraKey(s) }],
+    routeVisit: nextVisit(),
+    restoringVisit: null,
+  };
+}
+
+/**
+ * A move in a nav frame shuts every page laid over the route, in the same
+ * write (PF, 2026-09-30). WeekStopped's "Set the lineup" moved the route
+ * under an open Schedule, and the coach fixed nothing he could see (C20).
+ */
+function overlaysShut(s: DynastyStore): Partial<DynastyStore> {
+  const frame = frameOf(s);
+  if (frame !== 'season' && frame !== 'june') return {};
+  if (s.overlay === null && s.overlayStack.length === 0 && s.settingsPage === 'index') return {};
+  return { overlay: null, overlayStack: [], settingsPage: 'index' };
 }
 
 /**
@@ -2837,7 +3360,157 @@ function settleTheDraft(get: () => DynastyStore): void {
   }
 }
 
-function dealLikeAuto(team: TeamRecord['team'], day: number): void {
+/**
+ * The winter, for a tenure that ends before the draft step: the book, the
+ * league's departures and development, and the draft board settled.
+ *
+ * The three calls every exit at the meeting makes, in one place since the
+ * resignation made a fourth exit. `furthestPhase` is moved past the draft once
+ * `leagueWinter` has run, so a roll that fails and walks back through the
+ * meeting cannot run `departAndDevelop` a second time.
+ */
+function winterWithoutHim(get: () => DynastyStore, set: (patch: Partial<DynastyStore>) => void): void {
+  bookTheYear(get);
+  leagueWinter(get, set);
+  set({ furthestPhase: Math.max(get().furthestPhase, PHASES.indexOf('draft')) });
+  settleTheDraft(get);
+}
+
+/**
+ * The tenure ends on a resignation: the name pays for the years left, and the
+ * season he left after says so in the book.
+ *
+ * Read after the meeting, where `contractYears` is the years after the graded
+ * season (a leaving coach is never extended or renewed, so it is the number the
+ * confirm showed). Charged once: the mark on the history row and the charge go
+ * together, and a row already marked is not charged again.
+ */
+function chargeResignation(get: () => DynastyStore, set: (patch: Partial<DynastyStore>) => void): void {
+  const s = get();
+  if (s.history.some((h) => h.year === s.year && h.resigned === true)) return;
+  const cost = resignationCost(s.coach.contractYears);
+  const p = s.coach.prestige;
+  set({
+    // Floored at five, the clamp every other writer keeps, and never raised by it.
+    coach: { ...s.coach, prestige: Math.max(Math.min(5, p), p - cost) },
+    history: s.history.map((h) => (h.year === s.year ? { ...h, resigned: true } : h)),
+    version: s.version + 1,
+  });
+}
+
+/**
+ * The one line on the new year's desk that says he left. Posted after the
+ * roll, which wipes the inbox — the notice's own letter goes with it.
+ * `userTeam` is still the old school until he takes a chair.
+ */
+function postResignation(get: () => DynastyStore): void {
+  const s = get();
+  get().post({
+    kind: 'carousel', year: s.year,
+    title: `${s.coach.name} leaves ${s.season?.teams[s.userTeam]?.def.school ?? 'the program'}`,
+    body: 'Coach — the desk is cleared. The calls are yours to take.',
+  });
+}
+
+/**
+ * The portal closes: the coach's own leavers go, the other ninety-five shop
+ * the pool, and whoever is left has left college baseball.
+ *
+ * Out of `nextPhase` so that a coach who resigns on the portal step leaves a
+ * closed portal behind him rather than one half-run for the whole country.
+ */
+function closePortal(get: () => DynastyStore, set: (patch: Partial<DynastyStore>) => void): void {
+  const season = get().season;
+  if (!season) return;
+  /*
+    Everybody still in the portal has gone.
+
+    The same rule the draft board keeps one step earlier: doing nothing has
+    to *mean* something, or a coach could leave a man hanging in a list
+    nobody comes back to and keep him by accident.
+  */
+  const rec = season.teams[get().userTeam];
+  for (const m of get().portal?.leaving ?? []) {
+    if (rec) releaseFrom(rec.team, m.player.id);
+  }
+
+  /*
+    And the other ninety-five shop it, which is the half that makes this a
+    portal rather than a tax.
+
+    Without this every man who entered simply evaporated: off the roster he
+    left, onto nobody's, out of the league. That is wrong twice over -- the
+    pool a coach signs from should be other programs' broken promises, and a
+    man still playing college baseball somewhere must not turn up eligible
+    for a hall of fame two steps later.
+
+    Cheapest-first and at most two apiece, so one rich program cannot hoover
+    the whole board. Whoever is left over has genuinely left college
+    baseball, which is a real thing that happens to transfers.
+  */
+  const stillOut = [
+    ...(get().portal?.available ?? []),
+    ...(get().portal?.leaving ?? []),
+  ];
+  if (stillOut.length > 0) {
+    const taken = new Set<PlayerId>();
+    for (const other of season.teams) {
+      if (other.index === get().userTeam) continue;
+      const going = stillOut.filter((m) => !taken.has(m.player.id) && m.from !== other.index);
+      // `continue`, not `break`: a program with nothing left to take is
+      // one program, not the end of the queue behind it.
+      if (going.length === 0) continue;
+      const budget = flexibleOffseasonBudget(prestigeStars(other.prestige))
+        - (season.draft?.rivalSpend[other.index] ?? 0)
+        - (season.portalSpend?.[other.index] ?? 0);
+      for (const m of staffWorksPortal(other.team, going, budget)) {
+        taken.add(m.player.id);
+        const from = season.teams[m.from];
+        if (from) releaseFrom(from.team, m.player.id);
+        // The same pool for all ninety six: what a rival spends here
+        // thins its own recruiting week, the rule the user now plays by.
+        (season.portalSpend ??= {})[other.index] =
+          (season.portalSpend[other.index] ?? 0) + m.cost;
+      }
+    }
+    /*
+      Whoever is left has genuinely left college baseball -- from every
+      roster, not only the coached one. A rival's unsigned man used to
+      stay on the roster he was leaving, wearing `inPortal` for good, so
+      the rule read one way for the user and another for the ninety-five
+      (05 §62.8).
+    */
+    for (const m of stillOut) {
+      if (taken.has(m.player.id) || m.from === get().userTeam) continue;
+      const from = season.teams[m.from];
+      if (from) releaseFrom(from.team, m.player.id);
+    }
+  }
+
+  /*
+    The window's one letter. Individual signings stopped writing home
+    the moment they happened; this is the whole haul in a sentence,
+    posted as the portal closes so it reads as news about a finished
+    thing rather than a running commentary.
+  */
+  const came = get().portalArrivals;
+  if (came.length > 0) {
+    const names = came.length === 1
+      ? came[0]
+      : `${came.slice(0, -1).join(', ')} and ${came[came.length - 1]}`;
+    get().post({
+      kind: 'season', year: get().year,
+      title: came.length === 1
+        ? 'One came in through the portal'
+        : `${came.length} came in through the portal`,
+      body: `Coach — ${names}. Eligible immediately, on the roster now.`,
+      link: { to: 'team', index: get().userTeam },
+    });
+  }
+  set({ portal: null, portalArrivals: [] });
+}
+
+function dealLikeAuto(team: TeamRecord['team'], day: number, form?: BatForm): void {
   /*
     Bench the men who cannot play, THEN order the card.
 
@@ -2850,7 +3523,7 @@ function dealLikeAuto(team: TeamRecord['team'], day: number): void {
     who could not play. `bestNine` picks the card from the whole squad by
     merit, the unavailable skipped, so AUTO fields the best nine it has.
   */
-  const best = bestNine(team, day);
+  const best = bestNine(team, day, form);
   team.lineup.splice(0, team.lineup.length, ...best.lineup);
   team.bench.splice(0, team.bench.length, ...best.bench);
   // AUTO is the button that promises a sound card, so it repairs the set as
@@ -2909,7 +3582,7 @@ function staffSetsTheCard(season: SeasonState, userTeam: number): void {
   // The staff field the best nine they have, the unfit benched — a casual
   // career was the one place nobody was ever told and nobody ever moved. The
   // same call AUTO makes (`bestNine`), so the two cards stay one card.
-  const best = bestNine(team, season.dayIndex);
+  const best = bestNine(team, season.dayIndex, battingForm(season));
   team.lineup.splice(0, team.lineup.length, ...best.lineup);
   team.bench.splice(0, team.bench.length, ...best.bench);
   const dealt = autoBattingOrder(team.lineup);
@@ -3219,13 +3892,20 @@ function seasonNews(store: DynastyStore): void {
       different, so far ive notice nothing about the farewell tour".
     */
     const leaving = store.coach.farewellYear === year;
+    // A man on notice is not watched either, but his year is still graded.
+    const going = !leaving && store.coach.resignYear === year;
     store.post({
       kind: 'board', year, key: 'halfway',
-      title: leaving ? 'Halfway through your last summer' : 'Halfway, and the board is watching',
+      title: leaving ? 'Halfway through your last summer'
+        : going ? 'Halfway through your last season here'
+          : 'Halfway, and the board is watching',
       body: leaving
         ? `Coach — ${w}-${half - w} at the turn, and every room you walk into `
           + 'from here knows it is the last time. Nobody upstairs is counting '
           + `to ${want.targetWins} any more.`
+        : going
+          ? `Coach — ${w}-${half - w} at the turn, against the ${want.targetWins} `
+            + 'upstairs asked for. They still grade the year.'
         : `Coach — ${w}-${half - w} at the turn puts us on for `
           + `${Math.round((w / half) * games)} wins, against the ${want.targetWins} `
           + 'upstairs asked for.',
@@ -3255,13 +3935,90 @@ function defaultUserTeam(season: SeasonState): number {
  * withheld from the player's (see the note at the review), and stamping the
  * uncorrected number here would reopen that seam from the other side.
  */
+/**
+ * The seed the board's rotating bonuses are drawn with (`boardExtras`): the
+ * year and the chair, so a spring's pair holds through every read and every
+ * argument, and next spring's is a different pair. Never 0, which is the
+ * seed that adds nothing.
+ */
+function askSeed(season: SeasonState | null, userTeam: number): number {
+  return season ? (season.year ?? 0) * 97 + userTeam + 1 : 0;
+}
+
 function boardAskFor(season: SeasonState, userTeam: number): Expectation | null {
   const me = season.teams[userTeam];
   if (!me) return null;
-  return playerBoard(
+  const ask = playerBoard(
     me.prestige, rosterStrength(me.team), seasonLength(season.config),
     me.culture?.patience, leagueShape(season.teams),
   ).expectation;
+  return { ...ask, objectives: objectivesFor(ask.mandate, ask.targetWins, askSeed(season, userTeam)) };
+}
+
+/**
+ * What the rotating bonuses read (`boardExtras`), off the season itself.
+ * `final` withholds the two that only mean something once the schedule is
+ * done — the poll and the all-conference team — so a box does not tick in
+ * April and untick in May. Read by the settled outcome and by the board
+ * room's live one.
+ */
+export function boardFacts(
+  season: SeasonState, me: TeamRecord, final: boolean,
+): Pick<SeasonOutcome, 'rivalSeries' | 'finalRank' | 'conferenceWins' | 'runDiff' | 'firstTeamMen' | 'bestRecruitStars' | 'sweeps' | 'longestStreak'> {
+  const rival = season.teams.findIndex((t) => t.def.abbr === me.def.rival);
+  const series = { w: 0, l: 0 };
+  // Conference series by opponent and week, for the sweeps.
+  const sets = new Map<string, { w: number; n: number }>();
+  for (const g of season.results) {
+    if (g.home !== me.index && g.away !== me.index) continue;
+    const home = g.home === me.index;
+    const won = home ? g.homeRuns > g.awayRuns : g.awayRuns > g.homeRuns;
+    const opp = home ? g.away : g.home;
+    if (opp === rival) { if (won) series.w += 1; else series.l += 1; }
+    if (g.conference) {
+      const key = `${opp}:${season.schedule[g.day]?.week ?? g.day}`;
+      const s = sets.get(key) ?? { w: 0, n: 0 };
+      s.n += 1;
+      if (won) s.w += 1;
+      sets.set(key, s);
+    }
+  }
+  return {
+    rivalSeries: series,
+    finalRank: final ? nationalRank(season, me.index) : 0,
+    conferenceWins: me.cw,
+    runDiff: me.rs - me.ra,
+    firstTeamMen: final ? allConference(season).filter((p) => p.team === me.def.abbr).length : 0,
+    bestRecruitStars: season.recruiting.prospects
+      .reduce((best, p) => (p.signedBy === me.index ? Math.max(best, p.stars) : best), 0),
+    sweeps: [...sets.values()].filter((s) => s.n >= 3 && s.w === s.n).length,
+    longestStreak: season.feats?.streak ?? 0,
+  };
+}
+
+type BatForm = NonNullable<Parameters<typeof bestNine>[2]>;
+
+/**
+ * A bat's season against the league's, in rating points, for AUTO's card.
+ *
+ * On-base plus slugging, against the league's at-bat-weighted mean, at fifty
+ * points of rating per point of OPS and half weight at forty at-bats: a hot
+ * week is a hint, a season is a fact. Capped at eight either way, so the
+ * ratings still decide between two men with ordinary lines.
+ */
+function battingForm(season: SeasonState): BatForm {
+  let num = 0;
+  let den = 0;
+  for (const s of season.batting.values()) {
+    if (s.ab > 0) { num += (onBase(s) + slugging(s)) * s.ab; den += s.ab; }
+  }
+  const league = den > 0 ? num / den : 0.7;
+  return (m) => {
+    const s = season.batting.get(m.id);
+    if (!s || s.ab === 0) return 0;
+    const weight = s.ab / (s.ab + 40);
+    return Math.max(-8, Math.min(8, (onBase(s) + slugging(s) - league) * 50 * weight));
+  };
 }
 
 /**
@@ -3306,10 +4063,22 @@ let godForkInFlight = false;
  * swallowed for the whole of it. Reported 2026-09-10: "if at the start of the
  * year I hit go to the board and then try going back it glitches and shows as
  * if the card was still there and does a quick flick the screen."
+ *
+ * Since the UI clarity review (2026-09-25) the opener is a full-frame step
+ * that is signed where it stands (`SeasonTerms.tsx`) and sends nobody to the
+ * board. It still stands down there, and the board page says the terms are
+ * waiting and steps off itself to bring them back, so a board reached with
+ * them unsigned is never a dead end. And it is never drawn for a man with no
+ * chair: the year roll writes one even for a coach the review has just let
+ * go, and the step would have asked him to sign for the school that fired him
+ * over the top of the job market; a finished career has no season to sign for.
  */
 export function openerShowing(s: DynastyStore): boolean {
+  // The card stands down while the coach is reading the board it sent him to,
+  // on the Office tab or laid over something else.
   return s.seasonOpener !== null && !s.live && s.phase === null
-    && s.screen !== 'records' && s.overlay !== 'program';
+    && !s.jobSearch && s.coach.retiredYear === undefined
+    && !(s.tab === 'office' && s.screen === 'board') && s.overlay !== 'board';
 }
 
 /** A card that answers the back press itself, rather than letting it through. */
@@ -3317,14 +4086,65 @@ export function blockingCardUp(s: DynastyStore): boolean {
   return s.playbookInvite !== null || s.bigMoment !== null || openerShowing(s);
 }
 
-export const useDynasty = create<DynastyStore>((set, get) => ({
+/**
+ * Is the Season plan drawn right now?
+ *
+ * Once a season at each chair: owed until `closeSeasonPlan` stamps the year,
+ * and drawn only while the recruiting weeks are open and nothing else owns the
+ * frame. It follows from state, so it opens the moment the terms are signed
+ * (the opener goes null), and on day one of a first season or a new job,
+ * neither of which has terms. The store never waits on it. It is not part of
+ * `blockingCardUp`: the back press closes it, which is "Decide later".
+ */
+export function seasonPlanShowing(s: DynastyStore): boolean {
+  if (!seasonPlanOwedNow(s)) return false;
+  return !(s.overlay !== null || s.selectedPlayer !== null || s.coachSeat !== null || s.godStack.length > 0);
+}
+
+/** Owed this season and nothing but its own time in the window stands in the way. */
+function seasonPlanOwedNow(s: DynastyStore): boolean {
+  const season = s.season;
+  if (!season || s.needsTeam || s.seasonPlanYear === s.year) return false;
+  if (s.seasonOpener !== null || s.phase !== null || s.jobSearch || s.coach.retiredYear !== undefined) return false;
+  if (s.live !== null || s.liveStarting || s.pendingGame !== null || s.busy) return false;
+  if (s.playbookInvite !== null || s.bigMoment !== null || s.rosterAlert !== null || s.weekStoppedBy !== null) return false;
+  const week = season.recruiting.week;
+  return week >= 1 && week <= RECRUITING_WEEKS;
+}
+
+/**
+ * The plan is up but a room or a card lies over it: the hiring desk, a
+ * building, a coach's sheet, a player it named. It stays mounted and hidden
+ * (Sheet `covered`), so its back layer and history entry keep their place and
+ * the back press peels the room first, then comes back to the plan. Unmounting
+ * it spent its entry while the room pushed one, and the next back left the app
+ * (2026-09-29 review).
+ */
+export function seasonPlanCovered(s: DynastyStore): boolean {
+  return seasonPlanOwedNow(s) && s.godStack.length === 0
+    && (s.overlay !== null || s.selectedPlayer !== null || s.coachSeat !== null);
+}
+
+/**
+ * The staff's pick for an idle seat: what the plan's row offers, and what
+ * closing the plan starts (`letStaffPick` is built on the same pure choice).
+ * `alignFocus` is a casual staff's, which turns the focus to the work.
+ */
+export function planPick(
+  eco: Economy, rec: TeamRecord, seat: StaffSeat, week: number, opts: { alignFocus?: boolean } = {},
+): StaffPick | null {
+  return staffPickFor(eco, rec.team, rec.def.state, seat, week, opts);
+}
+
+// `withNav` (era.ts) sits under every write, `setState` included (2026-09-30).
+export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   season: null,
   userTeam: 0,
   needsTeam: true,
   lastOutcome: null,
   year: 2027,
-  tab: 'home',
-  screen: 'today',
+  tab: 'home', /* nav-write */
+  screen: 'today', /* nav-write */
   version: 0,
   godMode: false,
   busy: false,
@@ -3332,8 +4152,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   lastOffseason: null,
   lastWeek: null,
   phase: null,
+  replaceLostRecruits: true,
 
-  start: (seed = WORLD_SEED, team?: number, profile?: CoachProfile, mode: DepthMode = 'full', made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>> }, godMode = false, rules: SeasonRules = DEFAULT_RULES) => {
+  start: (seed = WORLD_SEED, team?: number, profile?: CoachProfile, mode: DepthMode = 'full', made?: { skills: CoachSkills; badges: string[]; leans: Partial<Record<CultureEdge, number>> }, godMode = false, rules: SeasonRules = DEFAULT_RULES, overrides?: Partial<Record<SystemKey, boolean>>) => {
+    // The depth this career is being given: the preset, and whatever the
+    // creation step answered differently (the recruiting rule). Normalised,
+    // so an override that agrees with the preset is not stored.
+    const depth = normalizeDepth({ mode, overrides: overrides ?? {} });
     // The schedule is part of the world, so the config has to be right before a
     // single fixture is laid out. Nothing above this draws, so the ninety-six
     // rosters are the rosters the offer screen previewed whatever the rules say.
@@ -3379,15 +4204,20 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       The depth this career is about to be given, not the one the store is
       still holding from whatever was open before it.
 
-      `start` installs `{ mode, overrides: {} }` thirty lines below, so
+      `start` installs `depth` thirty lines below, so
       `get().depth` here is the previous career's — and reading it would seed
       this world off a setting that is about to be thrown away. Today both
       presets work their own board (`recruiting` is `casual: true`) so the
       answer is the same either way and nothing is visibly wrong; the day
       somebody flips that flag it would not be, and the failure would be a
       recruiting class quietly missing from year one of every casual career.
+      The creation step now asks who runs recruiting (2026-09-28), so `depth`
+      carries its answer.
     */
-    seedRivalInterest(season, seat, !handles({ mode, overrides: {} }, 'recruiting'));
+    // The coached programme is never seeded, whoever runs its board: a staff
+    // works only the coach's list (2026-09-30), and interest seeded in men he
+    // never chose could sign one behind his back.
+    seedRivalInterest(season, seat, false);
 
     set({
       season,
@@ -3398,6 +4228,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // `start` never did, so a second career begun in one session opened on
       // the previous school's terms.
       seasonOpener: null,
+      // A first season has no terms, so its plan is owed from day one.
+      seasonPlanYear: null,
       needsTeam: false,
       year: START_YEAR,
       version: 1,
@@ -3405,8 +4237,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       lastReview: null,
       offers: [],
       history: [],
-      tab: 'home',
-      screen: 'today',
+      tab: 'home', /* nav-write */
+      screen: 'today', /* nav-write */
       godStack: [],
       loadedSlot: null,
       lastOffseason: null,
@@ -3422,13 +4254,50 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // Set explicitly rather than left alone, because a second dynasty started
       // on the same device would otherwise silently inherit the first one's
       // answer. The question is asked at creation; this is where the answer
-      // lands, and every override starts empty because nothing has been
-      // disagreed with yet.
-      depth: { mode, overrides: {} },
+      // lands, with only what the creation step disagreed about.
+      depth,
+      // The staff replaces a starred recruit who signs elsewhere until the
+      // coach says otherwise; a second career does not inherit the first's no.
+      replaceLostRecruits: true,
+      /*
+        And none of the last career's winter or June. Found 2026-09-26: a
+        second career begun in one session kept `furthestPhase` from the
+        first one's offseason, and `leagueWinter` reads a number past the
+        draft as "this winter has run", so the new career's first winter
+        skipped graduations, development and the draft outright. Its portal
+        and its brackets were still standing too. Everything a load restores
+        per career is set back to where a first launch has it.
+      */
+      phase: null,
+      furthestPhase: 0,
+      spentThisStep: {},
+      portal: null,
+      portalArrivals: [],
+      bracket: null,
+      myBracket: null,
+      sideShow: null,
+      knockout: null,
+      postseasonSeen: [],
+      lastPostseason: null,
+      lastOutcome: null,
+      arguedTerms: false,
+      wordsUsed: 0,
+      jobSearch: false,
+      approaches: { tried: [], interest: [] },
     });
+    // A staff left to its athletic director is hired on day one, not at the
+    // first winter: before week one is planned, so the coordinator works it.
+    if (!handles(depth, 'assistants')) {
+      const staffed = adFillsSeats(get().economy, String(season.seed ?? 0), START_YEAR, here);
+      applyCoachMods(season, seat, get().coach, staffed);
+      set({ economy: staffed });
+    }
     // Whichever card the staff would write, written before the first day rather
     // than after it, so a casual coach's opening lineup is his coach's lineup.
-    if (!handles({ mode, overrides: {} }, 'lineups')) staffSetsTheCard(season, seat);
+    if (!handles(depth, 'lineups')) staffSetsTheCard(season, seat);
+    // And week one's recruiting, where the staff runs it: on the board from the
+    // first day, so the points band shows it before a game is played.
+    get().staffPlanWeek();
     /*
       A file of its own from the first day. This wrote the autosave slot —
       the one slot every career made before it had also been writing — so
@@ -3447,48 +4316,26 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // a card that is YOURS to fix.
     {
       const st = get();
-      if (st.screen === 'lineup' && handles(st.depth, 'lineups')) {
-        const t = st.season?.teams[st.userTeam]?.team;
-        if (t) {
-          const gaps = cardGaps(t.lineup);
-          if (gaps.missing.length > 0 || gaps.doubled.length > 0) {
-            set({ lineupGate: st.lineupGate + 1 });
-            return;
-          }
-        }
+      if (lineupHolds(st)) {
+        set({ lineupGate: st.lineupGate + 1 });
+        return;
       }
     }
     const def = TABS.find((t) => t.id === tab);
     const nextScreen = screen ?? def?.screens[0]?.id ?? 'today';
-    /*
-      The card being dropped had an entry of its own, and this is where it is
-      spent. `openPlayer` and `openCoach` each checkpoint; `closePlayer` and
-      `closeCoach` each consume. Navigating away closes the card too — the
-      `set` below nulls both — and used to walk off without paying, leaving one
-      orphan entry per card the coach had ever opened before changing tab.
-    */
-    const cardOpen = get().selectedPlayer !== null || get().coachSeat !== null;
-    const routeMoves = get().tab !== tab || get().screen !== nextScreen;
-    /*
-      Not both. `history.go(-1)` is a traversal the browser runs LATER and
-      `pushState` runs now, so consuming the card's entry and checkpointing
-      the route in one breath pushed the route's entry first and then popped
-      it: the card's entry stayed, the new route had none, and the popped one
-      sat in the FORWARD list, where a phone's forward swipe could walk into
-      it and arrive here as a back press. Reported as the gesture that "does
-      a flick" and "shows the home tab and then goes back" (05 §90.6). A card
-      that closes because the route moved hands its entry to the route
-      instead: nothing pushed, nothing popped, the stack stays the depth of
-      the screen.
-    */
-    if (cardOpen && !routeMoves) browserHistoryConsume();
-    else if (!cardOpen && routeMoves) browserHistoryCheckpoint();
-    if (cardOpen) { unstampLayer('player'); unstampLayer('coach'); }
+    // The card this drops goes in the same write as the move: one level
+    // swapped for another, so the ledger (historySync.ts) spends no entry.
+    // The trail is read inside the run, so a dropped or overtaken
+    // transition leaves no stop behind (T, 2026-09-30). The pages over the
+    // route go with it (PF); a caller's own closeOverlay() first is harmless.
     crossfade(() => set({
-      tab,
-      screen: nextScreen,
+      ...trailStep(get(), tab, nextScreen),
+      ...overlaysShut(get()),
+      tab, /* nav-write */
+      screen: nextScreen, /* nav-write */
       selectedPlayer: null,
       coachSeat: null,
+      teamCard: null,
       focusPlayer: focus ?? null,
       // Every nav tap, counted. June renders the Postseason component in
       // place for the whole month, so its local takeovers (the lineup
@@ -3500,6 +4347,58 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   navEpoch: 0,
+  navTrail: [],
+  routeVisit: 0,
+  restoringVisit: null,
+  stepBase: null,
+  teamCard: null,
+  openTeamCard: (index) => set({ teamCard: index }),
+  closeTeamCard: () => { if (get().teamCard !== null) set({ teamCard: null }); },
+
+  goBack: () => {
+    const s = get();
+    const era = eraKey(s);
+    let at = s.navTrail.length - 1;
+    while (at >= 0 && s.navTrail[at]!.era !== era) at--;
+    const stop = s.navTrail[at];
+    if (!stop) return 'none';
+    // Refused, not a modal: nothing may mount during a pop (plan correction 17).
+    if (lineupHolds(s)) { set({ cardNudge: s.cardNudge + 1 }); return 'refused'; }
+    supersedeNav();
+    navMark(true);
+    set({
+      tab: stop.tab, screen: stop.screen, /* nav-write */
+      navTrail: s.navTrail.filter((_, i) => i !== at),
+      routeVisit: stop.visit, restoringVisit: stop.visit,
+      selectedPlayer: null, coachSeat: null, teamCard: null, focusPlayer: null,
+      navEpoch: s.navEpoch + 1,
+    });
+    return 'peeled';
+  },
+
+  leaveGame: () => {
+    const s = get();
+    if (frameOf(s) !== 'season' || !s.live || s.screen !== 'box') return 'none';
+    supersedeNav();
+    navMark(true);
+    set({ screen: 'today' }); /* nav-write */
+    void get().saveNow();
+    return 'peeled';
+  },
+
+  stepBack: () => {
+    const s = get();
+    if (stepStops(s).length === 0 || s.phase === null) return 'none';
+    const at = PHASES.indexOf(s.phase);
+    const prev = railSteps(s).filter((p) => PHASES.indexOf(p) < at).at(-1);
+    if (!prev) return 'none';
+    // Like a rail tap, so Coach points spent on the way out are kept.
+    get().goPhase(prev);
+    if (get().phase !== prev) return 'none';
+    supersedeNav();
+    navMark(true);
+    return 'peeled';
+  },
   /** Who arrived through the portal this window; one letter at its close. */
   portalArrivals: [],
   seasonOpener: null,
@@ -3507,6 +4406,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
   dismissSeasonOpener: () => {
     set({ seasonOpener: null });
+    void get().saveNow();
+  },
+  seasonPlanYear: null,
+  closeSeasonPlan: () => {
+    const { season, year } = get();
+    if (!season || get().seasonPlanYear === year) return;
+    // The defaults: the staff's own picks on idle seats, in every mode. The
+    // recruiting rule and the staff list are never touched by closing.
+    get().letStaffPick();
+    set({ seasonPlanYear: year, version: get().version + 1 });
     void get().saveNow();
   },
   unseenTrophies: [],
@@ -3551,31 +4460,25 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // and was walked around here (15 sD, closed 2026-09-16).
     {
       const st = get();
-      if (st.screen === 'lineup' && screen !== 'lineup' && handles(st.depth, 'lineups')) {
-        const team = st.season?.teams[st.userTeam]?.team;
-        if (team) {
-          const gaps = cardGaps(team.lineup);
-          if (gaps.missing.length > 0 || gaps.doubled.length > 0) {
-            set({ lineupGate: st.lineupGate + 1 });
-            return;
-          }
-        }
+      if (screen !== 'lineup' && lineupHolds(st)) {
+        set({ lineupGate: st.lineupGate + 1 });
+        return;
       }
     }
-    // Same as `go`: a card this drops hands its entry to the screen it drops
-    // it for; spent only when the screen does not move (05 §90.6).
-    const cardOpen = get().selectedPlayer !== null || get().coachSeat !== null;
-    const screenMoves = get().screen !== screen;
-    if (cardOpen && !screenMoves) browserHistoryConsume();
-    else if (!cardOpen && screenMoves) browserHistoryCheckpoint();
-    if (cardOpen) { unstampLayer('player'); unstampLayer('coach'); }
+    // Same as `go`: a card this drops goes in the same write as the move.
     navMark(false);
-    set({ selectedPlayer: null, coachSeat: null, focusPlayer: null, screen });
+    set({
+      ...trailStep(get(), get().tab, screen),
+      selectedPlayer: null, coachSeat: null, teamCard: null, focusPlayer: null, screen, /* nav-write */
+    });
   },
 
   recruit: (prospectId, actions) => {
     const { season, userTeam, version } = get();
     if (!season || get().busy) return;
+    // The staff's week is the staff's while it runs recruiting: a plan half
+    // edited by hand would be neither his nor theirs.
+    if (!handles(get().depth, 'recruiting')) return;
     // Only during the window. Outside it the board is a scouting list.
     if (season.recruiting.week < 1 || season.recruiting.week > RECRUITING_WEEKS) return;
 
@@ -3634,6 +4537,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   recruitPitch: (prospectId, factor) => {
     const { season, userTeam, version } = get();
     if (!season || get().busy) return false;
+    if (!handles(get().depth, 'recruiting')) return false;
     const week = season.recruiting.week;
     if (week < 1 || week > RECRUITING_WEEKS) return false;
     const prospect = season.recruiting.prospects.find((p) => p.id === prospectId);
@@ -3661,6 +4565,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   recruitMajor: (prospectId, input) => {
     const { season, userTeam, coach, version } = get();
     if (!season || get().busy) return false;
+    if (!handles(get().depth, 'recruiting')) return false;
     const week = season.recruiting.week;
     if (week < 1 || week > RECRUITING_WEEKS) return false;
     const prospect = season.recruiting.prospects.find((p) => p.id === prospectId);
@@ -3745,6 +4650,116 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     return true;
   },
 
+  setReplaceLostRecruits: (on) => {
+    set({ replaceLostRecruits: on });
+    void get().saveNow();
+  },
+
+  /*
+    The staff's week, on the board (2026-09-28).
+
+    Planned at the week's open — here — and written into the ledger the
+    coach's own week uses, so the band shows it and the close banks exactly
+    it. It used to be planned inside the close and never written anywhere:
+    the band read "Nothing planned" all season while the staff spent, and
+    `resetWeeklySpend` wiped what it had spent before anybody could see it.
+  */
+  staffPlanWeek: (force = false) => {
+    const s = get();
+    const { season, userTeam: ut, coach, economy } = s;
+    if (!season || s.busy || s.jobSearch || handles(s.depth, 'recruiting')) return;
+    const recruits = season.recruiting;
+    const week = recruits.week;
+    if (week < 1 || week > RECRUITING_WEEKS) return;
+    const rec = season.teams[ut];
+    if (!rec) return;
+    const pitch = programRecruitingPitch(season, rec, regionOfTeam(season, ut), coach.prestige, economy);
+    tendStaffList(recruits, ut, pitch, s.replaceLostRecruits);
+    if (force || totalWeekSpend(recruits.prospects, ut) === 0) {
+      planStaffWeek(recruits, {
+        team: ut,
+        pitch,
+        list: recruits.staffList ?? [],
+        week,
+        year: s.year,
+        effort: delegateEffort(economy),
+        coachPrestige: coach.prestige,
+        recruitingSkill: withStaff(coach.skills, economy.staff).recruiting,
+        signed: recruits.prospects.filter((p) => p.signedBy === ut).length,
+        rng: staffWeekRng(season.seed ?? 0, s.year, week, ut),
+      });
+    }
+    set({ version: get().version + 1 });
+  },
+
+  starRecruit: (id) => {
+    const s = get();
+    const season = s.season;
+    if (!season || s.busy) return false;
+    const recruits = season.recruiting;
+    const list = recruits.staffList ?? [];
+    if (list.includes(id)) {
+      recruits.staffList = list.filter((x) => x !== id);
+      if (recruits.staffStandIns?.[id] !== undefined) {
+        const standIns = { ...recruits.staffStandIns };
+        delete standIns[id];
+        if (Object.keys(standIns).length > 0) recruits.staffStandIns = standIns;
+        else delete recruits.staffStandIns;
+      }
+    } else {
+      const p = recruits.prospects.find((x) => x.id === id);
+      const me = season.teams[s.userTeam];
+      if (!p || !me || p.signedBy !== null || list.length >= STAFF_LIST_MAX) return false;
+      if (!canPursue(p, prestigeStars(me.prestige), pipelineStrength(s.economy, p.state, me.def.state))) return false;
+      recruits.staffList = [...list, id];
+    }
+    // A list change replans the whole week; while the coach runs recruiting
+    // himself the list is only data, and this does nothing.
+    get().staffPlanWeek(true);
+    set({ version: get().version + 1 });
+    void get().saveNow();
+    return true;
+  },
+
+  moveStaffRecruit: (id, by) => {
+    const season = get().season;
+    if (!season || get().busy) return;
+    const list = season.recruiting.staffList ?? [];
+    const at = list.indexOf(id);
+    const to = at + by;
+    if (at < 0 || to < 0 || to >= list.length) return;
+    const next = [...list];
+    next[at] = list[to]!;
+    next[to] = id;
+    season.recruiting.staffList = next;
+    get().staffPlanWeek(true);
+    set({ version: get().version + 1 });
+    void get().saveNow();
+  },
+
+  setStaffList: (ids) => {
+    const s = get();
+    const season = s.season;
+    if (!season || s.busy) return;
+    const recruits = season.recruiting;
+    const me = season.teams[s.userTeam];
+    const stars = prestigeStars(me?.prestige ?? 50);
+    const next: PlayerId[] = [];
+    for (const id of ids) {
+      if (next.length >= STAFF_LIST_MAX) break;
+      if (next.includes(id)) continue;
+      const p = recruits.prospects.find((x) => x.id === id);
+      if (!p || p.signedBy !== null) continue;
+      if (!canPursue(p, stars, pipelineStrength(s.economy, p.state, me?.def.state ?? ''))) continue;
+      next.push(id);
+    }
+    recruits.staffList = next;
+    delete recruits.staffStandIns;
+    get().staffPlanWeek(true);
+    set({ version: get().version + 1 });
+    void get().saveNow();
+  },
+
   /**
    * Bank the week's points for every program, let recruits commit, move on.
    *
@@ -3753,16 +4768,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    * gets to see the other's spend first.
    */
   advanceRecruitingWeek: () => {
-    const { season, userTeam, coach, version, busy } = get();
+    const { season, userTeam, coach, busy } = get();
     if (!season || busy) return;
     const recruits = season.recruiting;
     if (recruits.week < 1 || recruits.week > RECRUITING_WEEKS) return;
 
-    const regionOf = (teamIndex: number): Region => {
-      const rec = season.teams[teamIndex];
-      const conf = CONFERENCES.find((c) => c.id === rec?.conference);
-      return conf?.region ?? 'Gulf';
-    };
+    const regionOf = (teamIndex: number): Region => regionOfTeam(season, teamIndex);
 
     // Taken before anyone spends, so every program judges the week against the
     // same standings. This is what lets the AI walk away from a recruit
@@ -3789,14 +4800,20 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       `delegateEffort` of the size he would have had. See the note above
       `delegateEffort` for why the handicap lives in the size of the week and
       in nothing else.
+
+      And since 2026-09-28 that week is on the board: planned at the week's
+      open by `staffPlanWeek` (working the coach's starred list first), and
+      read at the close exactly as a coach's own week is. This covers a week
+      nobody planned — an old save, or a test that set the depth directly.
     */
     const worksOwnBoard = handles(get().depth, 'recruiting');
-    const myEffort = worksOwnBoard ? 1 : delegateEffort(myEconomy);
+    if (!worksOwnBoard) get().staffPlanWeek();
 
     for (const record of season.teams) {
       const mine = record.index === userTeam;
-      // His own board only while he is actually working it.
-      const byHand = mine && worksOwnBoard;
+      // The coached programme's week is always the one on its board, whoever
+      // planned it: the coach himself, or his staff at the week's open.
+      const fromBoard = mine;
       // Your facilities are part of your pitch: a development lab is the one
       // thing on the tour a recruit's father asks about.
       const staff = record.coach;
@@ -3807,26 +4824,26 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         ? (season.draft?.spent ?? 0) + (season.portalSpend?.[userTeam] ?? 0)
         : (season.draft?.rivalSpend[record.index] ?? 0)
           + (season.portalSpend?.[record.index] ?? 0);
-      const spends: { prospect: typeof recruits.prospects[number]; actions: number }[] = byHand
+      const spends: { prospect: typeof recruits.prospects[number]; actions: number }[] = fromBoard
         ? recruits.prospects
             .filter((p) => (p.spent[userTeam] ?? 0) > 0 || weekActionCost(p, userTeam) > 0)
             .map((p) => ({ prospect: p, actions: p.spent[userTeam] ?? 0 }))
+        // The ninety five, who are not delegating to anybody: they are the
+        // staff, and they work their whole week.
         : aiTargets(
-            record.index, pitch, mine ? coach.prestige : (staff?.prestige ?? 45),
+            record.index, pitch, staff?.prestige ?? 45,
             recruits.prospects,
             holesFor(record), season.rng, atWeekStart, priorSpend, recruits.week,
-            mine ? myEffort : 1,
+            1,
             boardsByTier(season.teams.map((t) => prestigeStars(t.prestige))),
           );
-      if (!byHand) {
+      if (!fromBoard) {
         planAiRecruitActions(
           record.index, pitch, spends,
-          // The same week, scaled the same way, so the points the staff spends
-          // on visits and pitches are thinned exactly as the raw effort was.
-          Math.max(1, Math.round(weeklyBudget(pitch.stars, priorSpend) * (mine ? myEffort : 1))),
+          Math.max(1, Math.round(weeklyBudget(pitch.stars, priorSpend))),
           recruits.week,
-          mine ? coach.prestige : (staff?.prestige ?? 45),
-          mine ? effSkills.recruiting : (staff?.skills.recruiting ?? 20),
+          staff?.prestige ?? 45,
+          staff?.skills.recruiting ?? 20,
           season.rng,
         );
       }
@@ -3856,7 +4873,18 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const commits = closeWeek(recruits, season.rng, finalWeek);
     resetWeeklySpend(recruits);
     recruits.week += 1;
-    const projectResults = progressStaffProjects(myEconomy, season.teams[userTeam]!.team, season.teams[userTeam]!.def.state, get().year, closed);
+    // An athletic director's staff picks its own season work the first week it
+    // can (2026-09-28). The week being closed counts: the pick starts on it and
+    // `progressStaffProjects` runs it straight after.
+    if (!handles(get().depth, 'assistants')) {
+      const mine = season.teams[userTeam]!;
+      staffPicksSeasonWork(myEconomy, mine.team, mine.def.state, closed, { alignFocus: true });
+    }
+    // Season work runs week by week and lands as week 12 closes; a legacy
+    // project still finishes on its own week. The outcome is kept on
+    // economy.projectHistory (the coach's Recent results, the man's card, the
+    // season review); no letter, the season is quiet (2026-09-28).
+    progressStaffProjects(myEconomy, season.teams[userTeam]!.team, season.teams[userTeam]!.def.state, get().year, closed);
     const nextEconomy: Economy = {
       ...myEconomy,
       staffPlans: { ...(myEconomy.staffPlans ?? {}) },
@@ -3866,14 +4894,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
 
     const mineThisWeek = commits.filter((c) => c.team === userTeam);
     const yours = mineThisWeek.map((c) => c.prospect.player.name);
+    // The week's news is the board's "Week N is over" callout. Off the live
+    // version: the staff's plan above has already bumped it once.
     set({
       economy: nextEconomy,
-      version: version + 1,
+      version: get().version + 1,
       lastWeek: { closed, yours, gone: commits.length - yours.length },
-      inbox: projectResults.reduce((inbox, result) => push(inbox, newItem({
-        year: result.year, kind: 'season', title: `${PROJECT_LABEL[result.kind]} complete`,
-        body: projectResultText(result),
-      })), get().inbox),
     });
 
     // The number one recruit in the country, at the moment he commits. Read
@@ -3890,6 +4916,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         set({ unseenTrophies: [...get().unseenTrophies, ...won] });
       }
     }
+
+    // The staff tends its list (a replacement for anyone this close lost) and
+    // puts next week on the board, so the band shows it the moment the week
+    // opens. A no-op past the last week.
+    if (!worksOwnBoard) get().staffPlanWeek();
 
     // A closed week is banked points, commitments and a burned third of the
     // window — irreversible, and until now unsaved.
@@ -4050,7 +5081,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       return;
     }
 
-    if (phase === 'review' && get().lastReview?.fired) {
+    /*
+      And a man who handed in his notice leaves at the same door (2026-09-30).
+      The meeting above could not sack or renew him; leaving it ends the
+      tenure, he pays for the years left on the deal, and the roll puts him
+      on the market. After the retirement check, so a farewell that wins pays
+      nothing.
+    */
+    const resigning = get().coach.resignYear === get().year;
+    if (phase === 'review' && (get().lastReview?.fired || resigning)) {
       /*
         And the winter runs whether or not he is here to work it.
 
@@ -4062,11 +5101,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         never been emptied. The man leaving does not see any of it, which is
         exactly why it was missed.
       */
-      bookTheYear(get);
-      leagueWinter(get, set);
-      settleTheDraft(get);
+      if (resigning && !get().lastReview?.fired) chargeResignation(get, set);
+      winterWithoutHim(get, set);
       set({ phase: null });
       await get().rollYear();
+      if (resigning && get().jobSearch) {
+        // The roll saved before this letter was posted; save it too, as `resign` does.
+        postResignation(get);
+        await get().saveNow();
+      }
       return;
     }
 
@@ -4173,94 +5216,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }
     }
 
-    if (phase === 'portal' && next === 'signing') {
-      /*
-        Everybody still in the portal has gone.
-
-        The same rule the draft board keeps one step earlier: doing nothing has
-        to *mean* something, or a coach could leave a man hanging in a list
-        nobody comes back to and keep him by accident.
-      */
-      const rec = season.teams[get().userTeam];
-      for (const m of get().portal?.leaving ?? []) {
-        if (rec) releaseFrom(rec.team, m.player.id);
-      }
-
-      /*
-        And the other ninety-five shop it, which is the half that makes this a
-        portal rather than a tax.
-
-        Without this every man who entered simply evaporated: off the roster he
-        left, onto nobody's, out of the league. That is wrong twice over -- the
-        pool a coach signs from should be other programs' broken promises, and a
-        man still playing college baseball somewhere must not turn up eligible
-        for a hall of fame two steps later.
-
-        Cheapest-first and at most two apiece, so one rich program cannot hoover
-        the whole board. Whoever is left over has genuinely left college
-        baseball, which is a real thing that happens to transfers.
-      */
-      const stillOut = [
-        ...(get().portal?.available ?? []),
-        ...(get().portal?.leaving ?? []),
-      ];
-      if (stillOut.length > 0) {
-        const taken = new Set<PlayerId>();
-        for (const other of season.teams) {
-          if (other.index === get().userTeam) continue;
-          const going = stillOut.filter((m) => !taken.has(m.player.id) && m.from !== other.index);
-          // `continue`, not `break`: a program with nothing left to take is
-          // one program, not the end of the queue behind it.
-          if (going.length === 0) continue;
-          const budget = flexibleOffseasonBudget(prestigeStars(other.prestige))
-            - (season.draft?.rivalSpend[other.index] ?? 0)
-            - (season.portalSpend?.[other.index] ?? 0);
-          for (const m of staffWorksPortal(other.team, going, budget)) {
-            taken.add(m.player.id);
-            const from = season.teams[m.from];
-            if (from) releaseFrom(from.team, m.player.id);
-            // The same pool for all ninety six: what a rival spends here
-            // thins its own recruiting week, the rule the user now plays by.
-            (season.portalSpend ??= {})[other.index] =
-              (season.portalSpend[other.index] ?? 0) + m.cost;
-          }
-        }
-        /*
-          Whoever is left has genuinely left college baseball -- from every
-          roster, not only the coached one. A rival's unsigned man used to
-          stay on the roster he was leaving, wearing `inPortal` for good, so
-          the rule read one way for the user and another for the ninety-five
-          (05 §62.8).
-        */
-        for (const m of stillOut) {
-          if (taken.has(m.player.id) || m.from === get().userTeam) continue;
-          const from = season.teams[m.from];
-          if (from) releaseFrom(from.team, m.player.id);
-        }
-      }
-
-      /*
-        The window's one letter. Individual signings stopped writing home
-        the moment they happened; this is the whole haul in a sentence,
-        posted as the portal closes so it reads as news about a finished
-        thing rather than a running commentary.
-      */
-      const came = get().portalArrivals;
-      if (came.length > 0) {
-        const names = came.length === 1
-          ? came[0]
-          : `${came.slice(0, -1).join(', ')} and ${came[came.length - 1]}`;
-        get().post({
-          kind: 'season', year: get().year,
-          title: came.length === 1
-            ? 'One came in through the portal'
-            : `${came.length} came in through the portal`,
-          body: `Coach — ${names}. Eligible immediately, on the roster now.`,
-          link: { to: 'team', index: get().userTeam },
-        });
-      }
-      set({ portal: null, portalArrivals: [] });
-    }
+    // The portal closes as the step is left. See `closePortal`.
+    if (phase === 'portal' && next === 'signing') closePortal(get, set);
 
     /*
       The draft settles when the draft step ends, which since stage 10 is one
@@ -4438,8 +5395,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // A casual coach's card is filled out before the day is played, not after,
     // or the nine names the game used would be yesterday's.
     if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, get().userTeam);
+    get().noteRoster('prime');
     simNextDay(season);
     set({ version: version + 1 });
+    get().noteRoster('report');
     get().syncRecruitingCalendar();
     get().noteSeasonNews();
     // A day is a game for every team in the country; it was the largest single
@@ -4548,6 +5507,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       conferenceRank: standings(season, me.conference).findIndex((t) => t.index === me.index) + 1,
       conferenceSize: season.teams.filter((t) => t.conference === me.conference).length,
       madeConferenceTournament: conferenceField(season, me.conference).field.includes(me.index),
+      ...boardFacts(season, me, true),
       wonConference: post?.conferenceChampions.includes(me.index) ?? false,
       // A bid is a seat in the twenty-team national field, not a finish
       // string: the finish now records every regional participant, and a
@@ -4600,8 +5560,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // A man who announced this as his last is reviewed like anybody else and
       // cannot be sacked out of a season he has already left. Read off the
       // store rather than the `year` bound further down this function, which
-      // does not exist yet here.
-      { ...coach, farewell: coach.farewellYear === get().year },
+      // does not exist yet here. A man who has handed in his notice is
+      // reviewed the same way: never sacked, never renewed or extended.
+      { ...coach, farewell: coach.farewellYear === get().year || coach.resignYear === get().year },
       me.prestige, rosterStrength(me.team), outcome, seasonLength(season.config),
       board,
     );
@@ -4616,8 +5577,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         board deciding what to do about next year — "five years left to
         convince them" — and there is no next year to convince anybody in.
         `reviewSeason` already wrote the one sentence that fits, so leave it.
+        The same for a man on notice: there is no next year here for him.
       */
-      if (coach.farewellYear !== get().year) {
+      if (coach.farewellYear !== get().year && coach.resignYear !== get().year) {
         const words = boardWords(review, { prior: get().history, tenure: coach.tenure, year: get().year });
         review.headline = words.headline;
         review.message = words.message;
@@ -4753,8 +5715,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // sacked one by the time the carousel sits down, and his chair belongs
       // on the same market. A decision taken later — at the meeting itself —
       // misses this winter, and the chair is filled by `seatCoaches` the
-      // moment his successor signs anywhere.
-      userOpen: review.fired || coach.farewellYear === year,
+      // moment his successor signs anywhere. A man on notice, likewise.
+      userOpen: review.fired || coach.farewellYear === year || coach.resignYear === year,
       extraFreeAgents,
     });
     // Their benches changed hands, so the edge every one of their games is
@@ -4834,8 +5796,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         kind: 'board', year,
         link: { to: 'program', sheet: 'coach' },
         title: 'Your prestige has taken a hit',
+        // "We go again" is next year's line, and a man leaving has none here.
         body: `Coach — word travels. ${review.prestigePenalty} points off your `
-          + 'name, on top of the season itself. We go again.',
+          + 'name, on top of the season itself.'
+          + (coach.farewellYear === year || coach.resignYear === year ? '' : ' We go again.'),
       });
     }
     /*
@@ -4986,7 +5950,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     }
     const rolledEconomy: Economy = agePipelines({
       ...eco0, staff: keptStaff, tree, spent: 0, scouted: {},
-      staffPlans: Object.fromEntries(SEATS.filter((seat) => keptStaff[seat]?.id === eco0.staff[seat]?.id && keptStaff[seat]).map((seat) => [seat, staffPlan(eco0, seat)])),
+      // A season's work never crosses the year: it lands as week 12 closes, and
+      // anything that did not is dropped here (the focus stays).
+      staffPlans: Object.fromEntries(SEATS.filter((seat) => keptStaff[seat]?.id === eco0.staff[seat]?.id && keptStaff[seat]).map((seat) => {
+        const plan = staffPlan(eco0, seat);
+        return [seat, plan.project?.season ? { directive: plan.directive } : plan];
+      })),
     }, year + 1);
     if (!handles(get().depth, 'facilities')) {
       // The AD keeps the weakest specialty moving instead of marching through a
@@ -5051,6 +6020,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const last = get().history[get().history.length - 1];
     const record = last?.year === year ? null : recordFor(get());
     const review = get().lastReview;
+    /*
+      Out of the chair: sacked, or resigned (`year` is still the old year
+      here). Never a man who has retired — `endCareer` rolls through here too,
+      and a market built for him posts letters nobody is there to read.
+    */
+    const outOfChair = get().coach.retiredYear === undefined
+      && (review?.fired === true || get().coach.resignYear === year);
 
     // The all-time book was written on the way into the draft — see `nextPhase`.
     // Nothing is archived here, because by now every man who left is off the
@@ -5110,7 +6086,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }
 
       const rolled = nextSeason(next);
-      seedRivalInterest(rolled, get().userTeam, !handles(get().depth, 'recruiting'));
+      {
+        // The coached programme is never seeded: a staff works only the
+        // coach's list (2026-09-30).
+        seedRivalInterest(rolled, get().userTeam, false);
+      }
 
       /*
         The winter, stamped for the paper — stage 14. The inbox already told
@@ -5220,6 +6200,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             const planned = (p as Hitter & { retrainTo?: Position }).retrainTo;
             if (planned !== undefined) {
               delete (p as Hitter & { retrainTo?: Position }).retrainTo;
+              // Made from his own spot, the one the plan was chosen from, and
+              // not from a cover the card still has him in: planned into the
+              // spot he was covering, he read as already there and the move
+              // was dropped. The card is dealt again below either way.
+              restoreHome(p as Hitter);
               movePosition(p as Hitter, planned);
             }
             settleIn(p as Hitter);
@@ -5303,7 +6288,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
           pitch: 'You wrote to them. They would like to talk.',
         }));
 
-      const market = review?.fired
+      const market = outOfChair
         ? jobOffers(coach, rolled.teams, (t) => t.prestige, get().userTeam, 4,
           (t) => !t.coach || coach.prestige > t.coach.prestige)
         : [];
@@ -5348,6 +6333,12 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         without this the games played a whole season on last year's staff
         until a reload, a hire or a build happened to re-sync.
       */
+      // An athletic director's staff picks the new season's work on the new
+      // roster, after his hires and builds; the same sync stamps the arm guard.
+      if (!handles(get().depth, 'assistants')) {
+        const mine = rolled.teams[get().userTeam];
+        if (mine) staffPicksSeasonWork(rolledEconomy, mine.team, mine.def.state, rolled.recruiting.week, { alignFocus: true });
+      }
       applyCoachMods(rolled, get().userTeam, coach, rolledEconomy);
 
       /*
@@ -5437,12 +6428,19 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // Nobody is looking for a man who has stopped. `endCareer` rolls the
         // year the way a sacking does, and the market it would have built is
         // for somebody who is not coming back.
-        jobSearch: get().coach.retiredYear !== undefined ? false : (review?.fired ?? false),
+        jobSearch: outOfChair,
+        // A half-closed portal never crosses the year (`closePortal` is the
+        // way out of it); a belt for any exit that missed it.
+        portal: null,
+        portalArrivals: [],
         history: record ? [...get().history, record] : get().history,
         busy: false,
-        tab: 'home',
-        screen: 'today',
+        tab: 'home', /* nav-write */
+        screen: 'today', /* nav-write */
       });
+      // The new class's first week, on the board before the season's first
+      // day, where the staff runs recruiting. Saved with the roll below.
+      get().staffPlanWeek();
       for (const o of offers) {
         get().post({
           kind: 'offer', year: year + 1,
@@ -5568,6 +6566,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       */
       const ask = get().boardAsk;
       if (review && ask) {
+        const winter = get().lastOffseason;
         set({
           seasonOpener: {
             year: get().year,
@@ -5581,8 +6580,13 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
             askDetail: ask.detail,
             targetWins: ask.targetWins,
             stings: lines,
+            departed: winterLosses(winter, get().userTeam),
           },
         });
+        // The opener is in the save (05 §90.10), but `done` saved before it
+        // was written: a reload on opening day lost the terms, and the Season
+        // plan that follows them.
+        void get().saveNow();
       }
     }
     } catch (e) {
@@ -5823,6 +6827,14 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     */
     if (get().phase !== null) {
       delete hitter.retrainTo;
+      /*
+        From his own spot, which is where the sheet offering the move reads
+        him (`ownSpot`), and not from a cover the card still has him in. Made
+        off the label, a move into the spot he was covering read as no move
+        at all, and the button did nothing. His own spot is still no move.
+      */
+      if (to === (hitter.homePos ?? hitter.pos)) return false;
+      restoreHome(hitter);
       if (!movePosition(hitter, to)) return false;
       set({ version: version + 1 });
       get().post({
@@ -5910,10 +6922,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     like any other except that everybody knows.
   */
   announceRetirement: () => {
-    const { season, phase, year, userTeam, coach } = get();
+    const { season, year, userTeam, coach } = get();
     if (!season || coach.retiredYear !== undefined || coach.farewellYear !== undefined) return;
-    const graded = get().lastReview !== null || get().history.some((h) => h.year === year);
-    if (phase !== null && graded) { void get().endCareer(); return; }
+    if (seasonGraded(get())) { void get().endCareer(); return; }
     set({ coach: { ...coach, farewellYear: year }, version: get().version + 1 });
     get().post({
       kind: 'carousel',
@@ -5922,6 +6933,52 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       body: `Coach — the country knows this is your last year at ${season.teams[userTeam]?.def.school ?? 'the program'}. Whatever else happens now, nobody is taking the job off you.`,
     });
     void get().saveNow();
+  },
+
+  /*
+    Handing it in. Reported 2026-09-30: "we should add a way to resign to our
+    current job in case we would like to move on to a different team or
+    something before our contract is up."
+
+    The retirement's two doors, and the user chose them: "at season's end".
+    With a season still to coach it is notice — the year plays out, the June
+    meeting cannot sack or renew him, and leaving it is the end (`nextPhase`).
+    With the season graded he goes today, through the exit a sacking takes.
+    The price is the user's too, "small hit per year left", and it is paid
+    when the tenure ends, not when the notice is handed in.
+  */
+  resign: async () => {
+    if (phaseAdvancing || get().busy) return;
+    const s = get();
+    const terms = resignTerms(s);
+    if (!terms || !s.season) return;
+    const { coach, year, userTeam } = s;
+    const school = s.season.teams[userTeam]?.def.school ?? 'the program';
+    if (terms.when === 'notice') {
+      set({ coach: { ...coach, resignYear: year }, version: get().version + 1 });
+      get().post({
+        kind: 'carousel', year,
+        title: `${coach.name} will leave ${school} after the season`,
+        body: `Coach — ${school} know you are going. The season is still yours to coach.`,
+      });
+      await get().saveNow();
+      return;
+    }
+    // Graded: today. Nothing on screen carries over, the way `nextPhase`
+    // clears it — the profile he pressed this on is an overlay.
+    set({
+      overlay: null, overlayStack: [], selectedPlayer: null, coachSeat: null, spentThisStep: {},
+      coach: { ...coach, resignYear: year },
+      version: get().version + 1,
+    });
+    chargeResignation(get, set);
+    // Pressed on the portal step, the portal closes for the whole country.
+    if (get().portal !== null) closePortal(get, set);
+    winterWithoutHim(get, set);
+    set({ phase: null, version: get().version + 1 });
+    await get().rollYear();
+    if (get().jobSearch) postResignation(get);
+    await get().saveNow();
   },
 
   /*
@@ -5945,9 +7002,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       one screen the whole ending is about; the second is why the country used
       to skip a year whenever somebody finished.
     */
-    bookTheYear(get);
-    leagueWinter(get, set);
-    settleTheDraft(get);
+    // Ended on the portal step, the portal closes for everybody first.
+    if (get().portal !== null) closePortal(get, set);
+    winterWithoutHim(get, set);
     const forced = retirementStatus({ age: coach.age, seasons: careerSeasons(get()) }) === 'over';
     const legend = legendFrom(get(), coach.farewellYear !== undefined || !forced ? 'chose' : 'age');
     // Onto the world, where it outlives him. The roll below carries it.
@@ -6021,12 +7078,15 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       inbox: [],
       offers,
       seasonOpener: null,
+      seasonPlanYear: null,
       lastReview: null,
       lastOutcome: null,
       lastOffseason: null,
       jobSearch: true,
-      tab: 'home',
-      screen: 'today',
+      // A new man's preference, not the last one's.
+      replaceLostRecruits: true,
+      tab: 'home', /* nav-write */
+      screen: 'today', /* nav-write */
       version: get().version + 1,
     });
     await get().saveNow();
@@ -6048,6 +7108,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     season.captureBoxFor = team;
     // A new job is a clean slate with a patient board, but your reputation
     // comes with you — that is the whole point of tracking it separately.
+    // `takeChair` also drops a pending notice: it was handed to the old board.
+    // A move off a standing offer stays the free move it always was.
     const next = takeChair(coach, season.teams[team]?.prestige ?? 50);
     // Somebody was sitting in this chair, and now he is not. The chair you are
     // leaving goes back on the market in the same breath — `seatCoaches` fills
@@ -6055,18 +7117,27 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // program rather than the old.
     const displaced = seatCoaches(season, team, year);
     const leaving = season.teams[userTeam];
+    // The school he leaves recruits as a rival from today, and a rival
+    // needs a head start to recruit at all. Seated above, so its new coach
+    // is the one it is seeded at.
+    if (leaving && leaving.index !== team) seedLeftBehind(season, leaving.index);
     // The staff works for the coach; the physical program does not travel with him.
     // A move therefore keeps assistants and the coaching tree, while the old
     // school's facilities, earned recruiting relationships, current scouting
     // reports, and annual spending ledger stay behind. A coordinator's own
     // geographic network still comes with that assistant via `pipelineState`.
     const oldEconomy = get().economy;
-    const nextEconomy: Economy = {
+    const carried: Economy = {
       ...freshEconomy(),
       staff: { ...oldEconomy.staff },
       staffPlans: Object.fromEntries(SEATS.map((seat) => [seat, { directive: staffPlan(oldEconomy, seat).directive }])),
       tree: [...(oldEconomy.tree ?? [])],
     };
+    // A staff left to its athletic director has its holes filled the day the
+    // new chair is taken, not at the next winter (`adFillsSeats`).
+    const nextEconomy: Economy = handles(get().depth, 'assistants')
+      ? carried
+      : adFillsSeats(carried, String(season.seed ?? 0), year, season.teams[team]?.prestige ?? 50);
     // The old program loses the in-game edge, the new one gains it.
     applyCoachMods(season, team, next, nextEconomy);
     if (displaced) {
@@ -6091,6 +7162,10 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // case where the old one had been tuned away from it by hand, which belonged
     // to the program he just left.
     applyPhilosophy(season, team, next);
+    // The staff list belonged to the old board. The rule itself (who runs
+    // recruiting) and `replaceLostRecruits` come with him: same career.
+    season.recruiting.staffList = [];
+    delete season.recruiting.staffStandIns;
     set({
       userTeam: team,
       // A new chair is a new board, and its ask is stamped the day you sit
@@ -6106,15 +7181,20 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         one. That is the two-number mandate the reporter kept meeting.
       */
       seasonOpener: null,
+      // A new job owes a Season plan, even mid-season.
+      seasonPlanYear: null,
       offers: [],
       jobSearch: false,
       lastReview: null,
       coach: next,
       economy: nextEconomy,
-      tab: 'home',
-      screen: 'today',
+      tab: 'home', /* nav-write */
+      screen: 'today', /* nav-write */
       version: get().version + 1,
     });
+    // A staff that runs recruiting takes the new board over at once: seeded if
+    // the programme has no interest anywhere, and this week planned.
+    if (!handles(get().depth, 'recruiting')) staffTakesTheBoard(get);
     await get().saveNow();
   },
 
@@ -6200,15 +7280,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // Stage 23: the lineup gate holds overlays too — the player card is
     // the one allowed excursion, and it does not come through here.
     const st = get();
-    if (st.screen === 'lineup' && handles(st.depth, 'lineups')) {
-      const t = st.season?.teams[st.userTeam]?.team;
-      if (t) {
-        const gaps = cardGaps(t.lineup);
-        if (gaps.missing.length > 0 || gaps.doubled.length > 0) {
-          set({ lineupGate: st.lineupGate + 1 });
-          return;
-        }
-      }
+    if (lineupHolds(st)) {
+      set({ lineupGate: st.lineupGate + 1 });
+      return;
     }
     /*
       One visible layer, one history entry — and every layer is a layer.
@@ -6225,125 +7299,80 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       the order they were opened. Re-opening the layer already on top is not
       a new layer — INBOX pressed twice must not bury the inbox under itself.
     */
-    if (st.overlay === null) browserHistoryCheckpoint();
-    else if (st.overlay !== o) {
-      set({
-        overlayStack: [...st.overlayStack, {
-          overlay: st.overlay, sheet: st.programSheet, entrySheet: st.overlayEntrySheet,
-        }],
-      });
-      browserHistoryCheckpoint();
-    }
-    /*
-      And which sheet it was opened AT, because the back press needs to know.
-
-      A coach who opens PROGRAM on its overview and descends into Money should
-      get the overview back before the overlay closes. A coach sent straight to
-      the BOARD — by a season opener's card, or an inbox letter — has no
-      overview behind him, and peeling to one parks him on a page nobody named
-      and costs him a press. Reported 2026-09-12: "it took me back to the card
-      saying take me to the board... and then took me to the program overview".
-
-      Session state, never saved: it describes a layer that is open right now.
-    */
-    stampLayer('overlay');
-    set(o === 'settings'
-      ? { overlay: o, settingsPage: 'index', overlayEntrySheet: get().programSheet }
-      : { overlay: o, overlayEntrySheet: get().programSheet });
+    if (st.overlay === o) return;
+    if (st.overlay !== null) set({ overlayStack: [...st.overlayStack, { overlay: st.overlay }] });
+    set(o === 'settings' ? { overlay: o, settingsPage: 'index' } : { overlay: o });
   },
   closeOverlay: () => {
     const st = get();
     if (st.overlay === null) return;
-    browserHistoryConsume();
     const below = st.overlayStack[st.overlayStack.length - 1];
-    if (!below) { unstampLayer('overlay'); set({ overlay: null }); return; }
-    // The layer underneath comes back exactly as it was left: a Program
-    // layer on the sheet the coach was reading, not on whatever sheet the
-    // letter above it had set.
-    set({
-      overlay: below.overlay,
-      overlayStack: st.overlayStack.slice(0, -1),
-      overlayEntrySheet: below.entrySheet,
-      ...(below.overlay === 'program' ? { programSheet: below.sheet } : {}),
-    });
+    if (!below) { set({ overlay: null }); return; }
+    set({ overlay: below.overlay, overlayStack: st.overlayStack.slice(0, -1) });
   },
-  /** The program sheet showing when the current overlay was opened. See `openOverlay`. */
-  overlayEntrySheet: 'overview',
+  openRoom: (room) => {
+    /*
+      A room is a screen of its own tab (2026-09-24: "make sure they are no
+      longer linked to program"). On a frame with the nav and nothing laid
+      over it, it is simply a place you go, and the route trail brings you
+      back. Anywhere else — the offseason, the job market, over the inbox or
+      another room — it opens as its own layer and the back press peels it.
+      Never a sheet inside another page: the coach profile used to be one of
+      Program's, so closing it could land on Program's overview.
+    */
+    const st = get();
+    const home = ROOM_HOME[room];
+    const navFrame = st.season !== null && st.phase === null && !st.jobSearch
+      && st.coach.retiredYear === undefined && !(st.live && st.screen === 'box');
+    if (home && navFrame && st.overlay === null) {
+      // `go` closes an open card and hands its entry to the route.
+      if (st.tab !== home.tab || st.screen !== home.screen) get().go(home.tab, home.screen);
+      else {
+        // Both cards, by name: closePlayer leaves the coach's sheet (PF).
+        if (st.selectedPlayer !== null) get().closePlayer();
+        if (st.coachSeat !== null) get().closeCoach();
+      }
+      return;
+    }
+    /*
+      A card open when a room is asked for (the coach's sheet saying "Build
+      the Hitting Barn") closes and hands its history entry to the room, the
+      way `go` does: one visible layer, one entry. Closing it the usual way
+      would pop an entry while the room pushed one, and the browser runs the
+      pop later: the room's entry would be the one lost.
+    */
+    if (st.selectedPlayer !== null || st.coachSeat !== null) {
+      set({ selectedPlayer: null, coachSeat: null, focusPlayer: null });
+      if (st.overlay === room) return;
+      if (st.overlay !== null) set({ overlayStack: [...st.overlayStack, { overlay: st.overlay }] });
+      set({ overlay: room });
+      return;
+    }
+    get().openOverlay(room);
+  },
   overlayStack: [],
   settingsPage: 'index',
-  setSettingsPage: (p) => {
-    const old = get().settingsPage;
-    if (get().overlay === 'settings' && old !== p) {
-      if (p === 'index' && old !== 'index') browserHistoryConsume();
-      else if (p !== 'index') browserHistoryCheckpoint();
-    }
-    set({ settingsPage: p });
-  },
-  programSheet: 'overview',
-  // Program subpages are local UI navigation. Bumping the global engine version
-  // here forced every version subscriber in the app to re-render just because the
-  // coach opened Budget or returned to Overview, which was especially visible on
-  // phones. The Program screen already subscribes to `programSheet`, so this is
-  // the only state that needs to move.
-  setProgramSheet: (s) => {
-    const st = get();
-    /*
-      Only when the sheet is a real route. Opened as an overlay — from the
-      inbox, or from the board the season's opener sends you to — the sheets
-      are levels inside one layer rather than destinations of their own, and
-      the route trail cannot see them (`routeStop` keys on the tab and the
-      screen). Pushing an entry each time left one orphan per sheet the coach
-      looked at, and the next few back presses then walked the screen
-      underneath backwards. The gesture peels them instead; see App.tsx.
-    */
-    /*
-      `st.overlay === null`, not `!== 'program'`.
+  setSettingsPage: (p) => set({ settingsPage: p }),
 
-      A program sheet shown inside ANY overlay is a level within that overlay,
-      not a stop on the route underneath it — and the inbox path proved it: the
-      board is opened from a letter while `overlay` is still 'inbox', so the
-      old test passed and pushed an entry for a sheet that was about to be
-      displayed inside an overlay anyway.
-    */
-    if (st.programSheet !== s
-      && st.overlay === null && st.tab === 'program' && st.screen === 'records') {
-      if (s === 'overview' && st.programSheet !== 'overview') browserHistoryConsume(1, true);
-      else if (s !== 'overview') browserHistoryCheckpoint();
-    }
-    set({ programSheet: s });
-  },
-
-  // Plain UI state, like `programSheet`: the archive's own tab strip writes it
-  // and the Program hub's legacy doors preset it. No history entry of its own —
-  // HISTORY is a screen, and `setScreen` already keeps that stop.
+  // Plain UI state: the archive's own tab strip writes it and the Program
+  // overview's doors preset it. No history entry of its own — HISTORY is a
+  // screen, and `setScreen` already keeps that stop.
   historySheet: 'seasons',
   setHistorySheet: (s) => set({ historySheet: s }),
 
   openPlayer: (id, section = 'overview') => {
-    if (get().selectedPlayer !== id) browserHistoryCheckpoint();
-    stampLayer('player');
     set({ selectedPlayer: id, playerCardSection: section });
   },
 
   // The guide dies with the card: a glow that survived onto some OTHER
-  // player's card would be teaching the wrong errand.
+  // player's card would be teaching the wrong errand. A coach's sheet under
+  // the card stays: one close, one level (PF, 2026-09-30).
   closePlayer: () => {
-    if (get().selectedPlayer !== null) browserHistoryConsume();
-    unstampLayer('player');
-    unstampLayer('coach');
-    set({ selectedPlayer: null, coachSeat: null, playerCardSection: 'overview', guide: null });
+    set({ selectedPlayer: null, playerCardSection: 'overview', guide: null });
   },
 
-  openCoach: (seat) => {
-    if (get().coachSeat !== seat) browserHistoryCheckpoint();
-    stampLayer('coach');
-    set({ coachSeat: seat });
-  },
-  closeCoach: () => {
-    if (get().coachSeat !== null) browserHistoryConsume();
-    unstampLayer('coach');
-    set({ coachSeat: null });
-  },
+  openCoach: (seat) => set({ coachSeat: seat }),
+  closeCoach: () => set({ coachSeat: null }),
 
   playPostseason: async () => {
     const { season, busy, version } = get();
@@ -6715,6 +7744,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
    * would quietly be a different game from the one simulating it produces.
    */
   manageBracketGame: async () => {
+    get().noteRoster('prime');
     const { season, myBracket, userTeam, version } = get();
     if (!season || !myBracket || get().busy) return;
     // June honors the same roster decisions as the regular season. An injured
@@ -6870,6 +7900,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const hold = unresolvedRosterDecision(season, userTeam, get().depth);
     if (hold) { set({ lineupGate: get().lineupGate + 1 }); get().go('team', 'lineup', hold.id); return; }
     const { state, preplayed } = myBracket;
+    get().noteRoster('prime');
 
     const step = (): void => {
       if (myBracket.format === 'series') stepBracket(myBracket.state, preplayed);
@@ -6921,6 +7952,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     }
 
     set({ version: version + 1 });
+    get().noteRoster('report');
     // Before the close, which is what takes the bracket away: a round that ends
     // your run without ending the tournament is still the end of your run.
     get().noteKnockout();
@@ -7354,14 +8386,37 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       noteAction({ k: 'coach', on: false });
     }
 
+    // June draws the dugout off `live` alone, so there the whole game waits a
+    // frame: the bracket paints without the card first, and the guard's entry
+    // is left on that. One write, so the dugout rises once (2026-09-30).
+    if (get().bracket !== null) {
+      const bracket = get().bracket;
+      afterPaint(() => {
+        const s = get();
+        if (s.season !== season || s.bracket !== bracket || s.live !== null) return;
+        set({
+          live, liveMeta, version: s.version + 1,
+          tab: 'home', screen: 'box', /* nav-write */
+        });
+      });
+      return;
+    }
+
+    // Today first, the game a frame later (back plan V2, 2026-09-30): the
+    // game's entry is then left on a painted Today, where back from it lands.
     set({
       live, liveMeta, version: version + 1,
-      tab: 'home', screen: 'box',
+      tab: 'home', screen: 'today', /* nav-write */
+    });
+    afterPaint(() => {
+      const s = get();
+      if (s.live === live && s.tab === 'home' && s.screen === 'today') set({ screen: 'box' }); /* nav-write */
     });
     void userTeam;
   },
 
   startManagedGame: async () => {
+    get().noteRoster('prime');
     const { season, userTeam, version } = get();
     // `busy` because the worker owns the season during a sim — a game started
     // against that object would be recorded into whatever world replaces it.
@@ -7369,7 +8424,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // A game already in progress: PLAY BALL is the way back to it, not a
     // second game over the top of it. The scorebook left the nav — this button
     // is now the room's only door, so it has to open the room that exists.
-    if (get().live) { set({ tab: 'home', screen: 'box' }); return; }
+    if (get().live) { set({ tab: 'home', screen: 'box' }); return; } /* nav-write */
     if (get().liveStarting) return;
     if (seasonComplete(season)) return;
     const hold = unresolvedRosterDecision(season, userTeam, get().depth);
@@ -7486,8 +8541,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       }),
       liveMeta: { home: g.home, away: g.away, day: day.day, conference: g.conference },
       version: version + 1,
-      tab: 'home',
-      screen: 'box',
+      tab: 'home', /* nav-write */
+      screen: 'box', /* nav-write */
     });
   },
 
@@ -7618,6 +8673,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         get().stepSideShow();
       }
       set({ live: null, liveMeta: null, version: version + 1 });
+      get().noteRoster('report');
       // The postseason screen is not mounted right now — it is behind this
       // game — so a loss it could have noticed has to be recorded for it.
       get().noteKnockout();
@@ -7650,7 +8706,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const today = season.schedule[season.dayIndex];
     if (seasonComplete(season) || !today || today.day !== liveMeta.day) {
       clearJournal();
-      set({ live: null, liveMeta: null, version: version + 1, screen: 'today' });
+      set({ live: null, liveMeta: null, version: version + 1, screen: 'today' }); /* nav-write */
       return;
     }
 
@@ -7663,7 +8719,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       day: liveMeta.day,
     });
 
-    set({ live: null, liveMeta: null, version: version + 1, screen: 'today' });
+    set({ live: null, liveMeta: null, version: version + 1, screen: 'today' }); /* nav-write */
+    get().noteRoster('report');
     get().noteSeasonNews();
     // The save first, then the journal: the other way round left a window in
     // which a kill lost the game with no resume offer (05 §62.6). And only if
@@ -7883,7 +8940,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
     if (!team || !season || get().busy) return;
-    dealLikeAuto(team, season.dayIndex);
+    dealLikeAuto(team, season.dayIndex, battingForm(season));
     set({ version: version + 1 });
     void get().saveNow();
   },
@@ -7917,10 +8974,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     };
     const walkingWounded = (): Set<string> => {
       const day = injuryClock(season);
-      return new Set(roster().filter((p) => !available(p, day)).map((p) => String(p.id)));
+      return new Set(roster().filter((p) => isHurt(p, day)).map((p) => String(p.id)));
     };
     let hurt = walkingWounded();
     let struck: string | null = null;
+    get().noteRoster('prime');
 
     while (!seasonComplete(season)
       && season.schedule[season.dayIndex]?.week === start
@@ -7940,13 +8998,49 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       const man = roster().find((p) => String(p.id) === struck);
       if (man) set({ weekStoppedBy: man.name });
     }
+    get().noteRoster('report', { stopped: struck !== null });
     set({ version: get().version + 1 });
     get().noteSeasonNews();
     void get().saveNow();
   },
 
   weekStoppedBy: null,
-  clearWeekStop: () => { if (get().weekStoppedBy !== null) set({ weekStoppedBy: null }); },
+  clearWeekStop: () => {
+    if (get().weekStoppedBy !== null || get().rosterAlert !== null) set({ weekStoppedBy: null, rosterAlert: null });
+  },
+  rosterAlert: null,
+  clearRosterAlert: () => {
+    if (get().rosterAlert !== null || get().weekStoppedBy !== null) set({ rosterAlert: null, weekStoppedBy: null });
+  },
+  noteRoster: (mode, opts) => {
+    const { season, userTeam, depth } = get();
+    if (!season) return;
+    const key = `${season.seed ?? 0}:${userTeam}:${season.year ?? 0}`;
+    const now = rosterWatch(season, userTeam);
+    const before = rosterSeen && rosterSeen.key === key ? rosterSeen : null;
+    rosterSeen = { key, ...now };
+    if (mode === 'prime' || !before) return;
+    // A coach who does not write the card has a staff that covers the man;
+    // the lineup is not his to fix, and there is no decision to wait on.
+    if (!handles(depth, 'lineups') && !handles(depth, 'depthChart')) return;
+    const freshHurt = [...now.hurt].filter((id) => !before.hurt.has(id));
+    const freshBack = handles(depth, 'lineups') ? [...now.back].filter((id) => !before.back.has(id)) : [];
+    const team = season.teams[userTeam]?.team;
+    if (!team || (freshHurt.length === 0 && freshBack.length === 0)) return;
+    const everyone = [...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen];
+    const find = (id: string): Player | undefined => everyone.find((p) => String(p.id) === id);
+    const hurtMan = freshHurt.length > 0 ? find(freshHurt[0]!) : undefined;
+    const fitMan = !hurtMan && freshBack.length > 0 ? find(freshBack[0]!) : undefined;
+    const more = freshHurt.length + freshBack.length - 1;
+    if (hurtMan) {
+      set({ rosterAlert: {
+        kind: 'hurt', id: String(hurtMan.id), name: hurtMan.name,
+        what: prognosis(hurtMan, injuryClock(season)), more, stopped: opts?.stopped,
+      } });
+    } else if (fitMan) {
+      set({ rosterAlert: { kind: 'fit', id: String(fitMan.id), name: fitMan.name, more } });
+    }
+  },
   seenTutorials: [],
   focusPlayer: null,
   boardAsk: null,
@@ -7968,8 +9062,9 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       both count — a side is just as gone either way — and the bar is set
       where "most of our good players left" stops being a figure of speech.
     */
-    const lost = (lastOffseason?.graduated.length ?? 0)
-      + (lastOffseason?.drafted.filter((d) => !d.returned).length ?? 0);
+    // The winter's report, which the save carries now; the count the opener
+    // kept of it stands in for a save from before it did.
+    const lost = lastOffseason ? winterLosses(lastOffseason, get().userTeam) : get().seasonOpener?.departed ?? 0;
     // Nine is a whole starting side. Six is enough to be arguing in good
     // faith; below that the board is being asked for a favour, not a fix.
     const HEAVY = 6;
@@ -7989,7 +9084,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       boardAsk: {
         ...boardAsk,
         targetWins: target,
-        objectives: objectivesFor(boardAsk.mandate, target),
+        objectives: objectivesFor(boardAsk.mandate, target, askSeed(get().season, get().userTeam)),
       },
       ...(opener ? { seasonOpener: { ...opener, targetWins: target } } : {}),
       version: get().version + 1,
@@ -8110,31 +9205,41 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     return true;
   },
 
-  startStaffProject: (seat, kind, state, playerId) => {
+  startStaffProject: (seat, kind, state, playerIds) => {
     const { economy, season } = get();
     if (!season || !handles(get().depth, 'assistants') || !economy.staff[seat]) return false;
     const facility = projectFacility(seat);
-    if (facilityLevel(economy, facility) < 1) return false;
+    const level = facilityLevel(economy, facility);
+    if (level < 1) return false;
     const expectedSeat: StaffSeat = kind.startsWith('hitting-') ? 'hitting'
       : kind.startsWith('pitching-') ? 'pitching' : 'recruiting';
     if (expectedSeat !== seat) return false;
     if (seat === 'recruiting' && (!state || state.trim().length < 2)) return false;
+    // One assignment a season: switching means cancelling first.
     const plan = staffPlan(economy, seat);
     if (plan.project) return false;
+    const home = season.teams[get().userTeam]?.def.state ?? '';
     if (seat === 'recruiting' && state) {
-      const homeState = season.teams[get().userTeam]?.def.state ?? '';
-      const strength = pipelineStrength(economy, state.trim().toUpperCase(), homeState);
+      const strength = pipelineStrength(economy, state.trim().toUpperCase(), home);
       if (kind === 'pipeline-build' && strength >= PIPELINE_MIN) return false;
       if ((kind === 'pipeline-deepen' || kind === 'pipeline-maintain') && strength < PIPELINE_MIN) return false;
     }
-    const weeks = staffProjectWeeks(economy, seat, kind);
-    if (season.recruiting.week < 1 || season.recruiting.week + weeks - 1 > RECRUITING_WEEKS) return false;
+    // The season runs to week 12, whenever it starts; a coach needs enough of
+    // it left to be worth a point (the last week is too late for one).
+    const week = season.recruiting.week;
+    if (week < 1 || week > RECRUITING_WEEKS) return false;
+    const weeks = RECRUITING_WEEKS - week + 1;
     const club = season.teams[get().userTeam]!.team;
-    // The man has to be one of yours, and one the seat can work with: a
-    // hitting coach's project is a bat, a pitching coach's an arm.
-    if (seat !== 'recruiting' && playerId !== undefined
-      && !projectCandidates(club, seat, kind).some((p) => String(p.id) === playerId)) return false;
-    const project = newStaffProject(economy, club, seat, kind, season.recruiting.week, state?.trim().toUpperCase(), playerId);
+    let ids: string[] = [];
+    if (seat !== 'recruiting') {
+      if (seasonGainFull(level, true, weeks) < 1) return false;
+      // His own men, and ones the seat can work with: a hitting coach's are
+      // bats, a pitching coach's arms. None named: the staff's suggestion.
+      ids = playerIds?.length ? [...new Set(playerIds.map(String))] : suggestedTargets(economy, club, seat, kind, weeks);
+      const pool = new Set(projectCandidates(club, seat, kind).map((p) => String(p.id)));
+      if (ids.length === 0 || ids.length > SEASON_GROUP_MAX || ids.some((id) => !pool.has(id))) return false;
+    }
+    const project = newSeasonWork(economy, seat, kind, week, { home, state: state?.trim().toUpperCase(), targetIds: ids });
     const next: Economy = {
       ...economy,
       staffPlans: { ...(economy.staffPlans ?? {}), [seat]: { ...plan, project } },
@@ -8157,6 +9262,23 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     if (get().season) applyCoachMods(get().season!, get().userTeam, get().coach, next);
     set({ economy: next, version: get().version + 1 });
     void get().saveNow();
+  },
+
+  letStaffPick: (seats) => {
+    const { season, userTeam, economy, coach } = get();
+    const mine = season?.teams[userTeam];
+    if (!season || !mine) return [];
+    const next: Economy = { ...economy, staffPlans: { ...(economy.staffPlans ?? {}) } };
+    // A casual staff turns its focus to the work; a coach's focus moves only off Balanced.
+    const picked = staffPicksSeasonWork(next, mine.team, mine.def.state, season.recruiting.week, {
+      seats, alignFocus: !handles(get().depth, 'assistants'),
+    });
+    if (picked.length) {
+      applyCoachMods(season, userTeam, coach, next);
+      set({ economy: next, version: get().version + 1 });
+      void get().saveNow();
+    }
+    return picked;
   },
 
   build: (which) => {
@@ -8633,22 +9755,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       push spends a browser history entry (05 §63.1).
     */
     if (stack.some((t) => sameGodTarget(t, target)) || stack.length >= 8) return;
-    browserHistoryCheckpoint();
-    stampLayer('god');
     set({ godStack: [...stack, target] });
   },
-  closeGod: () => {
-    if (get().godStack.length > 0) browserHistoryConsume();
-    const rest = get().godStack.slice(0, -1);
-    if (rest.length === 0) unstampLayer('god');
-    set({ godStack: rest });
-  },
-  closeGodAll: () => {
-    // One entry per sheet, because `openGod` pushed one per sheet.
-    if (get().godStack.length > 0) browserHistoryConsume(get().godStack.length);
-    unstampLayer('god');
-    set({ godStack: [] });
-  },
+  closeGod: () => set({ godStack: get().godStack.slice(0, -1) }),
+  // Every sheet in one write: one level each, all given back at once.
+  closeGodAll: () => set({ godStack: [] }),
 
   godForkToSandbox: async () => {
     const { season, userTeam } = get();
@@ -8680,12 +9791,28 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
   },
 
   setDepthMode: (mode) => {
+    const before = handles(get().depth, 'recruiting');
     set({ depth: setMode(get().depth, mode) });
+    // No preset hands recruiting over today; checked anyway, so the day one
+    // does, the staff is seeded and planned the way the switch below does it.
+    if (before && !handles(get().depth, 'recruiting')) staffTakesTheBoard(get);
+    // A staff handed to the AD is his to fill, now rather than next winter.
+    adStaffsUp(get, set);
     void get().saveNow();
   },
 
   setDepthSystem: (key, value) => {
+    const before = handles(get().depth, 'recruiting');
     set({ depth: setSystem(get().depth, key, value) });
+    /*
+      Handing recruiting to the staff mid-season takes effect now: a cold board
+      is seeded and this week is planned, unless the coach had already planned
+      it (2026-09-28, bug 1). Taking it back does nothing: the staff's week
+      stays on the board as the coach's own, and he can edit it.
+    */
+    if (key === 'recruiting' && before && !handles(get().depth, 'recruiting')) staffTakesTheBoard(get);
+    // A staff handed to the AD is his to fill, now rather than next winter.
+    if (key === 'assistants') adStaffsUp(get, set);
     void get().saveNow();
   },
 
@@ -8735,11 +9862,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         // it a reload offered the button again, and a second concession.
         arguedTerms: get().arguedTerms,
         seasonOpener: get().seasonOpener,
+        seasonPlanYear: get().seasonPlanYear,
+        // The winter's report, held from the draft step to the next one. Left
+        // out, a career reopened mid-offseason had no Draft board to show.
+        lastOffseason: get().lastOffseason,
         watch: get().watch,
         economy: get().economy,
         rivalry: get().rivalry,
         alumni: get().alumni,
         depth: get().depth,
+        replaceLost: get().replaceLostRecruits,
         godMode: get().godMode,
         leagueNames: get().leagueNames,
         portal: portablePortal(get().portal),
@@ -8820,7 +9952,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     // ninety five of them. Idempotent, so a career fifteen years into its own
     // carousel keeps every coach it has hired and fired — the only chair this
     // touches on a modern save is one the market genuinely failed to fill.
-    seatCoaches(loaded.season, loaded.userTeam, loaded.year);
+    /*
+      Except a chair he is leaving. Between the meeting that let him go (sacked,
+      retiring, or on notice) and the job he takes, the carousel has already
+      put a successor in it, and `seatCoaches` empties the user's chair — so a
+      reload there deleted the man the carousel posts had named.
+    */
+    const leavingChair = Boolean(loaded.jobSearch) || (loaded.phase === 'review' && (
+      (loaded.review as Review | null | undefined)?.fired === true
+      || coach.farewellYear === loaded.year || coach.resignYear === loaded.year));
+    seatCoaches(loaded.season, leavingChair ? -1 : loaded.userTeam, loaded.year);
     stampTreeChairs(loaded.season, usableEconomy(loaded.economy));
     // Restamped on every load rather than trusted from the save, so a save from
     // before the in-game skills were wired — or one that predates a job change —
@@ -8840,6 +9981,20 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       chair.annals ??= [];
       for (const row of (loaded.history ?? []) as SeasonRecord[]) {
         if (!row || typeof row.year !== 'number') continue;
+        /*
+          A year the roll has closed, and no other.
+
+          The career row is booked at the board meeting and the school's own
+          row at the year roll, and `year` only moves at the roll — so for the
+          whole winter the season just played has the first and not yet the
+          second. A save loaded anywhere in there seeded it from the career
+          row, which counts June's games (it is the coach's overall record),
+          and the roll then found the year already in the book and kept the
+          seed. Reported 2026-09-25 from the season-start terms: "You won 45
+          last season" for a 39-6 year that finished 45-10. That year is the
+          roll's to write, from the frozen regular season.
+        */
+        if (row.year >= loaded.year) continue;
         if (row.school !== chair.def.school) continue;
         if (chair.annals.some((a) => a.year === row.year)) continue;
         chair.annals.push({
@@ -8854,6 +10009,30 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         });
       }
       chair.annals.sort((a, b) => a.year - b.year);
+    }
+    /*
+      And last year's seeded row put right, where the save still knows how.
+
+      A seeded row is the one with no rank: every row the roll writes carries
+      the program's place in the national table, and a seed never can. The
+      seed's record is the career row's, June included, where the book keeps
+      the regular season. The roll carries each program's regular season into
+      the next one as `lastW`/`lastL`, and nothing else writes them, so on any
+      save they describe the year before the save's own, whichever step of the
+      winter it was taken on — the one year a wrong seed can be corrected.
+      Every program rather than the chair alone: a coach who has since moved
+      on left his seeded year in his old school's book. A record shorter than
+      the regular season cannot be the overall one and is left alone, and the
+      years before this one have nothing left to correct them from.
+    */
+    for (const t of loaded.season.teams) {
+      const last = t.annals?.find((a) => a.year === loaded.year - 1);
+      if (!last || last.rank !== 0) continue;
+      if (typeof t.lastW !== 'number' || typeof t.lastL !== 'number') continue;
+      if (last.w === t.lastW && last.l === t.lastL) continue;
+      if (last.w < t.lastW || last.l < t.lastL) continue;
+      last.w = t.lastW;
+      last.l = t.lastL;
     }
     const bracket = usableBracket(loaded.bracket);
     /*
@@ -8907,6 +10086,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         ?? boardAskFor(loaded.season, loaded.userTeam),
       arguedTerms: loaded.arguedTerms === true,
       seasonOpener: usableOpener(loaded.seasonOpener),
+      // Absent (an older save) is owed one: the plan comes up once.
+      seasonPlanYear: usableSeasonPlanYear(loaded.seasonPlanYear),
       needsTeam: false,
       // Through the front door and into the career. Remembering WHICH file it
       // came from is what lets a delete of that file take the career with it,
@@ -8960,6 +10141,8 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       // from before the mode existed carries nothing and normalises to full,
       // which leaves a career in progress exactly as it was being played.
       depth: normalizeDepth(loaded.depth),
+      // Absent is on, which is every save from before the staff list.
+      replaceLostRecruits: usableReplaceLost(loaded.replaceLost),
       godMode: loaded.godMode,
       leagueNames: loadedLeagueNames,
       approaches: usableApproaches(loaded.approaches),
@@ -8995,14 +10178,21 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       lastReview: (loaded.review ?? null) as Review | null,
       lastOutcome: (loaded.outcome ?? null) as SeasonOutcome | null,
       version: get().version + 1,
-      tab: 'home',
-      screen: 'today',
+      tab: 'home', /* nav-write */
+      screen: 'today', /* nav-write */
       // Whatever was covering the screen belonged to the dynasty being put
       // down — including the saves menu this was very likely pressed from.
       overlay: null, overlayStack: [],
       selectedPlayer: null, coachSeat: null,
       godStack: [],
-      lastOffseason: null,
+      /*
+        The winter's report, back as it was left. It used to be dropped here,
+        so a career reopened on the draft step showed an empty Draft board tab
+        and lost its own departures, and one reopened anywhere later in the
+        winter opened the next season on a report with nobody in it. A save
+        from before it rode the file has none, and the draft step says so.
+      */
+      lastOffseason: usableOffseason(loaded.lastOffseason),
       // Week recaps are not saved, and a stale one from the previous session
       // would sit over a board it does not describe.
       lastWeek: null,
@@ -9056,7 +10246,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       if (s && s.recruiting.week === 0 && s.recruiting.prospects.length > 0) {
         const untouched = !s.recruiting.prospects
           .some((p) => Object.values(p.points).some((v) => v > 0));
-        if (untouched) seedRivalInterest(s, get().userTeam, !handles(get().depth, 'recruiting'));
+        if (untouched) {
+          // The coached programme is never seeded: a staff works only the
+          // coach's list (2026-09-30).
+          seedRivalInterest(s, get().userTeam, false);
+        }
         s.recruiting.week = 1;
         if (get().phase === null) {
           get().syncRecruitingCalendar();
@@ -9069,6 +10263,16 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
         set({ version: get().version + 1 });
       }
     }
+    /*
+      The staff's week, where the staff runs recruiting. A save written before
+      the staff's week lived on the board (2026-09-28) has nothing there
+      mid-week, and the band would read "nothing planned" until the close; a
+      modern one has its plan already, and this only tends the list.
+      Staffed first, where the AD runs the staff and a seat stood empty, so a
+      new coordinator works this week.
+    */
+    adStaffsUp(get, set);
+    get().staffPlanWeek();
     if (get().phase === 'portal' && get().portal === null) {
       const season = get().season;
       const rec = season?.teams[get().userTeam];
@@ -9112,6 +10316,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       busy: false,
       progress: null,
       seasonOpener: null,
+      seasonPlanYear: null,
       selectedPlayer: null, coachSeat: null,
       godStack: [],
       overlay: null, overlayStack: [],
@@ -9120,6 +10325,7 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
       inbox: [],
       boardAsk: null,
       lastReview: null,
+      replaceLostRecruits: true,
       version: get().version + 1,
     });
     void get().refreshSaves();
@@ -9221,9 +10427,11 @@ export const useDynasty = create<DynastyStore>((set, get) => ({
     selectedPlayer: null, coachSeat: null,
     godStack: [],
     loadError: null,
+    replaceLostRecruits: true,
+    seasonPlanYear: null,
     });
   },
-}));
+}), PHASES));
 
 /**
  * The record you coach. Null before a dynasty is started.

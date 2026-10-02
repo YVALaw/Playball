@@ -15,8 +15,9 @@ import type { SchoolSeason } from '../../engine/season.js';
 import type { PlayerId } from '../../engine/types.js';
 import { proCareer, proSeasons, COACHING_LEVEL, type AlumnusNote } from '../../engine/legacy.js';
 import { collegeSummary } from '../ProgramBits.js';
+import { AwardEmblem, Trophy } from '../Honours.js';
 import {
-  Button, Card, Chip, Chips, DescriptionList, EmptyState, Face, List, ListRow, Marquee, Medal, PlayerRow,
+  Button, Card, Chip, Chips, DescriptionList, EmptyState, Face, List, ListRow, Marquee, PlayerRow,
   RatingRow, SearchField, SegmentedControl, StatGroup, StatusBadge, Tag,
 } from '../components/ui/index.js';
 import { ordinal, plural, proLevelName, recordText } from '../words.js';
@@ -54,9 +55,11 @@ export function History() {
   const team = useUserTeam();
   const alumni = useDynasty((s) => s.alumni);
   const unseenRecords = useDynasty((s) => s.unseenRecords.length);
-  // The page the hub's doors asked for, written back so a return resumes it.
-  const sheet = useDynasty((s) => s.historySheet);
-  const setSheet = useDynasty((s) => s.setHistorySheet);
+  // Each visit keeps its own page (S6, 2026-09-30): seeded from the page the
+  // hub's doors asked for, and written back so the next visit opens on it.
+  const [sheet, setLocal] = useState(() => useDynasty.getState().historySheet);
+  const setPreset = useDynasty((s) => s.setHistorySheet);
+  const setSheet = (next: ArchiveSheet): void => { setLocal(next); setPreset(next); };
   void version;
   if (!team) return null;
 
@@ -89,17 +92,29 @@ export function History() {
       />
       <SegmentedControl<ArchiveSheet>
         label="History"
-        value={sheet}
+        value={sheet === 'book' ? 'book' : 'seasons'}
         onChange={setSheet}
         options={[
           { value: 'seasons', label: 'Seasons' },
           { value: 'book', label: 'Record book', badge: unseenRecords > 0 ? true : undefined },
-          { value: 'alumni', label: 'Alumni' },
         ]}
       />
-      {sheet === 'seasons' && <Seasons annals={team.annals ?? []} />}
-      {sheet === 'book' && <RecordBook />}
-      {sheet === 'alumni' && <Alumni notes={alumni} teamAbbr={team.def.abbr} />}
+      {sheet === 'book' ? <RecordBook /> : <Seasons annals={team.annals ?? []} />}
+    </main>
+  );
+}
+
+/** Program · Alumni: every man who played here and left, and where he went. */
+export function AlumniScreen() {
+  const version = useDynasty((s) => s.version);
+  const team = useUserTeam();
+  const alumni = useDynasty((s) => s.alumni);
+  void version;
+  if (!team) return null;
+  return (
+    <main className="pb-page">
+      <Marquee eyebrow={`${team.def.school} · Former players`} title="Alumni" />
+      <Alumni notes={alumni} teamAbbr={team.def.abbr} />
     </main>
   );
 }
@@ -158,7 +173,7 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
       {rows.map((s) => {
         const awards = awardsFor(s.year);
         const before = s.coach !== undefined && s.coach !== coachName;
-        const medal = s.finish === 'champion' ? 'gold' : s.finish === 'runner-up' ? 'silver' : s.wonConference ? 'bronze' : null;
+        const trophy = s.finish === 'champion' ? 'national' : s.finish === 'runner-up' ? 'runnerUp' : s.wonConference ? 'conference' : null;
         const on = open[s.year] ?? false;
         return (
           <Card
@@ -168,7 +183,7 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
             trailing={(
               <>
                 {before && <Tag>Before you</Tag>}
-                {medal && <Medal metal={medal} size={36} label={medal === 'bronze' ? 'Conference champions' : FINISH_WORDS[s.finish]} />}
+                {trophy && <Trophy kind={trophy} size={44} label={trophy === 'conference' ? 'Conference champions' : FINISH_WORDS[s.finish]} />}
               </>
             )}
           >
@@ -194,7 +209,7 @@ function Seasons({ annals }: { annals: SchoolSeason[] }) {
                 {awards.length > 0 && (
                   <List label={`${s.year} awards`}>
                     {awards.map((a, i) => (
-                      <ListRow key={`${a.id}-${i}`} lead={<Medal metal="gold" size={28} />} title={a.name} subtitle={a.title} onClick={() => openPlayer(a.id)} />
+                      <ListRow key={`${a.id}-${i}`} lead={<AwardEmblem title={a.title} size={44} />} title={a.name} subtitle={a.title} onClick={() => openPlayer(a.id)} />
                     ))}
                   </List>
                 )}

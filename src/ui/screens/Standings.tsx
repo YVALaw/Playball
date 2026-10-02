@@ -7,6 +7,7 @@
 // is, and the caption names what each column means. The national ranking sits
 // under it as one row that says what the number measures.
 
+import { useState, type ReactNode } from 'react';
 import { leagueName } from '../../engine/leagueNames.js';
 import { useConferenceTable, useDynasty, useUserTeam } from '../../state/store.js';
 import { useOpenTeam } from './TeamCard.js';
@@ -14,17 +15,41 @@ import { nationalRank, pollIsProjected, regularRecord } from '../../engine/seaso
 import { GodBolt } from '../god/GodBolt.js';
 // The cut is the engine's, not a number typed into a sentence.
 import { CONF_ADVANCE, CONF_FIELD } from '../../engine/postseason.js';
-import { Card, Marquee, Plaque, Table, TeamCell, TileGrid } from '../components/ui/index.js';
+import { Card, Marquee, Plaque, SegmentedControl, Table, TeamCell, TileGrid } from '../components/ui/index.js';
+import { Rankings } from './Rankings.js';
 import { Crest } from '../Crest.js';
+import { ConferenceBanner, hasBanner } from '../ConferenceBanner.js';
 import { ordinal, recordText } from '../words.js';
 
-export function Standings() {
+/** Which table Team · Standings last showed, so a return keeps it. */
+let lastTable: 'conference' | 'national' = 'conference';
+
+/**
+ * Team · Standings: the conference race and the national table as one
+ * screen, a switch at the top in the same place for both (2026-09-24, when
+ * the Season tab folded into Team).
+ */
+export function StandingsScreen() {
+  const [view, setView] = useState(lastTable);
+  const choose = (v: 'conference' | 'national'): void => { lastTable = v; setView(v); };
+  const head = (
+    <SegmentedControl<'conference' | 'national'>
+      label="Standings"
+      value={view}
+      onChange={choose}
+      options={[{ value: 'conference', label: 'Conference' }, { value: 'national', label: 'National' }]}
+    />
+  );
+  return view === 'national'
+    ? <Rankings head={head} />
+    : <Standings head={head} onNational={() => choose('national')} />;
+}
+
+export function Standings({ head, onNational }: { head?: ReactNode; onNational?: () => void } = {}) {
   const table = useConferenceTable();
   const team = useUserTeam();
   const season = useDynasty((s) => s.season);
-  const overlay = useDynasty((s) => s.overlay);
   const openOverlay = useDynasty((s) => s.openOverlay);
-  const go = useDynasty((s) => s.go);
   const version = useDynasty((s) => s.version);
   const openTeam = useOpenTeam();
   void version;
@@ -41,16 +66,17 @@ export function Standings() {
   const projected = pollIsProjected(season);
   const mineAt = table.findIndex((t) => t.index === team.index) + 1;
   const toNational = (): void => {
-    if (overlay !== null) openOverlay('rankings');
-    else go('season', 'rankings');
+    if (onNational) onNational();
+    else openOverlay('rankings');
   };
 
   return (
     <main className="pb-page">
+      {head}
       <Marquee
         mark={<Crest abbr={team.def.abbr} size={44} />}
         eyebrow="Conference race"
-        title={leagueName(team.conference)}
+        title={hasBanner(team.conference) ? <ConferenceBanner id={team.conference} height={52} /> : leagueName(team.conference)}
         trailing={<GodBolt target={{ kind: 'leagues' }} label="Edit the leagues in god mode" />}
         numbers={[
           {

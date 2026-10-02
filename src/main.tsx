@@ -21,6 +21,14 @@ import './ui/minimal-ui.css';
 import './ui/design/tokens.css';
 import './ui/design/components.css';
 import './ui/design/screens.css';
+// The UI clarity review (2026-09-25), one file per area so each screen's
+// rules sit together: design/UI Clarity Review holds the mockups they follow.
+import './ui/design/draft.css';
+import './ui/design/roster.css';
+import './ui/design/lineup.css';
+import './ui/design/recruiting.css';
+import './ui/design/office.css';
+import './ui/design/terms.css';
 
 /*
   Preferences before the first paint.
@@ -66,6 +74,23 @@ function crashed(reset: () => void) {
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode><Boundary fallback={crashed}><App /></Boundary></StrictMode>,
 );
+
+/*
+  The boot splash (index.html) holds the screen while the bundle loads, and
+  leaves once the app has drawn — but never before a beat has passed since
+  launch, so it reads as the game's front door rather than a flash.
+  `performance.now()` counts from the moment the page started loading. A plain
+  timer, not an animation frame: frames stop while a page is hidden, and a
+  splash must never outstay an app opened in the background.
+*/
+const splash = document.getElementById('boot-splash');
+if (splash) {
+  const SPLASH_MS = 1200;
+  window.setTimeout(() => {
+    splash.classList.add('is-gone');
+    window.setTimeout(() => splash.remove(), 420);
+  }, Math.max(0, SPLASH_MS - performance.now()));
+}
 
 /*
   The park, fetched while nobody is waiting for it.

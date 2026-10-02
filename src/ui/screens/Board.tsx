@@ -5,59 +5,54 @@
 // Points build a prospect's interest in you; at the end of each week a
 // prospect who clearly prefers one program commits to it. The screen says as
 // little as it can about that and shows the rest: every number carries its
-// scale, and every status is an icon, a word and a colour.
+// scale, and every status is a word and a colour.
 //
-// Nothing on a prospect is a fact. His rating is a scouted range and his
-// ceiling a span of grades, as wide as your recruiting skill is poor. A
-// prospect out of your program's reach says so rather than quietly taking
-// points for nothing.
+// Laid out as the UI clarity review drew it (design/UI Clarity Review,
+// Recruiting.dc.html, 2026-09-25): a band for the week and the class, the
+// views and filters pinned over the list, and one race row per prospect —
+// your share of his interest against the school leading for him. Planning his
+// week happens on his sheet (RecruitSheet.tsx); the filters are set in their
+// own (RecruitFilters.tsx).
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { PROMISE_DETAIL } from '../../engine/morale.js';
-import { recruitingPlan, programRecruitingPitch } from '../../engine/recruitingPlan.js';
-import { boardBudget, PHASES, useDynasty, useUserTeam } from '../../state/store.js';
+import { useMemo, useState } from 'react';
+import { recruitingPlan, programRecruitingPitch, delegateEffort } from '../../engine/recruitingPlan.js';
 import {
-  fit, canPursue, inPipeline, byRank,
-  RECRUITING_FACTORS, RECRUITING_FACTOR_BLURB,
-  recruitingPrioritiesOf, factorScore, factorGrade, wantedScore, pitchVerdict, weekActionCost, totalWeekSpend,
-  hasRecruitingRelationship, PITCH_COST, HARD_SELL_COST, SWAY_COST, VISIT_COST,
-  PROMISE_COST, PROMISE_LABEL, availableRecruitPromises,
-  ASK_COST, ASK_COOLDOWN, askBlocked, decisionStyle, DECISION_LABEL,
-  SCHOLARSHIPS, MAX_PER_RECRUIT, RECRUITING_WEEKS,
-  reportedOverall, reportedPotential, reportedTool, hintsFor,
-  type Prospect, type RecruitingFactor, type RecruitMajorInput, type PitchVerdict,
+  boardBudget, classSurvivors, staffListOf, suggestedStaffList, useDynasty, useUserTeam,
+} from '../../state/store.js';
+import {
+  fit, canPursue, inPipeline, byRank, weekActionCost, totalWeekSpend, weeklyBudget,
+  SCHOLARSHIPS, RECRUITING_WEEKS, reportedOverall, reportedPotential,
+  type Prospect,
 } from '../../engine/recruiting.js';
-import { walkOnShortfall, depthShortfall, departureOdds } from '../../engine/progression.js';
-import { pitchFor } from '../../engine/pitch.js';
+import { STAFF_LIST_MAX } from '../../engine/staffRecruiting.js';
+import { walkOnShortfall, depthShortfall } from '../../engine/progression.js';
 import { overallOf } from '../../engine/ratings.js';
-import { highSchoolLine } from '../../engine/scouting.js';
-import { CONFERENCES, ALL_STATES } from '../../data/schools.js';
+import { CONFERENCES } from '../../data/schools.js';
 import { prestigeStars } from '../../engine/program.js';
 import { GodBolt } from '../god/GodBolt.js';
 import { FirstVisit } from '../Tutorial.js';
 import { Modal } from '../Modal.js';
-import { withStaff, pipelineStrength, pipelineLabel, PIPELINE_MIN } from '../../engine/economy.js';
+import { withStaff, pipelineStrength, PIPELINE_MIN } from '../../engine/economy.js';
 import { handles } from '../../state/depth.js';
 import { isTwoWay } from '../../engine/types.js';
-import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
+import type { Hitter, Pitcher, Player } from '../../engine/types.js';
 import {
-  ActionBar, Button, Callout, Card, Chip, Chips, ConfirmButton, cx, DescriptionList, EmptyState,
-  Face, Icon, List, ListRow, Marquee, Meter, OptionCard, OptionGroup, PlayerRow, ProspectCard,
-  SectionHeader, SegmentedControl, Sheet, Stars, StatGroup, StatusBadge, Step, Stepper, Switch,
-  Table, Tag, type IconName, type Tone,
+  ActionBar, Button, Callout, Card, cx, EmptyState, Face, List, ListRow, Marquee, PlayerRow, StatusBadge,
 } from '../components/ui/index.js';
-import { CLASS_NAME, HIGH_SCHOOL_WORD, POSITION_NAME, capsWords, handsText, plural, stateName } from '../words.js';
+import { CLASS_NAME, plural } from '../words.js';
 import { StepScreen } from './OffseasonStep.js';
+import { FilterBar, FilterSheet } from './RecruitFilters.js';
+import { RaceLegend, RecruitRow, type RowStar } from './RecruitRow.js';
+import { ProspectSheet } from './RecruitSheet.js';
+import { StaffPicker } from './StaffPicker.js';
+import { StaffList } from './StaffList.js';
+import { posName, raceOf, raceText, slotCode, slotOf, standing } from './recruitRace.js';
 
-type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster';
+/** The board's views. `staff` is the staff list, shown only while the staff runs recruiting. */
+type View = 'recruits' | 'targets' | 'commits' | 'needs' | 'roster' | 'staff';
 
-/** A prospect's position code; a two-way man answers to both of his. */
-const slotOf = (p: Prospect): string =>
-  isTwoWay(p.player) ? 'TWO-WAY'
-    : p.player.type === 'pitcher' ? (p.player as Pitcher).role : p.player.pos;
-
-const POSITIONS: readonly (Position | 'SP' | 'RP')[] =
-  ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'SP', 'RP'];
+/** The suggestion while the coach runs his own board: nothing, one stable reference. */
+const NO_SUGGESTION: readonly never[] = [];
 
 /**
  * What the board can be narrowed by.
@@ -159,8 +154,10 @@ export type PinnedKind = 'close-filter' | 'end-week' | 'signing-day' | null;
  *
  * Since the filter became a dialog (2026-09-15) the `filtersOpen` branch is
  * the dialog's own button rather than the frame's: the board underneath keeps
- * END WEEK, the box over it says what closing it will show, and both labels
- * still come from here.
+ * END WEEK, and the box over it says what closing it will show. Since the UI
+ * clarity review (2026-09-25) the box says it in the review's words —
+ * `showLabel`, "Show 42 prospects" — from the same three cases this branch
+ * decides: nobody, the capped top of the list, or all of it.
  */
 export function pinnedAction(
   s: {
@@ -190,6 +187,13 @@ export function pinnedAction(
         : `END WEEK ${s.week}` };
 }
 
+/** The filter sheet's button: what the board shows once it closes. See `pinnedAction`. */
+function showLabel(matches: number, shown: number): string {
+  if (matches === 0) return 'Nobody matches';
+  if (shown < matches) return `Show the top ${shown} of ${matches}`;
+  return `Show ${plural(matches, 'prospect')}`;
+}
+
 /**
  * What the class has already covered, as the difference between two projections.
  *
@@ -197,7 +201,7 @@ export function pinnedAction(
  * review projected the walk-ons by replaying the roster rebuild, and this tab
  * counted signings against a list of holes handed to it by the draft step. They
  * disagreed, and the tab was the one lying — twice over. It read
- * `lastOffseason.holes`, which a reload does not restore, so any dynasty picked
+ * `lastOffseason.holes`, which a reload did not restore then, so any dynasty picked
  * up mid-offseason showed an empty NEEDS tab and the words "every spot the
  * draft opened up is covered" over a roster that was four men short. And even
  * with the report in hand it counted a signed player against his own position
@@ -220,70 +224,27 @@ export function coveredSince(
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Words
-// ---------------------------------------------------------------------------
+/**
+ * On the targets view: anyone this program has ever spent on, until he is
+ * resolved. One who commits here moves to Committed; one who signs elsewhere
+ * stays, marked, so you learn who beat you.
+ */
+export const onYourBoard = (p: Prospect, userTeam: number): boolean =>
+  p.signedBy !== userTeam
+  && ((p.spent[userTeam] ?? 0) > 0 || weekActionCost(p, userTeam) > 0 || (p.points[userTeam] ?? 0) > 0);
 
-/** A label the tested helpers write in capitals, as the screen says it. */
-const say = (label: string): string => label.charAt(0) + label.slice(1).toLowerCase();
+/** The rows a view keeps for one visit, by id, in the order it opened with. */
+export interface HeldRows { key: string; ids: readonly string[] }
 
-const posName = (code: string): string =>
-  code === 'TWO-WAY' ? 'Two-way'
-    : code === 'BENCH' ? 'Bench'
-      : POSITION_NAME[code as Position | 'SP' | 'RP'] ?? code;
-
-/** The factor as a pitch tile has room to say it. */
-const FACTOR_SHORT: Record<RecruitingFactor, string> = {
-  tradition: 'Tradition',
-  coach: 'Coach',
-  conference: 'Conference',
-  playingTime: 'Playing time',
-  winning: 'Winning now',
-  development: 'Development',
-  facilities: 'Facilities',
-  proximity: 'Close to home',
-  proPipeline: 'Path to pros',
-};
-
-/** Your grade against his want, as the engine weighs a pitch on it. */
-const VERDICT: Record<PitchVerdict, { word: string; tone: 'positive' | 'muted' | 'warning' | 'negative'; icon: IconName }> = {
-  strong: { word: 'Strong', tone: 'positive', icon: 'check-circled' },
-  fair: { word: 'Fair', tone: 'muted', icon: 'minus-circled' },
-  thin: { word: 'Thin', tone: 'warning', icon: 'alert' },
-  hollow: { word: 'Backfires', tone: 'negative', icon: 'cross-circled' },
-};
-
-/** His interest in you as a share of all of it, and who leads. */
-function interestShare(p: Prospect, team: number): { any: boolean; you: number; leader: number; leaderTeam: number | null } {
-  const entries = Object.entries(p.points).map(([t, v]) => ({ t: Number(t), v })).filter((e) => e.v > 0);
-  const total = entries.reduce((a, e) => a + e.v, 0);
-  if (total <= 0) return { any: false, you: 0, leader: 0, leaderTeam: null };
-  const lead = [...entries].sort((a, b) => b.v - a.v)[0]!;
-  return {
-    any: true,
-    you: Math.round(((p.points[team] ?? 0) / total) * 100),
-    leader: Math.round((lead.v / total) * 100),
-    leaderTeam: lead.t,
-  };
-}
-
-/** Where you stand with him: the chase, or how it ended. */
-function chase(
-  p: Prospect, userTeam: number, schoolOf: (i: number) => string, reachable: boolean,
-): { tone: Tone; label: string; icon?: IconName } {
-  if (p.signedBy === userTeam) return { tone: 'positive', label: 'Committed to you' };
-  if (p.signedBy !== null) return { tone: 'negative', label: `Signed with ${schoolOf(p.signedBy)}` };
-  if (!reachable) return { tone: 'neutral', icon: 'lock', label: 'Out of reach' };
-  const points = Object.values(p.points).filter((v) => v > 0);
-  const best = points.length ? Math.max(...points) : 0;
-  const mine = p.points[userTeam] ?? 0;
-  if (best <= 0) return { tone: 'neutral', label: 'Nobody on him yet' };
-  if (mine <= 0) return { tone: 'neutral', label: 'Others are on him' };
-  if (mine >= best) return { tone: 'positive', label: 'You lead' };
-  const behind = (best - mine) / best;
-  if (behind < 0.2) return { tone: 'info', label: 'Close behind' };
-  if (behind < 0.5) return { tone: 'warning', label: 'Behind' };
-  return { tone: 'negative', icon: 'alert', label: 'Far behind' };
+/**
+ * The rows a view keeps: the same ones while `key` holds, a fresh set of
+ * `rows` under a new key, none without a key. Returns `prev` itself when
+ * nothing changed, so a caller can tell.
+ */
+export function holdRows(prev: HeldRows | null, key: string | null, rows: readonly Prospect[]): HeldRows | null {
+  if (key === null) return null;
+  if (prev?.key === key) return prev;
+  return { key, ids: rows.map((p) => p.id) };
 }
 
 // ---------------------------------------------------------------------------
@@ -298,16 +259,25 @@ export function Board() {
   const recruitPitch = useDynasty((s) => s.recruitPitch);
   const recruitMajor = useDynasty((s) => s.recruitMajor);
   const advanceWeek = useDynasty((s) => s.advanceRecruitingWeek);
-  // Whether he works his own board or watches his coordinator work it. The
-  // board reads the same either way; only the controls go.
+  // Whether he works his own board or his staff works the men he stars. The
+  // board reads the same either way; the controls become the stars.
   const worksBoard = useDynasty((s) => handles(s.depth, 'recruiting'));
   const economy = useDynasty((s) => s.economy);
   const phase = useDynasty((s) => s.phase);
   const nextPhase = useDynasty((s) => s.nextPhase);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
+  // The staff list (2026-09-28).
+  const staffList = useDynasty(staffListOf);
+  const starRecruit = useDynasty((s) => s.starRecruit);
+  const moveStaffRecruit = useDynasty((s) => s.moveStaffRecruit);
+  const setStaffList = useDynasty((s) => s.setStaffList);
+  const replaceLost = useDynasty((s) => s.replaceLostRecruits);
+  const setReplaceLost = useDynasty((s) => s.setReplaceLostRecruits);
 
   const [view, setView] = useState<View>('recruits');
+  // The coach's own picks for the staff list (StaffPicker), from an open slot.
+  const [picking, setPicking] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   // Kept across visits for the same class; a new class starts clean.
   const year = useDynasty((s) => s.year);
@@ -323,6 +293,8 @@ export function Board() {
   const [showAll, setShowAll] = useState(false);
   const [warnHoles, setWarnHoles] = useState(false);
   const [lastTap, setLastTap] = useState(0);
+  // The targets view's rows while the staff runs recruiting: see `heldKey`.
+  const [heldTargets, setHeldTargets] = useState<HeldRows | null>(null);
   const lastWeek = useDynasty((s) => s.lastWeek);
 
   const pitch = useMemo(() => {
@@ -336,40 +308,29 @@ export function Board() {
   const networkFor = (p: Prospect): number => pipelineStrength(economy, p.state, homeState);
 
   const {
-    list, matches, targets, commits, spent, locked, shortfall, thin, covered, leaving,
+    list, matches, targets, commits, spent, plannedOn, locked, shortfall, thin, covered, leaving,
   } = useMemo(() => {
     const all = season?.recruiting.prospects ?? [];
     // One gate, asked the same way everywhere on this screen.
     const reaches = (p: Prospect): boolean => canPursue(p, myStars, networkFor(p));
 
-    // Anyone this program has ever spent on stays a target until he is
-    // resolved. One who commits here moves to Committed; one who signs
-    // elsewhere stays, marked, so you learn who beat you.
-    const mine = all.filter(
-      (p) => p.signedBy !== userTeam
-        && ((p.spent[userTeam] ?? 0) > 0 || weekActionCost(p, userTeam) > 0 || (p.points[userTeam] ?? 0) > 0),
-    );
+    const mine = all.filter((p) => onYourBoard(p, userTeam));
     const used = totalWeekSpend(all, userTeam);
     const signed = all.filter((p) => p.signedBy === userTeam);
 
     const open = all.filter((p) => p.signedBy === null);
     const shown = open.filter((p) => matchesFilters(p, filters, homeState, myStars, networkFor));
     const reachable = shown.filter(reaches);
+    // Talent weighted by how well he fits what this program can sell.
     const ranked = pitch
       ? [...reachable].sort((a, b) => (b.stars * fit(b, pitch)) - (a.stars * fit(a, pitch)))
       : reachable;
 
-    const roster: Player[] = team
-      ? [...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen]
-      : [];
-    // Who will still be here when the class arrives. Until the draft step runs
-    // the departures, seniors and anyone likelier than not to be drafted
-    // (`departureOdds`, the odds the draw is made against) count as gone.
-    const departed = phase !== null && PHASES.indexOf(phase) >= PHASES.indexOf('draft');
-    const survivors = departed
-      ? roster
-      : roster.filter((p) => p.classYear !== 'SR' && departureOdds(p) < 0.5);
-    const leaving = roster.length - survivors.length;
+    // Who will still be here when the class arrives: see `classSurvivors`,
+    // which the staff's suggested list reads too.
+    const { survivors, leaving } = season
+      ? classSurvivors(season, userTeam, phase)
+      : { survivors: [] as Player[], leaving: 0 };
     const classPlayers = signed.map((p) => p.player);
     const still = walkOnShortfall(survivors, classPlayers);
     // A starter with nobody who naturally covers him. An open spot is already
@@ -391,6 +352,8 @@ export function Board() {
       // The class in the same national order the signing-day report reads in.
       commits: signed.slice().sort(byRank),
       spent: used,
+      // How many men this week's points are spread across.
+      plannedOn: open.filter((p) => (p.spent[userTeam] ?? 0) + weekActionCost(p, userTeam) > 0).length,
       locked: filters.reachOnly ? [] : shown.filter((p) => !reaches(p))
         .sort((a, b) => b.stars - a.stars).slice(0, 5),
       shortfall: still,
@@ -400,6 +363,13 @@ export function Board() {
     };
   }, [season, team, userTeam, version, pitch, myStars, homeState, filters, showAll, phase]);
 
+  // What the staff would star, for the list's "Use these". Only read while the
+  // staff runs recruiting.
+  const suggestion = useMemo(
+    () => (worksBoard ? NO_SUGGESTION : suggestedStaffList(season, userTeam, coach, economy, phase)),
+    [worksBoard, season, userTeam, coach, economy, phase, version],
+  );
+
   if (!season || !team || !pitch) return null;
 
   const week = season.recruiting.week;
@@ -407,11 +377,31 @@ export function Board() {
   // you. See `coveredSince`.
   const stillShort = shortfall.reduce((a, r) => a + r.count, 0);
   const open = season.recruiting.prospects.find((p) => p.id === openId) ?? null;
-  // A week's points, after whatever the draft step spent keeping somebody.
-  const weekly = boardBudget(season, userTeam, economy.recruitingGrant);
+  // A week's points, after whatever the draft step spent keeping somebody. The
+  // staff's week is the share of it the staff gets through (`delegateEffort`),
+  // so the band never shows points left that nobody can spend.
+  const weekly = worksBoard
+    ? boardBudget(season, userTeam, economy.recruitingGrant)
+    : Math.max(1, Math.round(weeklyBudget(myStars) * delegateEffort(economy)));
   const recruiterSkill = withStaff(coach.skills, economy.staff).recruiting;
   const left = weekly - spent;
   const live = week >= 1 && week <= RECRUITING_WEEKS;
+  // The staff list view exists only while the staff runs recruiting; a coach
+  // who takes the board back lands on the prospects.
+  const current: View = view === 'staff' && worksBoard ? 'recruits' : view;
+  const listFull = staffList.length >= STAFF_LIST_MAX;
+  const byId = (id: string): Prospect | undefined => season.recruiting.prospects.find((p) => p.id === id);
+  // A star tap replans the staff's whole week, which can take the last point
+  // off a man (or put one on another), and `targets` would drop or add his row
+  // under the thumb. So while the staff runs recruiting the targets view keeps
+  // the rows it opened with until the coach leaves it or the week closes.
+  // Points and signings move only at a close, so the held order stays right.
+  const heldKey = !worksBoard && current === 'targets' ? `${userTeam}:${year}:${week}` : null;
+  const held = holdRows(heldTargets, heldKey, targets);
+  if (held !== heldTargets) setHeldTargets(held);
+  const targetRows = held
+    ? held.ids.map(byId).filter((p): p is Prospect => !!p && p.signedBy !== userTeam)
+    : targets;
   const seasonMode = phase === null;
   const full = commits.length >= SCHOLARSHIPS;
   const activeFilters = anyFilter(filters);
@@ -419,11 +409,6 @@ export function Board() {
     filtersOpen: false, live: live && !seasonMode, week, matches, shown: list.length,
     byHand: worksBoard,
   });
-  // The filter sheet's own button, off the same function: it says what the
-  // board will show when the sheet closes.
-  const filterLabel = pinnedAction({
-    filtersOpen: true, live: live && !seasonMode, week, matches, shown: list.length,
-  }).label;
   const activeTargetCount = (pos: string): number => targets.filter((p) => {
     if (p.signedBy !== null) return false;
     if (pos === 'BENCH') return p.player.type === 'hitter';
@@ -433,53 +418,59 @@ export function Board() {
   const uncoveredBoardNeeds = shortfall.filter((h) => activeTargetCount(h.pos) < h.count);
   const coordinator = economy?.staff?.recruiting;
   const schoolOf = (i: number): string => season.teams[i]?.def.school ?? 'another program';
+  const rosterPlayers: Player[] = [...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen];
 
-  const card = (p: Prospect) => {
+  /** His star for the staff list, on the prospect and target views while the staff runs recruiting. */
+  const starOf = (p: Prospect, reachable: boolean): RowStar | undefined => {
+    if (worksBoard || !live || (current !== 'recruits' && current !== 'targets')) return undefined;
+    const on = staffList.includes(p.id);
+    return {
+      on,
+      available: on || (p.signedBy === null && reachable),
+      disabled: !on && listFull,
+      label: on ? `Unstar ${p.player.name}` : `Star ${p.player.name} for your staff`,
+      onToggle: () => { starRecruit(p.id); },
+    };
+  };
+
+  /** One prospect as a race row. */
+  const row = (p: Prospect) => {
     const reachable = canPursue(p, myStars, networkFor(p));
-    const status = chase(p, userTeam, schoolOf, reachable);
-    const share = interestShare(p, userTeam);
     const ovr = reportedOverall(p, recruiterSkill);
     const pot = reportedPotential(p, recruiterSkill);
-    const priorities = recruitingPrioritiesOf(p);
-    const wants = [...RECRUITING_FACTORS].sort((a, b) => priorities[b] - priorities[a]).slice(0, 3);
-    const thisWeek = (p.spent[userTeam] ?? 0) + weekActionCost(p, userTeam);
-    const rival = share.leaderTeam !== null && share.leaderTeam !== userTeam ? schoolOf(share.leaderTeam) : undefined;
-    const canWork = p.signedBy === null && reachable && live && worksBoard && !full;
-    const chasing = p.signedBy === null && (p.points[userTeam] ?? 0) > 0;
+    const planned = p.signedBy === null ? (p.spent[userTeam] ?? 0) + weekActionCost(p, userTeam) : 0;
+    // What this week's plan adds, on the same forecast his sheet shows.
+    const gain = planned > 0
+      ? recruitingPlan(p, pitch, {
+        team: userTeam, actions: p.spent[userTeam] ?? 0, prestige: coach.prestige,
+        skill: recruiterSkill, economy, roster: rosterPlayers,
+      }).gain
+      : 0;
+    const race = raceOf(p, userTeam, gain);
+    const committed = p.signedBy === userTeam;
     return (
-      <ProspectCard
+      <RecruitRow
         key={p.id}
-        className={thisWeek > 0 && p.signedBy === null ? 'is-targeted' : chasing ? 'is-chasing' : undefined}
-        id={p.id}
+        prospect={p}
+        facts={(
+          <>
+            <b>{slotCode(p)}</b> {p.state} · Now {ovr.low === ovr.high ? ovr.low : `${ovr.low}–${ovr.high}`}
+            {' · '}Ceiling {pot.low === pot.high ? pot.low : `${pot.low}–${pot.high}`}
+          </>
+        )}
+        status={standing(p, userTeam, schoolOf, reachable)}
+        race={committed ? undefined : race}
+        raceText={raceText(race, schoolOf)}
+        note={committed ? (p.committedWeek ? `Committed in week ${p.committedWeek}` : 'Committed to you') : undefined}
+        planned={planned}
         team={p.signedBy !== null ? season.teams[p.signedBy]?.def.abbr : undefined}
-        name={p.player.name}
-        tags={[slotOf(p) === 'TWO-WAY' ? 'Two-way' : slotOf(p), p.state]}
-        meta={thisWeek > 0 && p.signedBy === null ? `${thisWeek} pts this week` : undefined}
-        stars={p.stars}
-        rank={p.rank}
-        ratingLow={ovr.low}
-        ratingHigh={ovr.high}
-        ratingNote="of 100"
-        ceiling={pot.low === pot.high ? pot.low : `${pot.low} to ${pot.high}`}
-        ceilingNote="D to S"
-        status={status}
-        interest={share.any && p.signedBy === null
-          ? { you: share.you, leader: rival ? share.leader : undefined, leaderName: rival }
-          : undefined}
-        wants={wants.map((k) => ({ text: FACTOR_SHORT[k], fit: ['strong', 'fair'].includes(pitchVerdict(p, pitch, k)) }))}
-        action={canWork
-          ? {
-            label: thisWeek > 0 ? 'Change his week' : 'Plan his week',
-            variant: thisWeek > 0 ? 'secondary' : 'tonal',
-            onClick: () => setOpenId(p.id),
-          }
-          : undefined}
         onOpen={() => setOpenId(p.id)}
+        star={starOf(p, reachable)}
       />
     );
   };
 
-  const rows = view === 'recruits' ? list : view === 'targets' ? targets : commits;
+  const rows = current === 'recruits' ? list : current === 'targets' ? targetRows : commits;
 
   const onPinned = (): void => {
     const now = Date.now();
@@ -492,31 +483,31 @@ export function Board() {
     else advanceWeek();
   };
 
+  const views: [View, string, number][] = [
+    ['recruits', 'Prospects', 0],
+    ...(worksBoard ? [] : [['staff', 'Staff list', staffList.length] as [View, string, number]]),
+    ['targets', 'Your targets', targetRows.length],
+    ['commits', 'Committed', commits.length],
+    ['needs', 'Positions needed', stillShort],
+    ['roster', 'Your roster', 0],
+  ];
+
   const page = (
-    <main className="pb-page">
-      {live && <FirstVisit id="recruiting" />}
+    <main className="pb-page pb-rc-page">
+      {/* The tip for the board he has: spending points and pitching are not
+          his to do while the staff runs recruiting, starring is. */}
+      {live && <FirstVisit id={worksBoard ? 'recruiting' : 'recruiting-staff'} />}
       <Marquee
         eyebrow={`${year} class · ${live ? `Week ${week} of ${RECRUITING_WEEKS}` : 'Closed'}`}
         title="Recruiting"
         trailing={<GodBolt target={{ kind: 'recruits' }} label="Edit the class in god mode" />}
       />
 
-      <Card
-        eyebrow="This week"
-        title={live ? `${Math.max(0, left)} of ${weekly} points left` : 'The class is closed'}
-        trailing={live ? <StatusBadge tone="neutral" icon="clock">Resets weekly</StatusBadge> : undefined}
-      >
-        {live && (
-          <Meter value={Math.max(0, left)} max={Math.max(1, weekly)} ariaLabel="Points left this week" />
-        )}
-        <StatGroup
-          size="sm"
-          items={[
-            { label: 'Scholarships', value: `${commits.length} of ${SCHOLARSHIPS}`, note: full ? 'Class full' : undefined },
-            { label: 'Program pull', value: <Stars value={myStars} label="Program pull" /> },
-          ]}
-        />
-      </Card>
+      <WeekBand
+        live={live} left={left} weekly={weekly} spent={spent} plannedOn={plannedOn}
+        signed={commits.length} week={week}
+        staffName={worksBoard ? undefined : (coordinator?.name ?? 'Your staff')}
+      />
 
       {live && lastWeek && (
         <Callout tone={lastWeek.yours.length > 0 ? 'positive' : 'neutral'} title={`Week ${lastWeek.closed} is over`}>
@@ -525,65 +516,135 @@ export function Board() {
         </Callout>
       )}
 
+      {/* Who runs recruiting is a career rule, set at creation, in the Season
+          plan and in Settings; the board only says so, in one line. */}
+      {/* With nobody starred the staff does nothing (2026-09-30), so the line
+          says what to do instead, in as few words: one line either way. */}
       {live && !worksBoard && (
-        <Callout tone="info" title={coordinator ? `${coordinator.name} works your board` : 'Your staff works your board'}>
-          Change it in Settings.
-        </Callout>
+        <Callout
+          tone="info"
+          icon="star"
+          title={staffList.length > 0 ? `${coordinator?.name ?? 'Your staff'} works your list` : 'Star recruits for your staff'}
+        />
       )}
 
-      <div className="pb-stickybar">
-      <Chips label="Recruiting">
-        <Chip selected={view === 'recruits'} onClick={() => setView('recruits')}>Prospects</Chip>
-        <Chip selected={view === 'targets'} count={targets.length || undefined} onClick={() => setView('targets')}>Your targets</Chip>
-        <Chip selected={view === 'commits'} count={commits.length || undefined} onClick={() => setView('commits')}>Committed</Chip>
-        <Chip selected={view === 'needs'} count={stillShort || undefined} onClick={() => setView('needs')}>Positions needed</Chip>
-        <Chip selected={view === 'roster'} onClick={() => setView('roster')}>Your roster</Chip>
-      </Chips>
+      <div className="pb-stickybar pb-rc-bar">
+        <div className="pb-rc-views" role="group" aria-label="Recruiting">
+          {views.map(([v, label, count]) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={current === v}
+              className={cx('pb-rc-view', current === v && 'is-on')}
+              onClick={() => setView(v)}
+            >
+              {label}
+              {/* The staff list's count shows from 0: a row's star changes it,
+                  and a badge that came and went moved the tabs after it. */}
+              {(count > 0 || v === 'staff') && <span className="pb-rc-view__n">{count}</span>}
+            </button>
+          ))}
+        </div>
+        {current === 'recruits' && (
+          <FilterBar
+            filters={filters}
+            onOpen={() => { setOpenId(null); setFiltersOpen(true); }}
+            onChange={setFilters}
+            onClear={() => setFilters(NO_FILTERS)}
+          />
+        )}
       </div>
 
-      {view === 'needs' ? (
+      {current === 'needs' ? (
         <NeedsView
           short={shortfall} thin={thin} covered={covered} leaving={leaving} targeted={activeTargetCount}
           // On top of the filters already set, not instead of them.
           onPick={(pos) => { setFilters({ ...filters, pos }); setView('recruits'); }}
         />
-      ) : view === 'roster' ? (
+      ) : current === 'roster' ? (
         <RosterView />
+      ) : current === 'staff' ? (
+        <StaffList
+          list={staffList.map(byId).filter((p): p is Prospect => !!p)}
+          standIns={season.recruiting.staffStandIns ?? {}}
+          byId={byId}
+          userTeam={userTeam}
+          programStars={myStars}
+          week={week}
+          reachable={(p) => canPursue(p, myStars, networkFor(p))}
+          schoolOf={schoolOf}
+          suggestion={suggestion}
+          canSuggest={live}
+          onUseSuggestion={() => setStaffList(suggestion)}
+          onMove={moveStaffRecruit}
+          onUnstar={(id) => { starRecruit(id); }}
+          replaceLost={replaceLost}
+          onReplaceLost={setReplaceLost}
+          onPickSlot={live ? () => setPicking(true) : undefined}
+        />
       ) : (
-        <div className="pb-stack">
-          <SectionHeader
-            title={view === 'recruits' ? 'Prospects' : view === 'targets' ? 'Your targets' : 'Committed to you'}
-            count={view === 'recruits' ? matches : rows.length}
-            action={view === 'recruits'
-              ? { label: activeFilters ? 'Filters on' : 'Filter', onClick: () => { setOpenId(null); setFiltersOpen(true); } }
-              : undefined}
-          />
-          {view === 'recruits' && activeFilters && (
-            <Button variant="quiet" size="sm" icon="cross" onClick={() => setFilters(NO_FILTERS)}>Clear filters</Button>
-          )}
-          {rows.length === 0 ? (
-            <EmptyState
-              icon={view === 'recruits' ? 'search' : 'person'}
-              title={view === 'targets' ? 'Nobody on your board yet'
-                : view === 'commits' ? 'No commitments yet'
-                  : activeFilters ? 'Nobody matches' : 'Nobody available'}
-            />
-          ) : rows.map(card)}
+        <div className="pb-rc-listwrap">
+          <div className="pb-rc-listhead">
+            <div>
+              <h2>
+                {current === 'recruits' ? 'Prospects' : current === 'targets' ? 'Your targets' : 'Committed to you'}
+                <span>{current === 'recruits' ? matches : rows.length}</span>
+              </h2>
+            </div>
+            {/* The order, said once. The list's own line and this caption both
+                said it, one of them as "Stars × fit". */}
+            <small>{current === 'recruits' ? 'Stars and fit first' : current === 'targets' ? 'Most interest first' : 'By national rank'}</small>
+          </div>
 
-          {view === 'recruits' && matches > list.length && (
+          {rows.length === 0 ? (
+            current === 'recruits' && activeFilters ? (
+              <EmptyState
+                className="pb-rc-empty"
+                title="No prospects match"
+                text="Loosen a filter or clear them all."
+                action={{ label: 'Clear filters', variant: 'tonal', onClick: () => setFilters(NO_FILTERS) }}
+              />
+            ) : (
+              <EmptyState
+                className="pb-rc-empty"
+                title={current === 'targets' ? 'Nobody on your board yet'
+                  : current === 'commits' ? 'No commitments yet' : 'Nobody available'}
+              />
+            )
+          ) : (
+            <div className="pb-rc-list">{rows.map(row)}</div>
+          )}
+
+          {current !== 'commits' && rows.length > 0 && <RaceLegend />}
+
+          {current === 'recruits' && matches > list.length && (
             <Button variant="secondary" block onClick={() => setShowAll(true)}>Show all {matches}</Button>
           )}
-          {view === 'recruits' && showAll && matches > ROW_CAP && (
+          {current === 'recruits' && showAll && matches > ROW_CAP && (
             <Button variant="quiet" block onClick={() => setShowAll(false)}>Back to the top {ROW_CAP}</Button>
           )}
 
-          {view === 'recruits' && locked.length > 0 && (
+          {current === 'recruits' && locked.length > 0 && (
             <>
-              <SectionHeader title="Out of reach for now" />
-              {locked.map(card)}
+              <div className="pb-rc-listhead pb-rc-listhead--sub">
+                <div><h2>Out of reach for now</h2></div>
+              </div>
+              <div className="pb-rc-list">{locked.map(row)}</div>
             </>
           )}
         </div>
+      )}
+
+      {picking && !worksBoard && (
+        <StaffPicker
+          prospects={season.recruiting.prospects}
+          list={staffList}
+          userTeam={userTeam}
+          reachable={(p) => canPursue(p, myStars, networkFor(p))}
+          schoolOf={schoolOf}
+          onToggle={(id) => { starRecruit(id); }}
+          onClose={() => setPicking(false)}
+        />
       )}
 
       {filtersOpen && (
@@ -592,7 +653,8 @@ export function Board() {
           onChange={setFilters}
           onClear={() => setFilters(NO_FILTERS)}
           onClose={() => setFiltersOpen(false)}
-          label={say(filterLabel)}
+          label={showLabel(matches, list.length)}
+          none={matches === 0}
           homeState={homeState}
         />
       )}
@@ -616,7 +678,6 @@ export function Board() {
           prospect={open}
           userTeam={userTeam}
           coachPrestige={coach.prestige}
-          // The same effective skill the week's close will spend.
           recruitingSkill={recruiterSkill}
           pitch={pitch}
           reachable={canPursue(open, myStars, networkFor(open))}
@@ -625,12 +686,18 @@ export function Board() {
           live={live}
           full={full && open.signedBy === null}
           left={left}
+          weekly={weekly}
           week={week}
           schoolOf={schoolOf}
           onSet={(n) => recruitFor(open.id, n)}
           onPitch={(factor) => recruitPitch(open.id, factor)}
           onMajor={(action) => recruitMajor(open.id, action)}
           onClose={() => setOpenId(null)}
+          staff={worksBoard ? undefined : {
+            position: staffList.includes(open.id) ? staffList.indexOf(open.id) + 1 : null,
+            full: listFull,
+            onToggle: () => { starRecruit(open.id); },
+          }}
         />
       )}
     </main>
@@ -653,83 +720,71 @@ export function Board() {
 }
 
 // ---------------------------------------------------------------------------
-// Filters
+// The week and the class
 // ---------------------------------------------------------------------------
 
-/** A star rating on a chip: the stars themselves, not the word. */
-function StarRow({ n }: { n: number }) {
+/**
+ * The week's points and the class's scholarships side by side, and the
+ * recruiting window under them, one pip a week.
+ *
+ * The planned line keeps two lines of room whatever it says: it changes while
+ * the coach plans on a sheet over the board, and a band that grew a line would
+ * push the whole list down under him. While the staff runs recruiting it says
+ * who planned the week, since the coach did not.
+ */
+function WeekBand(
+  { live, left, weekly, spent, plannedOn, signed, week, staffName }:
+  {
+    live: boolean; left: number; weekly: number; spent: number; plannedOn: number; signed: number; week: number;
+    /** Who plans the week, while the staff runs recruiting. */
+    staffName?: string;
+  },
+) {
+  const openSpots = Math.max(0, SCHOLARSHIPS - signed);
+  const planned = Math.max(0, Math.min(100, (spent / Math.max(1, weekly)) * 100));
   return (
-    <span className="pb-chipstars" aria-label={plural(n, 'star')} role="img">
-      {Array.from({ length: n }, (_, i) => <Icon key={i} name="star-filled" size={12} />)}
-    </span>
-  );
-}
-
-function FilterSheet({
-  filters, onChange, onClear, onClose, label, homeState,
-}: {
-  filters: Filters; onChange: (f: Filters) => void; onClear: () => void; onClose: () => void;
-  /** What the board shows once the sheet closes. */
-  label: string;
-  homeState: string;
-}) {
-  const set = <K extends keyof Filters>(k: K, v: Filters[K]) => onChange({ ...filters, [k]: v });
-  const toggleStar = (n: number) => set('stars', filters.stars.includes(n)
-    ? filters.stars.filter((s) => s !== n)
-    : [...filters.stars, n].sort((a, b) => b - a));
-  const active = [
-    filters.pos, filters.state, filters.stars.length > 0,
-    filters.pipelineOnly, filters.untouchedOnly, filters.reachOnly,
-  ].filter(Boolean).length;
-
-  return (
-    <Sheet
-      eyebrow={active > 0 ? `${plural(active, 'filter')} on` : undefined}
-      title="Filter prospects"
-      onClose={onClose}
-      tall
-      footer={(
-        <div className="pb-recruit-filterfoot">
-          <Button variant="secondary" disabled={active === 0} onClick={onClear}>Clear all</Button>
-          <Button variant="primary" onClick={onClose}>{label}</Button>
+    <section className="pb-rc-band" aria-label="This week">
+      <div className="pb-rc-band__top">
+        <div className="pb-rc-band__col">
+          <span className="pb-rc-label">Points this week</span>
+          <span className="pb-rc-band__big">
+            <b>{live ? Math.max(0, left) : '–'}</b>
+            {live && <i>/{weekly} left</i>}
+          </span>
+          <span className="pb-rc-band__bar" aria-hidden><i style={{ width: `${live ? planned : 0}%` }} /></span>
+          <span className="pb-rc-band__line">
+            {!live ? 'The class is closed'
+              : staffName !== undefined
+                ? (spent > 0 ? `${staffName} planned ${spent} on ${plural(plannedOn, 'prospect')}` : `${staffName} has nothing planned`)
+                : spent > 0 ? `${spent} planned on ${plural(plannedOn, 'prospect')} · resets each week`
+                  : 'Nothing planned yet · resets each week'}
+          </span>
         </div>
-      )}
-    >
-      <Card title="Position">
-        <Chips label="Position" className="pb-chips--wrap pb-chips--tight">
-          {POSITIONS.map((pos) => (
-            <Chip key={pos} selected={filters.pos === pos} onClick={() => set('pos', filters.pos === pos ? null : pos)}>
-              <span title={posName(pos)}>{pos}</span>
-            </Chip>
+        <div className="pb-rc-band__col">
+          <span className="pb-rc-label">Scholarships</span>
+          <span className="pb-rc-band__big"><b>{signed}</b><i>/{SCHOLARSHIPS} signed</i></span>
+          <span className="pb-rc-band__pips" aria-hidden style={{ gridTemplateColumns: `repeat(${SCHOLARSHIPS}, minmax(0, 1fr))` }}>
+            {Array.from({ length: SCHOLARSHIPS }, (_, i) => <i key={i} className={cx(i < signed && 'is-on')} />)}
+          </span>
+          <span className="pb-rc-band__line">{openSpots === 0 ? 'Class full' : plural(openSpots, 'open spot')}</span>
+        </div>
+      </div>
+      <div className="pb-rc-band__window">
+        <div className="pb-rc-band__wline">
+          <span>Recruiting window</span>
+          <span>
+            {live
+              ? <><b>Week {week}</b> of {RECRUITING_WEEKS} · signing day after week {RECRUITING_WEEKS}</>
+              : 'Closed'}
+          </span>
+        </div>
+        <span className="pb-rc-band__weeks" aria-hidden style={{ gridTemplateColumns: `repeat(${RECRUITING_WEEKS}, minmax(0, 1fr))` }}>
+          {Array.from({ length: RECRUITING_WEEKS }, (_, i) => (
+            <i key={i} className={cx(!live || i < week - 1 ? 'is-past' : i === week - 1 && 'is-now')} />
           ))}
-        </Chips>
-      </Card>
-      <Card title="Stars">
-        <Chips label="Stars" className="pb-chips--wrap pb-chips--tight">
-          {[5, 4, 3, 2, 1].map((n) => (
-            <Chip key={n} selected={filters.stars.includes(n)} onClick={() => toggleStar(n)}><StarRow n={n} /></Chip>
-          ))}
-        </Chips>
-      </Card>
-      <Card title="Home state">
-        <select
-          className="pb-field__input pb-select"
-          aria-label="Home state"
-          value={filters.state ?? ''}
-          onChange={(e) => set('state', e.target.value === '' ? null : e.target.value)}
-        >
-          <option value="">Anywhere</option>
-          {ALL_STATES.map((st) => (
-            <option key={st} value={st}>{stateName(st)}{st === homeState ? ' (yours)' : ''}</option>
-          ))}
-        </select>
-      </Card>
-      <List label="More filters">
-        <Switch label="Pipeline states only" checked={filters.pipelineOnly} onChange={() => set('pipelineOnly', !filters.pipelineOnly)} />
-        <Switch label="Nobody recruiting him yet" checked={filters.untouchedOnly} onChange={() => set('untouchedOnly', !filters.untouchedOnly)} />
-        <Switch label="In reach only" checked={filters.reachOnly} onChange={() => set('reachOnly', !filters.reachOnly)} />
-      </List>
-    </Sheet>
+        </span>
+      </div>
+    </section>
   );
 }
 
@@ -758,7 +813,7 @@ function NeedsView(
 ) {
   const total = short.reduce((a, r) => a + r.count, 0);
   return (
-    <>
+    <div className="pb-stack">
       <Callout
         tone={total === 0 ? 'positive' : 'warning'}
         title={total === 0 ? 'Every spot is covered' : `${plural(total, 'spot')} would go to walk-ons`}
@@ -766,54 +821,54 @@ function NeedsView(
         {leaving > 0 ? `Counting ${plural(leaving, 'player')} leaving in June.` : undefined}
       </Callout>
       {short.length > 0 && (
-        <Card title="Open spots" flush>
-          <List label="Open spots">
-            {short.map((h) => {
-              const on = targeted(h.pos);
-              const open = Math.max(0, h.count - on);
-              return (
-                <ListRow
-                  key={h.pos}
-                  title={posName(h.pos)}
-                  subtitle={on === 0 ? 'Nobody on your board' : `${plural(on, 'target')} on your board`}
-                  status={open === 0
-                    ? <StatusBadge tone="positive">Covered</StatusBadge>
-                    : <StatusBadge tone="warning">{open} open</StatusBadge>}
-                  onClick={() => onPick(h.pos)}
-                />
-              );
-            })}
-          </List>
-        </Card>
+        <List label="Open spots">
+          {short.map((h) => {
+            const on = targeted(h.pos);
+            const open = Math.max(0, h.count - on);
+            return (
+              <ListRow
+                key={h.pos}
+                title={posName(h.pos)}
+                subtitle={on === 0 ? 'Nobody on your board' : `${plural(on, 'target')} on your board`}
+                value={open === 0
+                  ? <StatusBadge tone="positive" icon={false}>Covered</StatusBadge>
+                  : <StatusBadge tone="warning" icon={false}>{open} open</StatusBadge>}
+                onClick={() => onPick(h.pos)}
+              />
+            );
+          })}
+        </List>
       )}
       {thin.length > 0 && (
-        <Card title="No backup" flush>
+        <section className="pb-rc-group">
+          <span className="pb-rc-label">No backup</span>
           <List label="No backup">
             {thin.map((h) => (
               <ListRow
                 key={`thin-${h.pos}`}
                 title={posName(h.pos)}
-                subtitle={targeted(h.pos) > 0 ? `${plural(targeted(h.pos), 'target')} on your board` : undefined}
+                subtitle={targeted(h.pos) > 0 ? `${plural(targeted(h.pos), 'target')} on your board` : 'Nobody on your board'}
                 onClick={() => onPick(h.pos)}
               />
             ))}
           </List>
-        </Card>
+        </section>
       )}
       {covered.length > 0 && (
-        <Card title="Covered by your class" flush>
+        <section className="pb-rc-group">
+          <span className="pb-rc-label">Covered by your class</span>
           <List label="Covered">
             {covered.map((h) => (
               <ListRow
                 key={h.pos}
                 title={posName(h.pos)}
-                status={<StatusBadge tone="positive">{h.count > 1 ? `${h.count} filled` : 'Filled'}</StatusBadge>}
+                value={<StatusBadge tone="positive" icon={false}>{h.count > 1 ? `${h.count} filled` : 'Filled'}</StatusBadge>}
               />
             ))}
           </List>
-        </Card>
+        </section>
       )}
-    </>
+    </div>
   );
 }
 
@@ -850,450 +905,5 @@ function RosterView() {
         </Card>
       ))}
     </>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// One prospect
-// ---------------------------------------------------------------------------
-
-type SheetView = 'week' | 'report' | 'schools';
-
-function ProspectSheet({
-  prospect, userTeam, coachPrestige, recruitingSkill, pitch, reachable, pipeline, pipelineStrength,
-  live, full, left, week, schoolOf, onSet, onPitch, onMajor, onClose,
-}: {
-  prospect: Prospect; userTeam: number; coachPrestige: number; recruitingSkill: number;
-  pitch: ReturnType<typeof pitchFor>;
-  reachable: boolean; pipeline: boolean; pipelineStrength: number; live: boolean; full: boolean; left: number;
-  week: number;
-  schoolOf: (i: number) => string;
-  onSet: (n: number) => void;
-  onPitch: (factor: RecruitingFactor | null) => boolean;
-  onMajor: (action: RecruitMajorInput | null) => boolean;
-  onClose: () => void;
-}) {
-  const [tab, setTab] = useState<SheetView>('week');
-  const worksBoard = useDynasty((s) => handles(s.depth, 'recruiting'));
-  const economy = useDynasty((s) => s.economy);
-  const roster = useDynasty((s) => s.season?.teams[userTeam]?.team);
-  const p = prospect.player;
-  const spent = prospect.spent[userTeam] ?? 0;
-  const share = interestShare(prospect, userTeam);
-  const status = chase(prospect, userTeam, schoolOf, reachable);
-  const overall = reportedOverall(prospect, recruitingSkill);
-  const ceiling = reportedPotential(prospect, recruitingSkill);
-  const decides = DECISION_LABEL[decisionStyle(prospect)];
-  const canWork = reachable && live && !full && worksBoard && prospect.signedBy === null;
-  const plan = recruitingPlan(prospect, pitch, {
-    team: userTeam, actions: spent, prestige: coachPrestige, skill: recruitingSkill, economy,
-    roster: roster ? [...roster.lineup, ...roster.bench, ...roster.rotation, ...roster.bullpen] : [],
-  });
-  const total = spent + weekActionCost(prospect, userTeam);
-
-  return (
-    <Sheet
-      eyebrow={`#${prospect.rank} nationally · ${stateName(prospect.state)}`}
-      title={p.name}
-      subtitle={`${posName(slotOf(prospect))} · ${handsText(p.bats, p.throws)}`}
-      lead={<Face id={p.id} size={48} />}
-      onClose={onClose}
-      tall
-      footer={tab === 'week' && canWork ? (
-        <div className="pb-recruit-total">
-          <span>
-            <b>{plural(total, 'point')} on him</b>
-            <small>{Math.max(0, left)} left this week</small>
-          </span>
-          <Button size="sm" variant="quiet" disabled={spent === 0} onClick={() => onSet(0)}>Clear effort</Button>
-        </div>
-      ) : undefined}
-    >
-      <div className="pb-cluster">
-        <Stars value={prospect.stars} label="Recruit rating" />
-        <StatusBadge tone={status.tone} icon={status.icon}>{status.label}</StatusBadge>
-        {decides && <Tag>{capsWords(decides)}</Tag>}
-        {reachable && pipeline && <Tag tone="positive">{`Pipeline: ${pipelineLabel(pipelineStrength).toLowerCase()}`}</Tag>}
-        <GodBolt target={{ kind: 'recruit', id: p.id }} label={`Edit ${p.name} in god mode`} />
-      </div>
-      <StatGroup
-        size="sm"
-        items={[
-          { label: 'Rating now', value: overall.low === overall.high ? overall.low : `${overall.low}–${overall.high}`, note: 'of 100' },
-          { label: 'Ceiling', value: ceiling.low === ceiling.high ? ceiling.low : `${ceiling.low} to ${ceiling.high}`, note: 'D to S' },
-          {
-            label: 'Interest in you',
-            value: share.any ? `${share.you}%` : '—',
-            note: !share.any ? undefined
-              : share.leaderTeam === userTeam ? 'You lead'
-                : share.leaderTeam !== null ? `${schoolOf(share.leaderTeam)} ${share.leader}%` : undefined,
-          },
-        ]}
-      />
-      <SegmentedControl<SheetView>
-        label="Prospect"
-        value={tab}
-        onChange={setTab}
-        options={[
-          { value: 'week', label: 'This week' },
-          { value: 'report', label: 'Scouting' },
-          { value: 'schools', label: 'Other programs' },
-        ]}
-      />
-      {tab === 'week' && (
-        <WeekPlan
-          prospect={prospect} pitch={pitch} reachable={reachable} live={live} full={full}
-          spent={spent} left={left} week={week} userTeam={userTeam} plan={plan} canWork={canWork}
-          worksBoard={worksBoard}
-          onSet={onSet} onPitch={onPitch} onMajor={onMajor}
-        />
-      )}
-      {tab === 'report' && <Report prospect={prospect} recruitingSkill={recruitingSkill} />}
-      {tab === 'schools' && <Schools prospect={prospect} userTeam={userTeam} schoolOf={schoolOf} />}
-    </Sheet>
-  );
-}
-
-/**
- * Everything he cares about, most first, as a grid of tiles: your program's
- * grade, the grade he wants, and whether a pitch on it would land. The same
- * grid is the pitch picker when you are working him, and a read-only card
- * when you are not.
- */
-function PitchGrid(
-  { prospect, pitch, selected, onPick }:
-  {
-    prospect: Prospect; pitch: ReturnType<typeof pitchFor>;
-    selected?: RecruitingFactor | null;
-    /** Omitted, the grid only reads. */
-    onPick?: (factor: RecruitingFactor | null) => void;
-  },
-) {
-  const priorities = recruitingPrioritiesOf(prospect);
-  const ranked = [...RECRUITING_FACTORS].sort((a, b) => priorities[b] - priorities[a]);
-  return (
-    <div className="pb-pitchgrid" role={onPick ? 'radiogroup' : 'list'} aria-label="What he cares about, most first">
-      {ranked.map((f, i) => {
-        const v = VERDICT[pitchVerdict(prospect, pitch, f)];
-        const on = selected === f;
-        const inner = (
-          <>
-            {i < 3 && <span className="pb-pitch__rank" aria-label={`His number ${i + 1}`}>{i + 1}</span>}
-            <span className="pb-pitch__name">{FACTOR_SHORT[f]}</span>
-            <span className="pb-pitch__grades">
-              <b>{factorGrade(factorScore(prospect, pitch, f))}</b>
-              <small>wants {factorGrade(wantedScore(prospect, f))}</small>
-            </span>
-            <span className={`pb-pitch__verdict pb-tone--${v.tone}`}><Icon name={v.icon} size={14} />{v.word}</span>
-          </>
-        );
-        return onPick ? (
-          <button
-            key={f}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            title={RECRUITING_FACTOR_BLURB[f]}
-            className={`pb-pitch${on ? ' is-selected' : ''}`}
-            onClick={() => onPick(on ? null : f)}
-          >{inner}</button>
-        ) : (
-          <div key={f} role="listitem" className="pb-pitch" title={RECRUITING_FACTOR_BLURB[f]}>{inner}</div>
-        );
-      })}
-    </div>
-  );
-}
-
-function WeekPlan({
-  prospect, pitch, reachable, live, full, spent, left, week, userTeam, plan, canWork, worksBoard,
-  onSet, onPitch, onMajor,
-}: {
-  prospect: Prospect; pitch: ReturnType<typeof pitchFor>;
-  reachable: boolean; live: boolean; full: boolean; spent: number; left: number; week: number; userTeam: number;
-  plan: ReturnType<typeof recruitingPlan>; canWork: boolean; worksBoard: boolean;
-  onSet: (n: number) => void;
-  onPitch: (factor: RecruitingFactor | null) => boolean;
-  onMajor: (action: RecruitMajorInput | null) => boolean;
-}) {
-  const coordinator = useDynasty((s) => s.economy?.staff?.recruiting);
-  const priorities = recruitingPrioritiesOf(prospect);
-  const wants = [...RECRUITING_FACTORS].sort((a, b) => priorities[b] - priorities[a]).slice(0, 3);
-  const weekAction = prospect.weekActions?.[userTeam];
-  const major = weekAction?.major;
-  const boundPromise = prospect.promiseBy?.[userTeam];
-  const promiseLocked = !!boundPromise && major?.kind !== 'promise';
-  const relationship = hasRecruitingRelationship(prospect, userTeam);
-  // A sway or an ask is rolled the moment it is made: it is the week's big
-  // move, full stop.
-  const swayRolled = major?.kind === 'sway';
-  const swayUsed = Boolean(prospect.swayedBy?.[userTeam]);
-  const askRolled = major?.kind === 'ask';
-  const askReason = askRolled ? null : askBlocked(prospect, userTeam, week, full);
-  const rolled = swayRolled || askRolled;
-  const hints = hintsFor(prospect);
-  // What a sway or a hard sell presses on: the pitch, or his top want.
-  const focus = weekAction?.pitch ?? wants[0]!;
-
-  if (prospect.signedBy !== null || !canWork) {
-    return (
-      <>
-        {prospect.signedBy !== null ? (
-          <Callout tone={prospect.signedBy === userTeam ? 'positive' : 'neutral'} title={prospect.signedBy === userTeam ? 'Committed to you' : 'Signed elsewhere'} />
-        ) : !reachable ? (
-          <Callout tone="neutral" icon="lock" title="Out of reach for now">Build the program up and he starts listening.</Callout>
-        ) : full ? (
-          <Callout tone="neutral" title="Your class is full" />
-        ) : !live ? (
-          <Callout tone="neutral" title="The class is closed" />
-        ) : !worksBoard ? (
-          <Callout tone="info" title={coordinator ? `${coordinator.name} works this board` : 'Your staff works this board'} />
-        ) : null}
-        {prospect.signedBy === null && (
-          <Callout tone="neutral" icon="chat" title="What the scouts say">&ldquo;{hints.ceiling.text}&rdquo;</Callout>
-        )}
-        <Card title="What he cares about">
-          <PitchGrid prospect={prospect} pitch={pitch} />
-        </Card>
-      </>
-    );
-  }
-
-  const room = Math.max(0, left);
-  const gain = Math.round(plan.gain);
-
-  return (
-    <div className="pb-steps">
-      <Step number={1} title="Put in effort" state={spent > 0 ? 'done' : 'current'} summary={spent > 0 ? plural(spent, 'point') : undefined}>
-        <Stepper
-          label="Points on him"
-          hint={room === 0 && spent < MAX_PER_RECRUIT ? 'No points left this week' : `Up to ${MAX_PER_RECRUIT}`}
-          value={spent}
-          min={0}
-          max={Math.min(MAX_PER_RECRUIT, spent + room)}
-          onChange={onSet}
-        />
-        <p className="pb-recruit-proj">
-          <span>Interest</span>
-          <b>{Math.round(plan.current)} → {Math.round(plan.projected)}</b>
-          {gain !== 0 && <span className={gain > 0 ? 'pb-tone--positive' : 'pb-tone--negative'}>{gain > 0 ? '+' : ''}{gain}</span>}
-          {plan.multiplier > 1 && <small>incl. +{Math.round((plan.multiplier - 1) * 100)}% coordinator</small>}
-        </p>
-      </Step>
-
-      <Step
-        number={2}
-        title={`Pitch one thing · ${PITCH_COST} pts`}
-        state={weekAction?.pitch ? 'done' : 'current'}
-        summary={weekAction?.pitch ? FACTOR_SHORT[weekAction.pitch] : 'Optional'}
-      >
-        <p className="pb-pitchlegend">Your grade vs. what he wants, his top 3 numbered.</p>
-        <PitchGrid prospect={prospect} pitch={pitch} selected={weekAction?.pitch ?? null} onPick={(f) => onPitch(f)} />
-      </Step>
-
-      <Step
-        number={3}
-        title="One big move"
-        state={major ? 'done' : relationship && week >= 2 ? 'current' : 'upcoming'}
-        summary={major ? MAJOR_WORDS[major.kind] : relationship && week >= 2 ? 'Optional' : 'From week 2'}
-      >
-        <div className="pb-movegrid" role="group" aria-label="Big move">
-          <MoveTile
-            title="Hard sell"
-            sub={FACTOR_SHORT[focus]}
-            cost={HARD_SELL_COST}
-            disabled={rolled}
-            selected={major?.kind === 'hardSell'}
-            onSelect={() => onMajor(major?.kind === 'hardSell' ? null : { kind: 'hardSell', factor: focus })}
-          />
-          <MoveTile
-            title="Program visit"
-            sub="Better if he fits"
-            cost={VISIT_COST}
-            disabled={rolled}
-            selected={major?.kind === 'visit'}
-            onSelect={() => onMajor(major?.kind === 'visit' ? null : { kind: 'visit' })}
-          />
-          {availableRecruitPromises(prospect.player).map((promise) => {
-            const active = major?.kind === 'promise' && major.promise === promise;
-            return (
-              <MoveTile
-                key={promise}
-                title="Promise"
-                sub={capsWords(PROMISE_LABEL[promise])}
-                hint={PROMISE_DETAIL[promise]}
-                cost={PROMISE_COST[promise]}
-                disabled={promiseLocked || rolled}
-                selected={active}
-                onSelect={() => onMajor(active ? null : { kind: 'promise', promise })}
-              />
-            );
-          })}
-          <MoveTile
-            special
-            confirm
-            title="Sway him"
-            sub={swayUsed && !swayRolled ? 'Used this season' : `Toward ${FACTOR_SHORT[focus].toLowerCase()}`}
-            armedText="Tap again · once a season"
-            cost={SWAY_COST}
-            disabled={swayUsed || rolled}
-            selected={swayRolled}
-            onSelect={() => onMajor({ kind: 'sway', factor: focus })}
-          />
-          <MoveTile
-            special
-            confirm
-            title="Ask to commit"
-            sub={askRolled ? 'Asked' : askReason ?? 'He answers now'}
-            armedText="Tap again · he answers now"
-            cost={ASK_COST}
-            disabled={rolled || askReason !== null}
-            selected={askRolled}
-            onSelect={() => onMajor({ kind: 'ask' })}
-          />
-        </div>
-
-        {major?.kind === 'promise' && (
-          <Callout tone="info" title={`If he signs: ${capsWords(PROMISE_LABEL[major.promise]).toLowerCase()}`}>
-            {PROMISE_DETAIL[major.promise]}
-          </Callout>
-        )}
-        {promiseLocked && boundPromise && (
-          <Callout tone="info" title={`Promised: ${capsWords(PROMISE_LABEL[boundPromise]).toLowerCase()}`}>
-            {PROMISE_DETAIL[boundPromise]}
-          </Callout>
-        )}
-        {swayRolled && major?.kind === 'sway' && (
-          <Callout tone={major.success ? 'positive' : 'neutral'} title={major.success ? 'The sway worked' : 'The sway missed'}>
-            {major.success ? `He cares more about ${FACTOR_SHORT[major.factor].toLowerCase()} now.` : undefined}
-          </Callout>
-        )}
-        {askRolled && major?.kind === 'ask' && (
-          <Callout tone={major.success ? 'positive' : 'warning'} title={major.success ? 'He said yes' : 'He said no'}>
-            {major.success
-              ? 'He commits when the week ends.'
-              : `He doubts your ${major.doubt ? FACTOR_SHORT[major.doubt].toLowerCase() : 'case'}. Ask again in week ${week + ASK_COOLDOWN}.`}
-          </Callout>
-        )}
-      </Step>
-    </div>
-  );
-}
-
-/**
- * One big move, as a tile the same size as its neighbours. Sway and ask are
- * marked out (a bolt and a warmer tint) and take two taps, because each happens
- * the moment it is made and cannot be taken back; touching anything else stands
- * an armed tile down.
- */
-function MoveTile(
-  { title, sub, hint, cost, selected, disabled, special, confirm, armedText, onSelect }:
-  {
-    title: string; sub: string; hint?: string; cost: number;
-    selected?: boolean; disabled?: boolean;
-    special?: boolean; confirm?: boolean; armedText?: string;
-    onSelect: () => void;
-  },
-) {
-  const [armed, setArmed] = useState(false);
-  const me = useRef<HTMLButtonElement | null>(null);
-  useEffect(() => {
-    if (!armed) return undefined;
-    const stand = (e: PointerEvent): void => {
-      if (me.current && e.target instanceof Node && me.current.contains(e.target)) return;
-      setArmed(false);
-    };
-    document.addEventListener('pointerdown', stand, true);
-    return () => document.removeEventListener('pointerdown', stand, true);
-  }, [armed]);
-  return (
-    <button
-      ref={me}
-      type="button"
-      title={hint}
-      aria-pressed={!!selected}
-      disabled={disabled}
-      className={cx('pb-move', selected && 'is-selected', special && 'is-special', armed && 'is-armed')}
-      onClick={() => {
-        if (!confirm) { onSelect(); return; }
-        if (armed) { setArmed(false); onSelect(); } else setArmed(true);
-      }}
-    >
-      <span className="pb-move__title">
-        {special && <Icon name="lightning" size={14} />}
-        <span>{title}</span>
-      </span>
-      <span className="pb-move__sub">{armed && armedText ? armedText : sub}</span>
-      <span className="pb-move__cost">{cost} pts</span>
-    </button>
-  );
-}
-
-const MAJOR_WORDS: Record<RecruitMajorInput['kind'], string> = {
-  hardSell: 'Hard sell',
-  visit: 'Program visit',
-  sway: 'Sway',
-  promise: 'Promise',
-  ask: 'Asked to commit',
-};
-
-/** The scouting report: two impressions, the tools as ranges, last spring's line. */
-function Report({ prospect, recruitingSkill }: { prospect: Prospect; recruitingSkill: number }) {
-  const p = prospect.player;
-  const rows: [string, number][] = p.type === 'pitcher'
-    ? [['Strikeout stuff', (p as Pitcher).stuff], ['Keeps hits down', (p as Pitcher).movement],
-       ['Control', (p as Pitcher).control], ['Stamina', (p as Pitcher).stamina]]
-    : [['Contact', (p as Hitter).contact], ['Power', (p as Hitter).power],
-       ['Plate discipline', (p as Hitter).eye], ['Speed', (p as Hitter).speed],
-       ['Range in the field', (p as Hitter).range], ['Arm strength', (p as Hitter).arm]];
-  const hints = hintsFor(prospect);
-  const line = highSchoolLine(p);
-  return (
-    <>
-      <Callout tone="neutral" icon="chat" title="What the scouts say">
-        &ldquo;{hints.ceiling.text}&rdquo; &ldquo;{hints.development.text}&rdquo;
-      </Callout>
-      <Card title="Tools" eyebrow="Scouted ranges, of 100">
-        <DescriptionList
-          items={rows.map(([label, value]) => {
-            const { low, high } = reportedTool(prospect, value, recruitingSkill);
-            return { label, value: low === high ? String(low) : `${low}–${high}` };
-          })}
-        />
-      </Card>
-      {line.length > 0 && (
-        <Card title="Last spring" eyebrow="High school">
-          <DescriptionList items={line.map((row) => ({ label: HIGH_SCHOOL_WORD[row.label] ?? capsWords(row.label), value: row.value }))} />
-        </Card>
-      )}
-    </>
-  );
-}
-
-function Schools({ prospect, userTeam, schoolOf }: { prospect: Prospect; userTeam: number; schoolOf: (i: number) => string }) {
-  const rivals = Object.entries(prospect.points)
-    .map(([t, pts]) => ({ team: Number(t), pts }))
-    .filter((r) => r.pts > 0)
-    .sort((a, b) => b.pts - a.pts);
-  const total = rivals.reduce((a, r) => a + r.pts, 0);
-  if (rivals.length === 0) {
-    return <EmptyState icon="search" title="Nobody is recruiting him yet" />;
-  }
-  return (
-    <Card title="Who is recruiting him" eyebrow={plural(rivals.length, 'program')} flush>
-      <Table
-        dense
-        label="Programs recruiting him"
-        columns={[
-          { label: 'Program', grow: true },
-          { label: 'His interest', width: '96px', align: 'right', strong: true },
-        ]}
-        rows={rivals.map((r) => ({
-          key: r.team,
-          you: r.team === userTeam,
-          cells: [r.team === userTeam ? `${schoolOf(r.team)} (you)` : schoolOf(r.team), `${Math.round((r.pts / total) * 100)}%`],
-        }))}
-      />
-    </Card>
   );
 }

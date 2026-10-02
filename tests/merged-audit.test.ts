@@ -18,6 +18,7 @@ vi.mock('idb', () => ({
 }));
 
 import { useDynasty } from '../src/state/store.js';
+import { depth } from '../src/state/nav.js';
 import { simSeason, injuryClock } from '../src/engine/season.js';
 import { hurt } from '../src/engine/injury.js';
 
@@ -158,32 +159,21 @@ describe('the god-mode stack', () => {
   });
 
   it('CLOSE ALL gives the browser back one entry per sheet it opened', () => {
-    // Vitest runs in node, where the store's history bridge is a no-op. The
-    // bridge is a pair of window events, so an EventTarget standing in for
-    // `window` is enough to hear what it asks the shell for.
-    const shell = new EventTarget();
-    (globalThis as { window?: unknown }).window = shell;
+    // Since CL (2026-09-30) the store sends the shell nothing: the browser's
+    // ledger keeps one entry per level of `nav.ts`, so the count is its depth.
     useDynasty.getState().start(4242, 0, undefined, 'full', undefined, true);
-    const asked: number[] = [];
-    const listen = (e: Event): void => {
-      asked.push(Number((e as CustomEvent<{ count?: number }>).detail?.count ?? 1));
-    };
-    shell.addEventListener('playball:history-consume', listen);
-    try {
-      const s = () => useDynasty.getState();
-      s().openGod({ kind: 'tab', tab: 'program' });
-      s().openGod({ kind: 'coach' });
-      s().openGod({ kind: 'money' });
-      expect(s().godStack).toHaveLength(3);
-      s().closeGodAll();
-      expect(s().godStack).toHaveLength(0);
-      // Three sheets pushed three checkpoints, so three come back. Asking for
-      // one left two orphans, and the next two browser Back presses walked the
-      // screen underneath backwards.
-      expect(asked).toEqual([3]);
-    } finally {
-      shell.removeEventListener('playball:history-consume', listen);
-      delete (globalThis as { window?: unknown }).window;
-    }
+    const s = () => useDynasty.getState();
+    const base = depth();
+    s().openGod({ kind: 'tab', tab: 'program' });
+    s().openGod({ kind: 'coach' });
+    s().openGod({ kind: 'money' });
+    expect(s().godStack).toHaveLength(3);
+    expect(depth() - base).toBe(3);
+    s().closeGodAll();
+    expect(s().godStack).toHaveLength(0);
+    // Three sheets, three levels, and all three go in the one write. Giving
+    // back one left two orphans, and the next two browser Back presses walked
+    // the screen underneath backwards.
+    expect(depth() - base).toBe(0);
   });
 });

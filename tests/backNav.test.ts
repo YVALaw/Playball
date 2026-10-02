@@ -1,42 +1,76 @@
 // backNav.test.ts
-// The back gesture's one question — is there a layer to peel? — pinned in the
-// same order the handler peels them, because Android 16 asks it before the
-// press and the answer decides whether the system previews an exit.
+// The back gesture's one question — is there a level to peel? — asked of
+// `nav.ts`, the one list App arms Android with (`nav.depth() > 0`) and the
+// browser's ledger keeps one entry per level of. Android 16 asks it before
+// the press, and the answer decides whether the system previews an exit.
+// (CL, 2026-09-30: this asked `hasLayerToClose`, App's hand-kept copy.)
 
 import { describe, it, expect } from 'vitest';
-import { hasLayerToClose, type BackState } from '../src/ui/backNav.js';
 import { blockingCardUp, openerShowing, nextNavInstant, useDynasty, TABS } from '../src/state/store.js';
+import { depth, newest } from '../src/state/nav.js';
 
-const home: BackState = {
-  blocked: false, playerOpen: false, teamCardOpen: false, overlayOpen: false,
-  tab: 'home', screen: TABS.find((t) => t.id === 'home')!.screens[0]!.id,
-};
+/** A fresh career on HOME's first screen, nothing open and nothing behind it. */
+function atHomeRoot(): void {
+  useDynasty.getState().start(4242, 0);
+  useDynasty.setState({
+    tab: 'home', screen: TABS.find((t) => t.id === 'home')!.screens[0]!.id,
+    overlay: null, overlayStack: [], selectedPlayer: null, coachSeat: null, teamCard: null, godStack: [],
+    seasonOpener: null, playbookInvite: null, bigMoment: null, navTrail: [], live: null,
+  });
+}
 
 describe('what the back gesture has to close', () => {
   it('has nothing at the root of HOME, which is the one press that leaves', () => {
-    expect(hasLayerToClose(home)).toBe(false);
+    atHomeRoot();
+    expect(depth()).toBe(0);
+    expect(newest()).toBeNull();
   });
 
-  it('claims the press for every layer the handler peels, in its order', () => {
-    expect(hasLayerToClose({ ...home, blocked: true })).toBe(true);
-    expect(hasLayerToClose({ ...home, playerOpen: true })).toBe(true);
-    expect(hasLayerToClose({ ...home, teamCardOpen: true })).toBe(true);
-    expect(hasLayerToClose({ ...home, overlayOpen: true })).toBe(true);
+  it('claims the press for a guard, a player card, a team card and an overlay', () => {
+    atHomeRoot();
+    useDynasty.setState({ playbookInvite: 'PST' });
+    expect([depth(), newest()?.kind]).toEqual([1, 'guard']);
+    useDynasty.setState({ playbookInvite: null });
+
+    const id = useDynasty.getState().season!.teams[0]!.team.lineup[0]!.id;
+    useDynasty.getState().openPlayer(id);
+    expect([depth(), newest()?.kind]).toEqual([1, 'p']);
+    useDynasty.getState().closePlayer();
+
+    useDynasty.getState().openTeamCard(3);
+    expect([depth(), newest()?.kind]).toEqual([1, 't']);
+    useDynasty.getState().closeTeamCard();
+
+    useDynasty.getState().openOverlay('inbox');
+    expect([depth(), newest()?.kind]).toEqual([1, 'overlay']);
+    useDynasty.getState().closeOverlay();
+    expect(depth()).toBe(0);
   });
 
-  it("claims a tab's second screen, and any tab that is not HOME", () => {
+  it('counts each route stop behind the screen as a level, and back walks them', () => {
+    atHomeRoot();
     const team = TABS.find((t) => t.id === 'team')!;
     const second = team.screens[1]?.id ?? team.screens[0]!.id;
-    expect(hasLayerToClose({ ...home, tab: 'team', screen: team.screens[0]!.id })).toBe(true);
-    expect(hasLayerToClose({ ...home, tab: 'team', screen: second })).toBe(true);
-    const homeSecond = TABS.find((t) => t.id === 'home')!.screens[1]?.id;
-    if (homeSecond) expect(hasLayerToClose({ ...home, screen: homeSecond })).toBe(true);
+    useDynasty.getState().go('team');
+    expect([depth(), newest()?.kind]).toEqual([1, 'route']);
+    useDynasty.getState().setScreen(second);
+    expect(depth()).toBe(2);
+    expect(newest()!.peel()).toBe('peeled');
+    expect([useDynasty.getState().tab, useDynasty.getState().screen, depth()]).toEqual(['team', team.screens[0]!.id, 1]);
+    expect(newest()!.peel()).toBe('peeled');
+    expect([useDynasty.getState().tab, depth()]).toEqual(['home', 0]);
   });
 
   it('still claims a blocking card, so the press is swallowed rather than an exit', () => {
     // The opener, the playbook invite and the big moment are answered on
     // their own terms; a gesture during one must not leave the game.
-    expect(hasLayerToClose({ ...home, blocked: true, tab: 'home' })).toBe(true);
+    atHomeRoot();
+    useDynasty.setState({ playbookInvite: 'PST' });
+    const nudged = useDynasty.getState().cardNudge;
+    expect(newest()!.peel()).toBe('refused');
+    expect(depth()).toBe(1);
+    expect(useDynasty.getState().cardNudge).toBe(nudged + 1);
+    useDynasty.setState({ playbookInvite: null });
   });
 });
 
@@ -69,13 +103,17 @@ describe('the card the back press has to answer', () => {
     expect(blockingCardUp(useDynasty.getState())).toBe(true);
 
     // The errand it sent him on, as an overlay over whatever he was reading.
-    useDynasty.setState({ overlay: 'program', programSheet: 'board' });
+    useDynasty.setState({ overlay: 'board' });
     expect(openerShowing(useDynasty.getState())).toBe(false);
     expect(blockingCardUp(useDynasty.getState())).toBe(false);
 
-    // And as the PROGRAM tab's own records screen, which is the same page.
-    useDynasty.setState({ overlay: null, tab: 'program', screen: 'records' });
+    // And as the OFFICE tab's own board screen, which is the same page.
+    useDynasty.setState({ overlay: null, tab: 'office', screen: 'board' });
     expect(openerShowing(useDynasty.getState())).toBe(false);
+
+    // The program's overview is not the board: the card is still owed.
+    useDynasty.setState({ tab: 'program', screen: 'records' });
+    expect(openerShowing(useDynasty.getState())).toBe(true);
 
     // Leave without taking the terms and the card is owed an answer again.
     useDynasty.setState({ tab: 'home', screen: 'today' });
@@ -214,53 +252,60 @@ describe('a navigation whose animation the browser throws away', () => {
   });
 });
 
-describe("Program's sheets and the browser's history", () => {
-  it('spends an entry when a sheet is a destination, and none when it is a level in an overlay', () => {
+describe("a room and the browser's history", () => {
+  it('is a screen of its tab where there is a nav, and one layer over anything else', () => {
     /*
-      The route trail keys on the tab and the screen, so it cannot see a sheet
-      changing inside an overlay — Program opened from the inbox, or from the
-      board the season's opener sends you to. Pushing an entry for each one
-      left an orphan per sheet the coach looked at, and the next few back
-      presses walked the screen underneath backwards. The gesture peels those
-      levels itself (App.tsx) and hands the pop's entry straight back.
+      The rooms used to be sheets inside Program's overview, and the sheets
+      were levels, routes or neither depending on how they were opened. They
+      are screens of their own now (2026-09-24), so a room is either a place
+      you went — the route trail's entry — or a layer, with one entry each.
     */
     useDynasty.getState().start(4242, 0);
-    const shell = new EventTarget();
-    (globalThis as { window?: unknown }).window = shell;
-    const asked: string[] = [];
-    const onPush = (): void => { asked.push('push'); };
-    const onConsume = (): void => { asked.push('consume'); };
-    shell.addEventListener('playball:history-checkpoint', onPush);
-    shell.addEventListener('playball:history-consume', onConsume);
     try {
-      // As the PROGRAM tab's own screen, every sheet is somewhere you went.
-      useDynasty.setState({ tab: 'program', screen: 'records', overlay: null, programSheet: 'overview' });
-      useDynasty.getState().setProgramSheet('money');
-      expect(asked).toEqual(['push']);
-      useDynasty.getState().setProgramSheet('overview');
-      expect(asked).toEqual(['push', 'consume']);
+      useDynasty.setState({ tab: 'home', screen: 'today', overlay: null, overlayStack: [], selectedPlayer: null, coachSeat: null });
+      // One level more is one history entry more (historySync.ts keeps them equal).
+      expect(levelsAdded(() => useDynasty.getState().openRoom('staff'))).toBe(1);
+      expect(newest()?.kind).toBe('route');
+      expect(useDynasty.getState().tab).toBe('office');
+      expect(useDynasty.getState().screen).toBe('staff');
+      expect(useDynasty.getState().overlay).toBeNull();
 
-      // As an overlay over something else, the sheets are one layer.
-      asked.length = 0;
-      useDynasty.setState({ tab: 'home', screen: 'today', overlay: 'program', programSheet: 'overview' });
-      useDynasty.getState().setProgramSheet('staff');
-      useDynasty.getState().setProgramSheet('facilities');
-      useDynasty.getState().setProgramSheet('overview');
-      expect(asked).toEqual([]);
+      // Over the inbox, the board is a layer of its own, and the inbox stays.
+      useDynasty.setState({ overlay: 'inbox', overlayStack: [] });
+      expect(levelsAdded(() => useDynasty.getState().openRoom('board'))).toBe(1);
+      expect(useDynasty.getState().overlay).toBe('board');
+      expect(useDynasty.getState().overlayStack.map((l) => l.overlay)).toEqual(['inbox']);
+
+      // In the offseason there is no nav: the room lays over the step.
+      useDynasty.setState({ overlay: null, overlayStack: [], phase: 'review' });
+      expect(levelsAdded(() => useDynasty.getState().openRoom('staff'))).toBe(1);
+      expect(newest()?.kind).toBe('overlay');
+      expect(useDynasty.getState().overlay).toBe('staff');
+
+      // The coach profile has no tab: always a layer, never Program's page.
+      useDynasty.setState({ overlay: null, overlayStack: [], phase: null, tab: 'team', screen: 'roster' });
+      expect(levelsAdded(() => useDynasty.getState().openRoom('coach'))).toBe(1);
+      expect(newest()?.kind).toBe('overlay');
+      expect(useDynasty.getState().overlay).toBe('coach');
+      expect(useDynasty.getState().tab).toBe('team');
     } finally {
-      shell.removeEventListener('playball:history-checkpoint', onPush);
-      shell.removeEventListener('playball:history-consume', onConsume);
-      delete (globalThis as { window?: unknown }).window;
-      useDynasty.setState({ overlay: null, programSheet: 'overview' });
+      useDynasty.setState({ overlay: null, overlayStack: [], phase: null });
     }
   });
 });
 
+/** How many levels a sequence adds (negative: gives back). The ledger keeps one entry per level. */
+function levelsAdded(run: () => void): number {
+  const before = depth();
+  run();
+  return depth() - before;
+}
+
 /*
-  The test above covered `overlay: null` and `overlay: 'program'` and passed
-  for months, while the gesture was broken the whole time — because the path a
-  coach actually takes is neither of those. He opens the board from an INBOX
-  letter, and `overlay` is still 'inbox' when the sheet is set.
+  The old version of the test above covered a Program sheet opened over
+  nothing and inside the Program overlay, and passed for months while the
+  gesture was broken the whole time — because the path a coach actually takes
+  is neither of those. He opens the board from an INBOX letter.
 
   Reported 2026-09-12: "if I'm in inbox and tap on go to the board, and then
   try to go back by doing the back gesture, it gets crazy and makes me go to
@@ -272,22 +317,8 @@ describe("Program's sheets and the browser's history", () => {
   **one visible layer, one history entry.**
 */
 describe('one visible layer, one history entry', () => {
-  /** Count what the store asks the shell for, while a sequence runs. */
-  const asking = (run: () => void): string[] => {
-    const shell = new EventTarget();
-    (globalThis as { window?: unknown }).window = shell;
-    const asked: string[] = [];
-    const onPush = (): void => { asked.push('push'); };
-    const onConsume = (): void => { asked.push('consume'); };
-    shell.addEventListener('playball:history-checkpoint', onPush);
-    shell.addEventListener('playball:history-consume', onConsume);
-    try { run(); } finally {
-      shell.removeEventListener('playball:history-checkpoint', onPush);
-      shell.removeEventListener('playball:history-consume', onConsume);
-      delete (globalThis as { window?: unknown }).window;
-    }
-    return asked;
-  };
+  // Since CL (2026-09-30) the store sends the shell nothing: each count here
+  // is the change in `nav.depth()`, which the ledger turns into entries.
 
   it('spends one for the board a letter opens, and keeps the inbox underneath it', () => {
     /*
@@ -304,98 +335,84 @@ describe('one visible layer, one history entry', () => {
     */
     useDynasty.getState().start(4242, 0);
     useDynasty.setState({
-      tab: 'program', screen: 'records', overlay: 'inbox', programSheet: 'overview',
+      tab: 'program', screen: 'records', overlay: 'inbox',
       overlayStack: [], selectedPlayer: null, coachSeat: null,
     });
-    const asked = asking(() => {
-      useDynasty.getState().setProgramSheet('board');
-      useDynasty.getState().openOverlay('program');
-    });
-    expect(asked, 'one layer, one entry').toEqual(['push']);
-    expect(useDynasty.getState().overlay).toBe('program');
-    expect(useDynasty.getState().overlayEntrySheet).toBe('board');
+    const added = levelsAdded(() => { useDynasty.getState().openRoom('board'); });
+    expect(added, 'one layer, one entry').toBe(1);
+    expect(useDynasty.getState().overlay).toBe('board');
     expect(useDynasty.getState().overlayStack.map((l) => l.overlay)).toEqual(['inbox']);
 
     // Back from the board: the inbox, not the screen under it.
-    expect(asking(() => { useDynasty.getState().closeOverlay(); })).toEqual(['consume']);
+    expect(levelsAdded(() => { useDynasty.getState().closeOverlay(); })).toBe(-1);
     expect(useDynasty.getState().overlay).toBe('inbox');
     expect(useDynasty.getState().overlayStack).toEqual([]);
     // And back from the inbox: nothing.
-    expect(asking(() => { useDynasty.getState().closeOverlay(); })).toEqual(['consume']);
+    expect(levelsAdded(() => { useDynasty.getState().closeOverlay(); })).toBe(-1);
     expect(useDynasty.getState().overlay).toBeNull();
-    useDynasty.setState({ overlay: null, overlayStack: [], programSheet: 'overview' });
+    useDynasty.setState({ overlay: null, overlayStack: [] });
   });
 
-  it('brings a buried Program layer back on the sheet it was left on', () => {
+  it('brings a buried room back when the layers over it close', () => {
     /*
-      The deeper case: Money open in the Program overlay, the inbox opened
-      over it from the coach menu, a letter in there to the board. The
-      letter sets the shared `programSheet` to 'board' on its way, so without
-      the stack remembering, two back presses would land the coach on a
-      Program overlay showing the board he had just left rather than the
-      Money he was reading.
+      The deeper case: the budget open as a layer, the inbox opened over it
+      from the coach menu, a letter in there to the board. Three layers, three
+      entries, and the back press peels them in the order they were opened.
     */
     useDynasty.getState().start(4242, 0);
     useDynasty.setState({
-      tab: 'home', screen: 'today', overlay: null, overlayStack: [], programSheet: 'overview',
+      tab: 'home', screen: 'today', overlay: null, overlayStack: [], phase: 'review',
       selectedPlayer: null, coachSeat: null,
     });
-    useDynasty.getState().openOverlay('program');
-    useDynasty.getState().setProgramSheet('money');
-    expect(asking(() => { useDynasty.getState().openOverlay('inbox'); })).toEqual(['push']);
-    useDynasty.getState().setProgramSheet('board');
-    expect(asking(() => { useDynasty.getState().openOverlay('program'); })).toEqual(['push']);
-    expect(useDynasty.getState().overlayStack.map((l) => l.overlay)).toEqual(['program', 'inbox']);
+    expect(levelsAdded(() => { useDynasty.getState().openRoom('budget'); })).toBe(1);
+    expect(levelsAdded(() => { useDynasty.getState().openOverlay('inbox'); })).toBe(1);
+    expect(levelsAdded(() => { useDynasty.getState().openRoom('board'); })).toBe(1);
+    expect(useDynasty.getState().overlayStack.map((l) => l.overlay)).toEqual(['budget', 'inbox']);
 
     useDynasty.getState().closeOverlay();
     expect(useDynasty.getState().overlay).toBe('inbox');
     useDynasty.getState().closeOverlay();
-    expect(useDynasty.getState().overlay).toBe('program');
-    expect(useDynasty.getState().programSheet).toBe('money');
-    expect(useDynasty.getState().overlayEntrySheet).toBe('overview');
+    expect(useDynasty.getState().overlay).toBe('budget');
     useDynasty.getState().closeOverlay();
     expect(useDynasty.getState().overlay).toBeNull();
     expect(useDynasty.getState().overlayStack).toEqual([]);
+    useDynasty.setState({ phase: null });
   });
 
   it('does not bury a layer under itself', () => {
     // INBOX from the coach menu while the inbox is already up.
     useDynasty.getState().start(4242, 0);
     useDynasty.setState({ tab: 'home', screen: 'today', overlay: 'inbox', overlayStack: [] });
-    expect(asking(() => { useDynasty.getState().openOverlay('inbox'); })).toEqual([]);
+    expect(levelsAdded(() => { useDynasty.getState().openOverlay('inbox'); })).toBe(0);
     expect(useDynasty.getState().overlayStack).toEqual([]);
     useDynasty.setState({ overlay: null, overlayStack: [] });
   });
 
-  it('peels a sheet back to the one the overlay opened at, not to the overview', () => {
+  it("hands a coach sheet's entry to the room it asked for", () => {
     /*
-      Reported 2026-09-12: "I tapped 'take me to the board' then back gesture,
-      it took me back to the card saying take me to the board... and then took
-      me to the program overview."
-
-      Both the opener's card and an inbox letter send the coach straight to the
-      BOARD sheet. The back press peeled any sheet that was not 'overview', so
-      the first press parked him on a Program overview he never asked for and
-      cost him the press; only the second closed the overlay, and by then the
-      opener card was back on top.
-
-      A coach who opened Program himself and walked down into Money is the case
-      that rule was written for, and it still holds — the difference is which
-      sheet is behind him, which is now recorded when the overlay opens.
+      The coach's sheet says "Build the Hitting Barn". Closing the sheet the
+      usual way pops an entry while the room pushes one, and the browser runs
+      the pop later — the room's own entry is the one lost. The sheet hands its
+      entry over instead, on a tab and as a layer alike.
     */
     useDynasty.getState().start(4242, 0);
-    // Sent straight to the board: nothing behind it.
-    useDynasty.setState({ tab: 'home', screen: 'today', overlay: null, programSheet: 'board' });
-    useDynasty.getState().openOverlay('program');
-    expect(useDynasty.getState().overlayEntrySheet).toBe('board');
+    useDynasty.setState({ tab: 'office', screen: 'staff', overlay: null, overlayStack: [], selectedPlayer: null, coachSeat: null });
+    expect(levelsAdded(() => { useDynasty.getState().openCoach('hitting'); })).toBe(1);
+    expect(levelsAdded(() => { useDynasty.getState().openRoom('facilities'); })).toBe(0);
+    expect(useDynasty.getState().coachSeat).toBeNull();
+    expect(useDynasty.getState().screen).toBe('facilities');
 
-    // Walked down into Money himself: the overview IS behind him.
-    useDynasty.setState({ tab: 'home', screen: 'today', overlay: null, programSheet: 'overview' });
-    useDynasty.getState().openOverlay('program');
-    expect(useDynasty.getState().overlayEntrySheet).toBe('overview');
-    useDynasty.getState().setProgramSheet('money');
-    expect(useDynasty.getState().programSheet).toBe('money');
-    useDynasty.setState({ overlay: null, programSheet: 'overview' });
+    // The same in the offseason, where the staff room is a layer.
+    useDynasty.setState({ tab: 'home', screen: 'today', overlay: 'staff', overlayStack: [], phase: 'review', coachSeat: null });
+    expect(levelsAdded(() => { useDynasty.getState().openCoach('hitting'); })).toBe(1);
+    expect(levelsAdded(() => { useDynasty.getState().openRoom('facilities'); })).toBe(0);
+    expect(useDynasty.getState().coachSeat).toBeNull();
+    expect(useDynasty.getState().overlay).toBe('facilities');
+    expect(useDynasty.getState().overlayStack.map((l) => l.overlay)).toEqual(['staff']);
+    // Back from the buildings: the staff room, one entry spent.
+    expect(levelsAdded(() => { useDynasty.getState().closeOverlay(); })).toBe(-1);
+    expect(useDynasty.getState().overlay).toBe('staff');
+    useDynasty.setState({ overlay: null, overlayStack: [], phase: null });
   });
 
   it('still spends one when a layer is genuinely opened over nothing', () => {
@@ -403,38 +420,34 @@ describe('one visible layer, one history entry', () => {
     // or the gesture has nothing to peel and walks out of the app instead.
     useDynasty.getState().start(4242, 0);
     useDynasty.setState({ tab: 'home', screen: 'today', overlay: null, selectedPlayer: null, coachSeat: null });
-    expect(asking(() => { useDynasty.getState().openOverlay('inbox'); })).toEqual(['push']);
-    expect(asking(() => { useDynasty.getState().closeOverlay(); })).toEqual(['consume']);
+    expect(levelsAdded(() => { useDynasty.getState().openOverlay('inbox'); })).toBe(1);
+    expect(levelsAdded(() => { useDynasty.getState().closeOverlay(); })).toBe(-1);
   });
 
   it("spends the card's entry when a tab change drops the card", () => {
     /*
-      `openPlayer` checkpoints and `closePlayer` consumes, but `go` closes the
-      card too — its `set` nulls `selectedPlayer` and `coachSeat` — and used to
-      walk off without paying. One orphan per card the coach opened before
-      changing tab, and the orphans are what the gesture spends later on
+      `go` closes the card too — its `set` nulls `selectedPlayer` and
+      `coachSeat` — and once walked off without paying: one orphan entry per
+      card the coach opened before changing tab, spent later by the gesture on
       somebody else's screen.
     */
     useDynasty.getState().start(4242, 0);
     useDynasty.setState({ tab: 'team', screen: 'roster', overlay: null, selectedPlayer: null, coachSeat: null });
     const id = useDynasty.getState().season?.teams[0]?.team.lineup[0]?.id;
     expect(id).toBeDefined();
-    const asked = asking(() => {
+    const added = levelsAdded(() => {
       useDynasty.getState().openPlayer(id!);
       useDynasty.getState().go('home');
     });
     /*
-      One entry, handed over, since 2026-09-16 (05 §90.6). This read
-      ['push', 'consume', 'push'] -- the card's entry spent and the route's
-      pushed -- and that pair is a race the browser loses: `history.go(-1)`
-      is a traversal it runs later and `pushState` runs now, so the route's
-      entry was pushed first and then popped, which left the card's entry in
-      place and the route's in the FORWARD list. A card that closes because
-      the route moved hands its entry to the route instead: nothing pushed,
-      nothing popped, one entry for one visible layer either way.
+      One entry, handed over, since 2026-09-16 (05 §90.6): the card's level
+      goes in the same write that adds the route's, so the ledger sees one
+      level more and pushes once. Spending the card's entry and pushing the
+      route's in one breath was a race the browser lost, leaving the route's
+      entry in the FORWARD list.
     */
-    expect(asked, "the card's entry is the route's now")
-      .toEqual(['push']);
+    expect(added, "the card's entry is the route's now").toBe(1);
+    expect(newest()?.kind).toBe('route');
     expect(useDynasty.getState().selectedPlayer).toBeNull();
   });
 
@@ -442,12 +455,13 @@ describe('one visible layer, one history entry', () => {
     useDynasty.getState().start(4242, 0);
     useDynasty.setState({ tab: 'team', screen: 'roster', overlay: null, selectedPlayer: null, coachSeat: null });
     const id = useDynasty.getState().season?.teams[0]?.team.lineup[0]?.id;
-    const asked = asking(() => {
+    const added = levelsAdded(() => {
       useDynasty.getState().openPlayer(id!);
       useDynasty.getState().setScreen('lineup');
     });
     // The same hand-over as `go`: one entry, the card's, now the screen's.
-    expect(asked).toEqual(['push']);
+    expect(added).toBe(1);
+    expect(newest()?.kind).toBe('route');
   });
 });
 

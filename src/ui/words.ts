@@ -51,9 +51,14 @@ export function ordinal(n: number): string {
   return `${n}${n % 10 === 1 ? 'st' : n % 10 === 2 ? 'nd' : n % 10 === 3 ? 'rd' : 'th'}`;
 }
 
-/** The first name, for a sentence about a person: "Build the Pitching Lab to give Rory projects." */
+/** The first name, for a sentence about a person: "Build the Pitching Lab to give Rory season work." */
 export function firstName(name: string): string {
   return name.split(/\s+/)[0] ?? name;
+}
+
+/** The last name, for a short list of men on one line: "Ruiz, Cole, Park". */
+export function lastName(name: string): string {
+  return name.trim().split(/\s+/).slice(-1)[0] ?? name;
 }
 
 /** A record with a real dash: 14–2. */
@@ -61,13 +66,18 @@ export function recordText(w: number, l: number): string {
   return `${w}–${l}`;
 }
 
+// Every state, not only the ones schools sit in: a coach can know a state no
+// school is in, and printed "knows ME" before these were all here.
 const STATE_NAME: Record<string, string> = {
-  AL: 'Alabama', AZ: 'Arizona', CA: 'California', CO: 'Colorado', CT: 'Connecticut', FL: 'Florida',
-  GA: 'Georgia', IA: 'Iowa', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', KS: 'Kansas', LA: 'Louisiana',
-  MA: 'Massachusetts', MI: 'Michigan', MO: 'Missouri', MS: 'Mississippi', MT: 'Montana',
-  NC: 'North Carolina', NE: 'Nebraska', NJ: 'New Jersey', NM: 'New Mexico', NV: 'Nevada', NY: 'New York',
-  OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', SC: 'South Carolina', TX: 'Texas',
-  UT: 'Utah', VA: 'Virginia', WA: 'Washington', WI: 'Wisconsin', WY: 'Wyoming',
+  AK: 'Alaska', AL: 'Alabama', AR: 'Arkansas', AZ: 'Arizona', CA: 'California', CO: 'Colorado',
+  CT: 'Connecticut', DC: 'Washington, D.C.', DE: 'Delaware', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii',
+  IA: 'Iowa', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana',
+  MA: 'Massachusetts', MD: 'Maryland', ME: 'Maine', MI: 'Michigan', MN: 'Minnesota', MO: 'Missouri',
+  MS: 'Mississippi', MT: 'Montana', NC: 'North Carolina', ND: 'North Dakota', NE: 'Nebraska',
+  NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NV: 'Nevada', NY: 'New York', OH: 'Ohio',
+  OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina',
+  SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VA: 'Virginia', VT: 'Vermont',
+  WA: 'Washington', WI: 'Wisconsin', WV: 'West Virginia', WY: 'Wyoming',
 };
 
 /** A state by its name: "Texas", not TX. Unknown codes print as themselves. */

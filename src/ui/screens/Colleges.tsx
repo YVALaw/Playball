@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { Crest } from '../Crest.js';
+import { ConferenceBanner, hasBanner } from '../ConferenceBanner.js';
 import { prestigeStars } from '../../engine/program.js';
 import { regularRecord } from '../../engine/season.js';
 import { useOpenTeam } from './TeamCard.js';
@@ -61,8 +62,12 @@ export function Colleges() {
           </Chip>
         ))}
       </Chips>
+      {conf !== 'all' && <ConferenceBanner id={conf} height={60} align="center" />}
       <section>
-        <SectionHeader title={conf === 'all' ? 'All programs' : `${conferenceName(conf)} programs`} count={rows.length} />
+        <SectionHeader
+          title={conf === 'all' ? 'All programs' : hasBanner(conf) ? 'Programs' : `${conferenceName(conf)} programs`}
+          count={rows.length}
+        />
         {rows.length === 0 ? (
           <EmptyState icon="search" title="No program found" text="Try another name, or clear the conference filter." />
         ) : (

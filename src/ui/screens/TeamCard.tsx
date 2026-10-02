@@ -13,6 +13,7 @@
 
 import { createContext, useContext, useState } from 'react';
 import { dollars, remaining, SCOUT_COST, SCOUT_DAYS } from '../../engine/economy.js';
+import { SCOUTING } from '../../state/features.js';
 import { handles } from '../../state/depth.js';
 import { cultureFor } from '../../data/cultures.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
@@ -117,13 +118,13 @@ export function TeamCard({ index }: { index: number }) {
           { value: 'overview', label: 'Overview' },
           { value: 'roster', label: 'Roster' },
           { value: 'results', label: 'Results' },
-          ...(!mine ? [{ value: 'scouting' as const, label: 'Scouting' }] : []),
+          ...(!mine && SCOUTING ? [{ value: 'scouting' as const, label: 'Scouting' }] : []),
         ]}
       />
       {view === 'overview' && <Overview t={t} me={me} season={season} />}
       {view === 'roster' && <RosterView t={t} season={season} />}
       {view === 'results' && <Results t={t} mine={mine} season={season} />}
-      {view === 'scouting' && !mine && <Scouting t={t} />}
+      {view === 'scouting' && !mine && SCOUTING && <Scouting t={t} />}
     </main>
   );
 }
@@ -451,7 +452,7 @@ function Scouting({ t }: { t: Owner }) {
     if (!scoutsHimself && !season?.playbooks?.[abbr]) autoSetPlaybook(abbr);
     setPlaybookFocus(abbr);
     closeOverlay();
-    go('program', 'strategy');
+    go('team', 'strategy');
   };
 
   const status = !scoutsHimself

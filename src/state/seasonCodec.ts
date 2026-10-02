@@ -24,7 +24,9 @@ import { buildSchedule, DEFAULT_RULES, rebuildNameIndex, worldFromTeams } from '
 import { DEFAULT_STRATEGY, strategyFor } from '../engine/strategy.js';
 import { initialPrestige } from '../engine/program.js';
 import { seededBook } from '../engine/records.js';
+import { STAFF_LIST_MAX } from '../engine/staffRecruiting.js';
 import type { SeasonState } from '../engine/season.js';
+import type { PlayerId } from '../engine/types.js';
 
 export type StoredSeason = Omit<SeasonState, 'rng' | 'schedule'>;
 
@@ -82,6 +84,22 @@ export function fromPortable(p: Portable): SeasonState {
   for (const prospect of p.season.recruiting?.prospects ?? []) {
     if (typeof prospect.player.age !== 'number') {
       prospect.player.age = ageFor(prospect.player.id, prospect.player.classYear);
+    }
+  }
+  // The staff list and its stand-ins (2026-09-28). Absent on every older save,
+  // which is an empty list; anything malformed is read the same way rather than
+  // handed to the staff to work.
+  const recruits = p.season.recruiting;
+  if (recruits) {
+    if (recruits.staffList !== undefined) {
+      const raw: unknown = recruits.staffList;
+      recruits.staffList = Array.isArray(raw)
+        ? [...new Set(raw.filter((id): id is PlayerId => typeof id === 'string'))].slice(0, STAFF_LIST_MAX)
+        : [];
+    }
+    if (recruits.staffStandIns !== undefined) {
+      const raw: unknown = recruits.staffStandIns;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) delete recruits.staffStandIns;
     }
   }
 

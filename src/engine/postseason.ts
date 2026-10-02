@@ -1426,11 +1426,44 @@ export function coachOfTheYear(
   return award;
 }
 
+/**
+ * A season book with June taken back out.
+ *
+ * The season totals count tournament play (the NCAA convention, see
+ * `foldSide`), and the postseason is also kept in a book of its own, so the
+ * regular season is the one minus the other. The awards are regular-season
+ * honours (2026-09-24: "those are regular season awards, not for the post
+ * season included"): a man who caught fire in June does not win the year on
+ * it, and a team that played eight more games does not bury everybody else.
+ */
+function regularBook<T extends object>(total: Map<PlayerId, T>, june: Map<PlayerId, T> | undefined): Map<PlayerId, T> {
+  if (!june || june.size === 0) return total;
+  const out = new Map<PlayerId, T>();
+  for (const [id, line] of total) {
+    const j = june.get(id);
+    if (!j) { out.set(id, line); continue; }
+    const kept = { ...line } as Record<string, unknown>;
+    for (const [k, v] of Object.entries(line)) {
+      const minus = (j as Record<string, unknown>)[k];
+      if (typeof v === 'number' && typeof minus === 'number') kept[k] = Math.max(0, v - minus);
+    }
+    out.set(id, kept as T);
+  }
+  return out;
+}
+
+/** The most regular-season games any team played: the yardstick for the qualifying floors. */
+function regularGames(season: SeasonState): number {
+  return Math.max(...season.teams.map((t) => { const r = regularRecord(t); return r.w + r.l; }), 1);
+}
+
 export function seasonAwards(season: SeasonState): Award[] {
   const roster = rosterIndex(season);
-  const gp = Math.max(...season.teams.map((t) => t.gp), 1);
+  const gp = regularGames(season);
   const minPA = Math.floor(gp * 2.0);
   const minIP = Math.max(1, Math.floor(gp * 1.0));
+  const batting = regularBook(season.batting, season.postBatting);
+  const pitching = regularBook(season.pitching, season.postPitching);
 
   const awards: Award[] = [];
   const make = (title: string, id: PlayerId, line: string): void => {
@@ -1439,9 +1472,9 @@ export function seasonAwards(season: SeasonState): Award[] {
     awards.push({ title, id, name: who.name, team: who.team.def.abbr, line });
   };
 
-  const hitters = [...season.batting.entries()]
+  const hitters = [...batting.entries()]
     .filter(([id, s]) => plateAppearances(s) >= minPA && !roster.get(id)?.isPitcher);
-  const pitchers = [...season.pitching.entries()]
+  const pitchers = [...pitching.entries()]
     .filter(([, s]) => inningsPitched(s) >= minIP);
 
   const best = <T>(rows: Array<[PlayerId, T]>, score: (s: T) => number): [PlayerId, T] | undefined =>
@@ -1492,7 +1525,7 @@ export function seasonAwards(season: SeasonState): Award[] {
     is worth about seven — real weight, and still answerable by a fireman who
     threw twice the innings.
   */
-  const relievers = [...season.pitching.entries()].filter(([, s]) =>
+  const relievers = [...pitching.entries()].filter(([, s]) =>
     s.gs === 0 && inningsPitched(s) >= gp * 0.5);
   const roy = best(relievers, (s) => pitcherValue(s) + s.sv * 0.5);
   if (roy) {
@@ -1531,9 +1564,12 @@ export interface AllConferencePick extends Award {
 /** First team: the best bat at each spot on the diamond, plus three arms. */
 export function allConference(season: SeasonState): AllConferencePick[] {
   const roster = rosterIndex(season);
-  const gp = Math.max(...season.teams.map((t) => t.gp), 1);
+  const gp = regularGames(season);
   const minPA = Math.floor(gp * 1.5);
   const minIP = Math.max(1, Math.floor(gp * 0.8));
+  // Regular-season honours, like the rest (see `regularBook`).
+  const batting = regularBook(season.batting, season.postBatting);
+  const pitching = regularBook(season.pitching, season.postPitching);
 
   const picks: AllConferencePick[] = [];
   const spots: Position[] = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
@@ -1541,7 +1577,7 @@ export function allConference(season: SeasonState): AllConferencePick[] {
   for (const pos of spots) {
     let bestId: PlayerId | undefined;
     let bestLine: BattingSeason | undefined;
-    for (const [id, s] of season.batting) {
+    for (const [id, s] of batting) {
       const who = roster.get(id);
       if (!who || who.pos !== pos) continue;
       if (plateAppearances(s) < minPA) continue;
@@ -1560,7 +1596,7 @@ export function allConference(season: SeasonState): AllConferencePick[] {
     }
   }
 
-  const arms = [...season.pitching.entries()]
+  const arms = [...pitching.entries()]
     .filter(([, s]) => inningsPitched(s) >= minIP)
     .sort((a, b) => pitcherValue(b[1]) - pitcherValue(a[1]))
     .slice(0, 3);

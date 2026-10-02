@@ -1,305 +1,409 @@
 // ProgramRooms.tsx
 // The rooms that run the program: Budget, Staff, Facilities and the
-// Recruiting network. Each opens from the Program hub as a page with a back
-// link, and each spends from the same budget, so the money travels with you
-// in the room's marquee rather than a strip under it.
+// Recruiting network. Each is a screen of the Office tab (or its own layer
+// when the season is over), and each spends from the same budget, so what is
+// left travels with you in the room's header.
 //
-// A room is meant to feel like a place you walked into. Each one opens with
-// its marquee and the numbers that matter, then a row of plaques — the three
-// desks in the staff room, the three buildings on the campus, the states you
-// recruit — and the one you pick opens underneath. The plaques carry each
-// thing's state, so nothing is hidden by the choice; what has gone is the
-// column of rows and the paragraph explaining what a room is for.
+// Since the UI clarity review (design/UI Clarity Review/Staff and
+// Facilities.dc.html, 2026-09-25) a room is one column of the things in it,
+// each carrying its own state, instead of a row of plaques to pick from with
+// one card open underneath: a card for every seat on the staff, a row for
+// every building that opens where it stands, and a budget that ends on what
+// the money left could still buy. The words are the review's, in its plainer
+// language ("Idle · assign one", "Tap again to spend it"); every number is
+// the engine's.
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useDynasty } from '../../state/store.js';
 import { handles } from '../../state/depth.js';
+import { readPrefs } from '../../state/devicePrefs.js';
+import { SCOUTING } from '../../state/features.js';
 import {
   annualBudget, BUILDINGS, buildingSpec, dollars, facilityEffectAt, facilityLevel, facilityUpgradeCost,
   FACILITY_MAX_LEVEL, marketFor, PIPELINE_MIN, pipelineStrength, PROJECT_LABEL, remaining,
-  SCOUT_COST, SCOUT_DAYS, SEAT_LABEL, SEAT_NOTE, SEATS, shapeOf, staffPlan, staffProjectWeeks, wageBill,
+  SCOUT_COST, SCOUT_DAYS, SEAT_LABEL, SEAT_NOTE, SEATS, shapeOf, staffPlan, wageBill,
   DIRECTIVE_LABEL, type Assistant, type Building, type StaffSeat,
 } from '../../engine/economy.js';
-import { RECRUITING_WEEKS } from '../../engine/recruiting.js';
-import { projectCandidates } from '../../engine/staffProjects.js';
 import type { SeasonState } from '../../engine/season.js';
+import { RECRUITING_WEEKS } from '../../engine/recruiting.js';
+import { PIPELINE_WEEKLY, SEASON_GAIN } from '../../engine/staffProjects.js';
 import { REGION_OF_STATE, STATES_BY_REGION } from '../../data/schools.js';
 import {
-  BudgetSummary, Button, Callout, ConfirmButton, DescriptionList, FacilityCard, List, ListRow,
-  Marquee, Meter, Monogram, Plaque, SectionHeader, SegmentedControl, Sheet, StaffCard, StatGroup,
-  StatusBadge, TileGrid, type CompareRow, type Tone,
+  BudgetLedger, BudgetSummary, Button, BuyList, Callout, CandidateList, ConfirmButton, DescriptionList,
+  FacilityCard, HowCoachHelps, List, ListRow, Marquee, Meter, Monogram, NeedsList, Plaque, SectionHeader,
+  SegmentedControl, Sheet, SkillBars, StaffCard, StatGroup, StatusBadge, SubHead, TileGrid,
+  type BuyItem, type CompareRow, type NeedItem, type StaffCardProps, type Tone,
 } from '../components/ui/index.js';
 import { GodBolt } from '../god/GodBolt.js';
 import { FirstVisit } from '../Tutorial.js';
-import { FacilityArt } from '../ProgramBits.js';
-import { staffWorkStatus, useStaffWork } from '../StaffWorkPanel.js';
+import { activeGuideStep } from '../guide.js';
 import {
-  StaffCandidateDialog, StaffSkillsMeter, staffImpactItems, staffSkills,
-} from '../StaffCandidateDialog.js';
-import { FACILITY_NAME, firstName, plural, stateName } from '../words.js';
+  canAssignProject, projectOutlook, recruitingWeeksLeft, staffWorkStatus, useStaffWork,
+} from '../StaffWorkPanel.js';
+import { StaffCandidateDialog, staffAdds, staffSkills } from '../StaffCandidateDialog.js';
+import { FACILITY_NAME, plural, stateName } from '../words.js';
+import { useScreenOwner } from '../screenOwner.js';
 
 type Owner = SeasonState['teams'][number];
-
-/** The seat's name on its plaque: one word, because the plaque is small. */
-const SEAT_SHORT: Record<StaffSeat, string> = {
-  pitching: 'Pitching',
-  hitting: 'Hitting',
-  recruiting: 'Recruiting',
-};
-
-/** A building's name on its plaque, short enough for a third of the row. */
-const FACILITY_SHORT: Record<Building, string> = {
-  cage: 'Hitting barn',
-  pen: 'Pitching lab',
-  clubhouse: 'Clubhouse',
-};
-
-/** The back link every room shares. */
-export function useRoomBack(): { label: string; onClick: () => void; guide: string } | undefined {
-  const setSheet = useDynasty((s) => s.setProgramSheet);
-  const closeCoach = useDynasty((s) => s.closeCoach);
-  // A room opened straight into an overlay (the board from the season opener,
-  // a letter's link) already has the overlay's Back; a second back control
-  // that goes somewhere else would only confuse.
-  const direct = useDynasty((s) => s.overlay === 'program' && s.overlayEntrySheet === s.programSheet);
-  if (direct) return undefined;
-  return { label: 'Program', guide: 'room-back', onClick: () => { closeCoach(); setSheet('overview'); } };
-}
 
 /** What is left to spend this season, on every room that spends it. */
 export function BudgetChip({ team }: { team: Owner }) {
   const economy = useDynasty((s) => s.economy);
   const left = Math.max(0, remaining(economy, team.prestige));
-  return <StatusBadge tone="neutral" size="lg" icon={false}>{dollars(left)} left</StatusBadge>;
+  return <StatusBadge tone="neutral" size="lg" icon={false} className="pb-money-pill">{dollars(left)} left</StatusBadge>;
 }
 
 /** The facility a coach's sheet asked to see, opened when the room opens. */
 let pendingFacility: Building | null = null;
 
-function useGoToFacility(): (b: Building) => void {
-  const setSheet = useDynasty((s) => s.setProgramSheet);
-  const closeCoach = useDynasty((s) => s.closeCoach);
-  return (b) => { pendingFacility = b; closeCoach(); setSheet('facilities'); };
+/** From anywhere: the desk a room row asked for; its coach's sheet opens on arrival. */
+let pendingDesk: StaffSeat | null = null;
+
+/** Staff rooms on screen now: a room already up does not mount again to read `pendingDesk`. */
+let staffRoomsUp = 0;
+
+/**
+ * How a room is opened. `layer` lays it over whatever is up, the way the
+ * Season plan needs (2026-09-29): the plan steps aside for a layer and comes
+ * back when it is peeled, where a room reached as a screen would have opened
+ * under the plan and looked like a tap that did nothing.
+ */
+interface RoomOpen { layer?: boolean }
+
+/** From anywhere: the facilities room, open on one building. */
+export function openFacilityRoom(b: Building, how: RoomOpen = {}): void {
+  pendingFacility = b;
+  const s = useDynasty.getState();
+  if (how.layer) s.openOverlay('facilities'); else s.openRoom('facilities');
 }
+
+/** From anywhere: the staff room, with this seat's coach sheet open. */
+export function openStaffDesk(seat: StaffSeat, how: RoomOpen = {}): void {
+  const s = useDynasty.getState();
+  // Standing in the staff room already, it will not mount again to read the
+  // seat, so the sheet is opened here and now.
+  if (!how.layer && staffRoomsUp > 0 && s.overlay === null && s.screen === 'staff') {
+    s.openCoach(seat);
+    return;
+  }
+  pendingDesk = seat;
+  if (how.layer) s.openOverlay('staff'); else s.openRoom('staff');
+}
+
+/** What each building mostly does for you, on its row. */
+const FACILITY_HELPS: Record<Building, string> = {
+  cage: 'Hitter growth · hitting season work',
+  pen: 'Pitcher growth · arm injuries · pitching season work',
+  clubhouse: 'Recruit appeal · pipeline work',
+};
+
+/** The name a building's coach's season work goes by in its table. */
+const WORK_ROW: Record<Building, string> = {
+  cage: 'Hitting season work',
+  pen: 'Pitching season work',
+  clubhouse: 'Pipeline work',
+};
+
+/** What a level of the building sizes: a coach's points a man, or pipeline strength a week. */
+const workAt = (kind: Building, level: number): number =>
+  (kind === 'clubhouse' ? PIPELINE_WEEKLY['pipeline-deepen'][level] ?? 0 : SEASON_GAIN[level] ?? 0);
 
 /* ------------------------------------------------------------------ Budget */
 
 export function BudgetRoom({ team }: { team: Owner }) {
   const economy = useDynasty((s) => s.economy);
   const season = useDynasty((s) => s.season);
-  const setSheet = useDynasty((s) => s.setProgramSheet);
-  const back = useRoomBack();
-  const budget = annualBudget(team.prestige);
+  const year = useDynasty((s) => s.year);
+  const openRoom = useDynasty((s) => s.openRoom);
+  const runsStaff = useDynasty((s) => handles(s.depth, 'assistants'));
+  const runsFacilities = useDynasty((s) => handles(s.depth, 'facilities'));
+  // God mode's grant is money on top of the year's, so it is part of the whole.
+  const total = annualBudget(team.prestige) + (economy.grant ?? 0);
   const wages = wageBill(economy.staff);
   const left = remaining(economy, team.prestige);
   const staffCount = SEATS.filter((seat) => economy.staff[seat]).length;
-  const day = season?.dayIndex ?? 0;
-  const books = Object.values(economy.scouted).filter((until) => until >= day).length;
-  const next = BUILDINGS
-    .map((b) => {
+
+  /*
+    What the rest can buy: only what this program can buy from this room's
+    doors. An open seat at its cheapest candidate's wage (the market the hire
+    reads), the next level of each building, cheapest first. Nothing the
+    athletic director decides for you, and no scouting while the reports are
+    held back (state/features.ts).
+  */
+  const buys: BuyItem[] = [];
+  if (runsStaff && season) {
+    for (const seat of SEATS) {
+      if (economy.staff[seat]) continue;
+      const cheapest = Math.min(...marketFor(String(season.seed ?? 0), year, seat).map((c) => c.wage));
+      if (!Number.isFinite(cheapest)) continue;
+      buys.push({
+        key: `hire-${seat}`,
+        icon: 'person',
+        title: `Hire a ${SEAT_LABEL[seat].toLowerCase()}`,
+        sub: 'Cheapest candidate · a year’s wage',
+        cost: cheapest,
+        onClick: () => openStaffDesk(seat),
+      });
+    }
+  }
+  if (runsFacilities) {
+    for (const b of BUILDINGS) {
       const level = facilityLevel(economy, b.key);
-      const to = Math.min(FACILITY_MAX_LEVEL, level + 1);
-      return { key: b.key, level, to, cost: facilityUpgradeCost(b.key, to) };
-    })
-    .filter((b) => b.level < FACILITY_MAX_LEVEL)
-    .sort((a, b) => a.cost - b.cost)[0] ?? null;
+      if (level >= FACILITY_MAX_LEVEL) continue;
+      buys.push({
+        key: `build-${b.key}`,
+        icon: 'home',
+        title: level === 0 ? `Build the ${FACILITY_NAME[b.key]}` : `${FACILITY_NAME[b.key]} to level ${level + 1}`,
+        sub: FACILITY_HELPS[b.key],
+        cost: facilityUpgradeCost(b.key, level + 1),
+        onClick: () => openFacilityRoom(b.key),
+      });
+    }
+  }
+  buys.sort((a, b) => a.cost - b.cost || a.title.localeCompare(b.title));
 
   return (
     <main className="pb-page">
       <Marquee
-        back={back}
         eyebrow={`${team.def.school} · Prestige ${team.prestige}`}
         title="Budget"
         trailing={<GodBolt target={{ kind: 'money' }} label="Edit the budget and staff in god mode" />}
       />
       <FirstVisit id="budget" />
-      <BudgetSummary
-        total={budget}
-        available={Math.max(0, left)}
-        parts={[
-          { label: 'Staff wages', value: wages },
-          { label: 'Facilities and scouting', value: economy.spent },
+      {/*
+        The two claims on the money are also the doors to the rooms that
+        spend it (and keep the tour's money-staff and money-facilities names
+        that the old plaques carried). The year roll clears the ledger before
+        each season opens in February.
+      */}
+      <BudgetLedger
+        total={total}
+        left={left}
+        note="New budget each February"
+        rows={[
+          {
+            key: 'wages',
+            label: 'Staff wages',
+            sub: `${plural(staffCount, 'coach', 'coaches')} · paid every year`,
+            value: wages,
+            tone: 'ink',
+            onClick: () => openRoom('staff'),
+            guide: 'money-staff',
+          },
+          {
+            key: 'spent',
+            label: SCOUTING ? 'Buildings and scouting' : 'Buildings',
+            sub: 'Spent this season',
+            value: economy.spent,
+            tone: 'info',
+            onClick: () => openRoom('facilities'),
+            guide: 'money-facilities',
+          },
+          { key: 'left', label: 'Left', sub: 'A new budget arrives next season', value: Math.max(0, left), tone: 'track' },
         ]}
       />
-      {next && left < next.cost && (
-        <Callout tone="neutral" title={`${dollars(next.cost - Math.max(0, left))} short of the next building`}>
-          A new budget arrives next season.
-        </Callout>
+      {buys.length > 0 && (
+        <section className="pb-stack pb-buyrail">
+          <SubHead size="md" title="What the rest can buy" aside="Cheapest first" />
+          <BuyList label="What the rest can buy" items={buys} left={left} />
+        </section>
       )}
-      <section>
-        <SectionHeader title="Where it goes" />
-        <TileGrid cols={3} label="Where the budget goes">
-          <Plaque
-            icon="person"
-            label="Staff"
-            value={dollars(wages)}
-            note={`${staffCount} of 3 seats`}
-            guide="money-staff"
-            onClick={() => setSheet('staff')}
-          />
-          <Plaque
-            icon="home"
-            label="Facilities"
-            value={next ? dollars(next.cost) : dollars(economy.spent)}
-            note={next ? `${FACILITY_SHORT[next.key]} L${next.to}` : 'Fully built'}
-            guide="money-facilities"
-            onClick={() => setSheet('facilities')}
-          />
-          <Plaque
-            icon="globe"
-            label="Reports"
-            value={books}
-            note={`${dollars(SCOUT_COST)} · ${SCOUT_DAYS} days`}
-            onClick={() => setSheet('network')}
-          />
-        </TileGrid>
-      </section>
     </main>
   );
 }
 
 /* ------------------------------------------------------------------- Staff */
 
-/** What an empty seat would do for you, in a clause rather than a sentence. */
+/** What an empty seat would do for you, in one sentence. */
 const SEAT_PITCH = (seat: StaffSeat, home: string): string => (
-  seat === 'hitting' ? 'Develops hitters · runs hitting projects'
-    : seat === 'pitching' ? 'Develops pitchers · runs pitching projects'
-      : `Builds pipelines beyond ${stateName(home)}`
+  seat === 'hitting' ? 'Develops hitters and adds to your offense skill.'
+    : seat === 'pitching' ? 'Develops pitchers and adds to your defense skill.'
+      : `Builds pipelines beyond ${stateName(home)} and adds to your recruiting skill.`
 );
+
+/** A contract that runs out at this year's roll unless it is renewed first. */
+const contractEnds = (man: Assistant, year: number): boolean => man.until !== undefined && man.until <= year;
+
+/** "Player developer · Age 58 · Season 4 here". */
+const specOf = (man: Assistant, year: number): string =>
+  `${shapeOf(man)} · Age ${man.age} · Season ${Math.max(1, year - (man.joinedYear ?? year) + 1)} here`;
+
+export type CoachView = 'work' | 'contract';
+
+/*
+  The tab a tap asked the coach's sheet to open on: the contract for "Review".
+  It carries the asking room's owner. A staff room under the top overlay stays
+  mounted and renders the same sheet first, and took the tab from the one on
+  show (back plan S5 fixes, 2026-09-30).
+*/
+let pendingView: { owner: string; view: CoachView } | null = null;
+
+/** Ask the coach's sheet in `owner`'s staff room to open on `view`. */
+export function askCoachView(owner: string, view: CoachView): void {
+  pendingView = { owner, view };
+}
+
+/** The tab the sheet in `owner`'s room opens on. Only the room that asked takes it. */
+export function takeCoachView(owner: string): CoachView {
+  if (pendingView === null || pendingView.owner !== owner) return 'work';
+  const { view } = pendingView;
+  pendingView = null;
+  return view;
+}
 
 export function StaffRoom({ team }: { team: Owner }) {
   const economy = useDynasty((s) => s.economy);
   const year = useDynasty((s) => s.year);
-  const season = useDynasty((s) => s.season);
+  const week = useDynasty((s) => s.season?.recruiting.week ?? 0);
   const runsStaff = useDynasty((s) => handles(s.depth, 'assistants'));
   const coachSeat = useDynasty((s) => s.coachSeat);
   const openCoach = useDynasty((s) => s.openCoach);
-  const back = useRoomBack();
-  const goToFacility = useGoToFacility();
-  const wages = wageBill(economy.staff);
-  const staffCount = SEATS.filter((seat) => economy.staff[seat]).length;
-  const week = season?.recruiting.week ?? 0;
-  const weeksAvailable = week >= 1 ? Math.max(0, RECRUITING_WEEKS - week + 1) : 0;
-  const running = SEATS.filter((seat) => staffPlan(economy, seat).project).length;
+  const openRoom = useDynasty((s) => s.openRoom);
+  const owner = useScreenOwner();
+  const weeksAvailable = recruitingWeeksLeft(week);
+  const home = team.def.state;
 
-  // The desk you are standing at. An open seat is the one that wants you, so
-  // the room opens on the first of them.
-  const [desk, setDesk] = useState<StaffSeat>(() => SEATS.find((seat) => !economy.staff[seat]) ?? SEATS[0]!);
-  const man = economy.staff[desk];
+  useEffect(() => {
+    staffRoomsUp += 1;
+    const want = pendingDesk;
+    pendingDesk = null;
+    if (want) openCoach(want);
+    return () => { staffRoomsUp -= 1; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const plan = man ? staffPlan(economy, desk) : null;
-  const status = staffWorkStatus(economy, desk, weeksAvailable);
-  const facilityName = FACILITY_NAME[status.facility];
-  const project = plan?.project;
-  const target = project?.playerId
-    ? projectCandidates(team.team, desk, project.kind)
-      .find((p) => String(p.id) === project.playerId)?.name ?? 'Player left the roster'
-    : project?.state ? stateName(project.state) : undefined;
-  const ending = !!man && man.until !== undefined && man.until <= year;
-  const weeks = project ? project.weeksTotal : 0;
-  const done = project ? project.weeksTotal - project.weeksLeft : 0;
-
-  const work = status.state === 'locked' ? {
-    state: status.state,
-    text: `The ${facilityName} unlocks projects here.`,
-    action: {
-      label: `Build the ${facilityName}`,
-      meta: dollars(facilityUpgradeCost(status.facility, 1)),
-      onClick: () => goToFacility(status.facility),
-    },
-  } : status.state === 'ready' ? {
-    state: status.state,
-    text: `${plural(staffProjectWeeks(economy, desk), 'week')} a project · ${plural(weeksAvailable, 'week')} left`,
-    action: { label: 'Assign a project', onClick: () => openCoach(desk) },
-  } : status.state === 'waiting' ? {
-    state: status.state,
-    text: 'Opens with the recruiting season.',
-  } : {
-    state: status.state,
-    when: status.state === 'active' ? `Week ${Math.min(weeks, done + 1)} of ${weeks}` : undefined,
-    title: project ? `${PROJECT_LABEL[project.kind]}${target ? ` · ${target}` : ''}` : undefined,
-    text: status.state === 'paused'
-      ? (status.level < 1 ? `Needs the ${facilityName}.` : 'Resumes next recruiting season.')
-      : undefined,
-    done,
-    total: weeks,
-    action: status.state === 'paused' && status.level < 1
-      ? { label: `Build the ${facilityName}`, meta: dollars(facilityUpgradeCost(status.facility, 1)), onClick: () => goToFacility(status.facility) }
-      : undefined,
+  const openSeat = (seat: StaffSeat, view: CoachView = 'work'): void => {
+    askCoachView(owner, view);
+    openCoach(seat);
   };
+
+  /*
+    What is waiting on you, in the review's order: a coach with nothing to do
+    (only when season work could actually start today), a contract about to run
+    out, an empty seat. Each line opens the place it is fixed. When the
+    athletic director runs the staff there is nothing for you to do here.
+  */
+  const needs: NeedItem[] = [];
+  if (runsStaff) {
+    for (const seat of SEATS) {
+      const man = economy.staff[seat];
+      if (man && canAssignProject(economy, seat, weeksAvailable)) {
+        needs.push({
+          key: `idle-${seat}`, tone: 'warning', icon: 'alert',
+          text: `${man.name} has no season work`, cta: 'Assign', onClick: () => openSeat(seat, 'work'),
+        });
+      }
+    }
+    for (const seat of SEATS) {
+      const man = economy.staff[seat];
+      if (man && contractEnds(man, year)) {
+        needs.push({
+          key: `contract-${seat}`, tone: 'warning', icon: 'clock',
+          text: `${man.name}’s contract ends this season`, cta: 'Review', onClick: () => openSeat(seat, 'contract'),
+        });
+      }
+    }
+    for (const seat of SEATS) {
+      if (economy.staff[seat]) continue;
+      needs.push({
+        key: `open-${seat}`, tone: 'info', icon: 'person',
+        text: `${SEAT_LABEL[seat]} seat is open`, cta: 'Hire', onClick: () => openSeat(seat),
+      });
+    }
+  }
+
+  const seatCard = (seat: StaffSeat): ReactNode => {
+    const man = economy.staff[seat];
+    const guide = seat === 'hitting' ? 'seat-hitting' : undefined;
+    if (!man) {
+      return (
+        <StaffCard
+          key={seat}
+          vacant
+          roleLabel={SEAT_LABEL[seat]}
+          pitch={SEAT_PITCH(seat, home)}
+          onOpen={() => openSeat(seat)}
+          guide={guide}
+        />
+      );
+    }
+    const plan = staffPlan(economy, seat);
+    const outlook = projectOutlook(economy, team, seat, weeksAvailable);
+    const status = staffWorkStatus(economy, seat, weeksAvailable);
+    const free = canAssignProject(economy, seat, weeksAvailable);
+    const project: StaffCardProps['project'] = outlook ? { text: PROJECT_LABEL[outlook.kind] }
+      : status.state === 'locked' ? { text: `Needs the ${FACILITY_NAME[status.facility]}`, tone: 'muted' }
+        : free && runsStaff ? { text: 'Idle · assign one', tone: 'warning' }
+          : free ? { text: 'Idle', tone: 'muted' }
+            : { text: 'Opens next season', tone: 'muted' };
+    return (
+      <StaffCard
+        key={seat}
+        roleLabel={SEAT_LABEL[seat]}
+        name={man.name}
+        spec={specOf(man, year)}
+        rating={man.rating}
+        focus={DIRECTIVE_LABEL[plan.directive]}
+        project={project}
+        progress={outlook ? {
+          who: outlook.season && outlook.type === 'state'
+            ? `${outlook.subject} · +${outlook.added ?? 0} so far`
+            : outlook.gain ? `${outlook.subject} · ${outlook.gain} ${outlook.attribute.toLowerCase()}` : outlook.subject,
+          // Season work reads the season's week, as the coach's sheet does.
+          when: outlook.paused ? 'Paused'
+            : outlook.season ? `Week ${Math.max(1, Math.min(RECRUITING_WEEKS, week))} of ${RECRUITING_WEEKS}`
+              : `Week ${Math.min(outlook.total, outlook.done + 1)} of ${outlook.total}`,
+          done: outlook.done,
+          total: outlook.total,
+          paused: outlook.paused !== null,
+        } : undefined}
+        wage={dollars(man.wage)}
+        contract={contractEnds(man, year)
+          ? { text: 'Contract ends this season', ending: true }
+          : { text: `Signed through ${man.until ?? year + 1}` }}
+        onOpen={() => openSeat(seat)}
+        guide={guide}
+      />
+    );
+  };
+
+  // The network's door. It lived on the budget room's old plaques; it sits
+  // here now, under the coordinator who builds it.
+  const coordinator = economy.staff.recruiting;
+  const known = new Set<string>([
+    home, ...(coordinator?.pipelineState ? [coordinator.pipelineState] : []), ...Object.keys(economy.pipelines ?? {}),
+  ]);
+  const pipelines = [...known].filter((st) => pipelineStrength(economy, st, home) >= PIPELINE_MIN).length;
 
   return (
     <main className="pb-page">
       <Marquee
-        back={back}
         eyebrow={`${team.def.school} · Staff room`}
         title="Coaching staff"
         trailing={<BudgetChip team={team} />}
-        numbers={[
-          { label: 'Seats', value: staffCount, unit: '/3' },
-          { label: 'Wages', value: dollars(wages), note: 'a year' },
-          {
-            label: 'Projects',
-            value: running,
-            note: weeksAvailable > 0 ? `${plural(weeksAvailable, 'week')} left` : 'Out of season',
-          },
-        ]}
       />
       <FirstVisit id="staff" />
       {!runsStaff && (
         <Callout tone="info" title="Your athletic director runs the staff" guide="staff-delegated" />
       )}
-
-      <TileGrid cols={3} label="The three desks">
-        {SEATS.map((seat) => {
-          const sitting = economy.staff[seat];
-          const seatStatus = staffWorkStatus(economy, seat, weeksAvailable);
-          const seatEnding = !!sitting && sitting.until !== undefined && sitting.until <= year;
-          return (
-            <Plaque
-              key={seat}
-              art={<Monogram name={sitting?.name} vacant={!sitting} size={30} />}
-              label={SEAT_SHORT[seat]}
-              value={sitting ? sitting.rating : '—'}
-              note={sitting ? (seatEnding ? 'Contract ends' : seatStatus.label) : 'Open seat'}
-              tone={seatEnding ? 'warning' : seatStatus.state === 'active' ? 'info' : undefined}
-              selected={seat === desk}
-              guide={seat === 'hitting' ? 'seat-hitting' : undefined}
-              onClick={() => setDesk(seat)}
-            />
-          );
-        })}
-      </TileGrid>
-
-      <section className="pb-stack">
-        {!man ? (
-          <StaffCard
-            vacant
-            roleLabel={SEAT_LABEL[desk]}
-            pitch={SEAT_PITCH(desk, team.def.state)}
-            onHire={() => openCoach(desk)}
-          />
-        ) : (
-          <StaffCard
-            roleLabel={SEAT_LABEL[desk]}
-            name={man.name}
-            specialty={shapeOf(man)}
-            rating={man.rating}
-            skills={staffSkills(man)}
-            focus={plan ? DIRECTIVE_LABEL[plan.directive] : undefined}
-            work={work}
-            contract={{ wage: `${dollars(man.wage)}/yr`, through: man.until ?? year + 1, ending }}
-            onOpen={() => openCoach(desk)}
-          />
-        )}
-      </section>
+      <HowCoachHelps />
+      <NeedsList items={needs} />
+      {SEATS.map(seatCard)}
+      <List label="Recruiting network">
+        <ListRow
+          icon="globe"
+          markTone="info"
+          title="Recruiting network"
+          subtitle={`${plural(pipelines, 'pipeline')} · ${plural(known.size, 'state')} known`}
+          onClick={() => openRoom('network')}
+        />
+      </List>
 
       {coachSeat !== null && (
         <CoachSeatSheet
           key={`${coachSeat}:${economy.staff[coachSeat]?.id ?? 'open'}`}
           team={team}
           seat={coachSeat}
-          onFacility={goToFacility}
+          onFacility={openFacilityRoom}
         />
       )}
     </main>
@@ -339,7 +443,12 @@ function staffMarketKey(m: Assistant, year: number, seat: StaffSeat): number {
   return h >>> 0;
 }
 
-/** A coach's seat: the person, their work, their contract, or the candidates for an open seat. */
+/**
+ * A coach's seat: the man, his work, his skills and contract — or, for an
+ * open seat, the candidates. Filled, it is a strip of rating, wage and
+ * contract over two tabs, Work and Skills and contract; each tab pins its
+ * own actions in the footer.
+ */
 function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSeat; onFacility: (b: Building) => void }) {
   const economy = useDynasty((s) => s.economy);
   const coachSkills = useDynasty((s) => s.coach.skills);
@@ -351,7 +460,8 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
   const fireAssistant = useDynasty((s) => s.fireAssistant);
   const renewAssistant = useDynasty((s) => s.renewAssistant);
   const closeCoach = useDynasty((s) => s.closeCoach);
-  const [view, setView] = useState<'work' | 'contract'>('work');
+  const owner = useScreenOwner();
+  const [view, setView] = useState<CoachView>(() => takeCoachView(owner));
   const [showReplacements, setShowReplacements] = useState(false);
   const [candidateId, setCandidateId] = useState<string | null>(null);
   const man = economy.staff[seat];
@@ -366,37 +476,31 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
     .sort((a, b) => staffMarketKey(a, year, seat) - staffMarketKey(b, year, seat));
   const youngBats = team.team.lineup.concat(team.team.bench).filter((q) => q.classYear === 'FR' || q.classYear === 'SO').length;
   const youngArms = team.team.rotation.concat(team.team.bullpen).filter((q) => q.classYear === 'FR' || q.classYear === 'SO').length;
-  const ending = !!man && man.until !== undefined && man.until <= year;
+  const ending = !!man && contractEnds(man, year);
   const history = (economy.projectHistory ?? []).filter((r) => r.seat === seat).slice(0, 3);
 
   const candidates = (
     <section className="pb-stack">
-      <SectionHeader title={man ? 'Available replacements' : 'Available coaches'} count={market.length} />
+      {man && <SubHead title="Available replacements" />}
       {runsStaff && !man && market.every((c) => c.wage > left) && (
         <Callout tone="warning" title="No coach fits your budget" guide={seat === 'hitting' ? 'hire-blocked' : undefined}>
           {dollars(Math.max(0, left))} left this season.
         </Callout>
       )}
-      <List label={`${SEAT_LABEL[seat]} candidates`} guide={seat === 'hitting' && !man && runsStaff ? 'hire-options' : undefined}>
-          {market.map((c) => {
-            const affordable = left + (man?.wage ?? 0) >= c.wage;
-            const split = staffSkills(c);
-            return (
-              <ListRow
-                key={c.id}
-                lead={<Monogram name={c.name} />}
-                title={c.name}
-                subtitle={`${shapeOf(c)} · ${dollars(c.wage)} a year${c.pipelineState ? ` · knows ${stateName(c.pipelineState)}` : ''}`}
-                status={affordable ? undefined : <StatusBadge tone="warning">Over budget</StatusBadge>}
-                value={c.rating}
-                unit="/100"
-                onClick={() => setCandidateId(c.id)}
-              >
-                <span className="pb-sr">{`${split[0]!.label} ${split[0]!.value}, ${split[1]!.label} ${split[1]!.value}`}</span>
-              </ListRow>
-            );
-          })}
-      </List>
+      <CandidateList
+        label={`${SEAT_LABEL[seat]} candidates`}
+        head={seat === 'recruiting' ? 'Candidate · wage · state he knows' : 'Candidate · wage'}
+        guide={seat === 'hitting' && !man && runsStaff ? 'hire-options' : undefined}
+        items={market.map((c) => ({
+          id: c.id,
+          name: c.name,
+          sub: [shapeOf(c), dollars(c.wage), c.pipelineState ? `knows ${stateName(c.pipelineState)}` : '']
+            .filter(Boolean).join(' · '),
+          rating: c.rating,
+          over: left + (man?.wage ?? 0) < c.wage,
+          onClick: () => setCandidateId(c.id),
+        }))}
+      />
     </section>
   );
 
@@ -438,6 +542,7 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
           closeGuide="overlay-back"
           layer={false}
           tall
+          className="pb-coachsheet"
         >
           <Callout tone="info" icon="person" title={`What a ${SEAT_LABEL[seat].toLowerCase()} does`}>
             {SEAT_NOTE[seat]}
@@ -450,18 +555,40 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
   }
 
   const skills = staffSkills(man);
+  const until = man.until ?? year + 1;
+  const contractFooter = runsStaff ? (
+    <>
+      {phase !== null && ending && (
+        <Button variant="primary" block onClick={() => renewAssistant(seat)}>Renew through {year + 2}</Button>
+      )}
+      <div className="pb-buttons-2">
+        <Button variant="secondary" block onClick={() => setShowReplacements((open) => !open)}>
+          {showReplacements ? 'Hide the candidates' : 'Find a replacement'}
+        </Button>
+        <ConfirmButton
+          variant="danger"
+          block
+          idle="Release coach"
+          armed="Tap again to release"
+          onConfirm={() => { setShowReplacements(false); fireAssistant(seat); }}
+        />
+      </div>
+    </>
+  ) : null;
+
   return (
     <>
       <Sheet
         eyebrow={SEAT_LABEL[seat]}
         title={man.name}
-        subtitle={`${shapeOf(man)} · Age ${man.age} · Season ${Math.max(1, year - (man.joinedYear ?? year) + 1)} here`}
+        subtitle={specOf(man, year)}
         lead={<Monogram name={man.name} size={44} />}
         onClose={closeCoach}
         closeGuide="overlay-back"
         layer={false}
         tall
-        footer={view === 'work' ? work.footer : null}
+        className="pb-coachsheet"
+        footer={view === 'work' ? work.footer : contractFooter}
       >
         <StatGroup
           size="sm"
@@ -470,14 +597,17 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
             { label: 'Wage', value: dollars(man.wage), unit: '/yr' },
             ending
               ? { label: 'Signed to', value: man.until ?? year, note: 'Ends this season', noteTone: 'warning' }
-              : { label: 'Signed to', value: man.until ?? year + 1 },
+              : { label: 'Signed to', value: until },
           ]}
         />
-        <SegmentedControl<'work' | 'contract'>
+        <SegmentedControl<CoachView>
           label="Coach"
           value={view}
           onChange={(next) => { setView(next); setShowReplacements(false); }}
-          options={[{ value: 'work', label: 'Work' }, { value: 'contract', label: 'Skills and contract' }]}
+          options={[
+            { value: 'work', label: 'Work' },
+            { value: 'contract', label: 'Skills and contract', badge: ending ? true : undefined },
+          ]}
         />
         {view === 'work' && (
           <>
@@ -485,22 +615,28 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
             {history.length > 0 && (
               <section className="pb-stack">
                 <SectionHeader level={3} title="Recent results" />
-                <List label="Recent project results">
-                  {history.map((r, i) => (
-                    <ListRow
-                      key={`${r.year}:${r.week}:${i}`}
-                      title={`${PROJECT_LABEL[r.kind]}${r.state ? ` · ${stateName(r.state)}` : ''}`}
-                      subtitle={r.changes.length
-                        ? r.changes.map((c) => `${c.name}: ${c.attribute} ${Math.round(c.before)} → ${Math.round(c.after)}`).join(' · ')
-                        : r.took === false ? 'No gain this time' : 'No eligible player remained'}
-                      status={(
-                        <StatusBadge tone={r.took === false ? 'neutral' : 'positive'} icon={r.took === false ? 'dot' : 'check'}>
-                          {r.took === false ? 'Did not take' : r.focused ? 'Focus bonus earned' : 'Completed'}
-                        </StatusBadge>
-                      )}
-                      value={<small className="pb-row__when">{r.year}, week {r.week}</small>}
-                    />
-                  ))}
+                <List label="Recent results">
+                  {history.map((r, i) => {
+                    // Season work (2026-09-28) always lands; a legacy project could fail to take.
+                    const season = r.season === true;
+                    return (
+                      <ListRow
+                        key={`${r.year}:${r.week}:${i}`}
+                        title={`${PROJECT_LABEL[r.kind]}${r.state ? ` · ${stateName(r.state)}` : ''}`}
+                        subtitle={r.changes.length
+                          ? r.changes.map((c) => `${c.name}: ${c.attribute} ${Math.round(c.before)} → ${Math.round(c.after)}`).join(' · ')
+                          : !season && r.took === false ? 'No gain this time' : 'No eligible player remained'}
+                        status={season ? (
+                          <StatusBadge tone="positive" icon="check">{r.focused ? 'Focus bonus earned' : 'Landed'}</StatusBadge>
+                        ) : (
+                          <StatusBadge tone={r.took === false ? 'neutral' : 'positive'} icon={r.took === false ? 'dot' : 'check'}>
+                            {r.took === false ? 'Did not take' : r.focused ? 'Focus bonus earned' : 'Completed'}
+                          </StatusBadge>
+                        )}
+                        value={<small className="pb-row__when">{season ? String(r.year) : `${r.year}, week ${r.week}`}</small>}
+                      />
+                    );
+                  })}
                 </List>
               </section>
             )}
@@ -508,40 +644,17 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
         )}
         {view === 'contract' && (
           <>
-            <StaffSkillsMeter coach={man} />
-            <section className="pb-stack">
-              <SectionHeader level={3} title="What this coach adds" />
-              <StatGroup size="sm" items={staffImpactItems(man, coachSkills)} />
-            </section>
-            <section className="pb-stack">
-              <SectionHeader level={3} title="Contract" />
-              <DescriptionList
-                items={[
-                  { label: 'Wage', value: `${dollars(man.wage)} a year` },
-                  ending
-                    ? { label: 'Signed through', value: String(man.until ?? year), tone: 'warning', icon: 'clock', note: phase !== null ? 'Renew it now or let it end' : 'Renew it in the offseason' }
-                    : { label: 'Signed through', value: String(man.until ?? year + 1) },
-                ]}
-              />
-              {runsStaff && (
-                <div className="pb-stack">
-                  {phase !== null && ending && (
-                    <Button variant="primary" block onClick={() => renewAssistant(seat)}>Renew through {year + 2}</Button>
-                  )}
-                  <Button variant="secondary" block onClick={() => setShowReplacements((open) => !open)}>
-                    {showReplacements ? 'Hide the candidates' : 'Find a replacement'}
-                  </Button>
-                  <ConfirmButton
-                    variant="danger"
-                    block
-                    idle="Release coach"
-                    armed={`Tap again to release ${firstName(man.name)}`}
-                    armedMeta={`Frees ${dollars(man.wage)}`}
-                    onConfirm={() => { setShowReplacements(false); fireAssistant(seat); }}
-                  />
-                </div>
-              )}
-            </section>
+            {/* A renewal is an offseason act (`renewAssistant`): two more seasons from this one. */}
+            <Callout
+              tone={ending ? 'warning' : 'neutral'}
+              icon="clock"
+              title={ending ? 'His contract ends this season' : `Signed through ${until}`}
+            >
+              {ending
+                ? `Renew it ${phase !== null ? 'now' : 'in the offseason'}, or he leaves. A renewal runs through ${year + 2}.`
+                : 'Nothing to decide right now.'}
+            </Callout>
+            <SkillBars title="What he adds" rows={staffAdds(man, coachSkills)} />
             {showReplacements && candidates}
           </>
         )}
@@ -553,37 +666,41 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
 
 /* -------------------------------------------------------------- Facilities */
 
-const weeksAt = (level: number): number => (level >= 3 ? 3 : level >= 2 ? 4 : 5);
-
-/** A building's rows for the comparison, read off the engine's own numbers. */
+/**
+ * A building's rows for the now-versus-next table, read off the engine's own
+ * numbers. Its main effect leads: the clubhouse is about recruits, the others
+ * about growth. The coach's season work closes every table.
+ */
 function facilityRows(kind: Building, level: number): CompareRow[] {
   const spec = buildingSpec(kind);
   const next = Math.min(FACILITY_MAX_LEVEL, level + 1);
   const now = facilityEffectAt(kind, level);
   const nxt = facilityEffectAt(kind, next);
   const unbuilt = level === 0;
-  const rows: CompareRow[] = [];
-  const num = (label: string, hint: string | undefined, a: number, b: number, extra: Partial<CompareRow>): void => {
-    rows.push({ label, hint, now: a, next: b, nowText: unbuilt ? '—' : undefined, ...extra });
-  };
+  const num = (label: string, hint: string | undefined, a: number, b: number, extra: Partial<CompareRow>): CompareRow => (
+    { label, hint, now: a, next: b, nowText: unbuilt ? '—' : undefined, ...extra }
+  );
+  const training: CompareRow[] = [];
   if (spec.bat > 0 && spec.arm > 0) {
-    num('Hitter and pitcher training', 'Extra growth each offseason', Math.round(now.bat), Math.round(nxt.bat), { signed: true });
+    training.push(num('Hitter and pitcher training', 'Extra growth each offseason', Math.round(now.bat), Math.round(nxt.bat), { signed: true }));
   } else {
-    if (spec.bat > 0) num('Hitter training', 'Extra growth each offseason', Math.round(now.bat), Math.round(nxt.bat), { signed: true });
-    if (spec.arm > 0) num('Pitcher training', 'Extra growth each offseason', Math.round(now.arm), Math.round(nxt.arm), { signed: true });
+    if (spec.bat > 0) training.push(num('Hitter training', 'Extra growth each offseason', Math.round(now.bat), Math.round(nxt.bat), { signed: true }));
+    if (spec.arm > 0) training.push(num('Pitcher training', 'Extra growth each offseason', Math.round(now.arm), Math.round(nxt.arm), { signed: true }));
   }
-  if (spec.guard < 1) {
-    num('Arm injury risk', undefined, -Math.round((1 - now.guard) * 100), -Math.round((1 - nxt.guard) * 100), { unit: '%', better: 'down' });
-  }
-  if (spec.pitch > 0) {
-    num('Appeal to recruits', undefined, Math.round(now.pitch * 100), Math.round(nxt.pitch * 100), { unit: '%', signed: true });
-  }
-  const seat: StaffSeat = kind === 'cage' ? 'hitting' : kind === 'pen' ? 'pitching' : 'recruiting';
-  const label = `${SEAT_LABEL[seat]} projects`;
-  if (unbuilt) rows.push({ label, nowText: 'Locked', nextText: '5 wk', changeText: 'Unlocks' });
-  else if (level >= FACILITY_MAX_LEVEL) rows.push({ label, nowText: `${weeksAt(level)} wk` });
-  else rows.push({ label, now: weeksAt(level), next: weeksAt(next), unit: ' wk', better: 'down' });
-  return rows;
+  const injury: CompareRow[] = spec.guard < 1
+    ? [num('Arm injury risk', undefined, -Math.round((1 - now.guard) * 100), -Math.round((1 - nxt.guard) * 100), { unit: '%', better: 'down' })]
+    : [];
+  const appeal: CompareRow[] = spec.pitch > 0
+    ? [num('Appeal to recruits', undefined, Math.round(now.pitch * 100), Math.round(nxt.pitch * 100), { unit: '%', signed: true })]
+    : [];
+  const label = WORK_ROW[kind];
+  // The unit is the hint, as on the training rows, so the cells stay short at every text size.
+  const hint = kind === 'clubhouse' ? 'Strength a week' : 'Points a player';
+  const work: CompareRow = unbuilt ? { label, hint, nowText: 'Locked', nextText: `+${workAt(kind, 1)}` }
+    : level >= FACILITY_MAX_LEVEL ? { label, hint, nowText: `+${workAt(kind, level)}` }
+      : { label, hint, now: workAt(kind, level), next: workAt(kind, next), signed: true, better: 'up' };
+  const effects = spec.pitch >= 0.1 ? [...appeal, ...training, ...injury] : [...training, ...injury, ...appeal];
+  return [...effects, work];
 }
 
 export function FacilitiesRoom({ team }: { team: Owner }) {
@@ -591,90 +708,97 @@ export function FacilitiesRoom({ team }: { team: Owner }) {
   const runsFacilities = useDynasty((s) => handles(s.depth, 'facilities'));
   const build = useDynasty((s) => s.build);
   const upgradeFacility = useDynasty((s) => s.upgradeFacility);
-  const back = useRoomBack();
   const left = remaining(economy, team.prestige);
-  const built = BUILDINGS.filter((b) => facilityLevel(economy, b.key) > 0).length;
-  const levels = BUILDINGS.reduce((n, b) => n + facilityLevel(economy, b.key), 0);
+  const total = annualBudget(team.prestige) + (economy.grant ?? 0);
+  const wages = wageBill(economy.staff);
+  const page = useRef<HTMLElement | null>(null);
 
-  // Arriving from a coach's "Build the Pitching Lab" opens that building; so
-  // does landing here with nothing asked for, on the cheapest thing you could
+  // Arriving from a coach's "Build the Pitching Lab" opens that building;
+  // landing here with nothing asked for opens the cheapest thing you could
   // do next.
-  const [shown, setShown] = useState<Building>(() => {
+  const [arrival] = useState<Building | null>(() => {
     const want = pendingFacility;
     pendingFacility = null;
-    if (want) return want;
+    return want;
+  });
+  const [open, setOpen] = useState<ReadonlySet<Building>>(() => {
+    if (arrival) return new Set([arrival]);
+    /*
+      Except during the tour, whose building lesson is the Hitting Barn: it
+      waits for the barn's build button (`facility-cta`), and the cheapest
+      row on a new campus is the clubhouse, so the barn is the row that
+      opens. The old room had the same gap and simply left the tour silent.
+    */
+    const s = useDynasty.getState();
+    const step = activeGuideStep(s.seenTutorials, s.season !== null && s.phase === null && s.history.length === 0, readPrefs().tutorials);
+    if ((step?.id === 'facilities' || step?.id === 'build') && facilityLevel(economy, 'cage') < FACILITY_MAX_LEVEL) {
+      return new Set<Building>(['cage']);
+    }
     const cheapest = BUILDINGS
       .map((b) => ({ key: b.key, level: facilityLevel(economy, b.key) }))
       .filter((b) => b.level < FACILITY_MAX_LEVEL)
       .sort((a, b) => facilityUpgradeCost(a.key, a.level + 1) - facilityUpgradeCost(b.key, b.level + 1))[0];
-    return cheapest?.key ?? BUILDINGS[0]!.key;
+    return new Set<Building>(cheapest ? [cheapest.key] : []);
   });
-
-  const spec = BUILDINGS.find((b) => b.key === shown) ?? BUILDINGS[0]!;
-  const level = facilityLevel(economy, spec.key);
-  const maxed = level >= FACILITY_MAX_LEVEL;
-  const cost = maxed ? undefined : facilityUpgradeCost(spec.key, level + 1);
+  /*
+    Rows open and close on their own, never one closing another: closing a
+    row above the one you tapped would pull the tapped row up under your
+    finger. Only an arrival scrolls, once, so the building you came for is
+    in view; showing the room again (the kept-alive screen) moves nothing.
+  */
+  const toggle = (b: Building): void => setOpen((was) => {
+    const next = new Set(was);
+    if (next.has(b)) next.delete(b); else next.add(b);
+    return next;
+  });
+  const arrived = useRef(false);
+  useEffect(() => {
+    if (!arrival || arrived.current) return;
+    arrived.current = true;
+    page.current?.querySelector<HTMLElement>(`[data-facility="${arrival}"]`)?.scrollIntoView({ block: 'nearest' });
+  }, [arrival]);
 
   return (
-    <main className="pb-page">
+    <main className="pb-page" ref={page}>
       <Marquee
-        back={back}
         eyebrow={`${team.def.school} · Campus`}
         title="Facilities"
         trailing={<BudgetChip team={team} />}
-        numbers={[
-          { label: 'Built', value: built, unit: '/3' },
-          { label: 'Levels', value: levels, unit: '/9' },
-          {
-            label: 'Next',
-            value: cost != null ? dollars(cost) : '—',
-            note: cost != null ? (cost <= Math.max(0, left) ? 'Within budget' : 'Over budget') : 'Fully built',
-            tone: cost != null ? (cost <= Math.max(0, left) ? 'positive' : 'warning') : undefined,
-          },
-        ]}
       />
       <FirstVisit id="facilities" />
       {!runsFacilities && (
         <Callout tone="info" title="Your athletic director runs the building projects" guide="facility-delegated" />
       )}
-
-      <TileGrid cols={3} label="Your buildings">
-        {BUILDINGS.map((b) => {
-          const lv = facilityLevel(economy, b.key);
-          const full = lv >= FACILITY_MAX_LEVEL;
-          const price = full ? undefined : facilityUpgradeCost(b.key, lv + 1);
-          return (
-            <Plaque
-              key={b.key}
-              art={<FacilityArt kind={b.key} className="pb-facility-art" />}
-              label={FACILITY_SHORT[b.key]}
-              value={full ? 'Max' : `L${lv}`}
-              note={full ? 'Fully built' : price != null ? dollars(price) : undefined}
-              tone={full ? 'positive' : price != null && price > Math.max(0, left) ? 'warning' : undefined}
-              selected={b.key === shown}
-              guide={b.key === 'cage' ? 'facility-cage' : undefined}
-              onClick={() => setShown(b.key)}
-            />
-          );
-        })}
-      </TileGrid>
-
-      <div data-facility={spec.key} className="pb-anchor">
-        <FacilityCard
-          key={spec.key}
-          kind={spec.key}
-          name={FACILITY_NAME[spec.key]}
-          blurb={spec.blurb}
-          level={level}
-          max={FACILITY_MAX_LEVEL}
-          benefits={facilityRows(spec.key, level)}
-          cost={cost}
-          budgetLeft={Math.max(0, left)}
-          delegated={!runsFacilities}
-          onUpgrade={() => (level === 0 ? build(spec.key) : upgradeFacility(spec.key))}
-          guide={spec.key === 'cage' ? { cta: 'facility-cta', blocked: 'facility-blocked' } : undefined}
-        />
-      </div>
+      <BudgetSummary
+        total={total}
+        left={left}
+        parts={[
+          { label: 'Staff wages', value: wages, tone: 'ink' },
+          { label: SCOUTING ? 'Buildings and scouting' : 'Buildings', value: economy.spent, tone: 'info' },
+        ]}
+      />
+      {BUILDINGS.map((b) => {
+        const level = facilityLevel(economy, b.key);
+        const maxed = level >= FACILITY_MAX_LEVEL;
+        return (
+          <FacilityCard
+            key={b.key}
+            kind={b.key}
+            name={FACILITY_NAME[b.key]}
+            helps={FACILITY_HELPS[b.key]}
+            level={level}
+            max={FACILITY_MAX_LEVEL}
+            cost={maxed ? undefined : facilityUpgradeCost(b.key, level + 1)}
+            budgetLeft={left}
+            rows={facilityRows(b.key, level)}
+            open={open.has(b.key)}
+            onToggle={() => toggle(b.key)}
+            delegated={!runsFacilities}
+            onUpgrade={() => (level === 0 ? build(b.key) : upgradeFacility(b.key))}
+            guide={b.key === 'cage' ? { head: 'facility-cage', cta: 'facility-cta', blocked: 'facility-blocked' } : undefined}
+          />
+        );
+      })}
     </main>
   );
 }
@@ -700,15 +824,11 @@ const NOTE_TONE: Record<string, 'positive' | 'info' | undefined> = {
 export function NetworkRoom({ team }: { team: Owner }) {
   const economy = useDynasty((s) => s.economy);
   const season = useDynasty((s) => s.season);
-  const setSheet = useDynasty((s) => s.setProgramSheet);
-  const openCoach = useDynasty((s) => s.openCoach);
-  const back = useRoomBack();
   const [explore, setExplore] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const home = team.def.state;
   const coordinator = economy.staff.recruiting;
-  const week = season?.recruiting.week ?? 0;
-  const weeksAvailable = week >= 1 ? Math.max(0, RECRUITING_WEEKS - week + 1) : 0;
+  const weeksAvailable = recruitingWeeksLeft(season?.recruiting.week ?? 0);
   const status = staffWorkStatus(economy, 'recruiting', weeksAvailable);
   const project = staffPlan(economy, 'recruiting').project;
   const day = season?.dayIndex ?? 0;
@@ -759,14 +879,12 @@ export function NetworkRoom({ team }: { team: Owner }) {
   const planWork = (state: string): void => {
     setOpen(null);
     pendingNetworkState = state;
-    setSheet('staff');
-    openCoach('recruiting');
+    openStaffDesk('recruiting');
   };
 
   return (
     <main className="pb-page">
       <Marquee
-        back={back}
         eyebrow={`${team.def.school} · ${stateName(home)}`}
         title="Recruiting network"
         trailing={<BudgetChip team={team} />}
@@ -799,7 +917,9 @@ export function NetworkRoom({ team }: { team: Owner }) {
 
       <section>
         <SectionHeader title="Recruiting coordinator" />
-        <TileGrid label="Recruiting coordinator">
+        {/* The coordinator's plaque runs the full width while the scouting
+            plaque beside it is held back (features.ts). */}
+        <TileGrid label="Recruiting coordinator" className={SCOUTING ? undefined : 'pb-tiles--one'}>
           {coordinator ? (
             <Plaque
               art={<Monogram name={coordinator.name} size={30} />}
@@ -810,7 +930,7 @@ export function NetworkRoom({ team }: { team: Owner }) {
                 ? `${PROJECT_LABEL[project.kind]}${project.state ? ` · ${stateName(project.state)}` : ''}`
                 : status.label}
               tone={status.state === 'active' ? 'info' : status.state === 'paused' ? 'warning' : undefined}
-              onClick={() => { setSheet('staff'); openCoach('recruiting'); }}
+              onClick={() => openStaffDesk('recruiting')}
             />
           ) : (
             <Plaque
@@ -818,16 +938,20 @@ export function NetworkRoom({ team }: { team: Owner }) {
               label="Open seat"
               value="—"
               note="Builds pipelines beyond home"
-              onClick={() => { setSheet('staff'); openCoach('recruiting'); }}
+              onClick={() => openStaffDesk('recruiting')}
             />
           )}
-          <Plaque
-            icon="globe"
-            label="Scouting reports"
-            value={books}
-            note={`${dollars(SCOUT_COST)} · ${SCOUT_DAYS} days each`}
-            tone={books > 0 ? 'info' : undefined}
-          />
+          {/* Held back with the feature (state/features.ts): a plaque must
+              not price a report nobody can buy. */}
+          {SCOUTING && (
+            <Plaque
+              icon="globe"
+              label="Scouting reports"
+              value={books}
+              note={`${dollars(SCOUT_COST)} · ${SCOUT_DAYS} days each`}
+              tone={books > 0 ? 'info' : undefined}
+            />
+          )}
         </TileGrid>
       </section>
 

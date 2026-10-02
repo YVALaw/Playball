@@ -7,18 +7,21 @@ import { createPortal } from 'react-dom';
 import { Icon, type IconName } from './Icon.js';
 import { Button, cx, type ButtonProps } from './core.js';
 import { useDialogFocus } from '../../dialogFocus.js';
+import { useScreenOwner } from '../../screenOwner.js';
 
 /* -------------------------------------------------------------------- Card */
 
 export function Card({
-  title, eyebrow, trailing, footer, flush, label, children, className,
+  title, eyebrow, trailing, footer, flush, label, children, className, onClick,
 }: {
   title?: ReactNode; eyebrow?: string; trailing?: ReactNode; footer?: ReactNode; flush?: boolean;
   label?: string; children?: ReactNode; className?: string;
+  /** The whole card is the control: a summary on the home page that opens its screen. */
+  onClick?: () => void;
 }) {
   const hasHead = title || eyebrow || trailing;
-  return (
-    <section className={cx('pb-card', flush && 'pb-card--flush', className)} aria-label={label}>
+  const body = (
+    <>
       {hasHead && (
         <header className="pb-card__head">
           <span className="pb-card__titles">
@@ -30,7 +33,19 @@ export function Card({
       )}
       {children != null && <div className="pb-card__body">{children}</div>}
       {footer && <footer className="pb-card__foot">{footer}</footer>}
-    </section>
+    </>
+  );
+  const cls = cx('pb-card', flush && 'pb-card--flush', onClick && 'is-interactive', className);
+  if (!onClick) return <section className={cls} aria-label={label}>{body}</section>;
+  return (
+    <section
+      className={cls}
+      aria-label={label}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+    >{body}</section>
   );
 }
 
@@ -217,10 +232,17 @@ export function EmptyState({
 /* --------------------------------------------------------------- ActionBar */
 
 /** The screen's one forward action, pinned to the bottom of the frame. */
+/**
+ * The bar of buttons pinned to the foot of a screen.
+ *
+ * `note` is the line over the buttons. Pass `''` to keep the line's room
+ * with nothing in it: a bar whose note comes and goes with the state changed
+ * height with it, and the buttons rose and fell under the thumb.
+ */
 export function ActionBar({ note, children, className }: { note?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <div className={cx('pb-actionbar', className)}>
-      {note && <span className="pb-actionbar__note">{note}</span>}
+      {note !== undefined && note !== null && note !== false && <span className="pb-actionbar__note">{note}</span>}
       <span className="pb-actionbar__buttons">{children}</span>
     </div>
   );
@@ -307,6 +329,12 @@ export interface SheetProps {
   tall?: boolean;
   /** The guided tour's name for the close button. */
   closeGuide?: string;
+  /**
+   * Laid under a room it opened: kept mounted, so its back layer and history
+   * entry stay where they are in the stack, but not shown and not reachable.
+   * The Season plan uses it while a hiring desk or a building is up over it.
+   */
+  covered?: boolean;
 }
 
 /**
@@ -316,10 +344,12 @@ export interface SheetProps {
  */
 export function Sheet({
   title, eyebrow, subtitle, lead, onClose, closeLabel = 'Close', footer, children, className, layer = true, guide, tall, closeGuide,
+  covered = false,
 }: SheetProps) {
   const ref = useRef<HTMLElement | null>(null);
   const titleId = useId();
   const host = typeof document === 'undefined' ? null : document.querySelector('.app-frame');
+  const owner = useScreenOwner();
   useDialogFocus(ref, onClose, { layer, active: !!host });
 
   /*
@@ -355,7 +385,14 @@ export function Sheet({
 
   if (!host) return null;
   return createPortal(
-    <div className="pb-sheet-host" onClick={onClose}>
+    <div
+      className="pb-sheet-host"
+      data-owner={owner}
+      onClick={onClose}
+      style={covered ? { display: 'none' } : undefined}
+      inert={covered || undefined}
+      aria-hidden={covered || undefined}
+    >
       <section
         ref={ref}
         className={cx('pb-sheet', tall && 'pb-sheet--tall', pulling && 'is-pulling', className)}

@@ -1,0 +1,181 @@
+/* design/roster.css
+ * The roster and the player card: flag counters, grouped rows, the card's
+ * at-a-glance tiles, promise tracker and drill-in hub.
+ * From the UI clarity review (design/UI Clarity Review/Roster and Player.dc.html, 2026-09-25).
+ */
+
+/* ================================================================= roster */
+
+/* The three counters that are also the filters. One tile each, the same
+   size whatever it holds; the one filtering the list takes its tone's
+   border, which is drawn inside the box so nothing moves when it lights. */
+.pb-roster__flags { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.pb-roster__flag {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0;
+  padding: 10px var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-control);
+  background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+  transition: border-color var(--duration-quick) ease, box-shadow var(--duration-quick) ease,
+    background-color var(--duration-quick) ease;
+}
+.pb-roster__flag:active:not(:disabled) { background: var(--surface-sunken); }
+.pb-roster__flag:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pb-roster__flag-count { display: flex; align-items: center; gap: 6px; }
+.pb-roster__flag-count b { font: 700 calc(22px * var(--pb-ts, 1))/1 var(--font-numeral); font-variant-numeric: tabular-nums; }
+.pb-roster__flag small {
+  max-width: 100%; overflow: hidden; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans);
+  color: var(--ink-muted); text-overflow: ellipsis; white-space: nowrap;
+}
+.pb-roster__flag.is-negative .pb-roster__flag-count { color: var(--negative); }
+.pb-roster__flag.is-warning .pb-roster__flag-count { color: var(--warning); }
+/* Nothing to count is good news, not an alarm: grey, and nothing to filter. */
+.pb-roster__flag.is-zero .pb-roster__flag-count { color: var(--ink-muted); }
+.pb-roster__flag.is-zero { cursor: default; }
+.pb-roster__flag.is-on.is-negative { border-color: var(--negative); box-shadow: inset 0 0 0 1px var(--negative); }
+.pb-roster__flag.is-on.is-warning { border-color: var(--warning); box-shadow: inset 0 0 0 1px var(--warning); }
+
+/* A group: its name and count, the columns' names on the right, its rows. */
+.pb-roster__group { display: flex; flex-direction: column; gap: var(--space-2); }
+.pb-roster__grouphead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.pb-roster__grouphead h2 { margin: 0; font: 600 calc(15px * var(--pb-ts, 1))/22px var(--font-sans); color: var(--ink); }
+.pb-roster__grouphead h2 span { margin-left: 6px; font-weight: 500; color: var(--ink-muted); }
+.pb-roster__grouphead small { flex: none; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+
+/* The rows: the design system's PlayerRow, a little tighter, with the
+   potential set as a small grade over its caption beside the rating. */
+.pb-roster .pb-prow { min-height: 60px; padding: 10px 14px; }
+.pb-roster .pb-prow.is-flag-negative { box-shadow: inset 3px 0 0 var(--negative); }
+.pb-roster .pb-prow.is-flag-warning { box-shadow: inset 3px 0 0 var(--warning); }
+/* The chips sit on the tag line itself and wrap with it. */
+.pb-roster .pb-prow__metatext { display: contents; }
+.pb-roster .pb-prow__stats { gap: 0; }
+.pb-roster .pb-prow__stat { flex-direction: column-reverse; align-items: center; gap: 0; min-width: 30px; }
+.pb-roster .pb-prow__stat b { font: 700 calc(17px * var(--pb-ts, 1))/1 var(--font-numeral); color: var(--ink-muted); }
+.pb-roster .pb-prow__stat small { font: 500 calc(10.5px * var(--pb-ts, 1))/14px var(--font-sans); }
+
+/* A status on a row: what keeps him out, the draft, his mood. */
+.pb-roster__chip {
+  display: inline-flex; align-items: center; gap: 3px; min-height: 20px; padding: 0 7px;
+  border-radius: var(--radius-pill); background: var(--surface-sunken); color: var(--ink-muted);
+  font: 600 calc(11.5px * var(--pb-ts, 1))/1 var(--font-sans); white-space: nowrap;
+}
+.pb-roster__chip.is-bad { background: var(--negative-soft); color: var(--negative); }
+.pb-roster__chip.is-warn { background: var(--warning-soft); color: var(--warning); }
+
+/* ============================================================ player card */
+
+.pb-pcard__head { display: flex; align-items: center; gap: 14px; }
+.pb-pcard__who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pb-pcard__eyebrow { display: flex; align-items: center; gap: 6px; min-width: 0; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__eyebrow > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-pcard__name {
+  margin: 0; font: 700 calc(24px * var(--pb-ts, 1))/1.25 var(--font-sans); letter-spacing: -0.01em;
+  color: var(--ink); overflow-wrap: anywhere;
+}
+.pb-pcard__meta { font: 400 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Rating and potential, side by side, the two numbers every page is read against. */
+.pb-pcard__numbers {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-card);
+}
+.pb-pcard__number { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: var(--space-3) var(--space-4); }
+.pb-pcard__number + .pb-pcard__number { border-left: 1px solid var(--line); }
+.pb-pcard__number > span { font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__number > b {
+  display: flex; align-items: center; min-height: calc(32px * var(--pb-ts, 1));
+  font: 700 calc(32px * var(--pb-ts, 1))/1 var(--font-numeral); color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.pb-pcard__number > b.is-locked { color: var(--ink-disabled); }
+
+/* A labelled part of the card's top: At a glance, What you owe him, More about him. */
+.pb-pcard__section { display: flex; flex-direction: column; gap: var(--space-2); }
+.pb-pcard__kicker {
+  font: 600 calc(10.5px * var(--pb-ts, 1))/14px var(--font-sans); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-muted);
+}
+
+/* At a glance: two by two, each tile tinted by what it says. */
+.pb-pcard__glance { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.pb-pcard__tile {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px var(--space-3);
+  border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface);
+}
+.pb-pcard__tile-label { display: flex; align-items: center; gap: 6px; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__tile-label > i { flex: none; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--line-strong); }
+.pb-pcard__tile > b { font: 600 calc(15.5px * var(--pb-ts, 1))/20px var(--font-sans); color: var(--ink); }
+.pb-pcard__tile > small { font: 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__tile.is-ok .pb-pcard__tile-label > i { background: var(--positive); }
+.pb-pcard__tile.is-warn { background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 30%, var(--line)); }
+.pb-pcard__tile.is-warn .pb-pcard__tile-label > i { background: var(--warning); }
+.pb-pcard__tile.is-warn > b { color: var(--warning); }
+.pb-pcard__tile.is-bad { background: var(--negative-soft); border-color: color-mix(in srgb, var(--negative) 30%, var(--line)); }
+.pb-pcard__tile.is-bad .pb-pcard__tile-label > i { background: var(--negative); }
+.pb-pcard__tile.is-bad > b { color: var(--negative); }
+
+/* What you owe him: the promise, how it stands, a bar to the mark promised. */
+.pb-pcard__promise {
+  display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) 14px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-card);
+}
+.pb-pcard__promise-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.pb-pcard__promise-head b { min-width: 0; font: 600 calc(14.5px * var(--pb-ts, 1))/20px var(--font-sans); color: var(--ink); }
+.pb-pcard__promise-head span { flex: none; font: 600 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); white-space: nowrap; }
+.pb-pcard__promise p { margin: 0; font: 400 calc(12.5px * var(--pb-ts, 1))/17px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__bar { position: relative; display: block; height: var(--size-bar); border-radius: var(--radius-pill); background: var(--track); }
+.pb-pcard__bar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--radius-pill); background: var(--positive); }
+.pb-pcard__bar-fill.is-warning { background: var(--warning); }
+.pb-pcard__bar-fill.is-negative { background: var(--negative); }
+.pb-pcard__bar-fill.is-muted { background: var(--line-strong); }
+.pb-pcard__bar-target { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); }
+/* The two-way chance: one bar for each count. */
+.pb-pcard__half { display: grid; grid-template-columns: 64px minmax(0, 1fr) 40px; align-items: center; gap: var(--space-2); }
+.pb-pcard__half small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__half b { font: 700 calc(15px * var(--pb-ts, 1))/1 var(--font-numeral); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* More about him: one row a part, its summary on one line. */
+.pb-pcard__hub .pb-row { min-height: 62px; padding: 10px 14px; }
+.pb-pcard__hub .pb-row__mark { width: 36px; height: 36px; border-radius: 10px; }
+.pb-pcard__hub .pb-row__body { gap: 0; }
+.pb-pcard__hub .pb-row__title { line-height: 20px; }
+/* Two lines at most, rather than one cut short: "also covers right, left
+   an…" read as the card overflowing on a phone (2026-09-26). */
+.pb-pcard__hub .pb-row__subtitle {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  overflow: hidden; font-size: calc(12.5px * var(--pb-ts, 1)); line-height: 17px;
+  white-space: normal;
+}
+/* An alumnus's totals, one half to a row under its name (Player.tsx,
+   Alumnus): six numbers in one row ran into each other on a phone. */
+.pb-alum-half { display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* A season row's class and school (Player.tsx, SeasonTable). A year at
+   another school says which on a second line rather than losing it to an
+   ellipsis beside five stat columns. */
+.pb-seasoncell .pb-teamcell__sub { white-space: normal; overflow-wrap: anywhere; }
+
+/* His badges' emblems under the Badges row's line (PlayerHub.tsx). The
+   emblem's own margin makes room for its metal ring. */
+.pb-pcard__hub .pb-row__extra { margin-top: var(--space-1); }
+.pb-pcard__emblems { display: flex; flex-wrap: wrap; gap: 2px; margin-left: -3px; }
+
+/* Ratings, one level down: the scale in each card's corner, and each rating's
+   bar with the room his potential leaves striped past it and the league's
+   middle marked at 50. */
+.pb-pcard__scale { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); white-space: nowrap; }
+.pb-pcard__room {
+  display: grid; grid-template-columns: minmax(96px, 36%) minmax(0, 1fr) 64px; align-items: center;
+  gap: var(--space-3); min-height: 30px;
+}
+.pb-pcard__room-label { font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink); }
+.pb-pcard__room-bar { position: relative; display: block; height: var(--size-bar); border-radius: var(--radius-pill); background: var(--track); }
+.pb-pcard__room-bar > i { position: absolute; top: 0; bottom: 0; }
+.pb-pcard__room-bar > .pb-pcard__room-fill { left: 0; border-radius: var(--radius-pill); background: var(--accent); }
+.pb-pcard__room-bar > .pb-pcard__room-ghost {
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+  background: repeating-linear-gradient(135deg, var(--accent) 0 2px, transparent 2px 5px); opacity: 0.55;
+}
+.pb-pcard__room-bar > .pb-pcard__room-avg { left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--line-strong); }
+.pb-pcard__room-value { display: flex; align-items: baseline; justify-content: flex-end; gap: 4px; }
+.pb-pcard__room-value b { font: 700 calc(17px * var(--pb-ts, 1))/1 var(--font-numeral); color: var(--ink); font-variant-numeric: tabular-nums; }
+.pb-pcard__room-value small { font: 500 calc(12px * var(--pb-ts, 1))/1 var(--font-sans); color: var(--positive); }

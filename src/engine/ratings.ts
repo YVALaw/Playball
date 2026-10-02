@@ -770,6 +770,27 @@ export function overallOf(p: Hitter | Pitcher): number {
 }
 
 /**
+ * What his glove is worth where his `pos` puts him, on the 0-100 scale: the
+ * fielding half of `overallOf`. Hand it a man already taxed for a spot
+ * (`fieldingAt`, with `pos` set to that spot) to ask how he would field there.
+ * The lineup's position picker ranks by it: an overall-at-the-spot is mostly
+ * bat, so a slugger who has never caught out-scored the catcher there.
+ */
+export function gloveOf(p: Hitter | Pitcher): number {
+  return Math.round(gloveScore(p));
+}
+
+/**
+ * What his bat alone is worth: the hitting half of `overallOf`, the same
+ * weights, put back on the 0-100 scale. What a man brings to the DH, where his
+ * glove never plays, so the lineup's DH picker ranks by it rather than by an
+ * overall still counting a glove the slot does not use.
+ */
+export function batScore(p: Hitter): number {
+  return Math.round((p.contact * 0.29 + p.power * 0.24 + p.eye * 0.15 + p.speed * 0.12) / (1 - HITTER_GLOVE));
+}
+
+/**
  * A ceiling a man now stands above is not a ceiling.
  *
  * Scouts revise a projection upward when somebody outgrows it, and without
@@ -782,13 +803,22 @@ export function overallOf(p: Hitter | Pitcher): number {
  * every program in the country began fielding a fitted nine.
  */
 export function respectCeiling(p: Hitter | Pitcher): void {
-  // Where he stands tonight AND where he is himself. A card adopts a man to
-  // a spot (`adoptSpot`, homePos kept), a winter measures him there, and the
-  // bench sends him home a point above a ceiling measured on the tax he was
-  // paying somewhere else. Both readings, so the number never lies at either.
-  const home = 'homePos' in p && p.homePos ? overallOf({ ...p, pos: p.homePos } as Hitter) : 0;
-  const now = Math.max(overallOf(p), home);
+  const now = ceilingReading(p);
   if (now > p.potential) p.potential = now;
+}
+
+/**
+ * Where a ceiling is measured: at the spot he stands and at his own
+ * (respectCeiling reads it, and so does the staff's season work).
+ *
+ * Where he stands tonight AND where he is himself. A card adopts a man to a
+ * spot (`adoptSpot`, homePos kept), a winter measures him there, and the bench
+ * sends him home a point above a ceiling measured on the tax he was paying
+ * somewhere else. Both readings, so the number never lies at either.
+ */
+export function ceilingReading(p: Hitter | Pitcher): number {
+  const home = 'homePos' in p && p.homePos ? overallOf({ ...p, pos: p.homePos } as Hitter) : 0;
+  return Math.max(overallOf(p), home);
 }
 
 /**

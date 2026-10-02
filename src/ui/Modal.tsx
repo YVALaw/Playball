@@ -13,6 +13,7 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useDialogFocus } from './dialogFocus.js';
+import { useScreenOwner } from './screenOwner.js';
 import { Icon, cx } from './components/ui/index.js';
 
 /**
@@ -102,9 +103,10 @@ export function Modal(
   }, [nudge]);
 
   const titleId = useId();
+  const owner = useScreenOwner();
   const host = typeof document === 'undefined' ? null : document.querySelector('.app-frame');
   const dialog = (
-    <div className="pb-dialog-host" onClick={dismiss}>
+    <div className="pb-dialog-host" data-owner={owner} onClick={dismiss}>
       <section
         ref={card}
         role="dialog"

@@ -127,9 +127,11 @@ export const SYSTEMS: readonly SystemDef[] = [
     casual: true,
   },
   {
-    key: 'recruiting', label: 'The recruiting board',
-    blurb: 'You work your own board and spend your own week.',
-    whenOff: 'Your coordinator works the board.',
+    // Off is a list, not a hand-off (2026-09-28): the coach stars up to eight
+    // recruits and the staff works them, and since 2026-09-30 nobody else.
+    key: 'recruiting', label: 'Recruiting',
+    blurb: 'You work the board each week.',
+    whenOff: 'Your staff works only the recruits you star.',
     casual: true,
   },
   {

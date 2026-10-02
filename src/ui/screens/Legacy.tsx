@@ -29,6 +29,7 @@ import { makeRng } from '../../engine/rng.js';
 import { randomProfile, type CoachProfile } from '../../engine/program.js';
 import { BACKGROUNDS, type BackgroundId } from '../../data/backgrounds.js';
 import { CoachPortrait } from '../CoachPortrait.js';
+import { HallOfFameLogo, Trophy } from '../Honours.js';
 import {
   ActionBar, Button, Callout, Card, List, ListRow, Marquee, Plaque, TileGrid,
 } from '../components/ui/index.js';
@@ -162,6 +163,8 @@ export function Legacy() {
         mark={legend.look && <span className="pb-portrait"><CoachPortrait look={legend.look} size={72} /></span>}
       />
 
+      {hall && <HallOfFameLogo height={84} className="pb-hall-banner" />}
+
       <Callout
         tone={ending.tone === 'gold' ? 'positive' : 'info'}
         icon={ending.tone === 'gold' ? 'star-filled' : 'bookmark'}
@@ -175,7 +178,7 @@ export function Legacy() {
       {/* Every number opens what is behind it. */}
       <TileGrid label="The cabinet" cols={3}>
         <Plaque
-          icon="star-filled"
+          art={<Trophy kind="national" size={26} />}
           label="National"
           value={legend.titles}
           tone={legend.titles > 0 ? 'positive' : undefined}
@@ -183,13 +186,13 @@ export function Legacy() {
           onClick={() => open({ kind: 'years', title: 'National titles', filter: 'titles' })}
         />
         <Plaque
-          icon="target"
+          art={<Trophy kind="regional" size={26} />}
           label="Omaha"
           value={legend.regionalTitles}
           onClick={() => open({ kind: 'years', title: 'Trips to Omaha', filter: 'omaha' })}
         />
         <Plaque
-          icon="star"
+          art={<Trophy kind="conference" size={26} />}
           label="Conference"
           value={legend.conferenceTitles}
           onClick={() => open({ kind: 'years', title: 'League titles', filter: 'conference' })}

@@ -44,7 +44,7 @@ export function StepScreen({ children, bar, top }: { children: ReactNode; bar?: 
  * double tap would otherwise skip a step unseen.
  */
 export function ContinueBar(
-  { from, note, disabled, label, secondary, children }:
+  { from, note, disabled, label, secondary, variant = 'primary', children }:
   {
     from: Exclude<Phase, null>;
     /** What moving on costs, when it costs something. */
@@ -53,6 +53,13 @@ export function ContinueBar(
     /** In place of "Continue to …", for the step that does something else. */
     label?: string;
     secondary?: { label: string; onClick: () => void } | null;
+    /**
+     * The weight of the "Continue to …" button. Outlined while the step still
+     * has answers owed that moving on would give for you (the draft's men
+     * nobody has spoken to), solid once it has none. UI clarity review,
+     * 2026-09-25.
+     */
+    variant?: 'primary' | 'secondary';
     /** A different primary control altogether (a two-press button). */
     children?: ReactNode;
   },
@@ -70,7 +77,7 @@ export function ContinueBar(
     <ActionBar note={note}>
       {secondary && <Button variant="secondary" onClick={once(secondary.onClick)}>{secondary.label}</Button>}
       {children ?? (
-        <Button variant="primary" iconAfter="arrow-right" disabled={disabled} onClick={once(() => void next(from))}>
+        <Button variant={variant} iconAfter="arrow-right" disabled={disabled} onClick={once(() => void next(from))}>
           {label ?? (step ? CONTINUE_TO[step] ?? 'Continue' : 'Continue')}
         </Button>
       )}
@@ -95,16 +102,29 @@ export function useOffseasonPoints(): { pool: number; draft: number; portal: num
   return { pool, draft, portal: portalSpent, left: pool - draft - portalSpent };
 }
 
-export function OffseasonPointsCard() {
+export function OffseasonPointsCard(
+  { note }: {
+    /**
+     * A short line at the right of the head, standing in for the line under
+     * the meter: the draft's "Same pool as the transfer portal" (UI clarity
+     * review, 2026-09-25). Given at all, even as `false`, it replaces that
+     * line; left out, the card is as it always was.
+     */
+    note?: ReactNode;
+  },
+) {
   const pts = useOffseasonPoints();
   if (!pts) return null;
+  const replaced = note !== undefined;
   return (
-    <Card eyebrow="Offseason points" title={`${pts.left} of ${pts.pool} left`}>
+    <Card eyebrow="Offseason points" title={`${pts.left} of ${pts.pool} left`} trailing={replaced && note ? note : undefined}>
       <Meter value={Math.max(0, pts.left)} max={Math.max(1, pts.pool)} ariaLabel="Offseason points left" />
-      <p className="pb-text-muted">
-        Shared by the draft and the portal.
-        {pts.draft > 0 || pts.portal > 0 ? ` So far: ${pts.draft} in the draft, ${pts.portal} in the portal.` : ''}
-      </p>
+      {!replaced && (
+        <p className="pb-text-muted">
+          Shared by the draft and the portal.
+          {pts.draft > 0 || pts.portal > 0 ? ` So far: ${pts.draft} in the draft, ${pts.portal} in the portal.` : ''}
+        </p>
+      )}
     </Card>
   );
 }

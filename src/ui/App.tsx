@@ -10,40 +10,50 @@
 //
 // design/Roster Tabletop/ is the design of record.
 
-import { regularRecord, rulesOf } from '../engine/season.js';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { regularRecord } from '../engine/season.js';
+import { useShallow } from 'zustand/react/shallow';
 import {
-  backLayerCount, newestStoreLayer, peelBackLayer, stampLayer, subscribeBackLayers, topBackLayer, unstampLayer,
-} from '../state/backLayers.js';
+  Activity, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore,
+  type ReactNode,
+} from 'react';
+import { keptAlive, leftScroll, rememberScroll, scrollId, type Alive } from './keptAlive.js';
+import * as nav from '../state/nav.js';
+import { browserDeps, installHistorySync, type HistorySync } from './historySync.js';
+import { domQuery, levelHolder, movesScreen, toTarget } from './navTarget.js';
+import { arrive, backCancel, backCommit, backProgress, backStart } from './predictiveBack.js';
+import { markReturn, pushMark, trackPresses } from './returnMark.js';
 import { Modal } from './Modal.js';
 import { applyTeamAccent } from './accent.js';
 import { audioReady, preloadSfx, unlockAudio } from './sound.js';
 import { BigMomentCard } from './BigMoment.js';
 import { teamColour } from './Avatar.js';
-import { Button, Callout, CompareTable, Icon, List, ListRow, ScreenHeader, StatGroup, Stars, type IconName } from './components/ui/index.js';
+import { Button, Callout, Icon, List, ListRow, ScreenHeader, StatGroup, Stars, type IconName } from './components/ui/index.js';
 import {
-  PHASES, PHASE_LABEL, stepsFor, TABS, useDynasty, useUserTeam, nextNavInstant, markBackGesture, blockingCardUp, openerShowing,
-  careerFinished,
-  type ProgramSheet, type Tab,
+  PHASES, PHASE_LABEL, railSteps, TABS, useDynasty, useUserTeam,
+  isRoom,
+  type Tab, type Overlay as OverlayName,
 } from '../state/store.js';
-import { hasLayerToClose, Back, isNativeShell } from './backNav.js';
+import { Back, isNativeShell } from './backNav.js';
 import { initBilling } from '../state/billing.js';
+import { eraKey, frameOf } from '../state/era.js';
 import { readPrefs, writePrefs, applyPrefs } from '../state/devicePrefs.js';
 import { StepRail } from './StepRail.js';
 import { Overlay } from './Overlay.js';
+import { ScreenOwner, overlayOwner, overlayRule, ownerRule } from './screenOwner.js';
 import { AreaNav, SchoolHeader, SectionTabs } from './Chrome.js';
-import { capsWords, conferenceName, recordText } from './words.js';
+import { capsWords, conferenceName, plural, recordText } from './words.js';
 import { Today } from './screens/Today.js';
-import { Standings } from './screens/Standings.js';
+import { Standings, StandingsScreen } from './screens/Standings.js';
 import { Roster } from './screens/Roster.js';
 import { Schedule } from './screens/Schedule.js';
 import { Stats } from './screens/Stats.js';
 import { Lineup } from './screens/Lineup.js';
 import { Awards } from './screens/Awards.js';
 import { Manage } from './screens/Manage.js';
-import { History } from './screens/History.js';
+import { AlumniScreen, History } from './screens/History.js';
 import { Player } from './screens/Player.js';
 import { Program } from './screens/Program.js';
+import { RoomScreen } from './screens/Rooms.js';
 import { Captain } from './screens/Captain.js';
 import { JobMarket } from './screens/JobMarket.js';
 import { Portal } from './screens/Portal.js';
@@ -54,6 +64,8 @@ import { Board } from './screens/Board.js';
 import { GodOverlay } from './god/GodSheet.js';
 import { GodBolt } from './god/GodBolt.js';
 import { SeasonReview } from './screens/SeasonReview.js';
+import { SeasonTerms } from './screens/SeasonTerms.js';
+import { SeasonPlan } from './screens/SeasonPlan.js';
 import { CoachPoints } from './screens/CoachPoints.js';
 import { SigningDay } from './screens/SigningDay.js';
 import { Postseason } from './screens/Postseason.js';
@@ -75,37 +87,22 @@ import { prestigeStars } from '../engine/program.js';
 import { teamReads } from '../engine/tendencies.js';
 
 /**
- * The app, and the one piece of navigation state that is not in the store.
+ * How a table row opens a rival's page.
  *
- * A rival's page is opened from the conference table and the national rankings,
- * both of which render in two places apiece, so the way in is a context rather
- * than a callback threaded through four call sites. It lives here rather than
- * beside `selectedPlayer` in the store because the store is not this screen's to
- * change; the trade is that the card cannot be deep-linked or saved, which is
- * exactly as much as a card you opened to check somebody's record deserves.
+ * The conference table and the national rankings render in two places apiece,
+ * so the way in is a context rather than a callback threaded through four call
+ * sites. The card itself lives in the store now, beside `selectedPlayer`, so
+ * the back gesture sees it as one more level (back plan SW, 2026-09-30).
+ * Stable on purpose: a version that was a new function on every render once
+ * closed the card it had just opened ("tap SCOUT and it just flashes").
  */
-export function App() {
-  const [teamCard, setTeamCardRaw] = useState<number | null>(null);
-  /*
-    Stable on purpose. AppBody closes the card whenever `setTeamCard` changes
-    identity, and a version of this closure that captured `teamCard` was a new
-    function on every render — so opening a card re-rendered the app, which
-    minted a new setter, which fired that effect, which closed the card it had
-    just opened. Reported as "tap SCOUT and it just flashes the screen"; the
-    Tonight matchup and every Colleges row went the same way. The current
-    value lives in a ref so the setter never has to be rebuilt.
-  */
-  const teamCardNow = useRef<number | null>(null);
-  teamCardNow.current = teamCard;
-  const setTeamCard = useCallback((next: number | null): void => {
-    if (typeof window !== 'undefined' && next !== teamCardNow.current) {
-      window.dispatchEvent(new CustomEvent(next === null ? 'playball:history-consume' : 'playball:history-checkpoint',
-        next === null ? { detail: { count: 1 } } : undefined));
-      if (next === null) unstampLayer('teamCard'); else stampLayer('teamCard');
-    }
-    setTeamCardRaw(next);
-  }, []);
+const openTeamCard = (index: number): void => { useDynasty.getState().openTeamCard(index); };
 
+/** The dev server's build: the ledger shows itself on the console as `__nav` (the probe reads it). */
+const DEV = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
+
+/** The app: the accent, the audio unlock, and the body with its frames. */
+export function App() {
   /*
     Your school's colours, worn by the whole app.
 
@@ -154,8 +151,8 @@ export function App() {
   }, []);
 
   return (
-    <OpenTeam.Provider value={setTeamCard}>
-      <AppBody teamCard={teamCard} setTeamCard={setTeamCard} />
+    <OpenTeam.Provider value={openTeamCard}>
+      <AppBody />
       {/* The first season's tour. Beside the body rather than inside a
           screen, because it follows the player from screen to screen. */}
       <GuidedStretch />
@@ -163,10 +160,7 @@ export function App() {
   );
 }
 
-function AppBody(
-  { teamCard, setTeamCard }:
-  { teamCard: number | null; setTeamCard: (index: number | null) => void },
-) {
+function AppBody() {
   const season = useDynasty((s) => s.season);
   // The sandbox's screen exists only in a career that turned it on.
   const godMode = useDynasty((s) => s.godMode);
@@ -174,8 +168,6 @@ function AppBody(
   const screen = useDynasty((s) => s.screen);
   const go = useDynasty((s) => s.go);
   const setScreen = useDynasty((s) => s.setScreen);
-  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
-  const programSheet = useDynasty((s) => s.programSheet);
   const year = useDynasty((s) => s.year);
   // The chrome prints live numbers now — the record, the date, the roster —
   // and the engine mutates in place, so the version counter is what tells this
@@ -188,40 +180,37 @@ function AppBody(
   const unread = useDynasty((s) => unreadCount(s.inbox));
   // New silverware waiting in the cabinet — the dot that replaced the
   // achievement letters.
-  const unseenTrophies = useDynasty((s) => s.unseenTrophies.length);
+  // Coach achievements wear their dot on the portrait (the profile is its own
+  // layer now); the Program tab's dot is the record book's.
   const unseenRecords = useDynasty((s) => s.unseenRecords.length);
-  const trophyDot = unseenTrophies > 0 || unseenRecords > 0;
+  // The board waiting on an answer: a review, an offer, or this year's terms.
+  const boardWaiting = useDynasty((s) => s.lastReview !== null || s.offers.length > 0 || s.seasonOpener !== null);
+  const sectionAlert = (t: Tab, id: string): boolean => (
+    (t === 'program' && id === 'history' && unseenRecords > 0)
+    || (t === 'office' && id === 'board' && boardWaiting)
+  );
+  const tabAlert = (t: Tab): boolean => (t === 'program' && unseenRecords > 0) || (t === 'office' && boardWaiting);
 
-  const chooseSection = (id: string): void => {
-    if (tab === 'program' && id === 'records') setProgramSheet('overview');
-    setScreen(id);
-  };
-  const chooseTab = (id: Tab): void => {
-    if (id === 'program') setProgramSheet('overview');
-    go(id);
-  };
+  const chooseSection = (id: string): void => { setScreen(id); };
+  const chooseTab = (id: Tab): void => { go(id); };
 
-  const needsTeam = useDynasty((s) => s.needsTeam);
+  // Which frame is on screen: the store's own answer (era.ts), so App and
+  // the store cannot disagree about it (2026-09-30).
+  const frame = useDynasty(frameOf);
   const phase = useDynasty((s) => s.phase);
   const bracket = useDynasty((s) => s.bracket);
   const live = useDynasty((s) => s.live);
-  const selectedPlayer = useDynasty((s) => s.selectedPlayer);
   const furthestPhase = useDynasty((s) => s.furthestPhase);
-  // Both branches of `rulesOf` return a stable reference — the season's own
-  // object, or the module constant — so this selector never re-renders on
-  // identity alone.
-  const rules = useDynasty((s) => rulesOf(s.season));
   const goPhase = useDynasty((s) => s.goPhase);
-  const jobSearch = useDynasty((s) => s.jobSearch);
-  const retiredYear = useDynasty((s) => s.coach.retiredYear);
-  // Whether the board meeting on screen is the last one of a career.
-  const ending = useDynasty(careerFinished);
+  // The offseason rail, the one `stepBack` walks: cut at the review when the
+  // career ends at this meeting or he has resigned. Shallow, as it is a new
+  // array per read.
+  const rail = useDynasty(useShallow(railSteps));
   const loadError = useDynasty((s) => s.loadError);
   const newDynasty = useDynasty((s) => s.newDynasty);
   const openOverlay = useDynasty((s) => s.openOverlay);
   const refreshSaves = useDynasty((s) => s.refreshSaves);
   const atStart = useDynasty((s) => s.atStart);
-  const loadedSlot = useDynasty((s) => s.loadedSlot);
   const backToStart = useDynasty((s) => s.backToStart);
   const [checked, setChecked] = useState(false);
 
@@ -250,88 +239,100 @@ function AppBody(
    * already scrolled past its own header.
    */
   const mainRef = useRef<HTMLElement>(null);
-  // The reset itself lives with the route trail below, because a back
+  // The reset itself lives with the scroll memory below, because a back
   // gesture returns to where the screen was left rather than to the top.
 
-  /**
-   * Going somewhere closes the rival's page, exactly as `go()` clears the
-   * selected player. An overlay that survives a tab change is a screen you did
-   * not ask for sitting over the one you did.
-   */
-  useEffect(() => { setTeamCard(null); }, [phase, tab, screen, setTeamCard]);
-
   /*
-    Android's back gesture, and the browser's back button.
+    The back gesture: one list of levels, and everything that answers a
+    press reads it.
 
-    Stage 18, rewritten for Android 16 in stage 18b. The handler is one
-    function and peels one layer per press in the order the screen is
-    stacked, which is the order a player thinks in: the card over the table
-    over the tab. What changed is who calls it.
+    `nav.ts` derives the list from the store and the sheet registry: this
+    era's route stops and the game (or June's game guard, or the winter
+    steps), the store's layers in the order they are drawn, each
+    screen-held sheet just above what was open before it, and a blocking
+    card last. The level on top is both what a swipe shows and what it
+    takes. It replaced three hand-kept copies of that answer in this file
+    (the peel, the peek and the arming), whose drift was the swipe that
+    "gets crazy ... showing other screens" (back plan SW, 2026-09-30).
 
-    In the APK, nothing native ever called goBack() and the WebView did not
-    claim the gesture on its own, so every press was a return-to-home from
-    any depth and this handler never ran — measured on an Android 16
-    emulator, September 6 2026. Now a native plugin (BackPlugin.java) owns
-    an OnBackPressedCallback that the page ARMS only while it has a layer to
-    close, and the plugin hands the press back here as an event. Disarmed —
-    the root of HOME — the system's own default runs: the predictive exit
-    preview, and the exit. That is why it is a toggle and not an always-on
-    handler: an enabled callback tells Android the app will consume the
-    gesture, and Android then never previews leaving.
+    In a browser tab and as a home-screen icon, `historySync.ts` keeps the
+    entries equal to the levels after every commit that changes them or
+    the era, and turns a swipe into peels; it is the only code that writes
+    history. In the APK a native plugin (BackPlugin.java) is armed while
+    there is a level, guards included, and a press peels the newest.
+    Disarmed, the system's own predictive exit runs.
 
-    In a browser tab and as a home-screen icon there is no shell, so the
-    History API does the job: one sentinel entry, pushed only while there is
-    a layer, answered by popstate, and taken down again when the last layer
-    closes by other means — so the browser's back works at HOME instead of
-    being trapped by a sentinel that was always there. The old shape kept
-    the sentinel pushed at all times and left through a second history.back()
-    that had nothing behind it to pop.
-
-    The lineup gate composes with this for free: `go()` refuses while the
-    nine is short and raises its own modal, so the back gesture cannot walk
-    out of a card the front door will not let you leave either.
+    `key` is the list as one string, so React compares a primitive, and
+    `era` is one frame of one career in one year. Here, above every early
+    return, so each frame keeps the ledger in step.
   */
-  type RouteStop = { tab: Tab; screen: string; programSheet: ProgramSheet };
+  const key = useSyncExternalStore(nav.subscribe, nav.levelsKey, nav.levelsKey);
+  const era = useDynasty(eraKey);
+  const ledger = useRef<HistorySync | null>(null);
+  useLayoutEffect(() => { ledger.current?.afterCommit(); }, [key, era]);
+  // Any other commit here (a day played) may change the picture too (V1).
+  useLayoutEffect(() => { ledger.current?.painting(); });
+  useEffect(() => {
+    if (isNativeShell()) return undefined;
+    const stopPresses = trackPresses();
+    const sync = installHistorySync({
+      ...browserDeps(nav.ledgerNav, DEV),
+      // A level that arrives before the frame under it has painted is held
+      // (hidden) until it has, so the swipe's picture is that frame (V1).
+      hold: levelHolder(domQuery(() => mainRef.current), nav.levels),
+    }, {
+      pushMark,
+      markReturn,
+      /*
+        A browser that animated the swipe itself (a phone's edge swipe) has
+        already carried the page across. One that did not (a desktop Back
+        button) swapped nothing on screen, so a screen that comes back fades
+        up into place instead of snapping in.
+      */
+      onUserPop: ({ uaAnimated, kinds }) => {
+        if (uaAnimated !== false || !movesScreen(kinds[0])) return;
+        const el = mainRef.current;
+        if (el) { el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = 'scale(0.97)'; }
+        let fired = false;
+        const up = (): void => { if (!fired) { fired = true; arrive(mainRef.current); } };
+        requestAnimationFrame(() => requestAnimationFrame(up));
+        setTimeout(up, 60);
+      },
+    });
+    ledger.current = sync;
+    return () => {
+      stopPresses();
+      sync.dispose();
+      if (ledger.current === sync) ledger.current = null;
+    };
+  }, []);
+
+  type RouteStop = { tab: Tab; screen: string };
+  // Every place is a tab and a screen now: the rooms that used to be sheets
+  // inside Program's overview are screens of their own (2026-09-24).
+  const routeStop = (t: Tab, sc: string): RouteStop => ({ tab: t, screen: sc });
+  const routeKey = (r: RouteStop): string => `${r.tab}|${r.screen}`;
   /*
-    Read here rather than reusing the declaration further down, because the
-    trail effect below closes over this function and must see the overlay as it
-    is now. The duplicate subscription costs nothing — zustand hands back the
-    same slice.
+    The screens kept alive behind the one on show, most recent last. See the
+    in-season frame's <main>: going back shows the very screen that was left.
+    A new era (another career, school, year or frame) starts the list again,
+    so nothing from the last one comes back. One instance per visit, not per
+    screen (keptAlive.ts).
   */
-  const overlayForRoute = useDynasty((s) => s.overlay);
-  const routeStop = (t: Tab, sc: string, sheet: ProgramSheet): RouteStop => ({
-    tab: t,
-    screen: sc,
-    /*
-      Program sheets only exist on PROGRAM · OVERVIEW. Keeping stale sheet
-      values out of every other route prevents a sheet reset from creating a
-      fake history entry while the coach is somewhere else.
-
-      And they only exist there when nothing is stacked on top. A sheet shown
-      inside an overlay — which is what an inbox letter's OPEN BOARD does — is a
-      level within that overlay, and recording it as a route stop is how the
-      gesture came to walk the coach FORWARD into the board he was trying to
-      leave. Reported 2026-09-12; measured at three history entries for one
-      visible layer, one of the five presses moving the wrong way. This half of
-      it is not browser-only: the trail is the same ref the Android plugin path
-      reads, so the walk-forward happened in the APK too.
-    */
-    programSheet: t === 'program' && sc === 'records' ? sheet : 'overview',
-  });
-  const routeKey = (r: RouteStop): string => `${r.tab}|${r.screen}|${r.programSheet}`;
-  const routeTrail = useRef<RouteStop[]>([]);
-  // A ref is ideal for the trail itself, but native/browser back arming is
-  // rendered from `hasLayer`. Bump this counter whenever the ref mutates so a
-  // newly visited route immediately arms the edge/back gesture.
-  const [routeTrailVersion, setRouteTrailVersion] = useState(0);
-  void routeTrailVersion;
-  const bumpRouteTrail = (): void => setRouteTrailVersion((v) => v + 1);
-  const currentRoute = useRef<RouteStop>(routeStop(tab, screen, programSheet));
-  const restoringRoute = useRef<string | null>(null);
-  // Set by an on-screen Back control that also consumes a browser history
-  // entry. It lets the route trail peel the matching stop instead of recording
-  // the screen we just left as a new forward visit.
-  const routeConsumePending = useRef(false);
+  const aliveRef = useRef<Alive<RouteStop>>({ list: [], last: null, gen: 0 });
+  const aliveEra = useRef(era);
+  if (aliveEra.current !== era) {
+    aliveEra.current = era;
+    aliveRef.current = { list: [], last: null, gen: aliveRef.current.gen };
+  }
+  /*
+    A back move returned to this visit: `goBack` sets both numbers, and the
+    next forward move takes a fresh visit. The screen kept alive for it comes
+    back, at the height it was left.
+  */
+  const routeVisit = useDynasty((s) => s.routeVisit);
+  const restoringVisit = useDynasty((s) => s.restoringVisit);
+  const restoring = restoringVisit !== null && restoringVisit === routeVisit;
 
   /*
     Where each screen was left, so the back gesture returns to it.
@@ -347,211 +348,30 @@ function AppBody(
     own header. Opening or closing a player card no longer resets the page
     under it: the card is a layer over the screen, not a new screen.
   */
+  // Keyed by visit (S6, 2026-09-30): Colleges seen twice keeps two heights.
   const scrollMemory = useRef(new Map<string, number>());
   useEffect(() => useDynasty.subscribe((s, prev) => {
-    if (s.tab === prev.tab && s.screen === prev.screen && s.programSheet === prev.programSheet) return;
+    const id = leftScroll(s, prev, routeKey);
     const el = mainRef.current;
-    if (el) scrollMemory.current.set(routeKey(routeStop(prev.tab, prev.screen, prev.programSheet)), el.scrollTop);
+    if (id !== null && el) rememberScroll(scrollMemory.current, id, el.scrollTop);
   }), []);
+  // The visit the last run below saw, so only the commit a back move lands
+  // in restores: a stage or a game changing later on the same visit opens at
+  // the top, as it always has.
+  const seenVisit = useRef(routeVisit);
   useLayoutEffect(() => {
+    const arrived = seenVisit.current !== routeVisit;
+    seenVisit.current = routeVisit;
     const el = mainRef.current;
     if (!el) return;
-    const back = restoringRoute.current !== null;
-    const y = back ? (scrollMemory.current.get(routeKey(routeStop(tab, screen, programSheet))) ?? 0) : 0;
+    const back = arrived && restoring;
+    const y = back ? (scrollMemory.current.get(scrollId({ tab, screen, routeVisit }, routeKey)) ?? 0) : 0;
     // Before paint, so the arriving page never shows at the wrong height and
     // then jumps; and once more on the next frame for a screen whose rows
     // arrive a beat after its frame does.
     el.scrollTo(0, y);
     if (y > 0) requestAnimationFrame(() => { if (mainRef.current === el) el.scrollTo(0, y); });
-  }, [phase, tab, screen, programSheet, bracket?.stage, live !== null]);
-
-  // Remember the route the coach actually visited, rather than assuming Back
-  // means "first screen in this tab, then HOME". That assumption is what made
-  // PROGRAM · BOARD jump straight to HOME instead of PROGRAM · OVERVIEW.
-  useLayoutEffect(() => {
-    const next = routeStop(tab, screen, programSheet);
-    const nextKey = routeKey(next);
-    /*
-      A sheet changed inside an overlay is a level within that overlay, not a
-      route the coach visited — and recording it is how the gesture came to
-      walk him FORWARD into the board he was trying to leave. Measured
-      2026-09-12: five back presses to undo one tap, one of them moving the
-      wrong way.
-
-      The ref is still advanced, so closing the overlay on the same sheet does
-      not then read as a move. `overlay` is deliberately NOT a dependency: this
-      must not re-run when the overlay closes, only when something that is
-      genuinely part of a route changes. This half is not browser-only — the
-      trail is the same ref the Android plugin path reads.
-    */
-    if (overlayForRoute !== null) { currentRoute.current = next; return; }
-    if (restoringRoute.current !== null) {
-      currentRoute.current = next;
-      if (restoringRoute.current === nextKey) restoringRoute.current = null;
-      return;
-    }
-    const prev = currentRoute.current;
-    if (routeKey(prev) !== nextKey) {
-      if (routeConsumePending.current) {
-        routeConsumePending.current = false;
-        const last = routeTrail.current.at(-1);
-        if (last && routeKey(last) === nextKey) {
-          routeTrail.current.pop();
-          bumpRouteTrail();
-        }
-        currentRoute.current = next;
-        return;
-      }
-      const last = routeTrail.current.at(-1);
-      if (!last || routeKey(last) !== routeKey(prev)) {
-        routeTrail.current.push(prev);
-        if (routeTrail.current.length > 48) routeTrail.current.splice(0, routeTrail.current.length - 48);
-        bumpRouteTrail();
-      }
-      currentRoute.current = next;
-    }
-  }, [tab, screen, programSheet]);
-
-  // A different career is a different navigation story. Do not let Back walk
-  // from a freshly loaded dynasty into a screen that belonged to the previous
-  // save. The front door likewise starts with an empty trail.
-  const routeCareer = useRef<string | null>(loadedSlot);
-  useEffect(() => {
-    if (atStart || routeCareer.current !== loadedSlot) {
-      if (routeTrail.current.length > 0) {
-        routeTrail.current = [];
-        bumpRouteTrail();
-      }
-      currentRoute.current = routeStop(tab, screen, programSheet);
-      restoringRoute.current = null;
-      routeCareer.current = loadedSlot;
-    }
-  }, [atStart, loadedSlot, tab, screen, programSheet]);
-
-  /*
-    What one press did, because the browser needs to know.
-
-    'peeled' spent a layer that had a history entry of its own; 'swallowed'
-    means the press was refused and no entry was spent, so the one the pop
-    already took has to be handed back or history runs a layer short of the
-    screen for the rest of the session; 'none' is the root, where the press
-    belongs to the shell and leaving is the right answer.
-  */
-  const backRef = useRef<(guarded?: boolean) => 'peeled' | 'swallowed' | 'none'>(() => 'none');
-  const lastBackCommit = useRef(0);
-  backRef.current = (guarded = true): 'peeled' | 'swallowed' | 'none' => {
-    const now = Date.now();
-    /*
-      Edge gestures can be reported twice by the native shell during the same
-      predictive swipe. One physical gesture must peel exactly one layer.
-
-      Only on the native path. A browser `popstate` has ALREADY spent a real
-      history entry by the time this runs, so swallowing the press there threw
-      the entry away and peeled nothing: four quick presses over three open
-      layers left two of them open and the app gone (05 §63.2). The browser
-      reports one popstate per press and needs no guard.
-    */
-    if (guarded && now - lastBackCommit.current < 350) return 'swallowed';
-    lastBackCommit.current = now;
-    // Whatever this press uncovers arrives still, not rising (05 §90.6).
-    markBackGesture();
-    const s = useDynasty.getState();
-    // A blocking card is the screen while it lasts: the back press is
-    // swallowed rather than obeyed. These are answered on their own terms —
-    // the opener on the board, the big moment by reading it. Asked of the
-    // screen, not of the store: see `openerShowing`.
-    if (blockingCardUp(s)) {
-      // Refused, and visibly so. The press is still swallowed — the card is
-      // the screen while it lasts — but the card answers it with a shake
-      // instead of with nothing. See `cardNudge`.
-      s.nudgeCard();
-      return 'swallowed';
-    }
-    /*
-      A sheet the screen holds itself -- a box score, the dugout picker, a
-      prospect's file, the June lineup card, a confirm -- goes first when it
-      is newer than anything the store holds, which is the order the coach
-      opened them in (05 §91.2, `state/backLayers.ts`).
-    */
-    if (topBackLayer() > newestStoreLayer() && peelBackLayer()) return 'peeled';
-    // The god-mode sheet sits over the player card it may have been opened
-    // from, so it goes first.
-    if (s.godStack.length > 0) { s.closeGod(); return 'peeled'; }
-    if (s.selectedPlayer !== null) { s.closePlayer(); return 'peeled'; }
-    if (s.coachSeat !== null) { s.closeCoach(); return 'peeled'; }
-    if (teamCardRef.current !== null) { setTeamCard(null); return 'peeled'; }
-    if (s.overlay !== null) {
-      // The physical gesture follows the same nested-page rule as the visible
-      // Back bar. A Settings detail page goes to Settings first; it does not
-      // throw the whole overlay away.
-      if (s.overlay === 'settings' && s.settingsPage !== 'index') { s.setSettingsPage('index'); return 'peeled'; }
-      /*
-        Program's sheets, opened this way, spend no history entry of their own,
-        so peeling one hands the pop's entry straight back.
-
-        Against the sheet the overlay was OPENED at, not against 'overview'. A
-        coach who opened Program on its overview and walked into Money gets the
-        overview back first; a coach sent straight to the board by an opener
-        card or an inbox letter has nothing behind it, and peeling to an
-        overview he never asked for spent a press and left him somewhere he did
-        not choose.
-      */
-      if (s.overlay === 'program' && s.programSheet !== s.overlayEntrySheet) {
-        s.setProgramSheet(s.overlayEntrySheet);
-        return 'swallowed';
-      }
-      s.closeOverlay();
-      return 'peeled';
-    }
-    // True route history comes before hierarchy. PROGRAM · BOARD therefore
-    // returns to PROGRAM · OVERVIEW, and moving between arbitrary tabs/screens
-    // retraces the order the coach actually visited them.
-    const previous = routeTrail.current.pop();
-    if (previous) {
-      bumpRouteTrail();
-      const targetKey = routeKey(previous);
-      restoringRoute.current = targetKey;
-      // The gesture already animated the swipe; the swap is instant, and the
-      // screen comes back where it was left (see the scroll memory below).
-      nextNavInstant();
-      s.go(previous.tab, previous.screen);
-      const after = useDynasty.getState();
-      // A broken manual lineup is allowed to refuse navigation. If it does,
-      // keep the trail intact so the next Back after fixing the card still
-      // goes to the same real previous place.
-      if (after.tab !== previous.tab || after.screen !== previous.screen) {
-        routeTrail.current.push(previous);
-        bumpRouteTrail();
-        restoringRoute.current = null;
-        return 'swallowed';
-      }
-      if (previous.tab === 'program' && previous.screen === 'records') after.setProgramSheet(previous.programSheet);
-      return 'peeled';
-    }
-    // Fallback for an old/deep-linked state that did not build a trail in this
-    // session: keep the safe hierarchy instead of making Back a no-op.
-    // Instant, for the same reason the trail above is: the gesture has already
-    // animated the swipe, and a transition on top of it is the reported flick.
-    const first = TABS.find((t) => t.id === s.tab)?.screens[0]?.id;
-    if (first && s.screen !== first) { nextNavInstant(); s.go(s.tab, first); return 'peeled'; }
-    if (s.tab !== 'home') { nextNavInstant(); s.go('home'); return 'peeled'; }
-    // Nothing left to close: nothing claims the press, and the shell leaves.
-    return 'none';
-  };
-  const teamCardRef = useRef(teamCard);
-  teamCardRef.current = teamCard;
-  const overlay = useDynasty((s) => s.overlay);
-  const coachOpen = useDynasty((s) => s.coachSeat !== null);
-  const blocked = useDynasty(blockingCardUp);
-  const godOpen = useDynasty((s) => s.godStack.length > 0);
-  const localLayers = useSyncExternalStore(subscribeBackLayers, backLayerCount, backLayerCount);
-  const hasLayer = hasLayerToClose({
-    localLayers,
-    blocked, godOpen, playerOpen: selectedPlayer !== null, coachOpen, teamCardOpen: teamCard !== null,
-    overlayOpen: overlay !== null, routeBackAvailable: !atStart && routeCareer.current === loadedSlot && routeTrail.current.length > 0, tab, screen,
-  });
-
-
+  }, [phase, tab, screen, routeVisit, bracket?.stage, live !== null]);
 
   /*
     Stage 19: the store's word on god mode, at launch and on every restore.
@@ -573,103 +393,52 @@ function AppBody(
     });
   }, []);
 
-  // The APK: claim the gesture exactly while there is a layer, and answer it.
-  useEffect(() => {
-    if (!isNativeShell()) return;
-    void Back.arm({ armed: hasLayer });
-  }, [hasLayer]);
-  useEffect(() => {
-    if (!isNativeShell()) return;
-    let handle: { remove: () => Promise<void> } | null = null;
-    void Back.addListener('back', () => { backRef.current(); }).then((h) => { handle = h; });
-    return () => { void handle?.remove(); };
-  }, []);
-
   /*
-    Browser / iOS history is route-by-route now, not one sentinel for the whole
-    app. The old sentinel was the reason an iPhone edge swipe previewed HOME
-    while leaving PROGRAM · BOARD, then snapped to PROGRAM after the gesture
-    committed: WebKit could only preview the single history entry underneath
-    the app, which had been created back on HOME.
-
-    Store navigation emits a checkpoint *before* it mutates the route. That
-    gives Safari a real previous visual entry for every forward navigation.
-    Closing a card with an on-screen control consumes that entry silently; a
-    physical/browser Back pop consumes it itself and `backRef` restores the
-    matching app route without creating another checkpoint. Android keeps using
-    the native Back plugin above.
+    The APK: claim the gesture exactly while there is a level to peel or a
+    guard to refuse with a shake, and answer it. Disarmed, at an era's root,
+    the system's own default runs: the predictive exit preview, and the exit.
+    An armed callback tells Android the app will consume the gesture, and
+    Android then never previews leaving, which is why it is a toggle.
   */
-  const browserPopping = useRef(false);
-  const browserSilentPop = useRef(0);
   useEffect(() => {
-    if (isNativeShell()) return;
-    try { history.replaceState({ ...(history.state ?? {}), playballRoot: true }, ''); } catch { /* private mode */ }
+    if (!isNativeShell()) return;
+    void Back.arm({ armed: nav.depth() > 0 });
+  }, [key]);
+  /*
+    And follow the finger while it is down (Android 14 and later send the
+    whole swipe; older systems only the release). The level the release will
+    peel moves with the swipe, in the shape `navTarget.ts` gives it, and the
+    peel happens once it has finished leaving — never a card sitting still
+    under a moving finger and then vanishing in a frame, which is the flick
+    reported on 2026-09-24.
 
-    const checkpoint = (): void => {
-      if (browserPopping.current) return;
-      try { history.pushState({ playball: true }, ''); } catch { /* private mode */ }
+    The shell can report one swipe twice, and one physical gesture peels
+    exactly one level: a second release inside 350 ms is dropped. Native
+    only; in a browser the pop has already spent its entry, and the ledger
+    reads how far it went.
+  */
+  const lastPeel = useRef(0);
+  useEffect(() => {
+    if (!isNativeShell()) return;
+    const q = domQuery(() => mainRef.current);
+    const peek = () => toTarget(nav.newest(), q);
+    const guardedPeel = (): void => {
+      const now = Date.now();
+      if (now - lastPeel.current < 350) return;
+      lastPeel.current = now;
+      nav.peelNewest();
     };
-    const consume = (event: Event): void => {
-      if (browserPopping.current) return;
-      // Only consume entries created by Playball. A deep link / refreshed root
-      // has no synthetic layer beneath it, and calling history.go(-1) there
-      // would leave the app instead of merely closing the current UI.
-      if (!(history.state as { playball?: boolean } | null)?.playball) return;
-      const detail = (event as CustomEvent<{ count?: number; route?: boolean }>).detail;
-      const count = Math.max(1, Number(detail?.count ?? 1));
-      if (detail?.route) routeConsumePending.current = true;
-      /*
-        Every layer that pushed a checkpoint peels its own entry.
-
-        This used to clamp to one however many were asked for, which meant
-        God Mode's CLOSE ALL left one orphan entry per extra sheet: after
-        closing four, the next three browser Back presses walked the screen
-        underneath backwards, three navigations nobody asked for (05 §63.2).
-        The count is the caller's, and `browserSilentPop` counts the pops it
-        will cause so the handler below ignores exactly those.
-      */
-      /*
-        ONE, however many entries are being given back.
-
-        `history.go(-n)` is a single traversal and fires a single `popstate`,
-        so `onPop` below decrements once no matter how far it went — booking
-        `count` here left `count - 1` on the counter for ever. The only caller
-        that passes more than one is God Mode's CLOSE ALL (`closeGodAll`), so
-        after closing four sheets the next three real back presses were eaten
-        silently: the exact fault this block's own comment says it fixed, in
-        the opposite direction. Found by audit 2026-09-12, not by use, which
-        is what a counter that only drifts under one caller looks like.
-      */
-      browserSilentPop.current += 1;
-      try { history.go(-count); } catch { browserSilentPop.current = Math.max(0, browserSilentPop.current - 1); }
+    const handles: { remove: () => Promise<void> }[] = [];
+    let gone = false;
+    const keep = (p: Promise<{ remove: () => Promise<void> }>): void => {
+      void p.then((h) => { if (gone) void h.remove(); else handles.push(h); });
     };
-    const onPop = (): void => {
-      if (browserSilentPop.current > 0) { browserSilentPop.current -= 1; return; }
-      browserPopping.current = true;
-      /*
-        A refused press spent a real history entry and peeled nothing, so the
-        entry goes back. Without this, one swipe answered by a modal — or by
-        the lineup gate — left history a layer shorter than the screen for the
-        rest of the session, and every later Back skipped a level.
-      */
-      if (backRef.current(false) === 'swallowed') {
-        try { history.pushState({ playball: true }, ''); } catch { /* private mode */ }
-      }
-      // Store writes are synchronous. Keep the guard through the microtask so
-      // a nested route setter cannot push a replacement entry mid-pop.
-      queueMicrotask(() => { browserPopping.current = false; });
-    };
-
-    window.addEventListener('playball:history-checkpoint', checkpoint);
-    window.addEventListener('playball:history-consume', consume);
-    window.addEventListener('popstate', onPop);
-    return () => {
-      window.removeEventListener('playball:history-checkpoint', checkpoint);
-      window.removeEventListener('playball:history-consume', consume);
-      window.removeEventListener('popstate', onPop);
-    };
+    keep(Back.addListener('backStart', (m) => { backStart(peek(), m.edge); }));
+    keep(Back.addListener('backProgress', (m) => { backProgress(m.progress); }));
+    keep(Back.addListener('backCancel', () => { backCancel(); }));
+    keep(Back.addListener('back', () => { backCommit(peek, guardedPeel, () => mainRef.current); }));
+    return () => { gone = true; for (const h of handles) void h.remove(); };
   }, []);
-
 
   /*
     The app opens at its own front door now rather than inside the last
@@ -687,7 +456,9 @@ function AppBody(
     void refreshSaves().catch(() => {}).finally(() => setChecked(true));
   }, [checked, refreshSaves]);
 
-  if (atStart && !season && checked) {
+  // Each frame below is `frameOf`'s answer, in its order; the front door
+  // waits for the saves to be read, and loading covers it until then.
+  if (frame === 'front' && checked && atStart) {
     return (
       <div className="app-frame">
         <Start
@@ -695,12 +466,12 @@ function AppBody(
           onLoad={() => openOverlay('saves')}
           onSettings={() => openOverlay('settings')}
         />
-        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
+        <Overlays />
       </div>
     );
   }
 
-  if (!season && needsTeam && checked) {
+  if (frame === 'front' && checked) {
     return (
       <div className="app-frame">
         <main ref={mainRef} key={phase ?? screen} className="screen-in pb-framemain pb-framemain--stack">
@@ -726,7 +497,7 @@ function AppBody(
     meeting hands those two to retirement, and a legacy screen that flashed
     the job market on the way past would be telling him to go and find work.
   */
-  if (season && retiredYear !== undefined) {
+  if (frame === 'legacy') {
     return (
       <div className="app-frame">
         <SchoolHeader kicker="The end of a career" name="What you built" />
@@ -734,13 +505,13 @@ function AppBody(
         <main ref={mainRef} key="legacy" className="screen-in pb-framemain">
           <Legacy />
         </main>
-        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
+        <Overlays />
       </div>
     );
   }
 
   // No job, no team screen. Everything else waits until you take one.
-  if (season && jobSearch) {
+  if (frame === 'market') {
     return (
       <div className="app-frame">
         {/*
@@ -758,12 +529,14 @@ function AppBody(
         <main ref={mainRef} key={phase ?? screen} className="screen-in pb-framemain">
           <JobSearch />
         </main>
-        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
+        <Overlays />
       </div>
     );
   }
 
-  if (!season || !team) {
+  // `frameOf` says 'loading' (or 'front' before the saves are read) exactly
+  // when this holds; the check stays for the types below it.
+  if (frame === 'front' || frame === 'loading' || !season || !team) {
     /*
       Two different states wear the same face, and only one of them is loading.
 
@@ -819,7 +592,7 @@ function AppBody(
   // The postseason takes the whole screen for the same reason the offseason does:
   // it is a sequence with an order, and it is the part of the year the season was
   // played for.
-  if (bracket !== null) {
+  if (frame === 'june') {
     return (
       <div className="app-frame postseason-frame">
         {/*
@@ -827,9 +600,9 @@ function AppBody(
           without: the inbox. The frame used to render no header at all, which
           made the notification centre unreachable for the whole postseason —
           the stretch of the year with the most to report. SAVES stays off
-          this bar on purpose: mid-bracket saving is restricted to stage
-          boundaries (see `endManagedGame`), so a button promising a copy of a
-          half-played tournament would promise something the store does not do.
+          this bar. This used to say mid-bracket saving was restricted to stage
+          boundaries; no longer (2026-09-30): June saves as it goes, mid-bracket
+          included (`simBracket`, `endManagedGame`, the anchor before a game).
         */}
         {/* The bar steps aside while a game is being managed — the dugout owns
             the whole screen, the same rule the regular season follows. */}
@@ -863,10 +636,7 @@ function AppBody(
             label={`${(TABS.find((t) => t.id === tab) ?? TABS[0]!).label} sections`}
             items={(TABS.find((t) => t.id === tab) ?? TABS[0]!).screens.filter((item) => item.id !== 'god' || godMode).map((item) => ({
               ...item,
-              alert: tab === 'program' && (
-                (item.id === 'history' && unseenRecords > 0)
-                || (item.id === 'records' && unseenTrophies > 0)
-              ),
+              alert: sectionAlert(tab, item.id),
             }))}
             active={screen}
             onSelect={chooseSection}
@@ -899,14 +669,13 @@ function AppBody(
             tabs={TABS.map((t) => ({
               id: t.id,
               label: t.id === 'home' ? 'June' : t.label,
-              alert: (t.id === 'home' && unread > 0)
-                || (t.id === 'program' && trophyDot),
+              alert: (t.id === 'home' && unread > 0) || tabAlert(t.id),
             }))}
             active={tab}
             onSelect={(id) => chooseTab(id as Tab)}
           />
         )}
-        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
+        <Overlays />
       </div>
     );
   }
@@ -936,7 +705,7 @@ function AppBody(
     it. See `Needs.tsx`.
   */
 
-  if (phase !== null) {
+  if (frame === 'winter' && phase !== null) {
     return (
       <div className="app-frame offseason-frame">
         <SchoolHeader
@@ -962,10 +731,10 @@ function AppBody(
             signing day after it. Reported: "after tapping next after season
             review to coach points it did take me to the end of the career
             which feels weird" — the rail was still promising four more steps
-            while the button under it was closing the book.
+            while the button under it was closing the book. `railSteps` makes
+            that cut.
           */
-          const all = stepsFor(rules);
-          const steps = ending ? all.slice(0, all.indexOf('review') + 1) : all;
+          const steps = rail;
           const furthest = steps.reduce(
             (n, p, i) => (PHASES.indexOf(p) <= furthestPhase ? i : n), 0,
           );
@@ -987,7 +756,7 @@ function AppBody(
           {phase === 'draft' && <Draft />}
           {phase === 'portal' && <Portal />}
         </main>
-        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
+        <Overlays />
       </div>
     );
   }
@@ -1006,12 +775,16 @@ function AppBody(
         <main ref={mainRef} className="pb-framemain pb-framemain--fixed">
           <Manage />
         </main>
-        <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
+        <Overlays />
       </div>
     );
   }
 
   const tabDef = TABS.find((t) => t.id === tab) ?? TABS[0]!;
+  const alive = keptAlive(aliveRef, routeStop(tab, screen), routeKey, routeVisit, restoring);
+  // The one on show is always last: two visits to Colleges are two entries.
+  const shown = alive[alive.length - 1];
+  const liveOwner = shown ? `${routeKey(shown.r)}#${shown.gen}` : '';
 
   return (
     <div className="app-frame playball-app">
@@ -1045,20 +818,38 @@ function AppBody(
         label={`${tabDef.label} sections`}
         items={tabDef.screens.map((item) => ({
           ...item,
-          alert: tab === 'program' && (
-            (item.id === 'history' && unseenRecords > 0)
-            || (item.id === 'records' && unseenTrophies > 0)
-          ),
+          alert: sectionAlert(tab, item.id),
         }))}
         active={screen}
         onSelect={chooseSection}
       />
 
+      {/*
+        The screen on show and the last few before it, the way a phone keeps
+        the page underneath alive. Reported for years as the back gesture's
+        flick: the swipe previews the page as it was left, and the page then
+        rebuilt from nothing — its wheel back on the next game, its tabs and
+        expanded cards closed, its logos a frame late. A screen the gesture
+        returns to is now the same screen, only hidden meanwhile: its state,
+        its images and its layout are exactly as they were. `Activity` keeps
+        it without running its effects or painting it.
+
+        Its sheets and tips render into the frame, outside the Activity, so
+        each screen names itself as their owner and the rule hides every one
+        but the live screen's (screenOwner.ts, 2026-09-30).
+      */}
       <main ref={mainRef} className="app-content pb-framemain">
-        <div className="screen-surface" key={`${tab}:${screen}`}>
-          <Screen id={screen} />
-        </div>
+        {alive.map(({ r, gen }) => (
+          <Activity key={`${routeKey(r)}#${gen}`} mode={gen === shown?.gen ? 'visible' : 'hidden'}>
+            <ScreenOwner.Provider value={`${routeKey(r)}#${gen}`}>
+              <ScreenSurface fill={r.screen === 'today'}>
+                <Screen id={r.screen} />
+              </ScreenSurface>
+            </ScreenOwner.Provider>
+          </Activity>
+        ))}
       </main>
+      <style>{ownerRule(liveOwner)}</style>
 
       {/* The dot on HOME is how unread survives being three screens away; the
           count itself is on the top-bar envelope, one tap from here, where
@@ -1067,12 +858,12 @@ function AppBody(
         tabs={TABS.map((t) => ({
           id: t.id,
           label: t.label,
-          alert: (t.id === 'home' && unread > 0) || (t.id === 'program' && trophyDot),
+          alert: (t.id === 'home' && unread > 0) || tabAlert(t.id),
         }))}
         active={tab}
         onSelect={(id) => chooseTab(id as Tab)}
       />
-      <Overlays teamCard={teamCard} onCloseTeam={() => setTeamCard(null)} />
+      <Overlays />
     </div>
   );
 }
@@ -1163,19 +954,23 @@ function FrameMessage(
  * app can be in need the identical set, and three copies of it is three places
  * to forget one.
  */
-function Overlays(
-  { teamCard, onCloseTeam }: { teamCard: number | null; onCloseTeam: () => void },
-) {
+function Overlays() {
   const overlay = useDynasty((s) => s.overlay);
+  const teamCard = useDynasty((s) => s.teamCard);
   const selectedPlayer = useDynasty((s) => s.selectedPlayer);
   return (
     <>
       {overlay !== null && <TableOverlay />}
-      {teamCard !== null && <TeamOverlay index={teamCard} onBack={onCloseTeam} />}
+      {teamCard !== null && <TeamOverlay index={teamCard} />}
       {selectedPlayer !== null && <PlayerOverlay />}
       {/* Over the card it may have been opened from. */}
       <GodOverlay />
-      <SeasonOpener />
+      {/* The board's terms at the top of a season: a step over the whole
+          frame until they are signed (SeasonTerms.tsx). */}
+      <SeasonTerms />
+      {/* Once a season at each chair: after the terms, or on day one of a
+          first season or a new job (SeasonPlan.tsx). */}
+      <SeasonPlan />
       <WeekStopped />
       <PlaybookInvite />
       {/* Above everything, because it IS the screen while it lasts. */}
@@ -1192,13 +987,15 @@ function Overlays(
  * the program so opening a second one is a second page rather than the first
  * one with new numbers on whatever tab you left it on.
  */
-function TeamOverlay({ index, onBack }: { index: number; onBack: () => void }) {
+function TeamOverlay({ index }: { index: number }) {
   const season = useDynasty((s) => s.season);
+  const onBack = useDynasty((s) => s.closeTeamCard);
   const rival = season?.teams[index];
   return (
     <Overlay
       eyebrow="College profile"
       title={rival?.def.school ?? 'Program'}
+      className="is-team"
       onClose={onBack}
       floating={<GodBolt target={{ kind: 'program', team: index }} label={`Edit ${rival?.def.school ?? 'this program'} in god mode`} />}
     >
@@ -1213,9 +1010,32 @@ function TeamOverlay({ index, onBack }: { index: number; onBack: () => void }) {
  * Same shape as the player card and for the same reason — the screen
  * underneath, which during the offseason is a step in a sequence, must still be
  * there when you close it.
+ *
+ * Every slot of the stack is drawn, the top one last and over the rest (back
+ * plan S5, 2026-09-30). A slot under another used to unmount, so the Inbox
+ * under the standings came back at the top of its letters and the coach
+ * profile back on Overview. The ones below are inert and hidden from readers,
+ * and their sheets and tips answer to their slot (screenOwner.ts).
  */
-function TableOverlay() {
+export function TableOverlay() {
   const overlay = useDynasty((s) => s.overlay);
+  const below = useDynasty((s) => s.overlayStack);
+  if (overlay === null) return null;
+  const slots = [...below.map((b) => b.overlay), overlay];
+  const top = slots.length - 1;
+  return (
+    <>
+      {slots.map((name, i) => (
+        <ScreenOwner.Provider key={`${i}:${name}`} value={overlayOwner(i)}>
+          <TableSlot overlay={name} top={i === top} />
+        </ScreenOwner.Provider>
+      ))}
+      <style>{overlayRule(top)}</style>
+    </>
+  );
+}
+
+function TableSlot({ overlay, top }: { overlay: OverlayName; top: boolean }) {
   const close = useDynasty((s) => s.closeOverlay);
   /*
     Back means one step, not all the way out.
@@ -1228,32 +1048,18 @@ function TableOverlay() {
   */
   const settingsPage = useDynasty((s) => s.settingsPage);
   const setSettingsPage = useDynasty((s) => s.setSettingsPage);
-  const programSheet = useDynasty((s) => s.programSheet);
-  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
+  /*
+    A room laid over the frame (the coach profile, the board from a letter)
+    is its own layer: Back closes it and nothing else. It used to be a sheet
+    inside Program's overview, so the way out of the coach profile could land
+    on Program (2026-09-24: "make sure they are not longer linked to program").
+  */
   const back = (): void => {
     if (overlay === 'settings' && settingsPage !== 'index') setSettingsPage('index');
-    /*
-      Back from the coach sheet closes it. It used to step to the program
-      board first, borrowing the settings pages' deference — but a settings
-      page's home really is the settings index, while the coach sheet is
-      opened from the portrait on whatever screen you happened to be on.
-      Reported exactly as that felt: "it takes me to the program board
-      instead of the last place I was at" — the detour was a screen the
-      player never visited, inserted on the way out of one they did.
-
-      The sheet still resets on the way past, because leaving `programSheet`
-      on 'coach' is the old one-way door: the PROGRAM tab would open straight
-      onto the coach page with no way back. Reset-and-close does both jobs in
-      the one press.
-    */
-    else if (overlay === 'program' && programSheet === 'coach') {
-      setProgramSheet('overview');
-      close();
-    }
     else close();
   };
   return (
-    <div className="pb-tableoverlay">
+    <div className="pb-tableoverlay" inert={!top || undefined} aria-hidden={!top || undefined}>
       <BackBar onBack={back} />
       {/* Hidden, not auto. Every screen in here brings its own scroller, so a
           scroller here would be a scroller around a scroller. */}
@@ -1273,13 +1079,11 @@ function TableOverlay() {
             its cards point, and a card that is only tappable in one of the
             three frames is not tappable. */}
         {overlay === 'inbox' && <Inbox />}
-        {/* No pinned header of its own either — every sheet on it (the board,
-            the money, the hall, the coach) is a plain column, so it takes the
-            same scroller the jobs screen does. Reported as the coach profile
-            refusing to scroll; it was the whole tab, and the coach sheet was
-            simply the first one tall enough to prove it. */}
-        {overlay === 'program' && (
-          <div className="pb-scroll"><Program /></div>
+        {/* A room: the coach profile, the board, the staff room... each a
+            plain column in the same scroller the jobs screen uses. Keyed, so
+            one room opened from another starts at its own top. */}
+        {isRoom(overlay) && (
+          <div className="pb-scroll" key={overlay}><RoomScreen room={overlay} /></div>
         )}
         {/* The depth chart screen is gone — removed whole in the sorting
             session ("remove it entirely"): the lineup, the rail and AUTO do
@@ -1373,25 +1177,6 @@ function BackBar({ onBack }: { onBack: () => void }) {
  * app that always looks the same wherever it appears.
  */
 /**
- * The board, before the first pitch — reorganized at stage 20 to the
- * reporter's read ("everything is thrown at you with no visible
- * delineation"): one card, four titled sections, a title that rotates by
- * year, and the acceptance moved to the board itself. The modal's one door
- * opens the program board, where the checklist is; TAKE THE SEASON lives
- * there now. The card hides while the program screen is open and waits on
- * every other screen until the terms are taken.
- */
-const OPENER_TITLES = [
-  'Play ball, skipper',
-  'Another spring, Coach',
-  'The calendar says February',
-  'First pitch is close',
-  'Dust off the cap',
-  'The cage is warm',
-  'New year, same dugout',
-];
-
-/**
  * Stage 22: the scouting desk's follow-through — "the moment you scout a
  * team it right away asks you to set up their playbook against them and
  * takes you to do it."
@@ -1446,95 +1231,40 @@ function PlaybookInvite() {
         dismiss();
         setFocus(invite);
         closeOverlay();
-        go('program', 'strategy');
+        go('team', 'strategy');
       }}
       cancel={{ label: 'Later', onClick: dismiss }}
     />
   );
 }
 
-function SeasonOpener() {
-  const opener = useDynasty((s) => s.seasonOpener);
-  const nudge = useDynasty((s) => s.cardNudge);
-  // Reading the board IS the errand — the card stands down while you are
-  // there. One predicate, shared with the back gesture, so the press and the
-  // card can never disagree about whether there is a card to answer.
-  const showing = useDynasty(openerShowing);
-  const openOverlay = useDynasty((s) => s.openOverlay);
-  const setSheet = useDynasty((s) => s.setProgramSheet);
-  /*
-    Off the screen before the board's history entry is pushed.
-
-    A phone's back gesture previews the screenshot the browser took of the
-    entry it is returning to, and that screenshot is taken at the push --
-    which happened while this card was painted. So after the coach accepted
-    the mandate on the board and came back, the swipe showed him the card
-    for the length of the settle and then the real screen without it:
-    "it still shows the card and then after a second it goes back to normal
-    and closes the card" (2026-09-16). The card steps out of the frame, two
-    paints go by, and only then is the board opened; if he comes back without
-    accepting, `showing` turns true again and the card returns (05 §90.6).
-  */
-  const [leaving, setLeaving] = useState(false);
-  useEffect(() => { if (showing) setLeaving(false); }, [showing]);
-  if (!opener || !showing || leaving) return null;
-  const toBoard = (): void => {
-    setLeaving(true);
-    requestAnimationFrame(() => requestAnimationFrame(() => { setSheet('board'); openOverlay('program'); }));
-  };
-  return (
-    <Modal
-      nudge={nudge}
-      kicker={`${opener.year} · Before the first pitch`}
-      title={OPENER_TITLES[opener.year % OPENER_TITLES.length]!}
-      tone={opener.schoolAfter >= opener.schoolBefore ? 'win' : 'clay'}
-      lines={[`${opener.headline}. ${opener.message}`]}
-      body={(
-        <>
-          <CompareTable
-            label="What moved"
-            labelHeader="Prestige, of 100"
-            from="Last year"
-            to="Now"
-            rows={[
-              { label: 'Your school', now: opener.schoolBefore, next: opener.schoolAfter, better: 'up' },
-              { label: 'You', now: opener.coachBefore, next: opener.coachAfter, better: 'up' },
-            ]}
-          />
-          {opener.stings.length > 0 && (
-            <Callout tone="warning" title="Over the winter">{opener.stings.join(' ')}</Callout>
-          )}
-          <Callout tone="info" icon="target" title={`This year the board wants ${opener.targetWins} wins`}>
-            {opener.askDetail}
-          </Callout>
-        </>
-      )}
-      action="Read the board's terms"
-      onClose={toBoard}
-    />
-  );
-}
-
+/**
+ * A man hurt, or a hurt man fit again, said the moment it happens — whether
+ * the day was simmed, coached, a week at a time or in June (2026-09-24). The
+ * week still stops where it broke: "if after the first game of the week one of
+ * my players got injured, I want the simulation to stop and ask me to fix the
+ * lineup." The button opens the lineup on the man himself — his side of it,
+ * batting or pitching, scrolled to his row.
+ */
 function WeekStopped() {
-  const who = useDynasty((s) => s.weekStoppedBy);
-  const clear = useDynasty((s) => s.clearWeekStop);
+  const alert = useDynasty((s) => s.rosterAlert);
+  const clear = useDynasty((s) => s.clearRosterAlert);
   const go = useDynasty((s) => s.go);
-  if (who === null) return null;
-  /*
-    The week stops where it broke. Reported: "if after the first game of the
-    week one of my players got injured, I want the simulation to stop and ask
-    me to fix the lineup instead of keeping going until the sim ends and then
-    informing me."
-  */
+  if (alert === null) return null;
+  const more = alert.more > 0 ? ` ${plural(alert.more, 'more roster change')}.` : '';
+  const hurt = alert.kind === 'hurt';
+  const what = alert.what ? alert.what.charAt(0).toUpperCase() + alert.what.slice(1) : '';
   return (
     <Modal
-      kicker="The week stopped"
-      title={who + " is hurt"}
-      tone="clay"
-      lines={["The rest of the week is still there. Set a lineup that can play it."]}
+      kicker={hurt ? (alert.stopped ? 'The week stopped' : 'Injury') : 'Back from injury'}
+      title={hurt ? `${alert.name} is hurt` : `${alert.name} is fit`}
+      tone={hurt ? 'clay' : 'win'}
+      lines={[hurt
+        ? `${what}.${alert.stopped ? ' The rest of the week is still there.' : ''}${more}`
+        : `Put him back, or keep his replacement.${more}`]}
       action="Set the lineup"
-      cancel={{ label: "Later", onClick: clear }}
-      onClose={() => { clear(); go("team", "lineup"); }}
+      cancel={{ label: 'Later', onClick: clear }}
+      onClose={() => { clear(); go('team', 'lineup', alert.id); }}
     />
   );
 }
@@ -1547,6 +1277,7 @@ function PlayerOverlay() {
     <Overlay
       eyebrow="Player card"
       title={name}
+      className="is-player"
       onClose={close}
       floating={selectedPlayer ? <GodBolt target={{ kind: 'player', id: selectedPlayer }} label={`Edit ${name} in god mode`} /> : null}
     >
@@ -1585,21 +1316,51 @@ function usePlayerName(id: string | null): string {
   return gone?.name ?? 'Player card';
 }
 
+/**
+ * A screen's frame, with the soft fade it arrives with — once. The fade
+ * (`pageSoftIn`) used to replay on a screen the back gesture brought back:
+ * the swipe had already shown the page at full strength, and it then dimmed
+ * and came up again, the "quick flick" after every swipe (2026-09-24). A
+ * screen that mounts under a back navigation starts still; one that has
+ * played its fade never plays it again, however often it is hidden and shown.
+ */
+function ScreenSurface({ fill, children }: { fill: boolean; children: ReactNode }) {
+  const backNow = (): boolean => typeof document !== 'undefined' && document.documentElement.dataset.nav === 'back';
+  const [still, setStill] = useState(backNow);
+  // Shown again by a back navigation (Activity re-runs this on every show):
+  // still before the first paint, so a fade cut short earlier cannot replay.
+  useLayoutEffect(() => { if (backNow()) setStill(true); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div
+      className={`screen-surface${fill ? ' screen-surface--fill' : ''}${still ? ' is-still' : ''}`}
+      onAnimationEnd={(e) => { if (e.target === e.currentTarget) setStill(true); }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function Screen({ id }: { id: string }) {
   switch (id) {
     case 'today': return <Today />;
-    case 'stand': return <Standings />;
     case 'roster': return <Roster />;
-    case 'sched': return <Schedule />;
     case 'stats': return <Stats />;
     case 'lineup': return <Lineup />;
-    case 'rankings': return <Rankings />;
-    case 'box': return <Manage />;
-    case 'history': return <History />;
-    case 'records': return <Program />;
-    case 'recruiting': return <Board />;
-    case 'colleges': return <Colleges />;
+    case 'stand': return <StandingsScreen />;
     case 'strategy': return <StrategyScreen />;
+    case 'box': return <Manage />;
+    // Office: running the program.
+    case 'recruiting': return <Board />;
+    case 'staff': return <RoomScreen room="staff" />;
+    case 'facilities': return <RoomScreen room="facilities" />;
+    case 'budget': return <RoomScreen room="budget" />;
+    case 'board': return <RoomScreen room="board" />;
+    // Program: what it has become.
+    case 'records': return <Program />;
+    case 'history': return <History />;
+    case 'hall': return <RoomScreen room="hall" />;
+    case 'alumni': return <AlumniScreen />;
+    case 'colleges': return <Colleges />;
     // Draft remains an offseason phase. Recruiting is now a season-long Program
     // destination; the legacy offseason board route is kept only for old saves.
     case 'wire': return <Wire />;

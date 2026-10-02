@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="./pb-icons.js"></script>
+<style>
+body{margin:0;background:#101410;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer;text-align:left}
+::-webkit-scrollbar{width:0;height:0}
+[data-theme="light"]{color-scheme:light;--bg:#f6f8f5;--surface:#fff;--raised:#fff;--sunken:#eef2ee;--track:#e1e7e2;--line:#e1e8e2;--line-strong:#7a877d;--ink:#102019;--muted:#505e55;--disabled:#7f8a82;--accent:#236b42;--accent-soft:#e6f0e8;--command:#236b42;--on-command:#fff;--positive:#1b7a47;--positive-soft:#e2f2e7;--warning:#8c5a00;--warning-soft:#fcefd5;--negative:#c9362f;--negative-soft:#fdefed;--info:#2f4f7a;--info-soft:#e8eef6;--gold:#8a6b16;--scrim:rgba(9,16,12,.48);--sh-card:0 1px 2px rgba(16,32,25,.04),0 4px 16px rgba(16,32,25,.05);--sh-ctl:0 1px 3px rgba(16,32,25,.14);--sh-float:0 10px 32px rgba(16,32,25,.14)}
+[data-theme="dark"]{color-scheme:dark;--bg:#0e1511;--surface:#151f19;--raised:#1c2821;--sunken:#0f1712;--track:#26332b;--line:#28352c;--line-strong:#5f6d63;--ink:#eef3ef;--muted:#a3b1a7;--disabled:#6b776f;--accent:#4da97a;--accent-soft:#1b3326;--command:#2f7a52;--on-command:#f4f8f4;--positive:#5cc28b;--positive-soft:#163022;--warning:#f0b04a;--warning-soft:#33270e;--negative:#ef7d76;--negative-soft:#3a1a18;--info:#8db3e0;--info-soft:#172538;--gold:#e3bb4f;--scrim:rgba(0,0,0,.62);--sh-card:0 1px 2px rgba(0,0,0,.35);--sh-ctl:0 1px 3px rgba(0,0,0,.5);--sh-float:0 16px 48px rgba(0,0,0,.45)}
+@keyframes sheetRise{from{transform:translateY(100%)}to{transform:none}}
+@keyframes scrimIn{from{opacity:0}to{opacity:1}}
+</style>
+</helmet>
+
+<div data-theme="{{ theme }}" style="min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:16px;box-sizing:border-box;background:#101410">
+<div style="position:relative;width:412px;height:min(892px, calc(100vh - 32px));min-height:560px;flex:none;display:flex;flex-direction:column;overflow:hidden;border-radius:28px;background:var(--bg);color:var(--ink);box-shadow:0 24px 70px rgba(0,0,0,.45)">
+
+  <div style="flex:none;display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line)">
+    <img src="./assets/BAY.webp" alt="" style="width:30px;height:30px;object-fit:contain">
+    <div style="flex:1;display:flex;flex-direction:column"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">2031 · Week 4</small><strong style="font:700 17px/22px 'DM Sans'">Bayshore State</strong></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end"><small style="font:500 11px/14px 'DM Sans';color:var(--muted)">Record</small><b style="font:700 18px/20px 'Barlow Condensed'">14–6</b></div>
+    <img src="./assets/ball.webp" alt="" style="width:26px;height:26px;margin:0 7px">
+    <div style="width:36px;height:36px;border-radius:99px;background:var(--sunken);box-shadow:inset 0 0 0 1px var(--line)"></div>
+  </div>
+  <div style="flex:none;display:flex;gap:4px;padding:0 12px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none">
+    <a href="Recruiting.dc.html" style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Recruiting</a>
+    <sc-for list="{{ toptabs }}" as="t" hint-placeholder-count="2">
+      <button onClick="{{ t.on }}" style="position:relative;flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:{{ t.fg }}">{{ t.label }}<span style="position:absolute;left:12px;right:12px;bottom:0;height:3px;border-radius:99px;background:{{ t.bar }}"></span></button>
+    </sc-for>
+    <a href="Season%20Start.dc.html" style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Board</a>
+  </div>
+
+  <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none">
+    <div style="display:flex;flex-direction:column;gap:16px;padding:14px 16px 32px">
+
+      <!-- ================= STAFF ================= -->
+      <sc-if value="{{ onStaff }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+          <div style="display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Bayshore State · Staff room</span><h1 style="margin:0;font:700 28px/34px 'DM Sans';letter-spacing:-.02em">Coaching staff</h1></div>
+          <span style="display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border-radius:99px;background:var(--sunken);font:600 13px/1 'DM Sans'">$1.4M left</span>
+        </div>
+
+        <sc-if value="{{ staffCur }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);overflow:hidden">
+            <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Seats</span><b style="font:700 32px/1 'Barlow Condensed'">2<small style="font:500 13px/1 'DM Sans';color:var(--muted)">/3</small></b></div>
+            <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Wages</span><b style="font:700 32px/1 'Barlow Condensed'">$390K</b><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">a year</span></div>
+            <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Projects</span><b style="font:700 32px/1 'Barlow Condensed'">1</b><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">9 weeks left</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+            <sc-for list="{{ seats }}" as="s" hint-placeholder-count="3">
+              <button onClick="{{ s.pick }}" style="display:flex;flex-direction:column;gap:1px;min-height:88px;padding:8px 12px 12px;border:1px solid {{ s.pBd }};border-radius:12px;background:{{ s.pBg }};box-shadow:{{ s.pSh }}">
+                <span style="height:26px;display:flex;align-items:center"><span style="width:30px;height:30px;border-radius:99px;display:grid;place-items:center;background:{{ s.monoBg }};box-shadow:{{ s.monoSh }};color:var(--accent);font:700 11px/1 'DM Sans'">{{ s.mono }}</span></span>
+                <span style="margin-top:2px;font:600 10.5px/14px 'DM Sans';letter-spacing:.07em;text-transform:uppercase;color:var(--muted)">{{ s.short }}</span>
+                <b style="font:700 22px/24px 'Barlow Condensed'">{{ s.rating }}</b>
+                <span style="font:500 12px/16px 'DM Sans';color:{{ s.noteFg }}">{{ s.note }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;background:{{ desk.bg }};border:{{ desk.bd }};border-radius:16px;box-shadow:{{ desk.sh }};overflow:hidden">
+            <button onClick="{{ desk.open }}" style="display:flex;align-items:center;gap:12px;padding:16px 16px 12px">
+              <span style="width:44px;height:44px;border-radius:99px;display:grid;place-items:center;background:{{ desk.monoBg }};box-shadow:{{ desk.monoSh }};color:var(--accent);font:700 14px/1 'DM Sans'">{{ desk.mono }}</span>
+              <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font:700 20px/26px 'DM Sans'">{{ desk.name }}</span><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">{{ desk.role }}</span></span>
+              <span style="display:flex;flex-direction:column;align-items:flex-end"><b style="font:700 32px/1 'Barlow Condensed'">{{ desk.rating }}</b><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ desk.ratingSub }}</small></span>
+              <span style="color:var(--muted)">{{ ic.chevR }}</span>
+            </button>
+            <div style="display:flex;flex-direction:column;gap:8px;margin:0 16px 12px;padding:12px;border-radius:12px;background:var(--sunken)">
+              <div style="display:flex;justify-content:space-between;font:600 12px/16px 'DM Sans';color:var(--muted)"><span>{{ desk.workLabel }}</span><span>{{ desk.when }}</span></div>
+              <b style="font:600 15px/20px 'DM Sans'">{{ desk.workTitle }}</b>
+              <span style="font:400 13px/18px 'DM Sans';color:var(--muted)">{{ desk.workText }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--line);font:500 13px/18px 'DM Sans';color:var(--muted)"><span>{{ desk.wage }}</span><span style="color:{{ desk.contractFg }}">{{ desk.contract }}</span></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ staffNew }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:16px;background:var(--surface);border:1px solid var(--line)">
+            <span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">How a coach helps</span>
+            <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:6px">
+              <div style="display:flex;flex-direction:column;gap:2px;padding:8px;border-radius:10px;background:var(--sunken)"><b style="font:600 13px/16px 'DM Sans'">Focus</b><small style="font:400 11.5px/15px 'DM Sans';color:var(--muted)">Always on, all year</small></div>
+              <span style="font:700 16px/1 'DM Sans';color:var(--muted)">+</span>
+              <div style="display:flex;flex-direction:column;gap:2px;padding:8px;border-radius:10px;background:var(--sunken)"><b style="font:600 13px/16px 'DM Sans'">Project</b><small style="font:400 11.5px/15px 'DM Sans';color:var(--muted)">One player, a few weeks</small></div>
+              <span style="color:var(--muted)">{{ ic.arrow }}</span>
+              <div style="display:flex;flex-direction:column;gap:2px;padding:8px;border-radius:10px;background:var(--accent-soft)"><b style="font:600 13px/16px 'DM Sans';color:var(--accent)">Match them</b><small style="font:400 11.5px/15px 'DM Sans';color:var(--muted)">Bigger gain</small></div>
+            </div>
+          </div>
+          <sc-if value="{{ needsAny }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font:600 13px/18px 'DM Sans'">Needs you</span>
+              <sc-for list="{{ needs }}" as="n" hint-placeholder-count="3">
+                <button onClick="{{ n.on }}" style="display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 12px;border-radius:12px;background:{{ n.bg }}"><span style="color:{{ n.fg }}">{{ n.icon }}</span><span style="flex:1;font:600 14px/18px 'DM Sans'">{{ n.text }}</span><span style="font:600 13px/18px 'DM Sans';color:var(--accent)">{{ n.cta }}</span></button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-for list="{{ seats }}" as="s" hint-placeholder-count="3">
+            <article style="display:flex;flex-direction:column;background:{{ s.cardBg }};border:{{ s.cardBd }};border-radius:16px;box-shadow:{{ s.cardSh }};overflow:hidden">
+              <button onClick="{{ s.open }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px 12px">
+                <span style="width:44px;height:44px;border-radius:99px;display:grid;place-items:center;background:{{ s.monoBg }};box-shadow:{{ s.monoSh }};color:var(--accent);font:700 14px/1 'DM Sans';flex:none">{{ s.mono }}</span>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px"><span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">{{ s.label }}</span><span style="font:700 18px/24px 'DM Sans'">{{ s.name }}</span><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">{{ s.spec }}</span></span>
+                <sc-if value="{{ s.filled }}" hint-placeholder-val="{{ true }}"><span style="display:flex;flex-direction:column;align-items:flex-end"><b style="font:700 30px/1 'Barlow Condensed'">{{ s.rating }}</b><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">of 100</small></span></sc-if>
+                <span style="color:var(--muted)">{{ ic.chevR }}</span>
+              </button>
+              <sc-if value="{{ s.filled }}" hint-placeholder-val="{{ true }}">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:0 16px;border-radius:12px;overflow:hidden;background:var(--line)">
+                  <div style="padding:8px 10px;background:var(--sunken);display:flex;flex-direction:column;gap:2px"><small style="font:500 11.5px/14px 'DM Sans';color:var(--muted)">Focus · always on</small><b style="font:600 14px/20px 'DM Sans'">{{ s.focus }}</b></div>
+                  <div style="padding:8px 10px;background:var(--sunken);display:flex;flex-direction:column;gap:2px"><small style="font:500 11.5px/14px 'DM Sans';color:var(--muted)">Project</small><b style="font:600 14px/20px 'DM Sans';color:{{ s.projFg }}">{{ s.proj }}</b></div>
+                </div>
+                <sc-if value="{{ s.hasProj }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:6px;margin:10px 16px 0">
+                    <div style="display:flex;justify-content:space-between;font:500 12px/16px 'DM Sans';color:var(--muted)"><span>{{ s.projWho }}</span><span>{{ s.projWhen }}</span></div>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px"><sc-for list="{{ s.weeks }}" as="w" hint-placeholder-count="4"><i style="height:6px;border-radius:99px;background:{{ w.bg }}"></i></sc-for></div>
+                  </div>
+                </sc-if>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;padding:10px 16px;border-top:1px solid var(--line);font:500 13px/18px 'DM Sans';color:var(--muted)"><span><b style="color:var(--ink);font-weight:600">{{ s.wage }}</b> a year</span><span style="display:inline-flex;align-items:center;gap:4px;color:{{ s.contractFg }};font-weight:{{ s.contractW }}">{{ s.contractIcon }}{{ s.contract }}</span></div>
+              </sc-if>
+              <sc-if value="{{ s.vacant }}" hint-placeholder-val="{{ false }}">
+                <p style="margin:0;padding:0 16px;font:400 14px/20px 'DM Sans';color:var(--muted)">{{ s.pitch }}</p>
+                <div style="padding:12px 16px 16px"><button onClick="{{ s.open }}" style="width:100%;min-height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font:600 14px/1 'DM Sans';text-align:center">See candidates</button></div>
+              </sc-if>
+            </article>
+          </sc-for>
+        </sc-if>
+      </sc-if>
+
+      <!-- ================= BUDGET ================= -->
+      <sc-if value="{{ onBudget }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Bayshore State · Prestige 61</span><h1 style="margin:0;font:700 28px/34px 'DM Sans';letter-spacing:-.02em">Budget</h1></div>
+        <div style="display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end"><div><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Left this season</span><div style="font:700 44px/44px 'Barlow Condensed'">{{ budgetText }}</div></div><span style="font:400 13px/18px 'DM Sans';color:var(--muted);text-align:right">of $2.4M<br>New budget each February</span></div>
+          <div style="display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--track);gap:2px"><i style="width:16%;background:var(--ink);opacity:.75"></i><i style="width:{{ spentW }};background:var(--info);opacity:.7"></i></div>
+          <sc-for list="{{ budgetRows }}" as="r" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)"><i style="width:10px;height:10px;border-radius:99px;background:{{ r.dot }};opacity:{{ r.op }}"></i><span style="flex:1;display:flex;flex-direction:column"><b style="font:600 14px/20px 'DM Sans'">{{ r.label }}</b><small style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ r.sub }}</small></span><b style="font:600 15px/20px 'DM Sans';font-variant-numeric:tabular-nums">{{ r.v }}</b></div>
+          </sc-for>
+        </div>
+        <section style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="margin:0;font:600 17px/24px 'DM Sans'">What the rest can buy</h2><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">Cheapest first</span></div>
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+            <sc-for list="{{ buys }}" as="b" hint-placeholder-count="4">
+              <button onClick="{{ b.go }}" style="width:100%;display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 14px;border-top:{{ b.bd }}">
+                <span style="width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--sunken);color:var(--muted);flex:none">{{ b.icon }}</span>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column"><b style="font:600 14.5px/20px 'DM Sans'">{{ b.title }}</b><small style="font:400 12.5px/17px 'DM Sans';color:var(--muted)">{{ b.sub }}</small></span>
+                <span style="display:flex;flex-direction:column;align-items:flex-end"><b style="font:700 18px/1 'Barlow Condensed'">{{ b.cost }}</b><small style="font:600 11.5px/15px 'DM Sans';color:{{ b.fg }}">{{ b.af }}</small></span>
+              </button>
+            </sc-for>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- ================= FACILITIES ================= -->
+      <sc-if value="{{ onFac }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+          <div style="display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Bayshore State · Campus</span><h1 style="margin:0;font:700 28px/34px 'DM Sans';letter-spacing:-.02em">Facilities</h1></div>
+          <span style="display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border-radius:99px;background:var(--sunken);font:600 13px/1 'DM Sans'">{{ budgetText }} left</span>
+        </div>
+        <sc-if value="{{ facCur }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);overflow:hidden">
+            <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Built</span><b style="font:700 32px/1 'Barlow Condensed'">{{ builtN }}<small style="font:500 13px/1 'DM Sans';color:var(--muted)">/3</small></b></div>
+            <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Levels</span><b style="font:700 32px/1 'Barlow Condensed'">{{ levelsN }}<small style="font:500 13px/1 'DM Sans';color:var(--muted)">/9</small></b></div>
+            <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Next</span><b style="font:700 32px/1 'Barlow Condensed'">{{ shown.cost }}</b><span style="font:500 12px/16px 'DM Sans';color:{{ shown.afFg }}">{{ shown.af }}</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+            <sc-for list="{{ bldgs }}" as="b" hint-placeholder-count="3">
+              <button onClick="{{ b.pick }}" style="display:flex;flex-direction:column;gap:1px;min-height:88px;padding:8px 12px 12px;border:1px solid {{ b.pBd }};border-radius:12px;background:{{ b.pBg }};box-shadow:{{ b.pSh }}">
+                <span style="height:26px;display:flex;align-items:center;color:var(--muted)">{{ ic.home }}</span>
+                <span style="margin-top:2px;font:600 10.5px/14px 'DM Sans';letter-spacing:.07em;text-transform:uppercase;color:var(--muted)">{{ b.short }}</span>
+                <b style="font:700 22px/24px 'Barlow Condensed'">L{{ b.level }}</b>
+                <span style="font:500 12px/16px 'DM Sans';color:{{ b.afFg }}">{{ b.cost }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);overflow:hidden">
+            <div style="display:grid;place-items:center;height:116px;background:repeating-linear-gradient(135deg,var(--accent-soft) 0 10px,var(--surface) 10px 20px);color:var(--muted);font:500 11px/1 'IBM Plex Mono'">building art</div>
+            <div style="padding:16px 16px 0;display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0;font:700 20px/26px 'DM Sans'">{{ shown.name }}</h3><span style="display:flex;gap:4px"><sc-for list="{{ shown.pips }}" as="p" hint-placeholder-count="3"><i style="width:16px;height:6px;border-radius:99px;background:{{ p.bg }}"></i></sc-for></span></div><p style="margin:0;font:400 15px/22px 'DM Sans';color:var(--muted)">{{ shown.blurb }}</p></div>
+            <div style="padding:16px 16px 0"><h4 style="margin:0 0 12px;font:600 15px/22px 'DM Sans'">What it does</h4>
+              <sc-for list="{{ shown.rows }}" as="r" hint-placeholder-count="3"><div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font:500 15px/20px 'DM Sans'"><span>{{ r.label }}</span><span style="display:flex;gap:8px;align-items:baseline"><span style="color:var(--muted)">{{ r.now }}</span><b style="font:600 20px/20px 'Barlow Condensed'">{{ r.next }}</b></span></div></sc-for>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;margin-top:16px;padding:16px;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;font:500 13px/18px 'DM Sans';color:var(--muted)"><span>Costs <b style="color:var(--ink)">{{ shown.cost }}</b></span><span>Budget left <b style="color:var(--ink)">{{ budgetText }}</b></span></div><button onClick="{{ shown.build }}" style="min-height:48px;border-radius:12px;background:{{ shown.btnBg }};color:{{ shown.btnFg }};font:600 15px/1 'DM Sans';text-align:center">{{ shown.btn }}</button></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ facNew }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:8px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:16px">
+            <div style="display:flex;justify-content:space-between;font:500 12px/16px 'DM Sans';color:var(--muted)"><span>This season's budget</span><span><b style="color:var(--ink)">{{ budgetText }}</b> left of $2.4M</span></div>
+            <div style="display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--track);gap:2px"><i style="width:16%;background:var(--ink);opacity:.75"></i><i style="width:{{ spentW }};background:var(--info);opacity:.7"></i></div>
+            <div style="display:flex;gap:14px;font:500 12px/16px 'DM Sans';color:var(--muted)"><span style="display:flex;align-items:center;gap:6px"><i style="width:10px;height:10px;border-radius:99px;background:var(--ink);opacity:.75"></i>Staff wages</span><span style="display:flex;align-items:center;gap:6px"><i style="width:10px;height:10px;border-radius:99px;background:var(--info);opacity:.7"></i>Buildings</span><span style="display:flex;align-items:center;gap:6px"><i style="width:10px;height:10px;border-radius:99px;background:var(--track);box-shadow:inset 0 0 0 1px var(--line-strong)"></i>Left</span></div>
+          </div>
+          <sc-for list="{{ bldgs }}" as="b" hint-placeholder-count="3">
+            <article style="display:flex;flex-direction:column;background:var(--surface);border:1px solid {{ b.cardBd }};border-radius:16px;box-shadow:var(--sh-card);overflow:hidden">
+              <button onClick="{{ b.toggle }}" style="display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px">
+                <span style="height:56px;border-radius:10px;background:repeating-linear-gradient(135deg,var(--accent-soft) 0 6px,var(--sunken) 6px 12px);display:grid;place-items:center;font:500 9px/1 'IBM Plex Mono';color:var(--muted)">art</span>
+                <span style="min-width:0;display:flex;flex-direction:column;gap:4px"><span style="font:700 17px/22px 'DM Sans'">{{ b.name }}</span><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">{{ b.helps }}</span>
+                  <span style="display:flex;align-items:center;gap:6px"><sc-for list="{{ b.ladder }}" as="p" hint-placeholder-count="4"><span style="display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:20px;border-radius:6px;background:{{ p.bg }};color:{{ p.fg }};box-shadow:{{ p.sh }};font:700 11px/1 'DM Sans'">{{ p.l }}</span></sc-for></span></span>
+                <span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><small style="font:500 11.5px/14px 'DM Sans';color:var(--muted)">{{ b.nextLabel }}</small><b style="font:700 22px/1 'Barlow Condensed'">{{ b.cost }}</b><small style="font:600 11.5px/14px 'DM Sans';color:{{ b.afFg }}">{{ b.af }}</small></span>
+              </button>
+              <sc-if value="{{ b.open }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:10px;padding:12px 14px 14px;border-top:1px solid var(--line)">
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) 52px 60px;gap:8px;font:500 12px/16px 'DM Sans';color:var(--muted)"><span>{{ b.cmpHead }}</span><span style="text-align:right">Now</span><span style="text-align:right">{{ b.nextShort }}</span></div>
+                  <sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="3">
+                    <div style="display:grid;grid-template-columns:minmax(0,1fr) 52px 60px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)"><span style="display:flex;flex-direction:column"><span style="font:500 14px/20px 'DM Sans'">{{ r.label }}</span><small style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ r.hint }}</small></span><b style="text-align:right;font:600 19px/22px 'Barlow Condensed';color:var(--muted)">{{ r.now }}</b><b style="text-align:right;font:600 19px/22px 'Barlow Condensed';color:{{ r.nextFg }}">{{ r.next }}</b></div>
+                  </sc-for>
+                  <sc-if value="{{ b.canBuild }}" hint-placeholder-val="{{ true }}"><button onClick="{{ b.build }}" style="display:flex;justify-content:space-between;align-items:center;min-height:48px;padding:0 16px;border-radius:12px;background:{{ b.btnBg }};color:{{ b.btnFg }};font:600 15px/1 'DM Sans'"><span>{{ b.btn }}</span><span style="font-weight:500">{{ b.btnMeta }}</span></button></sc-if>
+                </div>
+              </sc-if>
+            </article>
+          </sc-for>
+        </sc-if>
+      </sc-if>
+    </div>
+  </div>
+
+  <div style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px 10px;background:var(--surface);border-top:1px solid var(--line)">
+    <a href="#" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.homeNav }}Home</a>
+    <a href="Lineup.dc.html" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.idcard }}Team</a>
+    <span style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font:600 12px/16px 'DM Sans'">{{ ic.backpack }}Office</span>
+    <span style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.starNav }}Program</span>
+  </div>
+
+  <!-- ================= COACH SHEET ================= -->
+  <sc-if value="{{ sheet }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;justify-content:flex-end">
+      <button onClick="{{ close }}" style="position:absolute;inset:0;background:var(--scrim);animation:scrimIn 170ms ease-out both"></button>
+      <div style="position:relative;height:93%;display:flex;flex-direction:column;overflow:hidden;background:var(--raised);border-radius:24px 24px 0 0;box-shadow:var(--sh-float);animation:sheetRise 220ms cubic-bezier(.22,.85,.28,1) both">
+        <span style="align-self:center;flex:none;width:44px;height:5px;margin-top:8px;border-radius:99px;background:var(--line-strong)"></span>
+        <div style="flex:none;display:flex;align-items:flex-start;gap:12px;padding:10px 20px 12px">
+          <span style="width:44px;height:44px;border-radius:99px;display:grid;place-items:center;background:{{ co.monoBg }};box-shadow:{{ co.monoSh }};color:var(--accent);font:700 14px/1 'DM Sans';flex:none">{{ co.mono }}</span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">{{ co.label }}</span><h2 style="margin:0;font:700 20px/26px 'DM Sans'">{{ co.name }}</h2><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">{{ co.sub }}</span></div>
+          <button onClick="{{ close }}" style="width:44px;height:44px;margin:-6px -10px 0 0;display:grid;place-items:center;color:var(--muted)">{{ ic.cross }}</button>
+        </div>
+        <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;gap:16px;padding:0 20px 20px">
+          <sc-if value="{{ co.filled }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+              <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Rating</span><b style="font:700 22px/24px 'Barlow Condensed'">{{ co.rating }}</b><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ co.split }}</span></div>
+              <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Wage</span><b style="font:700 22px/24px 'Barlow Condensed'">{{ co.wage }}<small style="font:500 12px/1 'DM Sans';color:var(--muted)">/yr</small></b></div>
+              <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Signed to</span><b style="font:700 22px/24px 'Barlow Condensed'">{{ co.until }}</b><span style="font:500 12px/16px 'DM Sans';color:{{ co.untilFg }}">{{ co.untilNote }}</span></div>
+            </div>
+            <div style="display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--sunken)"><sc-for list="{{ coTabs }}" as="t" hint-placeholder-count="2"><button onClick="{{ t.on }}" style="flex:1;display:inline-flex;justify-content:center;align-items:center;gap:6px;min-height:40px;border-radius:8px;background:{{ t.bg }};color:{{ t.fg }};box-shadow:{{ t.sh }};font:600 13px/1 'DM Sans'">{{ t.label }}<sc-if value="{{ t.dot }}" hint-placeholder-val="{{ false }}"><i style="width:8px;height:8px;border-radius:99px;background:var(--warning)"></i></sc-if></button></sc-for></div>
+          </sc-if>
+
+          <sc-if value="{{ coWork }}" hint-placeholder-val="{{ true }}">
+            <section style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 15px/22px 'DM Sans'">Focus <span style="font-weight:500;color:var(--muted)">· always on</span></span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">Change any time</span></div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ focuses }}" as="f" hint-placeholder-count="4"><button onClick="{{ f.on }}" style="min-height:36px;padding:0 12px;border-radius:99px;border:1px solid {{ f.bd }};background:{{ f.bg }};color:{{ f.fg }};font:600 13px/1 'DM Sans'">{{ f.label }}</button></sc-for></div>
+              <p style="margin:0;font:400 13px/18px 'DM Sans';color:var(--muted)">{{ focusHint }}</p>
+            </section>
+            <section style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 15px/22px 'DM Sans'">Project <span style="font-weight:500;color:var(--muted)">· one at a time</span></span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">9 recruiting weeks left</span></div>
+              <sc-if value="{{ proj.active }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface)">
+                  <div style="display:flex;align-items:center;gap:12px"><span style="width:44px;height:44px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 13px/1 'DM Sans';color:var(--muted)">JT</span><div style="flex:1;display:flex;flex-direction:column"><b style="font:600 17px/24px 'DM Sans'">Jalen Tucker</b><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">Command lab · Starting pitcher · Sophomore</span></div></div>
+                  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px"><i style="height:8px;border-radius:99px;background:var(--accent)"></i><i style="height:8px;border-radius:99px;background:var(--accent)"></i><i style="height:8px;border-radius:99px;background:var(--track)"></i><i style="height:8px;border-radius:99px;background:var(--track)"></i></div>
+                  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;border-radius:12px;overflow:hidden;background:var(--line)">
+                    <div style="padding:8px 10px;background:var(--sunken)"><small style="display:block;font:500 12px/16px 'DM Sans';color:var(--muted)">If it works</small><b style="font:700 20px/24px 'Barlow Condensed'">+3 to +5</b><small style="display:block;font:500 12px/16px 'DM Sans';color:var(--muted)">Control</small></div>
+                    <div style="padding:8px 10px;background:var(--sunken)"><small style="display:block;font:500 12px/16px 'DM Sans';color:var(--muted)">Chance</small><b style="font:700 20px/24px 'Barlow Condensed'">64%</b><small style="display:block;font:500 12px/16px 'DM Sans';color:var(--muted)">Set at the start</small></div>
+                    <div style="padding:8px 10px;background:var(--sunken)"><small style="display:block;font:500 12px/16px 'DM Sans';color:var(--muted)">Week</small><b style="font:700 20px/24px 'Barlow Condensed'">3 of 4</b><small style="display:block;font:500 12px/16px 'DM Sans';color:{{ proj.focusFg }}">{{ proj.focusNote }}</small></div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ proj.builder }}" hint-placeholder-val="{{ true }}">
+                <span style="font:500 13px/18px 'DM Sans'">1 · What to work on</span>
+                <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"><sc-for list="{{ kinds }}" as="k" hint-placeholder-count="3"><button onClick="{{ k.on }}" style="display:flex;flex-direction:column;gap:4px;padding:10px;border:1px solid {{ k.bd }};border-radius:12px;background:{{ k.bg }};box-shadow:{{ k.sh }}"><b style="font:600 14px/18px 'DM Sans'">{{ k.label }}</b><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">4 weeks</small><sc-if value="{{ k.match }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start;min-height:20px;padding:0 6px;border-radius:99px;display:inline-flex;align-items:center;background:var(--positive-soft);color:var(--positive);font:600 11px/1 'DM Sans'">Matches focus</span></sc-if></button></sc-for></div>
+                <span style="font:500 13px/18px 'DM Sans'">2 · Who</span>
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+                  <div style="display:flex;justify-content:space-between;padding:8px 14px;font:500 12px/16px 'DM Sans';color:var(--muted)"><span>Player</span><span>Chance it works</span></div>
+                  <sc-for list="{{ players }}" as="p" hint-placeholder-count="4">
+                    <button onClick="{{ p.on }}" style="width:100%;display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 14px;border-top:1px solid var(--line);background:{{ p.bg }}">
+                      <span style="width:20px;height:20px;border-radius:99px;border:2px solid {{ p.ring }};background:{{ p.dot }};box-sizing:border-box;flex:none"></span>
+                      <span style="flex:1;display:flex;flex-direction:column"><b style="font:600 14px/20px 'DM Sans'">{{ p.name }}</b><small style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ p.sub }}</small></span>
+                      <span style="display:flex;align-items:center;gap:8px"><span style="width:44px;height:6px;border-radius:99px;background:var(--track);overflow:hidden"><i style="display:block;height:100%;width:{{ p.oddsW }};background:var(--accent)"></i></span><b style="min-width:36px;text-align:right;font:700 18px/1 'Barlow Condensed'">{{ p.odds }}</b></span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{ coContract }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:10px;padding:12px 14px;border-radius:16px;background:{{ co.cBg }}"><span style="color:{{ co.untilFg }};padding-top:2px">{{ ic.clock }}</span><div><b style="display:block;font:600 15px/22px 'DM Sans'">{{ co.cTitle }}</b><span style="font:400 13px/18px 'DM Sans'">{{ co.cText }}</span></div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--surface)">
+              <span style="font:600 15px/22px 'DM Sans'">What he adds</span>
+              <sc-for list="{{ co.adds }}" as="a" hint-placeholder-count="2"><div style="display:grid;grid-template-columns:minmax(96px,40%) minmax(0,1fr) 40px;gap:10px;align-items:center"><span style="font:500 13px/18px 'DM Sans'">{{ a.label }}</span><span style="height:8px;border-radius:99px;background:var(--track);overflow:hidden"><i style="display:block;height:100%;width:{{ a.w }};background:var(--accent)"></i></span><b style="text-align:right;font:700 17px/1 'Barlow Condensed'">{{ a.v }}</b></div></sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ co.vacant }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:10px;padding:12px 14px;border-radius:16px;background:var(--info-soft)"><span style="color:var(--info);padding-top:2px">{{ ic.person }}</span><div><b style="display:block;font:600 15px/22px 'DM Sans'">What a recruiting coordinator does</b><span style="font:400 13px/18px 'DM Sans'">Improves recruiting and brings relationships in one state.</span></div></div>
+            <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;padding:10px 14px;font:500 12px/16px 'DM Sans';color:var(--muted)"><span>Candidate · wage · state he knows</span><span>Rating</span></div>
+              <sc-for list="{{ cands }}" as="c" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 14px;border-top:1px solid var(--line)">
+                  <span style="width:36px;height:36px;border-radius:99px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font:700 12px/1 'DM Sans'">{{ c.mono }}</span>
+                  <span style="flex:1;display:flex;flex-direction:column"><b style="font:600 14px/20px 'DM Sans'">{{ c.name }}</b><small style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ c.sub }}</small></span>
+                  <sc-if value="{{ c.over }}" hint-placeholder-val="{{ false }}"><span style="min-height:22px;padding:0 8px;border-radius:99px;display:inline-flex;align-items:center;background:var(--warning-soft);color:var(--warning);font:600 11.5px/1 'DM Sans'">Over budget</span></sc-if>
+                  <b style="font:700 22px/1 'Barlow Condensed'">{{ c.r }}</b>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <sc-if value="{{ foot.on }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:none;display:flex;flex-direction:column;gap:8px;padding:12px 20px 14px;border-top:1px solid var(--line);background:var(--raised)">
+            <sc-if value="{{ foot.summary }}" hint-placeholder-val="{{ false }}"><div style="display:flex;justify-content:space-between;font:500 12px/16px 'DM Sans';color:var(--muted)"><span>{{ foot.summary }}</span><span style="color:{{ foot.matchFg }};font-weight:600">{{ foot.match }}</span></div></sc-if>
+            <div style="display:grid;grid-template-columns:{{ foot.cols }};gap:8px">
+              <sc-if value="{{ foot.second }}" hint-placeholder-val="{{ false }}"><button style="min-height:48px;border-radius:12px;border:1px solid var(--line-strong);background:var(--surface);font:600 14px/1 'DM Sans';text-align:center">{{ foot.second }}</button></sc-if>
+              <button onClick="{{ foot.go }}" style="min-height:48px;border-radius:12px;background:{{ foot.bg }};color:{{ foot.fg }};border:1px solid {{ foot.bd }};font:600 15px/1 'DM Sans';text-align:center">{{ foot.label }}</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Light&quot;,&quot;Dark&quot;],&quot;default&quot;:&quot;Light&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const SEATS = [
+  { k: 'pitching', label: 'Pitching coach', short: 'Pitching', name: 'Ray Hollis', mono: 'RH', rating: 74, spec: 'Developer · Age 58 · Season 4 here', wage: '$210K', until: 2033, ending: false, focus: 'Command', proj: 'Command lab', projWho: 'Jalen Tucker · +3 to +5 control', projWhen: 'Week 3 of 4', done: 2, split: '46 + 28', adds: [['Pitcher development', 46], ['Game-day pitching', 28]] },
+  { k: 'hitting', label: 'Hitting coach', short: 'Hitting', name: 'Dale Marsh', mono: 'DM', rating: 68, spec: 'Game-day · Age 51 · Season 2 here', wage: '$180K', until: 2031, ending: true, focus: 'Balanced', proj: null, split: '26 + 42', adds: [['Hitter development', 26], ['Game-day offense', 42]] },
+  { k: 'recruiting', label: 'Recruiting coordinator', short: 'Recruiting', name: 'Open seat', mono: '+', vacant: true, pitch: 'Builds pipelines beyond Florida and adds to your recruiting skill.' },
+];
+const B = [
+  { k: 'cage', name: 'Hitting barn', short: 'Barn', blurb: 'Bats come back from the winter further along.', helps: 'Hitter growth · hitting projects', level: 1, base: 620, rows: (l) => [['Hitter training', 'Extra growth each offseason', l ? `+${[0, 4, 7, 10][l]}` : '—', `+${[4, 7, 10, 10][l]}`], ['Appeal to recruits', '', `+${[0, 4, 7, 10][l]}%`, `+${[4, 7, 10, 10][l]}%`], ['Hitting coach projects', '', l ? `${[5, 5, 4, 3][l]} wk` : 'Locked', `${[5, 4, 3, 3][l]} wk`]] },
+  { k: 'pen', name: 'Pitching lab', short: 'Lab', blurb: 'Arms develop, and they break down less.', helps: 'Pitcher growth · arm injuries · pitching projects', level: 1, base: 660, rows: (l) => [['Pitcher training', 'Extra growth each offseason', l ? `+${[0, 4, 7, 10][l]}` : '—', `+${[4, 7, 10, 10][l]}`], ['Arm injury risk', '', l ? `−${[0, 10, 18, 26][l]}%` : '—', `−${[10, 18, 26, 26][l]}%`], ['Pitching coach projects', '', l ? `${[5, 5, 4, 3][l]} wk` : 'Locked', `${[5, 4, 3, 3][l]} wk`]] },
+  { k: 'clubhouse', name: 'Clubhouse', short: 'Clubhouse', blurb: 'Recruits notice, and the room holds together.', helps: 'Recruit appeal · coordinator projects', level: 0, base: 580, rows: (l) => [['Appeal to recruits', '', l ? `+${[0, 12, 21, 31][l]}%` : '—', `+${[12, 21, 31, 31][l]}%`], ['Hitter and pitcher training', 'Extra growth each offseason', l ? `+${[0, 1, 2, 3][l]}` : '—', `+${[1, 2, 3, 3][l]}`], ['Recruiting projects', '', l ? `${[5, 5, 4, 3][l]} wk` : 'Locked', l ? `${[5, 4, 3, 3][l]} wk` : 'Unlocks']] },
+];
+const MULT = [0, 1, 1.75, 2.6];
+const money = (k) => (k >= 1000 ? `$${(k / 1000).toFixed(k % 1000 === 0 ? 0 : 2).replace(/0$/, '')}M` : `$${Math.round(k)}K`);
+const FOCUS = { hitting: [['Balanced', 'Every hitter gains a little. No project gets the focus bonus.'], ['Contact', 'Contact blocks gain more. Hitters put more balls in play.'], ['Power', 'Power blocks gain more. More extra-base hits.'], ['Plate discipline', 'Approach labs gain more. More walks, fewer chases.']], pitching: [['Balanced', 'Every arm gains a little.'], ['Command', 'Command labs gain more. Fewer walks.'], ['Velocity', 'Velocity blocks gain more. More strikeouts.'], ['Arm care', 'Arm-care blocks gain more. Fewer arm injuries.']] };
+const KINDS = [['Contact', 'Contact block'], ['Power', 'Power block'], ['Plate discipline', 'Approach lab']];
+const PLAYERS = [['Marco Reyes', 'Shortstop · Freshman', 71], ['Tanner Cobb', 'Catcher · Sophomore', 64], ['Eli Frost', 'Left field · Junior', 52], ['Owen Park', 'First base · Senior', 38]];
+class Component extends DCLogic {
+  state = { tab: 'staff', open: null, coTab: 'work', focus: { hitting: 'Balanced', pitching: 'Command' }, kind: 'Contact', player: null, started: false, levels: { cage: 1, pen: 1, clubhouse: 0 }, spent: 0, shown: 'clubhouse', expanded: 'clubhouse', armed: null, desk: 'pitching' };
+  componentDidMount() { try { const h = window.location.hash.slice(1); if (h === 'facilities' || h === 'budget') this.setState({ tab: h }); } catch (e) {} }
+  I(n, s) { return window.pbIcon ? window.pbIcon(React, n, s || 15) : null; }
+  renderVals() {
+    const I = this.I.bind(this); const st = this.state;
+    const sv = this.props.staffVariant ?? 'A · Desk cards'; const fv = this.props.facilityVariant ?? 'A · Build ladder';
+    const staffCur = sv.startsWith('Current'); const facCur = fv.startsWith('Current');
+    const budget = 1400 - st.spent;
+    const seats = SEATS.map((s) => {
+      const filled = !s.vacant; const hitting = s.k === 'hitting';
+      const proj = hitting && st.started ? `${KINDS.find((k) => k[0] === st.kind)[1]}` : s.proj;
+      const hasProj = !!proj; const sel = st.desk === s.k;
+      return { ...s, filled, focus: st.focus[s.k] || s.focus, proj: proj || 'Idle · assign one', projFg: proj ? 'var(--ink)' : 'var(--warning)', hasProj,
+        projWho: hitting && st.started ? `${st.player} · +3 to +5 ${st.kind.toLowerCase()}` : s.projWho, projWhen: hitting && st.started ? 'Week 1 of 4' : s.projWhen,
+        weeks: [0, 1, 2, 3].map((i) => ({ bg: i < (hitting && st.started ? 0 : s.done || 0) ? 'var(--accent)' : i === (hitting && st.started ? 0 : s.done) ? 'color-mix(in srgb, var(--accent) 40%, var(--track))' : 'var(--track)' })),
+        contract: s.ending ? 'Contract ends this season' : `Signed through ${s.until}`, contractFg: s.ending ? 'var(--warning)' : 'var(--muted)', contractW: s.ending ? 600 : 500, contractIcon: s.ending ? I('clock', 13) : null,
+        monoBg: filled ? 'var(--accent-soft)' : 'transparent', monoSh: filled ? 'none' : 'inset 0 0 0 2px var(--line-strong)',
+        cardBg: filled ? 'var(--surface)' : 'transparent', cardBd: filled ? '1px solid var(--line)' : '2px dashed var(--line-strong)', cardSh: filled ? 'var(--sh-card)' : 'none',
+        rating: filled ? s.rating : '—', note: !filled ? 'Open seat' : s.ending ? 'Contract ends' : 'In progress', noteFg: s.ending ? 'var(--warning)' : filled ? 'var(--info)' : 'var(--muted)',
+        pBd: sel ? 'var(--accent)' : 'var(--line)', pBg: sel ? 'var(--accent-soft)' : 'var(--surface)', pSh: sel ? 'inset 0 0 0 1px var(--accent)' : 'none',
+        pick: () => this.setState({ desk: s.k }), open: () => this.setState({ open: s.k, coTab: 'work' }) };
+    });
+    const d = seats.find((s) => s.k === st.desk);
+    const desk = { ...d, role: d.label, ratingSub: d.filled ? `${d.split}` : '', bg: d.cardBg, bd: d.cardBd, sh: d.cardSh, name: d.name,
+      workLabel: d.filled ? (d.hasProj ? 'Project' : 'Project') : 'Open seat', when: d.hasProj ? d.projWhen : '', workTitle: d.filled ? d.proj : 'Hire a coordinator', workText: d.filled ? (d.hasProj ? d.projWho : '4 weeks a project · 9 weeks left') : d.pitch,
+      wage: d.filled ? `${d.wage}/yr` : '', contract: d.filled ? d.contract : '', contractFg: d.contractFg };
+    const needs = [
+      !st.started && { text: 'Dale Marsh has no project', cta: 'Assign', bg: 'var(--warning-soft)', fg: 'var(--warning)', icon: I('alert', 15), on: () => this.setState({ open: 'hitting', coTab: 'work' }) },
+      { text: 'Dale Marsh’s contract ends this season', cta: 'Review', bg: 'var(--warning-soft)', fg: 'var(--warning)', icon: I('clock', 15), on: () => this.setState({ open: 'hitting', coTab: 'contract' }) },
+      { text: 'Recruiting coordinator seat is open', cta: 'Hire', bg: 'var(--info-soft)', fg: 'var(--info)', icon: I('person', 15), on: () => this.setState({ open: 'recruiting' }) },
+    ].filter(Boolean);
+
+    // coach sheet
+    const cs = st.open ? seats.find((s) => s.k === st.open) : null;
+    let co = {}; let focuses = []; let kinds = []; let players = []; let foot = { on: false }; let proj = {}; let focusHint = '';
+    if (cs) {
+      co = { ...cs, sub: cs.filled ? cs.spec : 'Choose a coach for this role', untilNote: cs.ending ? 'Ends this season' : '', untilFg: cs.ending ? 'var(--warning)' : 'var(--muted)',
+        cTitle: cs.ending ? 'His contract ends this season' : `Signed through ${cs.until}`, cText: cs.ending ? 'Renew it in the offseason, or he leaves. A renewal runs through 2033.' : 'Nothing to decide right now.', cBg: cs.ending ? 'var(--warning-soft)' : 'var(--sunken)',
+        adds: (cs.adds || []).map(([label, v]) => ({ label, v, w: v + '%' })) };
+      const fl = FOCUS[cs.k] || [];
+      const cur = st.focus[cs.k];
+      focuses = fl.map(([label]) => ({ label, on: () => this.setState((s) => ({ focus: { ...s.focus, [cs.k]: label } })), bg: cur === label ? 'var(--accent-soft)' : 'var(--surface)', fg: cur === label ? 'var(--accent)' : 'var(--ink)', bd: cur === label ? 'var(--accent)' : 'var(--line)' }));
+      focusHint = (fl.find((f) => f[0] === cur) || ['', ''])[1];
+      const active = cs.k === 'pitching' || (cs.k === 'hitting' && st.started);
+      proj = { active, builder: cs.k === 'hitting' && !st.started, focusNote: st.focus[cs.k] === 'Command' ? 'Focus bonus on track' : 'Focus bonus lost', focusFg: st.focus[cs.k] === 'Command' ? 'var(--positive)' : 'var(--warning)' };
+      kinds = KINDS.map(([label]) => ({ label, match: cur === label, on: () => this.setState({ kind: label }), bd: st.kind === label ? 'var(--accent)' : 'var(--line)', bg: st.kind === label ? 'var(--accent-soft)' : 'var(--surface)', sh: st.kind === label ? 'inset 0 0 0 1px var(--accent)' : 'none' }));
+      players = PLAYERS.map(([name, sub, o]) => ({ name, sub, odds: o + '%', oddsW: o + '%', on: () => this.setState({ player: name }), bg: st.player === name ? 'var(--accent-soft)' : 'transparent', ring: st.player === name ? 'var(--command)' : 'var(--line-strong)', dot: st.player === name ? 'var(--command)' : 'transparent' }));
+      const coWorkTab = st.coTab === 'work';
+      if (cs.vacant) foot = { on: false };
+      else if (coWorkTab && proj.builder) {
+        const ready = !!st.player; const match = cur === st.kind;
+        foot = { on: true, summary: ready ? `${KINDS.find((k) => k[0] === st.kind)[1]} · ${st.player} · 4 wk` : 'Pick a player to continue', match: ready ? (match ? 'Matches focus: +5' : 'No focus bonus: +3') : '', matchFg: match ? 'var(--positive)' : 'var(--warning)', cols: '1fr', label: ready ? 'Start the project' : 'Choose a player', bg: ready ? 'var(--command)' : 'var(--sunken)', fg: ready ? 'var(--on-command)' : 'var(--disabled)', bd: 'transparent', go: () => ready && this.setState({ started: true }) };
+      } else if (coWorkTab && active) {
+        foot = { on: true, summary: '', cols: '1fr', label: 'Cancel project', bg: 'var(--surface)', fg: 'var(--ink)', bd: 'var(--line-strong)', go: () => {} };
+      } else if (!coWorkTab) {
+        foot = { on: true, summary: '', cols: '1fr 1fr', second: 'Find a replacement', label: 'Release coach', bg: 'var(--surface)', fg: 'var(--negative)', bd: 'var(--negative)', go: () => {} };
+      }
+    }
+    const cands = [['Troy Whitaker', 'TW', 'Developer · $150K · knows Georgia', 66, false], ['Luis Carrillo', 'LC', 'Balanced · $190K · knows Texas', 72, false], ['Ben Sato', 'BS', 'Game-day · $120K · knows Alabama', 58, false], ['Hank Doyle', 'HD', 'Developer · $260K · knows California', 81, true]].map(([name, mono, sub, r, over]) => ({ name, mono, sub, r, over }));
+
+    // facilities
+    const bldgs = B.map((b) => {
+      const l = st.levels[b.k]; const max = l >= 3; const cost = max ? null : Math.round(b.base * MULT[l + 1] / 5) * 5;
+      const aff = cost !== null && cost <= budget; const armed = st.armed === b.k; const open = st.expanded === b.k;
+      return { ...b, level: l, cost: max ? 'Max' : money(cost), af: max ? 'Fully built' : aff ? 'Within budget' : 'Over budget', afFg: max ? 'var(--positive)' : aff ? 'var(--positive)' : 'var(--warning)',
+        nextLabel: max ? 'Fully built' : l === 0 ? 'Build' : `Upgrade to L${l + 1}`, nextShort: l === 0 ? 'Built' : `L${l + 1}`, cmpHead: 'What it does',
+        ladder: ['L0', 'L1', 'L2', 'L3'].map((x, i) => ({ l: x, bg: i <= l && i > 0 ? 'var(--accent)' : i === l + 1 ? 'var(--accent-soft)' : 'var(--sunken)', fg: i <= l && i > 0 ? 'var(--on-command)' : i === l + 1 ? 'var(--accent)' : 'var(--muted)', sh: i === l + 1 ? 'inset 0 0 0 1px var(--accent)' : i === l ? 'inset 0 0 0 1px var(--line-strong)' : 'none' })),
+        rows: b.rows(l).map(([label, hint, now, next]) => ({ label, hint, now, next, nextFg: now === next ? 'var(--muted)' : 'var(--positive)' })),
+        open, canBuild: !max, cardBd: open ? 'var(--line-strong)' : 'var(--line)',
+        btn: !aff ? 'Not enough budget' : armed ? 'Tap again to spend it' : l === 0 ? `Build the ${b.name.toLowerCase()}` : `Upgrade to level ${l + 1}`, btnMeta: aff ? money(cost) : `${money(cost - budget)} short`,
+        btnBg: !aff ? 'var(--sunken)' : armed ? 'var(--ink)' : 'var(--command)', btnFg: !aff ? 'var(--disabled)' : armed ? 'var(--bg)' : 'var(--on-command)',
+        build: () => { if (!aff) return; if (!armed) { this.setState({ armed: b.k }); return; } this.setState((s) => ({ levels: { ...s.levels, [b.k]: s.levels[b.k] + 1 }, spent: s.spent + cost, armed: null })); },
+        toggle: () => this.setState((s) => ({ expanded: s.expanded === b.k ? null : b.k, armed: null })),
+        pick: () => this.setState({ shown: b.k, armed: null }),
+        pBd: st.shown === b.k ? 'var(--accent)' : 'var(--line)', pBg: st.shown === b.k ? 'var(--accent-soft)' : 'var(--surface)', pSh: st.shown === b.k ? 'inset 0 0 0 1px var(--accent)' : 'none' };
+    });
+    const sb = bldgs.find((b) => b.k === st.shown);
+    const shown = { ...sb, pips: [1, 2, 3].map((i) => ({ bg: i <= sb.level ? 'var(--accent)' : 'var(--track)' })), rows: sb.rows.map((r) => ({ ...r, now: r.now, next: `→ ${r.next}` })), btn: sb.btn.replace('Tap again to spend it', 'Tap again to spend it') };
+    const buys = [
+      ['eye', 'Scout an opponent', 'Mobile Bay, tonight · 10 days · unlocks a game plan', 15, null],
+      ['person', 'Hire a recruiting coordinator', 'Cheapest candidate · a year’s wage', 120, () => this.setState({ tab: 'staff', open: 'recruiting' })],
+      ...bldgs.filter((b) => b.cost !== 'Max').map((b) => [ 'home', b.level === 0 ? `Build the ${b.name.toLowerCase()}` : `${b.name} to level ${b.level + 1}`, b.helps, Math.round(b.base * MULT[b.level + 1] / 5) * 5, () => this.setState({ tab: 'facilities', expanded: b.k })]),
+    ].sort((a, b) => a[3] - b[3]).map(([icon, title, sub, cost, go], i) => ({ icon: I(icon, 17), title, sub, cost: money(cost), af: cost <= budget ? 'Within budget' : `${money(cost - budget)} short`, fg: cost <= budget ? 'var(--positive)' : 'var(--warning)', bd: i ? '1px solid var(--line)' : '0', go: go || (() => {}) }));
+    const budgetRows = [['var(--ink)', .75, 'Staff wages', '2 coaches · paid every year', '$390K'], ['var(--info)', .7, 'Buildings and scouting', 'Spent this season', money(st.spent + 30)], ['var(--track)', 1, 'Left', 'A new budget arrives next season', money(budget)]].map(([dot, op, label, sub, v]) => ({ dot, op, label, sub, v }));
+    const tabs = [['staff', 'Staff'], ['facilities', 'Facilities'], ['budget', 'Budget']].map(([k, label]) => ({ label, on: () => this.setState({ tab: k }), fg: st.tab === k ? 'var(--ink)' : 'var(--muted)', bar: st.tab === k ? 'var(--accent)' : 'transparent' }));
+    return {
+      theme: (this.props.theme ?? 'Light').toLowerCase(),
+      ic: { chevR: I('chevron-right', 20), cross: I('cross', 18), arrow: I('arrow-right', 14), home: I('home', 22), homeNav: I('home', 20), idcard: I('id-card', 20), backpack: I('backpack', 20), starNav: I('star', 20), clock: I('clock', 16), person: I('person', 16) },
+      toptabs: tabs, onStaff: st.tab === 'staff', onFac: st.tab === 'facilities', onBudget: st.tab === 'budget', buys, budgetRows,
+      staffCur, staffNew: !staffCur, facCur, facNew: !facCur, seats, desk, needs, needsAny: needs.length > 0,
+      sheet: !!cs, close: () => this.setState({ open: null }), co, focuses, focusHint, kinds, players, proj, foot, cands,
+      coTabs: cs && cs.filled ? [['work', 'Work'], ['contract', 'Skills and contract']].map(([k, label]) => ({ label, dot: k === 'contract' && cs.ending, on: () => this.setState({ coTab: k }), bg: st.coTab === k ? 'var(--raised)' : 'transparent', fg: st.coTab === k ? 'var(--ink)' : 'var(--muted)', sh: st.coTab === k ? 'var(--sh-ctl)' : 'none' })) : [],
+      coWork: !!cs && cs.filled && st.coTab === 'work', coContract: !!cs && cs.filled && st.coTab === 'contract',
+      bldgs, shown, budgetText: money(budget), spentW: Math.min(70, 30 + st.spent / 24) + '%',
+      builtN: Object.values(st.levels).filter((l) => l > 0).length, levelsN: Object.values(st.levels).reduce((a, b) => a + b, 0),
+    };
+  }
+}
+</script>
+</body>
+</html>

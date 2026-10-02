@@ -21,8 +21,7 @@ import { injuryClock } from '../../engine/season.js';
 import { isHurt, prognosis } from '../../engine/injury.js';
 import { legWeariness } from '../../engine/workload.js';
 import { promiseSpent } from '../../engine/morale.js';
-import { naturalPos } from '../../engine/ratings.js';
-import { RetrainSheet } from '../RetrainModal.js';
+import { RetrainSheet, ownSpot } from '../RetrainModal.js';
 import { whyOut } from '../Needs.js';
 import type { Hitter, Player as AnyPlayer, Position } from '../../engine/types.js';
 import {
@@ -84,9 +83,12 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const needsRest = tired > 0.35;
 
   const isHitter = p.type === 'hitter';
-  const alsoPlays = isHitter ? retrainablePositions(p as Hitter) : [];
-  const home = isHitter ? ((p as Hitter & { homePos?: Position }).homePos ?? naturalPos(p as Hitter)) : null;
-  const covers = isHitter ? secondaryPositions(p as Hitter).slice(0, 2) : [];
+  // His spot, what it covers and what he could learn, all from his own spot
+  // rather than tonight's label, as the sheet below reads him. See `ownSpot`.
+  const own = isHitter ? ownSpot(p as Hitter) : null;
+  const home = own ? own.pos : null;
+  const alsoPlays = own ? retrainablePositions(own) : [];
+  const covers = own ? secondaryPositions(own).slice(0, 2) : [];
   const planned = (p as Hitter & { retrainTo?: Position }).retrainTo;
 
   /* ------------------------------------------------------------ workload */

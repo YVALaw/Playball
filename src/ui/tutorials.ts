@@ -1,6 +1,7 @@
 // One short explanation and one action per tip.
 import { CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS, PROTECTED_BIDS, SERIES } from '../engine/postseason.js';
 import { RECRUITING_WEEKS } from '../engine/recruiting.js';
+import { SCOUTING } from '../state/features.js';
 
 export interface TutorialPage {
   title: string;
@@ -12,8 +13,8 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
   "today": [
     {
       title: "Your next game",
-      body: "Today shows tonight\u2019s game, anything that blocks it, and how the week is going.",
-      action: "Settle anything marked Blocks tonight\u2019s game, then tap Play ball.",
+      body: "The wheel is your schedule, the list is this week\u2019s to-do.",
+      action: "Settle anything highlighted in the list, then tap Play ball.",
     },
   ],
   "wire": [
@@ -66,28 +67,30 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
   "program-overview": [
     {
       title: "Your program",
-      body: "Each row is one part of the program, with its state and its number.",
-      action: "Open a row to see it in full.",
+      body: "The trophies, the Hall of Fame and the players who went on.",
+      action: "Tap a trophy or a door to see it in full.",
     },
   ],
   "budget": [
     {
       title: "Your budget",
-      body: "Money pays for staff, buildings and scouting reports. Recruiting uses its own weekly points.",
+      // Scouting reports are held back (features.ts), and a tip should not
+      // promise a purchase no screen offers.
+      body: `Money pays for staff${SCOUTING ? ', buildings and scouting reports' : ' and buildings'}. Recruiting uses its own weekly points.`,
       action: "Every price shows what you would have left after.",
     },
   ],
   "staff": [
     {
       title: "Your coaching staff",
-      body: "Each coach has a focus that is always on, and one project at a time.",
-      action: "Tap a coach to set the focus or assign a project.",
+      body: "Each coach has a focus that is always on, and one assignment a season.",
+      action: "Tap a coach to set the focus or the season’s work.",
     },
   ],
   "facilities": [
     {
       title: "Your buildings",
-      body: "Each building makes players better and unlocks one coach’s projects.",
+      body: "Each building makes players better and sizes one coach’s season work.",
       action: "Each card shows what the next level adds, and its price.",
     },
   ],
@@ -101,14 +104,15 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
   "network": [
     {
       title: "Recruiting pipelines",
-      body: "A pipeline is a state where recruits already know you. Signings and your coordinator’s projects make it stronger.",
+      body: "A pipeline is a state where recruits already know you. Signings and your coordinator’s pipeline work make it stronger.",
       action: "Tap a state to see what its strength does.",
     },
-    {
+    // Held back with the feature (state/features.ts): a tip must not sell a report nobody can buy.
+    ...(SCOUTING ? [{
       title: "Scouting reports",
       body: "A report shows an opponent’s habits for a few days, and your playbook counters them.",
       action: "Buy one from a college’s profile.",
-    },
+    }] : []),
   ],
   "manage": [
     {
@@ -189,6 +193,15 @@ export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
       title: "Make your pitch",
       body: "Pitch what a prospect cares about most, where your program backs it up. A promise becomes a duty if he signs.",
       action: "Compare the point costs, and only promise what you can keep.",
+    },
+  ],
+  // The same board while the staff runs recruiting (2026-09-28): the coach
+  // chooses who, the staff spends the points.
+  "recruiting-staff": [
+    {
+      title: "Your staff recruits",
+      body: "Your staff works only the recruits you star, up to 8.",
+      action: "Tap a recruit’s star to add him to the list.",
     },
   ],
   "signing": [

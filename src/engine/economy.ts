@@ -80,25 +80,34 @@ export interface StaffProject {
   kind: StaffProjectKind;
   /** Geography for recruiting projects. */
   state?: string;
+  /** Legacy: the project's length. Season work: the weeks from its first week to week 12. */
   weeksTotal: number;
+  /** Calendar weeks until it lands. Season work: reaches 0 as week 12 closes. */
   weeksLeft: number;
   startedWeek: number;
-  /** Players selected when work starts; never silently retarget at completion. */
+  /** Legacy: one man, or an old group. Season work: 1-3 men, chosen at the start; never retargeted. */
   targetIds?: string[];
-  /** The one man this project is about (2026-09-10). Legacy group projects have none. */
+  /** Legacy only: the one man a 2026-09-10 project was about. */
   playerId?: string;
-  /** The odds it takes, fixed when the work starts, so what was printed is what rolls. */
+  /** Legacy only: the odds it takes, fixed when the work started. */
   odds?: number;
+  /** Legacy only. */
   targetCount?: number;
-  /** Weeks whose standing focus matched this project. */
+  /** Weeks whose standing focus matched this work. Season work counts only the weeks it ran. */
   alignedWeeks?: number;
+  /** A season assignment (2026-09-28). Absent: a legacy 3-5 week project, finished the old way. */
+  season?: true;
+  /** Season work: the weeks it actually ran (staff seated, building L1 or higher). */
+  weeksRun?: number;
+  /** Season pipeline work: the state's effective strength when the work started. */
+  from?: number;
 }
 
 export interface StaffProjectResult {
   kind: StaffProjectKind;
   /** The man the project was about, when it was about one. */
   playerId?: string;
-  /** Whether it took. Absent on group and pipeline results. */
+  /** Whether it took. Absent on group, pipeline and season results. */
   took?: boolean;
   seat: StaffSeat;
   year: number;
@@ -106,6 +115,14 @@ export interface StaffProjectResult {
   state?: string;
   focused: boolean;
   changes: { id?: string; name: string; attribute: string; before: number; after: number }[];
+  /** A season assignment's result. */
+  season?: true;
+  /** Weeks it ran, of RECRUITING_WEEKS. */
+  weeksRun?: number;
+  /** Points each man was owed before his ceiling had its say. */
+  gain?: number;
+  /** The assistant's name when it landed (the card may be read after he has gone). */
+  coach?: string;
 }
 
 export interface StaffPlan {
@@ -124,9 +141,9 @@ export const DIRECTIVE_LABEL: Record<StaffDirective, string> = {
 };
 
 export const PROJECT_LABEL: Record<StaffProjectKind, string> = {
-  'hitting-contact': 'Contact block', 'hitting-power': 'Power block',
-  'hitting-discipline': 'Approach lab', 'pitching-command': 'Command lab',
-  'pitching-velocity': 'Velocity block', 'pitching-arm-care': 'Arm-care block',
+  'hitting-contact': 'Contact work', 'hitting-power': 'Power work',
+  'hitting-discipline': 'Approach work', 'pitching-command': 'Command work',
+  'pitching-velocity': 'Velocity work', 'pitching-arm-care': 'Arm-care work',
   'pipeline-build': 'Build pipeline', 'pipeline-deepen': 'Deepen pipeline',
   'pipeline-maintain': 'Maintain pipeline',
 };
@@ -138,13 +155,6 @@ export function staffPlan(eco: Economy, seat: StaffSeat): StaffPlan {
 /** What a facility unlocks for the assistant sitting beside it. */
 export function projectFacility(seat: StaffSeat): Building {
   return seat === 'hitting' ? 'cage' : seat === 'pitching' ? 'pen' : 'clubhouse';
-}
-
-/** Project duration gets shorter as the relevant facility becomes real infrastructure. */
-export function staffProjectWeeks(eco: Economy, seat: StaffSeat, kind?: StaffProjectKind): number {
-  const level = facilityLevel(eco, projectFacility(seat));
-  const weeks = level >= 3 ? 3 : level >= 2 ? 4 : 5;
-  return kind === 'pipeline-maintain' ? Math.ceil(weeks / 2) : weeks;
 }
 
 /** Recruiting directives change how effectively RP turns into interest. */
@@ -160,7 +170,11 @@ export function recruitingDirectiveMultiplier(
   return 1;
 }
 
-/** An active arm-care project protects pitchers while it is actually running. */
+/**
+ * Arm-care work protects pitchers while it is actually running. Season work
+ * keeps `weeksLeft > 0` until it lands as week 12 closes, so it covers the
+ * whole season; a legacy project covers its own weeks.
+ */
 export function staffProjectInjuryGuard(eco: Economy, calendarActive = true): number {
   const p = staffPlan(eco, 'pitching').project;
   if (!calendarActive || !eco.staff.pitching || p?.kind !== 'pitching-arm-care' || p.weeksLeft <= 0) return 1;
@@ -726,7 +740,7 @@ export interface Economy {
   facilityLevels?: Partial<Record<Building, number>>;
   /** Who sits in each seat. Absent means vacant. */
   staff: Partial<Record<StaffSeat, Assistant>>;
-  /** Standing instructions and multi-week projects for each employed assistant. */
+  /** Standing instructions and the season's work for each employed assistant. */
   staffPlans?: Partial<Record<StaffSeat, StaffPlan>>;
   /** Recent completed work, with its actual outcomes. */
   projectHistory?: StaffProjectResult[];

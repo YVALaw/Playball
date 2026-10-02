@@ -14,6 +14,7 @@
 import { useState, type ReactNode } from 'react';
 import { CoachPortrait } from './CoachPortrait.js';
 import { Crest } from './Crest.js';
+import { useBackLayer } from './useBackLayer.js';
 import {
   AppHeader, BottomNav, HeaderStat, Icon, IconButton, TopTabs, type IconName, type NavItem,
 } from './components/ui/index.js';
@@ -24,7 +25,7 @@ import { unreadCount } from '../engine/inbox.js';
 export const AREA_ICON: Record<string, IconName> = {
   home: 'home',
   team: 'id-card',
-  season: 'calendar',
+  office: 'backpack',
   program: 'star',
 };
 
@@ -56,13 +57,17 @@ export function SchoolHeader(
   );
 }
 
-/** The inbox, from anywhere, with the unread count on the bell. */
+/** The inbox's own mark: the ball from the brand set, where a stock bell used to be. */
+const INBOX_BALL = new URL('./brand/ball.webp', import.meta.url).href;
+
+/** The inbox, from anywhere, with the unread count on the ball. */
 export function InboxBell() {
   const unread = useDynasty((s) => unreadCount(s.inbox));
   const openOverlay = useDynasty((s) => s.openOverlay);
   return (
     <IconButton
       icon="bell"
+      art={<img className="pb-iconbtn__art" src={INBOX_BALL} alt="" draggable={false} decoding="async" />}
       label="Inbox"
       tone="quiet"
       badge={unread > 0 ? unread : undefined}
@@ -80,10 +85,22 @@ export function InboxBell() {
 export function CoachMenuButton() {
   const coach = useDynasty((s) => s.coach);
   const team = useUserTeam();
-  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
+  // Between jobs `team` is still the chair he left.
+  const jobSearch = useDynasty((s) => s.jobSearch);
   const openOverlay = useDynasty((s) => s.openOverlay);
   const trophyDot = useDynasty((s) => s.unseenTrophies.length > 0);
-  const [open, setOpen] = useState(false);
+  /*
+    A back level while it is up, and shut by any nav tap (2026-09-30): held
+    as the nav count it opened at, so a route that moves under it closes it
+    in the same render. Left open, a back swipe moved the screen and the menu
+    stayed over the new one.
+  */
+  const navEpoch = useDynasty((s) => s.navEpoch);
+  const [openAt, setOpenAt] = useState<number | null>(null);
+  const open = openAt === navEpoch;
+  const setOpen = (v: boolean): void => setOpenAt(v ? navEpoch : null);
+  useBackLayer(open, () => setOpenAt(null));
+  // The menu hands its level to what it opens, in the same commit: no push, no pop.
   const go = (run: () => void): void => { setOpen(false); run(); };
 
   return (
@@ -95,7 +112,7 @@ export function CoachMenuButton() {
         aria-label={trophyDot ? 'Coach menu, new achievement' : 'Coach menu'}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
       >
         <CoachPortrait look={coach.look} size={36} />
         {trophyDot && <span className="pb-dot pb-coachmenu__dot" aria-hidden />}
@@ -109,12 +126,12 @@ export function CoachMenuButton() {
               role="menuitem"
               className="pb-menu__profile"
               data-guide="coach-profile"
-              onClick={() => go(() => { setProgramSheet('coach'); openOverlay('program'); })}
+              onClick={() => go(() => openOverlay('coach'))}
             >
               <span className="pb-menu__face"><CoachPortrait look={coach.look} size={40} /></span>
               <span className="pb-menu__who">
                 <strong>{coach.name}</strong>
-                <small>{team ? `Head coach · ${team.def.school}` : 'Between jobs'}</small>
+                <small>{team && !jobSearch ? `Head coach · ${team.def.school}` : 'Between jobs'}</small>
               </span>
               {trophyDot && <span className="pb-dot" role="img" aria-label="New achievement" />}
               <Icon name="chevron-right" size={20} />

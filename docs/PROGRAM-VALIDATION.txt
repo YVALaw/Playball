@@ -1,0 +1,68 @@
+PLAYBALL PROFILE AND SHAPE POLISH — VALIDATION
+Source: Playball-main (10).zip, version 0.8.0
+Applied to the previously delivered Playball-program-refinements.zip.
+
+CURRENT AUTOMATED RESULTS
+Production build (TypeScript + Vite): PASS
+Targeted regressions: 4 files, 30 tests PASS
+- program-followup.test.ts: 7 tests
+- program-archive.test.ts: 3 tests
+- backNav.test.ts: 19 tests
+- generated-css.test.ts: 1 test
+DOM interaction checks: 19 tests PASS
+
+The temporary DOM harness uses JSDOM, actual store actions, and mocked disk
+persistence. No QA dependencies were added to the project manifests.
+
+NEW PROFILE COVERAGE
+- One Hall of Fame identity; career totals remain available in all three tabs
+- The latest honor opens Honors, with all saved awards and national records
+- Awards remain ordered newest first, and the saved Hall citation is retained
+- Two-way players have both headline totals and one combined entry per year
+- Hall-only archives show saved identity and explicit missing-data states
+- The four live-player sections remain intact after viewing alumni Honors
+- Signature moments and Life after college start closed and open independently
+
+EXISTING INTERACTION COVERAGE RERUN
+Hub/history navigation, first-alumnus rendering, filters and player links,
+championship highlights, weighted career totals, facility confirmation and
+spending, staff tabs, hiring/releasing, project setup/cancellation,
+recruiting-state handoff, delegation, opening mandates from the team hero,
+career-only/Hall-only alumni recovery, and the actual app navigation dot
+updating and clearing.
+
+SHAPE CHANGES
+Explicit component selectors replace broad section/article/details and class
+substring rules. Actual cards, controls, dialogs, stat strips, and joined
+lists have separate shape rules. Internal dividers stay straight, segmented
+controls have inset selected surfaces, navigation buttons have gaps, and
+spaced Settings cards no longer get clipped by a rounded list wrapper.
+The generated prototype stylesheet is unchanged and its required check passes.
+
+EARLIER BASELINE
+The complete existing suite previously passed 89 files / 1,524 tests.
+Three archive-summary tests also passed separately. The full suite was not
+rerun for this presentation-only refinement. The source has 91 test files.
+
+SOURCE PRESERVATION
+All files from the previous complete archive retained.
+src/engine/, src/data/, src/state/, package.json and package-lock.json remain
+byte-for-byte unchanged from the previous delivery. The original testing
+shortcuts, simulation behavior, budgets, contracts, recruiting, and save
+schema are preserved. The earlier ProgramSheet navigation union extension
+with 'history' and 'alumni' is retained without further state changes.
+
+VISUAL VERIFICATION AND LIMITS
+The browser preview remains blocked by ERR_BLOCKED_BY_CLIENT. DOM checks
+are interaction checks, not a substitute for rendered device review.
+Small-screen overflow, native touch behavior, themes, enlarged text, and the
+finished full-screen composition remain visually unverified. The facility
+SVGs were inspected in the previous pass and have not changed in this pass.
+
+Existing build warnings: large JavaScript bundles and the unresolved
+/assets/club/generic-player.png reference. New portraits/artwork use SVG.
+
+DELIVERY
+Complete source project, including the original Android project.
+Generated builds, node_modules, and temporary QA dependencies are excluded.
+This package is not a newly built Android APK.

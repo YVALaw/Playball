@@ -10,9 +10,9 @@
 import { developBadges, type BadgeEvidence, type BadgeId } from './badges.js';
 import {
   AI_KEEP_SHARE, AVERAGE_STAFF,
-  draftContext, draftEligible, draftRound, makeTheCase, rivalKeeps, sceneFrom,
+  draftContext, draftEligible, draftRound, draftStock, makeTheCase, rivalKeeps, sceneFrom,
   visibleValue, yearsOfLeverage,
-  type DraftBoard, type DraftedMan,
+  type DraftBoard, type DraftContext, type DraftedMan,
 } from './draft.js';
 import { releaseNames, reserveNames } from './players.js';
 import {
@@ -164,17 +164,25 @@ export interface OffseasonReport {
  * A senior is certain whatever this returns — he graduates if nobody calls —
  * so callers handle him separately and this speaks only about the men who have
  * a choice. Draws nothing, so a screen may call it as often as it likes.
+ *
+ * Given the season (and its `draftContext`), his season so far moves the odds
+ * the way June's will (`draftStock`); without one it reads his rating alone.
  */
-export function departureOdds(p: Player): number {
+export function departureOdds(p: Player, season?: SeasonState | null, ctx?: DraftContext | null): number {
   if (!draftEligible(p)) return 0;
   const leverage = yearsOfLeverage(p.classYear);
-  return draftChance(overallOf(p)) * (LEVERAGE_DISCOUNT[leverage] ?? 1);
+  return draftChance(draftStock(p, season, ctx)) * (LEVERAGE_DISCOUNT[leverage] ?? 1);
 }
 
-/** Does this player leave the program this offseason? */
-function departure(p: Player, rng: Rng): DepartureReason | null {
+/**
+ * Does this player leave the program this offseason?
+ *
+ * `stock` is his `draftStock`: his rating moved by his season, and a two-way
+ * man's better half.
+ */
+function departure(p: Player, rng: Rng, stock: number): DepartureReason | null {
   const leverage = yearsOfLeverage(p.classYear);
-  const chance = draftChance(overallOf(p)) * (LEVERAGE_DISCOUNT[leverage] ?? 1);
+  const chance = draftChance(stock) * (LEVERAGE_DISCOUNT[leverage] ?? 1);
 
   if (p.classYear === 'SR') {
     // A senior is gone either way. Whether a club called his name is flavour,
@@ -566,7 +574,7 @@ export function departAndDevelop(
        * three more. Asking first also costs no rng draw, so nothing about who
        * else leaves depends on how many walk-ons a program is carrying.
        */
-      const reason = p.walkOn ? 'walk-on' as const : departure(p, rng);
+      const reason = p.walkOn ? 'walk-on' as const : departure(p, rng, draftStock(p, season, ctx));
       if (reason) {
         const row: Departure = {
           id: p.id,

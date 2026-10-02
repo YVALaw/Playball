@@ -73,7 +73,7 @@ const AREAS: ReadonlyArray<{ value: Area; label: string; blurb: string }> = [
 const START_AREA: Record<Tab, Area> = {
   home: 'world',
   team: 'team',
-  season: 'leagues',
+  office: 'program',
   program: 'program',
 };
 

@@ -15,6 +15,7 @@ import { useDynasty, useUserTeam } from '../../state/store.js';
 import { FirstVisit } from '../Tutorial.js';
 import { teamColour } from '../Avatar.js';
 import { Crest } from '../Crest.js';
+import { AwardEmblem } from '../Honours.js';
 import { seasonComplete } from '../../engine/season.js';
 import {
   seasonAwards, allConference, coachOfTheYear, type CoachAwardReason,
@@ -44,8 +45,11 @@ const COACH_BODY: Record<CoachAwardReason, string> = {
  * WebKit hit-tests rotated faces by their projected shapes, and only half of
  * a face-down card used to respond.
  */
-function FlipCard({ id, label, mine, tint, revealed, onReveal, children }: {
-  id: string; label: string; mine: boolean; tint: string;
+function FlipCard({ id, label, art, mine, tint, revealed, onReveal, children }: {
+  id: string; label: string;
+  /** The award's own emblem, face up on the back of the card; it carries the name. */
+  art?: ReactNode;
+  mine: boolean; tint: string;
   revealed: boolean; onReveal: (id: string) => void; children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -64,8 +68,12 @@ function FlipCard({ id, label, mine, tint, revealed, onReveal, children }: {
     <div ref={ref} className={cx('pb-flip', revealed && 'is-revealed')}>
       <div className="pb-flip__inner">
         <div className="pb-flip__front" aria-hidden>
-          <small>{label}</small>
-          <strong>?</strong>
+          {art ?? (
+            <>
+              <small>{label}</small>
+              <strong>?</strong>
+            </>
+          )}
           <span>Tap to turn it over</span>
         </div>
         <div className="pb-flip__back">{children}</div>
@@ -77,10 +85,10 @@ function FlipCard({ id, label, mine, tint, revealed, onReveal, children }: {
   );
 }
 
-/** One winner: the school's colour down the side, its crest and name. */
+/** One winner: the school's colour down the side, its crest and name, and the award's emblem. */
 function Winner(
-  { eyebrow, name, school, abbr, line, mine, onOpen }:
-  { eyebrow: string; name: string; school: string; abbr: string; line: string; mine: boolean; onOpen?: () => void },
+  { eyebrow, name, school, abbr, line, mine, award, onOpen }:
+  { eyebrow: string; name: string; school: string; abbr: string; line: string; mine: boolean; award?: string; onOpen?: () => void },
 ) {
   const body = (
     <>
@@ -93,6 +101,7 @@ function Winner(
         </span>
         <span className="pb-award__line">{school} · {line}</span>
       </span>
+      {award && <AwardEmblem title={award} size={56} />}
       {onOpen && <Icon name="chevron-right" size={20} className="pb-award__chevron" />}
     </>
   );
@@ -156,6 +165,7 @@ export function Awards() {
       abbr={a.team}
       line={statLineWords(a.line)}
       mine={a.team === team.def.abbr}
+      award={a.title}
       onOpen={a.id ? () => openPlayer(a.id!) : undefined}
     />
   );
@@ -185,6 +195,7 @@ export function Awards() {
       abbr={season.teams[coach.team]?.def.abbr ?? ''}
       line={`${coach.wins}–${coach.losses} · ${COACH_BODY[coach.reason]}`}
       mine={coach.team === team.index}
+      award="Coach of the Year"
     />
   );
 
@@ -214,7 +225,7 @@ export function Awards() {
             const id = `a:${a.title}`;
             return ceremony ? (
               <FlipCard
-                key={a.title} id={id} label={a.title}
+                key={a.title} id={id} label={a.title} art={<AwardEmblem title={a.title} size={96} />}
                 mine={a.team === team.def.abbr} tint={teamColour(a.team)}
                 revealed={shown.has(id)} onReveal={reveal}
               >{awardRow(a)}</FlipCard>
@@ -230,7 +241,7 @@ export function Awards() {
         />
         {ceremony ? (
           <FlipCard
-            id="first-team" label="The first team"
+            id="first-team" label="The first team" art={<AwardEmblem title="All-Conference" size={96} />}
             mine={first.some((p) => p.team === team.def.abbr)}
             tint={teamColour(team.def.abbr)}
             revealed={shown.has('first-team')} onReveal={reveal}
@@ -244,7 +255,7 @@ export function Awards() {
           <SectionHeader title="Coach of the Year" />
           {ceremony ? (
             <FlipCard
-              id="coach" label="Coach of the Year"
+              id="coach" label="Coach of the Year" art={<AwardEmblem title="Coach of the Year" size={96} />}
               mine={coach.team === team.index} tint={teamColour(team.def.abbr)}
               revealed={shown.has('coach')} onReveal={reveal}
             >{coachCard}</FlipCard>

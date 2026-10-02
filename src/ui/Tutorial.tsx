@@ -2,8 +2,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useDialogFocus } from './dialogFocus.js';
+import { useScreenOwner } from './screenOwner.js';
 import { readPrefs } from '../state/devicePrefs.js';
-import { useDynasty } from '../state/store.js';
+import { seasonPlanShowing, useDynasty } from '../state/store.js';
 import { TUTORIALS, type TutorialPage } from './tutorials.js';
 import { activeGuideStep } from './guide.js';
 import { Icon } from './components/ui/index.js';
@@ -24,11 +25,14 @@ export function FirstVisit({ id }: { id: string }) {
   const titleId = useId();
   const bodyId = useId();
   const pages = TUTORIALS[id];
+  // A tip never stacks on the Season plan; it waits for the sheet to close.
+  const planUp = useDynasty(seasonPlanShowing);
   const touring = activeGuideStep(seen, firstSeason, readPrefs().tutorials) !== null;
-  const show = !!pages?.length && !touring && !seen.includes(id) && readPrefs().tutorials;
+  const show = !!pages?.length && !touring && !seen.includes(id) && readPrefs().tutorials && !planUp;
   const frame = typeof document === 'undefined' ? null : document.querySelector('.app-frame');
   const primary = useRef<HTMLButtonElement | null>(null);
   const dialog = useRef<HTMLDivElement | null>(null);
+  const owner = useScreenOwner();
   const close = (): void => { markSeen(id); setPage(0); };
   useDialogFocus(dialog, close, { initial: primary, active: show && frame !== null, layer: false });
   useEffect(() => { setPage(0); }, [id]);
@@ -39,7 +43,7 @@ export function FirstVisit({ id }: { id: string }) {
 
   return <>
     {show && frame && createPortal(
-      <div ref={dialog} className="pb-tip-host" role="dialog" aria-modal="true"
+      <div ref={dialog} className="pb-tip-host" data-owner={owner} role="dialog" aria-modal="true"
         aria-labelledby={titleId} aria-describedby={bodyId} onClick={close}>
         <section className="pb-tip" onClick={(e) => e.stopPropagation()}>
           <header className="pb-tip__head">

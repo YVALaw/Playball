@@ -59,9 +59,12 @@ export function Button({
 /* ------------------------------------------------------------- IconButton */
 
 export function IconButton({
-  icon, label, badge, tone, size = 20, onClick, className, ...rest
+  icon, art, label, badge, tone, size = 20, onClick, className, ...rest
 }: {
-  icon: IconName; label: string; badge?: number | string; tone?: 'quiet'; size?: number;
+  icon: IconName;
+  /** Drawn art in place of the glyph: the inbox's ball. The glyph stays the fallback. */
+  art?: ReactNode;
+  label: string; badge?: number | string; tone?: 'quiet'; size?: number;
   onClick?: () => void; className?: string;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'>) {
   const shown = typeof badge === 'number' ? (badge > 9 ? '9+' : badge > 0 ? String(badge) : '') : badge;
@@ -73,7 +76,7 @@ export function IconButton({
       aria-label={shown ? `${label}, ${badge} new` : label}
       className={cx('pb-iconbtn', tone && `pb-iconbtn--${tone}`, className)}
     >
-      <Icon name={icon} size={size} />
+      {art ?? <Icon name={icon} size={size} />}
       {shown ? <span className="pb-iconbtn__badge" aria-hidden>{shown}</span> : null}
     </button>
   );

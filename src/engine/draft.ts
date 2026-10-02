@@ -131,6 +131,22 @@ export function draftContext(season: SeasonState): DraftContext {
   return { opsMean, opsSd, eraMean, eraSd, kMean, kSd };
 }
 
+/** One context per season per day, for the screens that read odds row by row. */
+const contexts = new WeakMap<SeasonState, { key: string; ctx: DraftContext }>();
+
+/**
+ * `draftContext`, remembered until the season's book changes. The lines are
+ * written in place day by day, so the day and the book's size are the key.
+ */
+export function draftContextOf(season: SeasonState): DraftContext {
+  const key = `${season.dayIndex}:${season.batting.size}:${season.pitching.size}`;
+  const hit = contexts.get(season);
+  if (hit && hit.key === key) return hit.ctx;
+  const ctx = draftContext(season);
+  contexts.set(season, { key, ctx });
+  return ctx;
+}
+
 /**
  * What he did last spring, on the same 0 to 100 scale as a rating.
  *
@@ -203,6 +219,38 @@ export function visibleValue(p: Player, season: SeasonState, ctx: DraftContext):
   return Math.max(bat, arm) + youth + disagreement;
 }
 
+/**
+ * How far a season moves his stock: two fifths of the way from his rating to
+ * his form, the share `visibleValue` gives the box scores.
+ */
+const FORM_PULL = 0.4;
+
+/**
+ * What decides whether a club calls his name at all, read by `draftChance`
+ * the way it used to read his rating alone.
+ *
+ * The same things a club prices him on (`visibleValue`), kept on the rating's
+ * own scale: an ordinary season leaves his rating as it is, a great one lifts
+ * it and a poor one drags it. A two-way man is judged on his better half.
+ *
+ * Reported 2026-09-26 of a two-way junior who hit .419 with eleven home runs
+ * and went 8–0 with a 2.78 ERA: "I had this amazing guy and he went
+ * undrafted. If he were bad that would be understandable but he was great."
+ * The 2026-09-16 fix priced a two-way man's arm into the round he went in,
+ * but whether he went at all was still rolled on `overallOf`, which is the
+ * bat alone for a man typed a hitter, and no season counted for anybody.
+ *
+ * Without a season (a world being generated, a screen before any games) it
+ * is the rating, or the better half's.
+ */
+export function draftStock(p: Player, season?: SeasonState | null, ctx?: DraftContext | null): number {
+  const form = (q: Player): number => (season && ctx ? seasonForm(q, season, ctx) : 50);
+  const bat = overallOf(p) + FORM_PULL * (form(p) - 50);
+  if (!isTwoWay(p)) return bat;
+  const arm = armValue(p) + FORM_PULL * (form({ ...p, type: 'pitcher' } as unknown as Player) - 50);
+  return Math.max(bat, arm);
+}
+
 // ---------------------------------------------------------------------------
 // Where he goes
 // ---------------------------------------------------------------------------
@@ -270,23 +318,29 @@ export type KeepPitch = 'stock' | 'role' | 'ring' | 'word';
 
 export const KEEP_PITCHES: readonly KeepPitch[] = ['stock', 'role', 'ring', 'word'];
 
+/**
+ * Each case's name, in capitals like every engine label; the screen sets it in
+ * sentence case. Worded by the UI clarity review (2026-09-25), as are the two
+ * tables under it.
+ */
 export const KEEP_LABEL: Record<KeepPitch, string> = {
   stock: 'DRAFT STOCK',
-  role: 'A ROLE',
-  ring: 'A RING',
+  role: 'A STARTING JOB',
+  ring: 'A TITLE RUN',
   word: 'MY WORD',
 };
 
 /** What you are actually saying to him. */
 export const KEEP_CASE: Record<KeepPitch, string> = {
-  stock: 'Come back for a year and go higher than this.',
-  role: 'The job is yours in the spring. No competition for it.',
-  ring: 'Stay and we win something before you leave.',
-  word: 'Stay for me, and for this place. You have my word.',
+  stock: 'One more year here and you go in the first round.',
+  role: 'The job is yours this spring. Nobody else is in the running.',
+  ring: 'Stay one more year and we win something together.',
+  word: 'Stay for me. I will take care of you.',
 };
 
 /**
  * What each case rests on, said plainly, because the coach can go and look.
+ * The screen prints it under "Works when".
  *
  * The information is all on screens he already has — his depth chart, his
  * prestige, his own standing — so naming the source is not giving anything
@@ -294,10 +348,10 @@ export const KEEP_CASE: Record<KeepPitch, string> = {
  * deliver.
  */
 export const KEEP_RESTS_ON: Record<KeepPitch, string> = {
-  stock: 'How much of him is still to come — and your TRAINING.',
-  role: 'Your depth chart at his spot. He can read it too.',
-  ring: 'The program’s standing, and who is coming back.',
-  word: 'Your name, and how long you have sat in this chair.',
+  stock: 'He still has room to grow, and your training can get him there.',
+  role: 'Your depth chart backs it up. He will check.',
+  ring: 'The program is winning and its core is coming back.',
+  word: 'Your name carries weight and you have been here long enough to mean it.',
 };
 
 /**

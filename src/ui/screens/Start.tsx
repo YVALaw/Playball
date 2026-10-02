@@ -27,15 +27,11 @@ function when(ts: number): string {
   return `${plural(days, 'day')} ago`;
 }
 
-/** The game's mark: a ball on the field green. */
+/** The game's mark: the cap on the plate, the same art as the launcher icon. */
+const LOGO = new URL('../brand/logo.webp', import.meta.url).href;
+
 function Mark() {
-  return (
-    <svg className="pb-start__mark" viewBox="0 0 56 56" aria-hidden>
-      <rect width="56" height="56" rx="16" fill="var(--brand-green)" />
-      <circle cx="28" cy="28" r="16" fill="var(--brand-ball)" />
-      <path d="M19 16.5c4 3.2 6 7 6 11.5s-2 8.3-6 11.5M37 16.5c-4 3.2-6 7-6 11.5s2 8.3 6 11.5" fill="none" stroke="#c8352b" strokeWidth="1.6" strokeLinecap="round" strokeDasharray="2 2.2" />
-    </svg>
-  );
+  return <img className="pb-start__mark" src={LOGO} alt="" draggable={false} decoding="async" />;
 }
 
 export function Start(

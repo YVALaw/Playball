@@ -25,14 +25,14 @@
 // from its card, which is the honest place to restart, and no new field rides
 // the save. `GuidedStretch.tsx` is the half that touches the DOM.
 
-import type { Overlay, ProgramSheet, Tab } from '../state/store.js';
+import type { Overlay, Tab } from '../state/store.js';
+import { SCOUTING } from '../state/features.js';
 
 /** What a step is allowed to know about where the player is. */
 export interface GuideView {
   tab: Tab;
   screen: string;
   overlay: Overlay | null;
-  programSheet: ProgramSheet;
   /** A game is on the field. */
   live: boolean;
   /** Its inning and half, polled — the live game is a mutable object, not store state. */
@@ -96,11 +96,11 @@ export interface GuideStep {
 
 const onScreen = (v: GuideView): boolean => !v.live && v.overlay === null && !v.playerOpen;
 const onField = (v: GuideView): boolean => v.live && v.screen === 'box';
+/** In the Office's money rooms: the budget, the staff, the buildings. */
 const onMoney = (v: GuideView): boolean =>
-  onScreen(v) && v.tab === 'program' && v.screen === 'records' && ['money', 'staff', 'facilities', 'network'].includes(v.programSheet);
-/** Anywhere in the Program overview: the hub or one of its rooms. */
-const onProgram = (v: GuideView): boolean =>
-  onScreen(v) && v.tab === 'program' && v.screen === 'records';
+  onScreen(v) && v.tab === 'office' && ['budget', 'staff', 'facilities'].includes(v.screen);
+/** Anywhere on the Office tab. */
+const onOffice = (v: GuideView): boolean => onScreen(v) && v.tab === 'office';
 
 export const GUIDE_STEPS: readonly GuideStep[] = [
   {
@@ -130,7 +130,7 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     },
     target: ['have-a-word', 'player-actions'],
     caption: {
-      "player-actions": "Open Overview. His Decisions are at the bottom.",
+      "player-actions": "Go back to his card. His Decisions are at the bottom.",
       "have-a-word": "Tap Have a word, then tap again. It uses one of this season’s four talks.",
     },
     // Stamped by the errand itself, the moment the word is had.
@@ -226,46 +226,49 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     done: (v) => !v.live && !v.pending,
   },
   {
+    // The id is the old one, so a save mid-tour keeps its place; the lesson
+    // is the Office tab now, where the rooms that run the program live.
     id: 'program',
-    where: (v) => onScreen(v) && v.tab !== 'program',
+    where: (v) => onScreen(v) && v.tab !== 'office',
     card: {
-      title: "Your program",
-      body: "Your board's goals, budget, staff and facilities live here.",
-      action: "Tap Program below.",
+      title: "Your office",
+      body: "Recruiting, staff, facilities, the budget and the board's goals live here.",
+      action: "Tap Office below.",
     },
-    target: ['tab-program'],
+    target: ['tab-office'],
     caption: {
-      "tab-program": "Open Program.",
+      "tab-office": "Open Office.",
     },
-    done: (v) => v.tab === 'program',
+    done: (v) => v.tab === 'office',
   },
   {
     id: 'money',
-    where: (v) => onScreen(v) && v.tab === 'program',
+    where: (v) => onOffice(v) && !onMoney(v),
     card: {
       title: "Your budget",
-      body: "Money pays for staff, buildings and scouting reports. Recruiting uses its own weekly points.",
+      // Scouting reports are held back (state/features.ts): no promise of them here.
+      body: `Money pays for staff${SCOUTING ? ', buildings and scouting reports' : ' and buildings'}. Recruiting uses its own weekly points.`,
       action: "Open Budget.",
     },
-    target: ['budget'],
+    target: ['screen-budget'],
     caption: {
-      "budget": "Open Budget to see what you can spend.",
+      "screen-budget": "Open Budget to see what you can spend.",
     },
     done: (v) => onMoney(v),
     covers: ['program'],
   },
   {
     id: 'staff',
-    where: (v) => onMoney(v) && (v.has('money-staff') || v.has('seg-staff')),
+    where: (v) => onMoney(v) && (v.has('money-staff') || v.has('screen-staff')),
     card: {
       title: "Your coaching staff",
       body: "Hire a hitting coach, pitching coach, and recruiting coordinator.",
       action: "Open Staff.",
     },
-    target: ['money-staff', 'seg-staff'],
+    target: ['money-staff', 'screen-staff'],
     caption: {
       "money-staff": "Open Staff.",
-      "seg-staff": "Open Staff.",
+      "screen-staff": "Open Staff.",
     },
     done: (v) => v.has('seat-hitting'),
   },
@@ -290,7 +293,7 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     where: (v) => onMoney(v) && v.hittingHired && v.has('directive'),
     card: {
       title: "Set a focus",
-      body: "A matching focus strengthens the coach’s projects.",
+      body: "A matching focus adds +1 to the coach’s season work.",
       action: "Choose a focus, or skip to keep Balanced.",
     },
     target: ['directive'],
@@ -302,24 +305,22 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
   {
     id: 'facilities',
     /*
-      Rooms have no strip between them now: from the staff room the way to the
-      buildings is back to Program, then Facilities. So the light walks that
-      route: the coach's close button while the sheet is up, then the back
-      link, then the Facilities row on the hub (or on the Budget room).
+      The rooms are the Office tab's sections, so the way to the buildings is
+      its Facilities tab: the coach's close button while his sheet is up, then
+      the tab (or the Budget room's Facilities plaque).
     */
-    where: (v) => onProgram(v) && v.programSheet !== 'facilities'
-      && ['overlay-back', 'money-facilities', 'hub-facilities', 'room-back'].some((n) => v.has(n)),
+    where: (v) => onOffice(v) && v.screen !== 'facilities'
+      && ['overlay-back', 'screen-facilities', 'money-facilities'].some((n) => v.has(n)),
     card: {
       title: "Your facilities",
-      body: "Facilities make players better and unlock staff projects.",
-      action: "Go back to Program, then open Facilities.",
+      body: "Facilities make players better and size the staff’s season work.",
+      action: "Open Facilities.",
     },
-    target: ['overlay-back', 'money-facilities', 'hub-facilities', 'room-back'],
+    target: ['overlay-back', 'screen-facilities', 'money-facilities'],
     caption: {
       "overlay-back": "Close the coach first.",
+      "screen-facilities": "Open Facilities.",
       "money-facilities": "Open Facilities.",
-      "hub-facilities": "Open Facilities.",
-      "room-back": "Back to Program, then open Facilities.",
     },
     done: (v) => v.has('facility-cta') || v.has('facility-blocked') || v.has('facility-delegated'),
   },
@@ -328,7 +329,7 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     where: (v) => onMoney(v) && (v.has('facility-cta') || v.has('facility-blocked') || v.has('facility-delegated')),
     card: {
       title: "The Hitting Barn",
-      body: "Hitters grow more each offseason, and your hitting coach can run projects. Building spends the money now.",
+      body: "Hitters grow more each offseason, and your hitting coach can take on season work. Building spends the money now.",
       action: "Check the price and what it adds. Build, or skip.",
     },
     target: ['facility-cta', 'facility-cage'],
@@ -411,12 +412,12 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
       "coach-menu": "Open your coach menu.",
       "coach-profile": "Open your coach profile.",
     },
-    done: (v) => v.overlay === 'program' && v.programSheet === 'coach',
+    done: (v) => v.overlay === 'coach',
     covers: ['coach'],
   },
   {
     id: 'done',
-    where: (v) => !v.live && v.overlay === 'program' && v.programSheet === 'coach',
+    where: (v) => !v.live && v.overlay === 'coach',
     card: {
       title: "You’re ready",
       body: "Check Today for games and decisions. Recruit during the season.",

@@ -1,0 +1,310 @@
+/* design/lineup.css
+ * Tonight's card drawn on a ballpark: each starter's name stands at his
+ * position, the DH by the on-deck circle and tonight's starter on the mound.
+ * The user's ask in the UI clarity review (2026-09-25): "make it look more
+ * like the ball park and compact a bit the names and locate them in the
+ * positions". Drawn by src/ui/LineupField.tsx.
+ *
+ * The park's colours are the 3D park's (Diamond3D.tsx), a touch lighter for
+ * a daytime page, and dimmed again for the dark theme. They are a picture,
+ * not status colours, so they are written here rather than taken from the
+ * tokens; everything laid over the grass uses the tokens.
+ */
+
+.pb-park {
+  --park-foul: #3a6a46;
+  --park-grass: #47804f;
+  --park-mow: rgba(255, 255, 255, 0.055);
+  --park-infield: #4a8653;
+  --park-dirt: #c8a882;
+  --park-track: #b08a5e;
+  --park-wall: #2f5a3c;
+  --park-cap: #c9d2c5;
+  --park-chalk: #f6f1e6;
+  --park-pole: #d9b83a;
+  --park-rubber: #f6f1e6;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 360 / 316;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--park-foul);
+  box-shadow: var(--shadow-card);
+  /* The labels are buttons laid over a drawing: no text selection on a long press. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+:root[data-theme='dark'] .pb-park {
+  --park-foul: #294a33;
+  --park-grass: #325a3b;
+  --park-mow: rgba(255, 255, 255, 0.04);
+  --park-infield: #345e3d;
+  --park-dirt: #9c8466;
+  --park-track: #85694a;
+  --park-wall: #1f3d29;
+  --park-cap: #9aa597;
+  --park-chalk: #d9d4c8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .pb-park {
+    --park-foul: #294a33;
+    --park-grass: #325a3b;
+    --park-mow: rgba(255, 255, 255, 0.04);
+    --park-infield: #345e3d;
+    --park-dirt: #9c8466;
+    --park-track: #85694a;
+    --park-wall: #1f3d29;
+    --park-cap: #9aa597;
+    --park-chalk: #d9d4c8;
+  }
+}
+
+.pb-park__svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.pb-park__foul { fill: var(--park-foul); }
+.pb-park__grass { fill: var(--park-grass); }
+.pb-park__mow { fill: var(--park-mow); }
+.pb-park__infield { fill: var(--park-infield); }
+.pb-park__dirt { fill: var(--park-dirt); }
+.pb-park__track { fill: var(--park-track); }
+.pb-park__wall { fill: none; stroke: var(--park-wall); stroke-width: 5; }
+.pb-park__cap { fill: none; stroke: var(--park-cap); stroke-width: 1.4; }
+.pb-park__pole { stroke: var(--park-pole); stroke-width: 2; stroke-linecap: round; }
+.pb-park__chalk { stroke: var(--park-chalk); stroke-width: 1.4; }
+.pb-park__bag { fill: var(--park-chalk); }
+.pb-park__rubber { fill: var(--park-rubber); }
+.pb-park__deck { fill: none; stroke: var(--park-chalk); stroke-width: 1; opacity: 0.7; }
+
+/* A name at his position: surname on top; batting number, position and
+   average under it. As wide as its words, never more than a quarter of the
+   field, centred on the spot. */
+.pb-park__man {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: max-content;
+  min-width: 18%;
+  max-width: 26%;
+  min-height: 38px;
+  padding: 4px 6px;
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.28);
+  color: var(--ink);
+  text-align: center;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition:
+    left 340ms var(--ease-standard), top 340ms var(--ease-standard),
+    background var(--duration-quick) ease, border-color var(--duration-quick) ease,
+    box-shadow var(--duration-quick) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.pb-park__man:active { transform: translate(-50%, -50%) scale(0.97); }
+.pb-park__man:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.pb-park__name {
+  max-width: 100%;
+  overflow: hidden;
+  font: 700 calc(12px * var(--pb-ts, 1))/1.2 var(--font-sans);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pb-park__line {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  overflow: hidden;
+  font: 500 calc(10.5px * var(--pb-ts, 1))/1.25 var(--font-sans);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pb-park__line b { font-weight: 700; color: var(--ink); }
+.pb-park__num {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: var(--radius-pill);
+  background: var(--command);
+  color: var(--on-command);
+  font: 700 calc(10px * var(--pb-ts, 1))/1 var(--font-sans);
+}
+.pb-park__flag { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; }
+.pb-park__flag.is-out { color: var(--negative); }
+.pb-park__flag.is-warn { color: var(--warning); }
+
+/* Picked: the position waiting for its man, or the man waiting for his spot. */
+.pb-park__man.is-spot,
+.pb-park__man.is-picked {
+  z-index: 2;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--accent), 0 4px 14px rgba(0, 0, 0, 0.32);
+}
+.pb-park__man.is-warn { border-color: var(--warning); }
+.pb-park__man.is-out { border-color: var(--negative); }
+.pb-park__man.is-out .pb-park__num { background: var(--negative); }
+.pb-park__man.is-out .pb-park__name { color: var(--ink-muted); }
+
+/* A position nobody holds: the hole in the card, tappable like any spot. */
+.pb-park__man.is-empty {
+  border: 1.5px dashed var(--warning);
+  background: color-mix(in srgb, var(--warning-soft) 94%, transparent);
+  color: var(--warning);
+}
+.pb-park__man.is-empty .pb-park__line,
+.pb-park__man.is-empty .pb-park__line b { color: var(--warning); }
+.pb-park__man.is-empty.is-spot { border-style: solid; border-color: var(--accent); }
+
+/* Tonight's starter on the mound: a different kind of label, it goes to the
+   pitching staff rather than taking part in the position grammar. */
+.pb-park__man--arm { background: color-mix(in srgb, var(--surface-raised) 90%, transparent); }
+.pb-park__man--arm .pb-park__line b {
+  display: inline-grid;
+  place-items: center;
+  min-width: 15px;
+  height: 15px;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: var(--bg);
+  font-size: calc(10px * var(--pb-ts, 1));
+}
+
+.pb-park.is-readonly .pb-park__man { cursor: pointer; }
+
+/* The mound has room either side, so tonight's starter may run a little wider. */
+.pb-park__man--arm { max-width: 30%; }
+
+/* A 320px phone: a notch smaller, so "5 LF ⚠ 70" still fits a quarter of the field. */
+.pb-park { container-type: inline-size; }
+@container (max-width: 310px) {
+  .pb-park__man { padding: 3px 5px; min-height: 34px; }
+  .pb-park__name { font-size: calc(11px * var(--pb-ts, 1)); }
+  .pb-park__line { font-size: calc(9.5px * var(--pb-ts, 1)); }
+  .pb-park__num { min-width: 13px; height: 13px; font-size: calc(9px * var(--pb-ts, 1)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-park__man { transition: background var(--duration-quick) ease, border-color var(--duration-quick) ease; }
+}
+
+/* The field sits over the batting order with a little room, and the order's
+   heading carries its own count. */
+.pb-lineup-field { margin-bottom: var(--space-1); }
+
+/* A back press refused while the card has a hole: the warning that says why
+   shakes (the Batting order tab, from the Pitching tab). Lineup.tsx. */
+.pb-lineup-gap.is-nudged,
+.pb-lineup-part > .pb-seg__opt.is-nudged { animation: pb-nudge 360ms ease; }
+:root[data-motion='reduced'] :is(.pb-lineup-gap, .pb-lineup-part > .pb-seg__opt).is-nudged { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) :is(.pb-lineup-gap, .pb-lineup-part > .pb-seg__opt).is-nudged { animation: none; }
+}
+
+/* ------------------------------------------------------ the position picker */
+/* Who can play the spot that was tapped (PositionPicker.tsx). It grows out of
+   the name on the field and shrinks back into it; the motion is driven from
+   script, so the panel carries no transition of its own. Under the guided
+   tour's mask (46) so the tour can light a man inside it; over the cards (30). */
+.pb-picker-host {
+  position: absolute; inset: 0; z-index: 36;
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(env(safe-area-inset-top) + var(--space-6)) var(--space-4) calc(env(safe-area-inset-bottom) + var(--space-6));
+}
+.pb-picker-host__scrim { position: absolute; inset: 0; background: var(--scrim); }
+.pb-picker {
+  position: relative;
+  display: flex; flex-direction: column;
+  width: min(100%, 400px); max-height: min(100%, 640px);
+  overflow: hidden;
+  border-radius: var(--radius-dialog);
+  background: var(--surface-raised); color: var(--ink);
+  box-shadow: var(--shadow-float);
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.pb-picker__head {
+  flex: none; display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.pb-picker__pos {
+  flex: none; display: grid; place-items: center; min-width: 44px; height: 44px; padding: 0 6px;
+  border-radius: var(--radius-control); background: var(--accent-soft); color: var(--accent);
+  font: 700 calc(20px * var(--pb-ts, 1))/1 var(--font-numeral);
+}
+.pb-picker__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pb-picker__title { margin: 0; font: 700 calc(18px * var(--pb-ts, 1))/1.25 var(--font-sans); color: var(--ink); }
+.pb-picker__now {
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted);
+}
+.pb-picker__now.is-empty { color: var(--warning); font-weight: 600; }
+
+.pb-picker__body {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+.pb-picker__group { display: flex; flex-direction: column; gap: var(--space-2); }
+.pb-picker__label {
+  display: flex; align-items: baseline; gap: 6px; margin: 0;
+  font: 600 calc(10.5px * var(--pb-ts, 1))/14px var(--font-sans); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-muted);
+}
+.pb-picker__label span { letter-spacing: 0; }
+.pb-picker__list {
+  display: flex; flex-direction: column; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface);
+}
+.pb-picker__man {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 58px;
+  padding: var(--space-2) var(--space-3); border: 0; border-radius: 0;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: background-color var(--duration-quick) ease;
+}
+.pb-picker__man + .pb-picker__man { border-top: 1px solid var(--line); }
+.pb-picker__man:active { background: var(--surface-sunken); }
+.pb-picker__man:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pb-picker__man.is-here { background: var(--accent-soft); cursor: default; }
+.pb-picker__man.is-out { cursor: not-allowed; }
+.pb-picker__man.is-out .pb-avatar,
+.pb-picker__man.is-out .pb-picker__num { opacity: 0.45; }
+.pb-picker__who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pb-picker__name {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  font: 600 calc(14.5px * var(--pb-ts, 1))/20px var(--font-sans); color: var(--ink);
+}
+.pb-picker__here {
+  flex: none; display: inline-flex; align-items: center; min-height: 18px; padding: 0 6px;
+  border-radius: 6px; background: var(--accent); color: var(--on-command);
+  font: 700 calc(10.5px * var(--pb-ts, 1))/1 var(--font-sans);
+}
+.pb-picker__where {
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.pb-picker__where.is-out { color: var(--negative); font-weight: 600; }
+.pb-picker__num { flex: none; display: flex; flex-direction: column; align-items: flex-end; min-width: 34px; }
+.pb-picker__num b { font: 700 calc(22px * var(--pb-ts, 1))/1 var(--font-numeral); color: var(--ink); font-variant-numeric: tabular-nums; }
+.pb-picker__num small { font: 500 calc(11px * var(--pb-ts, 1))/14px var(--font-sans); color: var(--ink-muted); }
+.pb-picker__more {
+  display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px;
+  border: 1px dashed var(--line-strong); border-radius: var(--radius-control);
+  background: transparent; color: var(--ink-muted);
+  font: 600 calc(13px * var(--pb-ts, 1))/1 var(--font-sans); cursor: pointer;
+}
+.pb-picker__more:active { background: var(--surface-sunken); }

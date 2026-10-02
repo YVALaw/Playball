@@ -19,22 +19,29 @@ import { plural } from '../words.js';
 const KIND_NAME: Record<InboxKind, string> = {
   board: 'The board', offer: 'An offer', wire: 'News', achievement: 'Achievement', draft: 'The draft',
   carousel: 'Coaching moves', hall: 'Hall of Fame', record: 'Record book', season: 'The season',
+  recruiting: 'Recruiting',
 };
 
 function useOpen(): (link: InboxLink) => void {
   const openPlayer = useDynasty((s) => s.openPlayer);
   const openOverlay = useDynasty((s) => s.openOverlay);
-  const setProgramSheet = useDynasty((s) => s.setProgramSheet);
+  const closeOverlay = useDynasty((s) => s.closeOverlay);
+  const openRoom = useDynasty((s) => s.openRoom);
+  const go = useDynasty((s) => s.go);
   const openTeam = useOpenTeam();
   return (link) => {
     switch (link.to) {
       case 'player': openPlayer(link.id as PlayerId); return;
       case 'team': openTeam(link.index); return;
-      case 'program': setProgramSheet(link.sheet); openOverlay('program'); return;
+      // A room over the inbox: the back press returns to the letters.
+      case 'program': openRoom(link.sheet); return;
       case 'book': openOverlay('book'); return;
       case 'standings': openOverlay('standings'); return;
       case 'rankings': openOverlay('rankings'); return;
       case 'schedule': openOverlay('schedule'); return;
+      // The one destination that is a screen rather than an overlay: the
+      // inbox closes behind it, the way a nav tap would.
+      case 'recruiting': closeOverlay(); go('office', 'recruiting'); return;
     }
   };
 }
@@ -48,6 +55,7 @@ function ctaLabel(link: InboxLink): string {
     case 'standings': return 'Open the standings';
     case 'rankings': return 'Open the national rankings';
     case 'schedule': return 'Open the schedule';
+    case 'recruiting': return 'Open recruiting';
     case 'program': return link.sheet === 'board' ? 'Open the board'
       : link.sheet === 'hall' ? 'Open the Hall of Fame'
         : link.sheet === 'coach' ? 'Open your profile' : 'Open the program';
@@ -65,6 +73,7 @@ function senderFor(item: InboxItem, assistant: string): string {
     case 'hall': return 'The Hall of Fame';
     case 'achievement': return 'The program office';
     case 'season': return assistant;
+    case 'recruiting': return 'The recruiting desk';
   }
 }
 

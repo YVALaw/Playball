@@ -12,7 +12,7 @@ const id = 'p1' as PlayerId;
 describe('god targets', () => {
   it('names every kind of target for the bar over the sheet', () => {
     const targets: GodTarget[] = [
-      { kind: 'tab', tab: 'home' }, { kind: 'tab', tab: 'team' }, { kind: 'tab', tab: 'season' }, { kind: 'tab', tab: 'program' },
+      { kind: 'tab', tab: 'home' }, { kind: 'tab', tab: 'team' }, { kind: 'tab', tab: 'office' }, { kind: 'tab', tab: 'program' },
       { kind: 'player', id }, { kind: 'program', team: 3 }, { kind: 'roster', team: 3 }, { kind: 'coach' }, { kind: 'money' },
       { kind: 'leagues' }, { kind: 'recruits' }, { kind: 'recruit', id }, { kind: 'portal' }, { kind: 'time' },
     ];

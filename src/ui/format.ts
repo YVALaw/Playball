@@ -54,6 +54,24 @@ export function shortDate(year: number, day: number): { weekday: string; date: s
 
 export const pct = (v: number): string => v.toFixed(3).replace(/^0/, '');
 
+/** 1st, 2nd, 3rd, 4th … 11th, 12th, 13th, 21st. */
+export function ordinal(n: number): string {
+  const tens = n % 100;
+  const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th';
+  return `${n}${suffix}`;
+}
+
+/**
+ * "Emiliano Gravestock" becomes "E. Gravestock"; a one-word name stays whole.
+ * For rows that share their width with numbers: the lineup's three stat
+ * columns and the recruiting board's stars cut every full name to
+ * "Emiliano Grave…" on a phone. The card a row opens has the full name.
+ */
+export function shortName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return parts.length > 1 ? `${parts[0]!.charAt(0)}. ${parts.slice(1).join(' ')}` : name;
+}
+
 /**
  * Innings pitched the way a box score writes them: 12.2 is twelve and two
  * thirds, never 12.7. The cards, the roster and the team card printed the

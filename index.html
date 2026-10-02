@@ -31,8 +31,26 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <!-- The splash, painted by the page itself before any script loads, so the
+         stadium is the first thing on screen in a browser and in the APK alike:
+         Android 12 and later show only the icon natively. main.tsx fades it out
+         once the app has drawn. It covers a phone, but never crops past the
+         wordmark: on the tallest phones it fits the width and the sky's own
+         green fills the rest. 0.5628 is the art's width over its height. -->
+    <style>
+      #boot-splash {
+        position: fixed; inset: 0; z-index: 2147483647;
+        background: #013c1e url('/splash.webp') center / min(max(100vw, calc(100vh * 0.5628)), 125vw) auto no-repeat;
+        transition: opacity 360ms ease;
+      }
+      @media (min-aspect-ratio: 3/4) { #boot-splash { background-size: auto 100%; } }
+      #boot-splash.is-gone { opacity: 0; pointer-events: none; }
+      :root[data-motion='reduced'] #boot-splash { transition: none; }
+      @media (prefers-reduced-motion: reduce) { :root:not([data-motion='full']) #boot-splash { transition: none; } }
+    </style>
   </head>
   <body>
+    <div id="boot-splash" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

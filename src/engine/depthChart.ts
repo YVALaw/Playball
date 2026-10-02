@@ -377,6 +377,14 @@ export function fitTheNine(
  */
 export function bestNine(
   team: Team, day: number,
+  /**
+   * What the season says about a bat, in rating points, from the caller who
+   * has the season in hand (the store's `battingForm`). Ratings alone chose
+   * the cover: with the DH down, AUTO fielded a man hitting .100 over two
+   * with better lines, because his bat *rated* a point higher. A real edge
+   * now counts, weighted by how many at-bats it rests on.
+   */
+  form?: (m: Hitter) => number,
 ): { lineup: Hitter[]; bench: Hitter[] } {
   const men = squad(team);
   const asIs = { lineup: [...team.lineup], bench: [...team.bench] };
@@ -404,7 +412,7 @@ export function bestNine(
   // or corner his glove says he is.
   const own = (m: Hitter): Position => effectivePos(home(m));
   const merit = (m: Hitter, spot: Position): number =>
-    overallOf(fieldingAt(home(m), spot)) + (own(m) === spot ? OWN_SPOT_EDGE : 0);
+    overallOf(fieldingAt(home(m), spot)) + (own(m) === spot ? OWN_SPOT_EDGE : 0) + (form?.(m) ?? 0);
   const rank = (spot: Position) => (a: Hitter, b: Hitter): number =>
     merit(b, spot) - merit(a, spot)
     || Number(inNine.has(b.id)) - Number(inNine.has(a.id))

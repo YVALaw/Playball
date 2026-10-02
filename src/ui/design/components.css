@@ -33,7 +33,10 @@
 }
 
 /* Layout helpers for screens built from these parts. */
-.pb-page { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-4) var(--space-4) var(--space-8); }
+/* The room between a page's parts follows the screen's height: a short phone
+   gets its first card up where a tall one does, instead of the same 24px it
+   cannot afford ("so we can always see more … in smaller screens"). */
+.pb-page { display: flex; flex-direction: column; gap: clamp(12px, 2.2vh, 24px); padding: clamp(8px, 1.4vh, 16px) var(--space-4) var(--space-8); }
 .pb-stack { display: flex; flex-direction: column; gap: var(--space-3); }
 .pb-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 
@@ -539,6 +542,10 @@ button.pb-staff__head:active { background: var(--surface-sunken); }
 .pb-card__body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); }
 .pb-card--flush .pb-card__body { padding: var(--space-2) 0 0; gap: 0; }
 .pb-card__foot { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); }
+.pb-card.is-interactive { cursor: pointer; transition: background-color var(--duration-quick) ease; }
+.pb-card.is-interactive:active { background: var(--surface-sunken); }
+.pb-card.is-interactive:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pb-card__chevron { color: var(--ink-muted); margin-right: -4px; }
 
 /* ---------------------------------------------------------------- Avatar */
 .pb-avatar { flex: none; display: inline-grid; place-items: center; overflow: hidden; border-radius: var(--radius-pill); background: var(--surface-sunken); }
@@ -562,6 +569,18 @@ button.pb-staff__head:active { background: var(--surface-sunken); }
 .pb-medal--gold { background: var(--warning-soft); color: var(--gold); }
 .pb-medal--silver { background: var(--surface-sunken); color: var(--silver); }
 .pb-medal--bronze { background: var(--warning-soft); color: var(--bronze); }
+/* A player badge: the hexagon art, and the tier as a metal ring just outside it. */
+.pb-emblem { position: relative; flex: none; display: inline-block; margin: 3px; }
+.pb-emblem img { display: block; width: 100%; height: 100%; }
+.pb-emblem svg { position: absolute; inset: -3px; width: calc(100% + 6px); height: calc(100% + 6px); overflow: visible; }
+.pb-emblem polygon { fill: none; stroke-width: 2px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+/* A trophy, an award emblem, the Hall of Fame logo: art in a fixed box. */
+.pb-honour { flex: none; display: block; object-fit: contain; }
+/* A league's wordmark: as wide as its row allows, never wider than it is drawn.
+   Standing in for a page title, it takes the row the title would have. */
+.pb-banner { display: block; width: 100%; max-width: 360px; object-fit: contain; }
+.pb-banner--center { margin-inline: auto; }
+.pb-screen-head__title:has(> .pb-banner) { flex: 1 1 auto; min-width: 0; }
 
 /* ------------------------------------------------------------- PlayerRow */
 .pb-list > .pb-prow + .pb-prow, .pb-list > .pb-prow + .pb-row, .pb-list > .pb-row + .pb-prow { border-top: 1px solid var(--line); }
@@ -578,7 +597,20 @@ button.pb-staff__head:active { background: var(--surface-sunken); }
 .pb-prow__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
 .pb-prow__metatext { font: 400 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
 .pb-prow__flags { display: flex; flex-wrap: wrap; gap: 6px; }
-.pb-prow__warning { display: inline-flex; align-items: center; gap: 4px; font: 600 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--warning); }
+/* The warning: one line along the foot of the row, from under the name to the
+   right edge, laid over reserved padding rather than in the flex flow. In the
+   flow it either wrapped inside the narrow text column (the number cut off)
+   or, with wrapping on, let a long name push the stats down onto it. */
+.pb-prow.has-warning { padding-bottom: 30px; }
+.pb-prow.has-lead { --pb-prow-lead: calc(20px + var(--space-3)); }
+.pb-prow.has-avatar { --pb-prow-avatar: calc(36px + var(--space-3)); }
+.pb-prow__warning {
+  position: absolute; bottom: 8px; right: var(--space-4);
+  left: calc(var(--space-4) + var(--pb-prow-lead, 0px) + var(--pb-prow-avatar, 0px));
+  display: flex; align-items: center; gap: 4px; min-width: 0;
+  font: 600 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--warning);
+}
+.pb-prow__warning > .pb-icon { flex: none; }
 .pb-prow__stats { flex: none; display: flex; gap: var(--space-2); }
 .pb-ellipsis { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pb-prow__stat { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 26px; }
@@ -667,7 +699,7 @@ button.pb-staff__head:active { background: var(--surface-sunken); }
 .pb-game__facts dt { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
 .pb-game__facts dd { margin: 0; font: 600 calc(15px * var(--pb-ts, 1))/20px var(--font-sans); color: var(--ink); }
 .pb-game__facts dd small { display: block; font: 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
-.pb-game__body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4) 0; }
+.pb-game__body { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-4) var(--space-4); }
 .pb-game__note { margin: calc(var(--space-2) * -1) var(--space-4) var(--space-4); font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); text-align: center; }
 .pb-game__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); padding: var(--space-4); }
 
@@ -745,11 +777,11 @@ button.pb-staff__head:active { background: var(--surface-sunken); }
 
 /* ---------------------------------------------------------- ProspectCard */
 .pb-prospect {
-  display: flex; flex-direction: column; gap: var(--space-3); padding: 0 0 var(--space-4); overflow: hidden;
+  display: flex; flex-direction: column; gap: var(--space-2); padding: 0 0 var(--space-3); overflow: hidden;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card);
 }
 .pb-prospect > :not(.pb-prospect__head) { margin: 0 var(--space-4); }
-.pb-prospect__head { display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-4) var(--space-4) 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
+.pb-prospect__head { display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-4) 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
 button.pb-prospect__head { cursor: pointer; }
 .pb-prospect__who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .pb-prospect__name { overflow: hidden; font: 700 calc(17px * var(--pb-ts, 1))/22px var(--font-sans); white-space: nowrap; text-overflow: ellipsis; }
@@ -759,13 +791,14 @@ button.pb-prospect__head { cursor: pointer; }
 .pb-prospect__rank small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
 .pb-prospect__rank b { font: 700 calc(26px * var(--pb-ts, 1))/1 var(--font-numeral); }
 .pb-prospect__chevron { flex: none; color: var(--ink-muted); margin-right: -4px; }
-.pb-prospect__grid { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 1px; overflow: hidden; border-radius: var(--radius-control); background: var(--line); }
-.pb-prospect__grid > span { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px var(--space-3); background: var(--surface-sunken); }
-.pb-prospect__grid small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
-.pb-prospect__grid b { font: 700 calc(22px * var(--pb-ts, 1))/24px var(--font-numeral); font-variant-numeric: tabular-nums; }
-.pb-prospect__grid em { font: 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); font-style: normal; color: var(--ink-muted); }
+/* His numbers on one line: now, ceiling, interest (and who leads). */
+.pb-prospect__facts { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-4); }
+.pb-prospect__facts > span { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.pb-prospect__facts small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-prospect__facts b { font: 700 calc(19px * var(--pb-ts, 1))/22px var(--font-numeral); font-variant-numeric: tabular-nums; }
+.pb-prospect__facts em { font: 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); font-style: normal; color: var(--ink-muted); }
 .pb-prospect__wants { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.pb-prospect__wants > small { width: 100%; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-prospect__wants > small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
 
 /* ------------------------------------------------------------ Form parts */
 .pb-field { display: flex; flex-direction: column; gap: 6px; }
@@ -856,13 +889,14 @@ button.pb-prospect__head { cursor: pointer; }
   padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
   background: var(--surface-raised); border-top: 1px solid var(--line); box-shadow: var(--shadow-float);
 }
-.pb-actionbar__note { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); text-align: center; }
+.pb-actionbar__note { min-height: 16px; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); text-align: center; }
 .pb-actionbar__buttons { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); }
 
 /* ------------------------------------------------------------- IconButton */
 .pb-iconbtn { position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--surface); color: var(--ink); cursor: pointer; }
 .pb-iconbtn--quiet { border-color: transparent; background: transparent; color: var(--ink-muted); }
 .pb-iconbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pb-iconbtn__art { display: block; width: 26px; height: 26px; object-fit: contain; }
 .pb-iconbtn__badge { position: absolute; top: -2px; right: -2px; display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill); background: var(--negative); color: var(--bg); box-shadow: 0 0 0 2px var(--surface); font: 700 calc(12px * var(--pb-ts, 1))/1 var(--font-sans); }
 
 /* The app's own motion switch (Settings > Motion), beside the OS one. */

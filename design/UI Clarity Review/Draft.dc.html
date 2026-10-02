@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="./pb-icons.js"></script>
+<style>
+body{margin:0;background:#101410;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer;text-align:left}
+::-webkit-scrollbar{width:0;height:0}
+[data-theme="light"]{color-scheme:light;--bg:#f6f8f5;--surface:#fff;--raised:#fff;--sunken:#eef2ee;--track:#e1e7e2;--line:#e1e8e2;--line-strong:#7a877d;--ink:#102019;--muted:#505e55;--disabled:#7f8a82;--accent:#236b42;--accent-soft:#e6f0e8;--command:#236b42;--on-command:#fff;--positive:#1b7a47;--positive-soft:#e2f2e7;--warning:#8c5a00;--warning-soft:#fcefd5;--negative:#c9362f;--negative-soft:#fdefed;--info:#2f4f7a;--info-soft:#e8eef6;--gold:#8a6b16;--scrim:rgba(9,16,12,.48);--sh-card:0 1px 2px rgba(16,32,25,.04),0 4px 16px rgba(16,32,25,.05);--sh-ctl:0 1px 3px rgba(16,32,25,.14);--sh-float:0 10px 32px rgba(16,32,25,.14)}
+[data-theme="dark"]{color-scheme:dark;--bg:#0e1511;--surface:#151f19;--raised:#1c2821;--sunken:#0f1712;--track:#26332b;--line:#28352c;--line-strong:#5f6d63;--ink:#eef3ef;--muted:#a3b1a7;--disabled:#6b776f;--accent:#4da97a;--accent-soft:#1b3326;--command:#2f7a52;--on-command:#f4f8f4;--positive:#5cc28b;--positive-soft:#163022;--warning:#f0b04a;--warning-soft:#33270e;--negative:#ef7d76;--negative-soft:#3a1a18;--info:#8db3e0;--info-soft:#172538;--gold:#e3bb4f;--scrim:rgba(0,0,0,.62);--sh-card:0 1px 2px rgba(0,0,0,.35);--sh-ctl:0 1px 3px rgba(0,0,0,.5);--sh-float:0 16px 48px rgba(0,0,0,.45)}
+@keyframes sheetRise{from{transform:translateY(100%)}to{transform:none}}
+@keyframes scrimIn{from{opacity:0}to{opacity:1}}
+</style>
+</helmet>
+
+<div data-theme="{{ theme }}" style="min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:16px;box-sizing:border-box;background:#101410">
+<div style="position:relative;width:412px;height:min(892px, calc(100vh - 32px));min-height:560px;flex:none;display:flex;flex-direction:column;overflow:hidden;border-radius:28px;background:var(--bg);color:var(--ink);box-shadow:0 24px 70px rgba(0,0,0,.45)">
+
+  <div style="flex:none;display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line)">
+    <img src="./assets/BAY.webp" alt="" style="width:28px;height:28px;object-fit:contain">
+    <div style="flex:1;display:flex;flex-direction:column"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">2032 offseason</small><strong style="font:700 16px/20px 'DM Sans'">Bayshore State</strong></div>
+  </div>
+  <div style="flex:none;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line)">
+    <sc-for list="{{ rail }}" as="r" hint-placeholder-count="5">
+      <div style="display:flex;flex-direction:column;gap:5px"><i style="height:4px;border-radius:99px;background:{{ r.bar }}"></i><span style="font:600 11px/14px 'DM Sans';color:{{ r.fg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.label }}</span></div>
+    </sc-for>
+  </div>
+
+  <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none">
+    <div style="display:flex;flex-direction:column;gap:16px;padding:14px 16px 28px">
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">{{ eyebrow }}</span><h1 style="margin:0;font:700 28px/34px 'DM Sans';letter-spacing:-.02em">{{ title }}</h1>
+        <sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}"><p style="margin:4px 0 0;font:400 15px/22px 'DM Sans';color:var(--muted)">{{ intro }}</p></sc-if>
+      </div>
+
+      <sc-if value="{{ after }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><div><div style="font:600 12px/16px 'DM Sans';color:var(--muted)">Offseason points</div><div style="font:600 17px/24px 'DM Sans'">{{ left }} of {{ pool }} left</div></div><sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}"><span style="font:500 12px/16px 'DM Sans';color:var(--muted);text-align:right">Same pool as the<br>transfer portal</span></sc-if></div>
+        <div style="height:8px;border-radius:99px;background:var(--track);overflow:hidden"><div style="height:100%;width:{{ leftW }};background:var(--accent);border-radius:99px;transition:width 420ms"></div></div>
+      </div>
+      </sc-if>
+
+      <!-- before the draft -->
+      <sc-if value="{{ before }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);overflow:hidden">
+          <sc-for list="{{ oddsStats }}" as="o" hint-placeholder-count="3"><div style="padding:12px 14px;display:flex;flex-direction:column;gap:4px;border-left:{{ o.bd }}"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">{{ o.label }}</span><b style="font:700 30px/1 'Barlow Condensed';color:{{ o.fg }}">{{ o.v }}</b><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ o.note }}</span></div></sc-for>
+        </div>
+        <sc-for list="{{ oddsGroups }}" as="g" hint-placeholder-count="2">
+          <section style="display:flex;flex-direction:column;gap:8px">
+            <div><h2 style="margin:0;font:600 17px/24px 'DM Sans'">{{ g.title }}<span style="margin-left:6px;font-weight:500;color:var(--muted)">{{ g.n }}</span></h2><p style="margin:2px 0 0;font:400 13px/18px 'DM Sans';color:var(--muted)">{{ g.desc }}</p></div>
+            <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+              <sc-for list="{{ g.rows }}" as="p" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 14px;border-top:{{ p.bd }}">
+                  <span style="width:36px;height:36px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 12px/1 'DM Sans';color:var(--muted);flex:none">{{ p.ini }}</span>
+                  <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font:600 14.5px/20px 'DM Sans'">{{ p.name }}</span><span style="display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center"><span style="min-height:20px;padding:0 6px;border-radius:6px;background:var(--sunken);display:inline-flex;align-items:center;font:600 12px/1 'DM Sans'">{{ p.pos }}</span><span style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ p.cls }} · age {{ p.age }}</span></span></span>
+                  <span style="display:inline-flex;align-items:center;min-height:22px;padding:0 8px;border-radius:99px;background:{{ p.bBg }};color:{{ p.bFg }};font:600 11.5px/1 'DM Sans';white-space:nowrap">{{ p.badge }}</span>
+                  <b style="min-width:26px;text-align:right;font:700 22px/1 'Barlow Condensed'">{{ p.ovr }}</b>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-for>
+      </sc-if>
+
+      <sc-if value="{{ isCur }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+          <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">You lost</span><b style="font:700 22px/24px 'Barlow Condensed'">6</b><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">2 drafted · 4 graduated</span></div>
+          <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Talked into staying</span><b style="font:700 22px/24px 'Barlow Condensed'">{{ keptCount }}</b></div>
+          <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Waiting on you</span><b style="font:700 22px/24px 'Barlow Condensed'">{{ pendingCount }}</b><span style="font:500 12px/16px 'DM Sans';color:var(--warning)">Decide before you move on</span></div>
+        </div>
+        <div style="display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--sunken)">
+          <span style="flex:1;display:inline-flex;justify-content:center;align-items:center;gap:6px;min-height:40px;border-radius:8px;background:var(--raised);box-shadow:var(--sh-ctl);font:600 13px/1 'DM Sans'">Waiting on you<span style="min-width:18px;height:18px;border-radius:99px;background:var(--negative);color:var(--bg);display:inline-grid;place-items:center;font:700 12px/1 'DM Sans'">{{ pendingCount }}</span></span>
+          <span style="flex:1;display:inline-flex;justify-content:center;align-items:center;min-height:40px;font:600 13px/1 'DM Sans';color:var(--muted)">Leaving</span>
+          <span style="flex:1;display:inline-flex;justify-content:center;align-items:center;min-height:40px;font:600 13px/1 'DM Sans';color:var(--muted)">Draft board</span>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+          <sc-for list="{{ men }}" as="m" hint-placeholder-count="3">
+            <button onClick="{{ m.open }}" style="width:100%;display:flex;align-items:center;gap:12px;min-height:64px;padding:10px 16px;border-top:{{ m.bd }}">
+              <span style="width:40px;height:40px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 13px/1 'DM Sans';color:var(--muted);flex:none">{{ m.ini }}</span>
+              <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><span style="font:600 15px/20px 'DM Sans'">{{ m.name }}</span>
+                <span style="display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center"><span style="min-height:20px;padding:0 6px;border-radius:6px;background:var(--sunken);display:inline-flex;align-items:center;font:600 12px/1 'DM Sans'">{{ m.pos }}</span><span style="min-height:20px;padding:0 6px;border-radius:6px;background:var(--sunken);display:inline-flex;align-items:center;font:600 12px/1 'DM Sans'">{{ m.cls }}</span><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">Round {{ m.round }} · usually takes {{ m.needs }} points</span></span>
+                <span><span style="display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:0 8px;border-radius:99px;background:{{ m.st.bg }};color:{{ m.st.fg }};font:600 12px/1 'DM Sans'">{{ m.st.icon }}{{ m.st.label }}</span></span></span>
+              <span style="display:flex;flex-direction:column;align-items:flex-end"><b style="font:700 26px/1 'Barlow Condensed'">{{ m.ovr }}</b><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">Rating</small></span>
+              <span style="color:var(--muted)">{{ ic.chevR }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ newAfter }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--sunken)"><sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button onClick="{{ t.on }}" style="flex:1;display:inline-flex;justify-content:center;align-items:center;gap:6px;min-height:40px;border-radius:8px;background:{{ t.bg }};color:{{ t.fg }};box-shadow:{{ t.sh }};font:600 13px/1 'DM Sans';white-space:nowrap">{{ t.label }}<sc-if value="{{ t.n }}" hint-placeholder-val="{{ false }}"><span style="min-width:18px;height:18px;border-radius:99px;background:var(--warning);color:var(--bg);display:inline-grid;place-items:center;font:700 11px/1 'DM Sans'">{{ t.n }}</span></sc-if></button></sc-for></div>
+        <sc-if value="{{ onKeep }}" hint-placeholder-val="{{ true }}">
+        <section style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between"><h2 style="margin:0;font:600 17px/24px 'DM Sans'">Waiting on you<span style="margin-left:6px;font-weight:500;color:var(--muted)">{{ pendingLine }}</span></h2></div>
+          <sc-for list="{{ men }}" as="m" hint-placeholder-count="3">
+            <article style="display:flex;flex-direction:column;background:var(--surface);border:1px solid {{ m.cardBd }};border-radius:16px;box-shadow:{{ m.cardSh }};overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:14px 16px 10px">
+                <span style="width:44px;height:44px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 14px/1 'DM Sans';color:var(--muted);flex:none">{{ m.ini }}</span>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font:700 17px/22px 'DM Sans'">{{ m.name }}</span><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">{{ m.posName }} · {{ m.clsName }}</span></span>
+                <span style="display:flex;flex-direction:column;align-items:flex-end"><b style="font:700 28px/1 'Barlow Condensed'">{{ m.ovr }}</b><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">Rating</small></span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:0 16px;border-radius:12px;overflow:hidden;background:var(--line)">
+                <div style="padding:8px 10px;background:var(--sunken);display:flex;flex-direction:column;gap:2px"><small style="font:500 11.5px/14px 'DM Sans';color:var(--muted)">Drafted in</small><b style="font:700 19px/22px 'Barlow Condensed'">Round {{ m.round }}</b></div>
+                <div style="padding:8px 10px;background:var(--sunken);display:flex;flex-direction:column;gap:2px"><small style="font:500 11.5px/14px 'DM Sans';color:var(--muted)">Usual price</small><b style="font:700 19px/22px 'Barlow Condensed'">{{ m.needs }} pts</b></div>
+                <div style="padding:8px 10px;background:var(--sunken);display:flex;flex-direction:column;gap:2px"><small style="font:500 11.5px/14px 'DM Sans';color:var(--muted)">If he signs</small><b style="font:600 13px/22px 'DM Sans';color:{{ m.holeFg }}">{{ m.hole }}</b></div>
+              </div>
+              <sc-if value="{{ m.pending }}" hint-placeholder-val="{{ true }}">
+                <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;padding:12px 16px 14px">
+                  <button onClick="{{ m.release }}" style="min-height:44px;padding:0 14px;border-radius:12px;border:1px solid {{ m.relBd }};background:{{ m.relBg }};color:{{ m.relFg }};font:600 13px/1.2 'DM Sans'">{{ m.relLabel }}</button>
+                  <button onClick="{{ m.open }}" style="display:flex;justify-content:center;align-items:center;gap:6px;min-height:44px;border-radius:12px;background:var(--command);color:var(--on-command);font:600 14px/1 'DM Sans'">{{ ic.chat }}{{ m.openLabel }}</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ m.inline }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:12px;padding:0 16px 16px;border-top:1px solid var(--line);padding-top:14px">
+                  <div style="display:flex;gap:10px;padding:10px 12px;border-radius:12px;background:var(--sunken)"><span style="color:var(--muted);padding-top:2px">{{ ic.chat }}</span><span style="font:500 13px/18px 'DM Sans';font-style:italic">“{{ c.quote }}”</span></div>
+                  <span style="font:600 13px/18px 'DM Sans'">1 · Your pitch</span>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <sc-for list="{{ c.args }}" as="a" hint-placeholder-count="4">
+                      <button onClick="{{ a.on }}" style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid {{ a.bd }};border-radius:10px;background:{{ a.bg }};box-shadow:{{ a.sh }}"><b style="font:600 14px/18px 'DM Sans'">{{ a.title }}</b><small style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ a.rests }}</small></button>
+                    </sc-for>
+                  </div>
+                  <span style="font:600 13px/18px 'DM Sans'">2 · Back it with points</span>
+                  <div style="display:flex;gap:6px"><sc-for list="{{ c.quick }}" as="q" hint-placeholder-count="4"><button onClick="{{ q.on }}" style="flex:1;min-height:36px;border-radius:8px;border:1px solid {{ q.bd }};background:{{ q.bg }};color:{{ q.fg }};font:600 12.5px/1.1 'DM Sans';text-align:center">{{ q.label }}</button></sc-for></div>
+                  <button onClick="{{ c.make }}" style="display:flex;justify-content:space-between;align-items:center;min-height:48px;padding:0 16px;border-radius:12px;background:{{ c.makeBg }};color:{{ c.makeFg }};font:600 14px/1 'DM Sans'"><span>{{ c.makeLabel }}</span><span style="font-weight:500">{{ c.makeMeta }}</span></button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ m.done }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:10px;margin:12px 16px 14px;padding:10px 12px;border-radius:12px;background:{{ m.res.bg }}"><span style="color:{{ m.res.fg }};padding-top:2px">{{ m.res.icon }}</span><div><b style="display:block;font:600 14px/20px 'DM Sans'">{{ m.res.title }}</b><span style="font:400 13px/18px 'DM Sans'">{{ m.res.text }}</span></div></div>
+              </sc-if>
+            </article>
+          </sc-for>
+        </section>
+
+        </sc-if>
+
+        <sc-if value="{{ onLeaving }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ hasHoles }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:10px;padding:12px 14px;border-radius:16px;background:var(--warning-soft)"><span style="color:var(--warning);padding-top:2px">{{ ic.alert }}</span><div><b style="display:block;font:600 15px/22px 'DM Sans'">You are now short at</b><span style="font:400 13px/18px 'DM Sans'">{{ holesText }} Fill these through recruiting or the transfer portal.</span></div></div>
+          </sc-if>
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+            <sc-for list="{{ leaving }}" as="g" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 14px;border-top:{{ g.bd }}">
+                <span style="width:36px;height:36px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 12px/1 'DM Sans';color:var(--muted);flex:none">{{ g.ini }}</span>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font:600 14.5px/20px 'DM Sans'">{{ g.name }}</span><span style="display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center"><span style="min-height:20px;padding:0 6px;border-radius:6px;background:var(--sunken);display:inline-flex;align-items:center;font:600 12px/1 'DM Sans'">{{ g.pos }}</span><span style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ g.cls }}</span></span></span>
+                <span style="display:inline-flex;align-items:center;min-height:22px;padding:0 8px;border-radius:99px;background:{{ g.bBg }};color:{{ g.bFg }};font:600 11.5px/1 'DM Sans';white-space:nowrap">{{ g.badge }}</span>
+                <b style="min-width:26px;text-align:right;font:700 22px/1 'Barlow Condensed'">{{ g.ovr }}</b>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ onBoard }}" hint-placeholder-val="{{ false }}">
+          <p style="margin:0;font:400 13px/18px 'DM Sans';color:var(--muted)">Every college player taken this June, grouped by round. Yours are marked.</p>
+          <sc-for list="{{ rounds }}" as="r" hint-placeholder-count="3">
+            <section style="display:flex;flex-direction:column;gap:8px">
+              <h2 style="margin:0;font:600 15px/22px 'DM Sans'">{{ r.title }}<span style="margin-left:6px;font-weight:500;color:var(--muted)">{{ r.n }}</span></h2>
+              <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+                <sc-for list="{{ r.rows }}" as="g" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:12px;min-height:52px;padding:6px 14px;border-top:{{ g.bd }};box-shadow:{{ g.mark }}">
+                    <span style="width:32px;height:32px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 11px/1 'DM Sans';color:var(--muted);flex:none">{{ g.ini }}</span>
+                    <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="display:flex;align-items:center;gap:6px;font:600 14px/18px 'DM Sans'">{{ g.name }}<sc-if value="{{ g.yours }}" hint-placeholder-val="{{ false }}"><span style="min-height:18px;padding:0 6px;border-radius:6px;background:var(--info-soft);color:var(--info);display:inline-flex;align-items:center;font:700 11px/1 'DM Sans'">Yours</span></sc-if></span><span style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ g.school }} · {{ g.cls }} · age {{ g.age }}</span></span>
+                    <b style="min-width:26px;text-align:right;font:700 20px/1 'Barlow Condensed'">{{ g.ovr }}</b>
+                  </div>
+                </sc-for>
+              </div>
+            </section>
+          </sc-for>
+        </sc-if>
+      </sc-if>
+    </div>
+  </div>
+
+  <div style="flex:none;display:flex;flex-direction:column;gap:8px;padding:10px 16px 14px;background:var(--surface);border-top:1px solid var(--line)">
+    <span style="min-height:16px;text-align:center;font:500 12px/16px 'DM Sans';color:{{ contFg }}">{{ contNote }}</span>
+    <button style="display:flex;justify-content:center;align-items:center;gap:8px;min-height:48px;border-radius:12px;background:{{ contBg }};color:{{ contTx }};border:1px solid {{ contBd }};font:600 15px/1 'DM Sans'">{{ contLabel }}{{ ic.arrow }}</button>
+  </div>
+
+  <sc-if value="{{ sheet }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;justify-content:flex-end">
+      <button onClick="{{ close }}" aria-label="Close" style="position:absolute;inset:0;background:var(--scrim);animation:scrimIn 170ms ease-out both"></button>
+      <div style="position:relative;max-height:93%;display:flex;flex-direction:column;overflow:hidden;background:var(--raised);border-radius:24px 24px 0 0;box-shadow:var(--sh-float);animation:sheetRise 220ms cubic-bezier(.22,.85,.28,1) both">
+        <span style="align-self:center;flex:none;width:44px;height:5px;margin-top:8px;border-radius:99px;background:var(--line-strong)"></span>
+        <div style="flex:none;display:flex;align-items:flex-start;gap:12px;padding:10px 20px 12px">
+          <span style="width:48px;height:48px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 15px/1 'DM Sans';color:var(--muted);flex:none">{{ c.ini }}</span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Round {{ c.round }} · {{ c.posName }} · {{ c.clsName }}</span><h2 style="margin:0;display:flex;align-items:center;gap:4px;font:700 20px/26px 'DM Sans'">{{ c.name }}<span style="color:var(--muted)">{{ ic.chevR }}</span></h2><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">Rating {{ c.ovr }}</span></div>
+          <button onClick="{{ close }}" style="width:44px;height:44px;margin:-6px -10px 0 0;display:grid;place-items:center;color:var(--muted)">{{ ic.cross }}</button>
+        </div>
+
+        <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;gap:16px;padding:0 20px 20px">
+          <sc-if value="{{ isCur }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:12px;padding:12px 16px;border-radius:16px;background:var(--info-soft)"><span style="color:var(--info);padding-top:2px">{{ ic.chat }}</span><div><b style="display:block;font:600 15px/22px 'DM Sans'">What his camp is saying</b><span style="font:400 13px/18px 'DM Sans'">“{{ c.quote }}” “{{ c.quote2 }}”</span></div></div>
+            <div style="position:relative;padding-left:40px">
+              <span style="position:absolute;left:0;top:0;width:28px;height:28px;border-radius:99px;display:grid;place-items:center;background:{{ c.s1 }};color:var(--bg);font:700 13px/1 'DM Sans'">1</span>
+              <div style="display:flex;min-height:28px;align-items:center;gap:8px"><span style="flex:1;font:600 15px/22px 'DM Sans'">Choose your argument</span><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">{{ c.argName }}</span></div>
+              <div style="margin-top:12px;display:grid;gap:8px">
+                <sc-for list="{{ c.args }}" as="a" hint-placeholder-count="4">
+                  <button onClick="{{ a.on }}" style="display:flex;gap:10px;align-items:flex-start;min-height:56px;padding:12px;border:1px solid {{ a.bd }};border-radius:12px;background:{{ a.bg }};box-shadow:{{ a.sh }}"><span style="width:20px;height:20px;margin-top:1px;border-radius:99px;border:2px solid {{ a.ring }};background:{{ a.dot }};flex:none;box-sizing:border-box"></span><span style="display:flex;flex-direction:column;gap:2px"><b style="font:600 15px/20px 'DM Sans'">{{ a.title }}</b><small style="font:400 13px/18px 'DM Sans';color:var(--muted)">“{{ a.case }}” Rests on: {{ a.restsRaw }}</small></span></button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="position:relative;padding-left:40px">
+              <span style="position:absolute;left:0;top:0;width:28px;height:28px;border-radius:99px;display:grid;place-items:center;background:{{ c.s2 }};color:{{ c.s2fg }};box-shadow:{{ c.s2sh }};font:700 13px/1 'DM Sans'">2</span>
+              <div style="display:flex;min-height:28px;align-items:center"><span style="font:600 15px/22px 'DM Sans';color:{{ c.s2title }}">Put points behind it</span></div>
+              <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px"><div style="display:flex;flex-direction:column;gap:2px"><span style="font:600 15px/20px 'DM Sans'">Points to offer</span><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">Round {{ c.round }} usually takes {{ c.needs }}. You have {{ left }}.</span></div>
+                <div style="display:flex;align-items:center;gap:4px;padding:4px;border-radius:12px;background:var(--sunken)"><button onClick="{{ c.down }}" style="width:40px;height:40px;display:grid;place-items:center;border-radius:8px;background:var(--raised);box-shadow:var(--sh-ctl)">{{ ic.minus }}</button><output style="min-width:44px;text-align:center;font:700 22px/1 'Barlow Condensed'">{{ c.offer }}</output><button onClick="{{ c.up }}" style="width:40px;height:40px;display:grid;place-items:center;border-radius:8px;background:var(--raised);box-shadow:var(--sh-ctl)">{{ ic.plus }}</button></div></div>
+              <div style="display:flex;gap:8px;margin:8px 0 12px"><sc-for list="{{ c.quick }}" as="q" hint-placeholder-count="3"><button onClick="{{ q.on }}" style="min-height:36px;padding:0 12px;border-radius:99px;border:1px solid {{ q.bd }};background:{{ q.bg }};color:{{ q.fg }};font:600 13px/1 'DM Sans'">{{ q.labelCur }}</button></sc-for></div>
+              <button onClick="{{ c.make }}" style="width:100%;display:flex;justify-content:center;align-items:center;gap:8px;min-height:48px;border-radius:12px;background:{{ c.makeBg }};color:{{ c.makeFg }};font:600 15px/1 'DM Sans'">{{ c.makeLabel }}</button>
+            </div>
+            <button onClick="{{ c.release }}" style="display:flex;justify-content:center;align-items:center;min-height:48px;border-radius:12px;border:1px solid var(--negative);background:{{ c.relBg }};color:{{ c.relFg }};font:600 15px/1 'DM Sans'">{{ c.relLabel }}</button>
+          </sc-if>
+
+          <sc-if value="{{ isA }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:10px;padding:10px 12px;border-radius:12px;background:var(--sunken)"><span style="color:var(--muted);padding-top:2px">{{ ic.chat }}</span><div style="display:flex;flex-direction:column;gap:2px"><small style="font:600 11px/14px 'DM Sans';letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">What we are hearing</small><span style="font:500 14px/20px 'DM Sans';font-style:italic">“{{ c.quote }}” “{{ c.quote2 }}”</span></div></div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 15px/22px 'DM Sans'">1 · Your pitch</span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">He hears one</span></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <sc-for list="{{ c.args }}" as="a" hint-placeholder-count="4">
+                  <button onClick="{{ a.on }}" style="display:flex;flex-direction:column;gap:5px;min-height:132px;padding:10px 12px;border:1px solid {{ a.bd }};border-radius:12px;background:{{ a.bg }};box-shadow:{{ a.sh }}">
+                    <span style="display:flex;justify-content:space-between;align-items:center;gap:6px"><b style="font:600 14.5px/18px 'DM Sans'">{{ a.title }}</b><span style="width:18px;height:18px;border-radius:99px;border:2px solid {{ a.ring }};background:{{ a.dot }};flex:none;box-sizing:border-box"></span></span>
+                    <small style="font:400 12px/16px 'DM Sans';color:var(--muted);font-style:italic">“{{ a.case }}”</small>
+                    <span style="margin-top:auto;display:flex;flex-direction:column;gap:2px;padding-top:6px;border-top:1px solid var(--line)"><small style="font:600 10.5px/14px 'DM Sans';letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Works when</small><small style="font:500 12px/16px 'DM Sans'">{{ a.when }}</small></span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--surface)">
+              <div style="display:flex;justify-content:space-between;align-items:center"><span style="font:600 15px/22px 'DM Sans'">2 · Back it with points</span>
+                <div style="display:flex;align-items:center;gap:4px;padding:4px;border-radius:12px;background:var(--sunken)"><button onClick="{{ c.down }}" style="width:36px;height:36px;display:grid;place-items:center;border-radius:8px;background:var(--raised);box-shadow:var(--sh-ctl)">{{ ic.minus }}</button><output style="min-width:40px;text-align:center;font:700 22px/1 'Barlow Condensed'">{{ c.offer }}</output><button onClick="{{ c.up }}" style="width:36px;height:36px;display:grid;place-items:center;border-radius:8px;background:var(--raised);box-shadow:var(--sh-ctl)">{{ ic.plus }}</button></div></div>
+              <div style="position:relative;padding-top:2px">
+                <div style="position:relative;height:12px;border-radius:99px;background:var(--track);overflow:hidden"><i style="position:absolute;left:0;top:0;bottom:0;width:{{ c.offerW }};background:{{ c.offerBar }};transition:width 300ms"></i></div>
+                <i style="position:absolute;top:-2px;height:18px;left:{{ c.needW }};width:2px;background:var(--ink);border-radius:2px"></i>
+              </div>
+              <div style="position:relative;height:16px;font:500 12px/16px 'DM Sans';color:var(--muted)"><span>0</span><span style="position:absolute;left:{{ c.needW }};transform:translateX(-50%);white-space:nowrap"><b style="color:var(--ink)">{{ c.needs }}</b> usual price</span><span style="position:absolute;right:0">{{ left }} available</span></div>
+              <div style="display:flex;gap:6px"><sc-for list="{{ c.quick }}" as="q" hint-placeholder-count="3"><button onClick="{{ q.on }}" style="flex:1;min-height:34px;border-radius:8px;border:1px solid {{ q.bd }};background:{{ q.bg }};color:{{ q.fg }};font:600 12.5px/1 'DM Sans';text-align:center">{{ q.label }}</button></sc-for></div>
+              <p style="margin:0;font:500 13px/18px 'DM Sans';color:{{ c.readFg }}">{{ c.read }}</p>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ c.done }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:10px;padding:12px 14px;border-radius:16px;background:{{ c.res.bg }}"><span style="color:{{ c.res.fg }};padding-top:2px">{{ c.res.icon }}</span><div><b style="display:block;font:600 15px/22px 'DM Sans'">{{ c.res.title }}</b><span style="font:400 13px/18px 'DM Sans'">{{ c.res.text }}</span></div></div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ isA }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:none;display:flex;flex-direction:column;gap:8px;padding:12px 20px 14px;border-top:1px solid var(--line);background:var(--raised)">
+            <div style="display:flex;justify-content:space-between;font:500 12px/16px 'DM Sans';color:var(--muted)"><span>{{ c.summary }}</span><span>{{ c.after }}</span></div>
+            <div style="display:grid;grid-template-columns:0.8fr 1.4fr;gap:8px">
+              <button onClick="{{ c.release }}" style="min-height:48px;padding:0 10px;border-radius:12px;border:1px solid var(--negative);background:{{ c.relBg }};color:{{ c.relFg }};font:600 13.5px/1.2 'DM Sans';text-align:center">{{ c.relLabel }}</button>
+              <button onClick="{{ c.make }}" style="display:flex;justify-content:center;align-items:center;gap:6px;min-height:48px;border-radius:12px;background:{{ c.makeBg }};color:{{ c.makeFg }};font:600 14px/1.2 'DM Sans';text-align:center">{{ c.makeLabel }}</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;phase&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;After the draft&quot;,&quot;Before the draft&quot;],&quot;default&quot;:&quot;After the draft&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Current&quot;,&quot;A · Decision cards + sheet&quot;,&quot;B · Build the case inline&quot;],&quot;default&quot;:&quot;A · Decision cards + sheet&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Light&quot;,&quot;Dark&quot;],&quot;default&quot;:&quot;Light&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const ARGS = {
+  stock: ['Draft stock', 'One more year here and you go in the first round.', 'He still has room to grow, and your training can get him there.'],
+  role: ['A starting job', 'The job is yours this spring. Nobody else is in the running.', 'Your depth chart backs it up. He will check.'],
+  ring: ['A title run', 'Stay one more year and we win something together.', 'The program is winning and its core is coming back.'],
+  word: ['My word', 'Stay for me. I will take care of you.', 'Your name carries weight and you have been here long enough to mean it.'],
+};
+const FIT = { strong: ['Strong case', 'var(--positive)', 'check-circled'], fair: ['Fair case', 'var(--muted)', 'minus-circled'], weak: ['Weak case', 'var(--warning)', 'alert'] };
+const MEN = [
+  { id: 'm1', name: 'Cal Mercer', pos: 'SP', posName: 'Starting pitcher', cls: 'JR', clsName: 'Junior', round: 2, ovr: 71, needs: 30, fit: { stock: 'strong', role: 'fair', ring: 'fair', word: 'weak' }, quote: 'He thinks he goes higher next June.', quote2: 'He wants to know the Friday job is his.', hole: 'No Friday ace', holeW: 1 },
+  { id: 'm2', name: 'Luis Ortega', pos: 'CF', posName: 'Center field', cls: 'JR', clsName: 'Junior', round: 5, ovr: 66, needs: 18, fit: { stock: 'fair', role: 'strong', ring: 'fair', word: 'fair' }, quote: 'He is tired of sharing time.', quote2: 'Family would like him close to home.', hole: 'Thin in center', holeW: 1 },
+  { id: 'm3', name: 'Brady Kessler', pos: 'RP', posName: 'Relief pitcher', cls: 'JR', clsName: 'Junior', round: 9, ovr: 60, needs: 10, fit: { stock: 'weak', role: 'fair', ring: 'strong', word: 'fair' }, quote: 'He wants to win something here.', quote2: 'The money in round nine is not much.', hole: 'Covered', holeW: 0 },
+];
+class Component extends DCLogic {
+  state = { open: null, pitch: {}, offer: {}, out: {}, spent: 0, armed: null, relArmed: null, tab: 'keep' };
+  I(n, s) { return window.pbIcon ? window.pbIcon(React, n, s || 15) : null; }
+  resolve(m) {
+    const pitch = this.state.pitch[m.id]; const offer = this.state.offer[m.id] || 0;
+    const mult = { strong: 1.3, fair: 1, weak: 0.7 }[m.fit[pitch]];
+    const made = Math.round(offer * mult);
+    this.setState((s) => ({ spent: s.spent + offer, out: { ...s.out, [m.id]: { kind: made >= m.needs ? 'stayed' : 'gone', made, pitch } }, armed: null }));
+  }
+  renderVals() {
+    const I = this.I.bind(this);
+    const v = this.props.variant ?? 'A · Decision cards + sheet';
+    const isCur = v.startsWith('Current'); const isB = v.startsWith('B'); const isA = v.startsWith('A');
+    const st = this.state; const pool = 80; const left = pool - st.spent;
+    const resOf = (m) => {
+      const o = st.out[m.id]; if (!o) return null;
+      if (o.kind === 'stayed') return { title: `${m.name} is back for another season`, text: `Your ${ARGS[o.pitch][0].toLowerCase()} pitch was worth ${o.made} against a price of ${m.needs}.`, bg: 'var(--positive-soft)', fg: 'var(--positive)', icon: I('check-circled', 16) };
+      if (o.kind === 'released') return { title: `${m.name} signed with his club`, text: 'You let him go. No points spent.', bg: 'var(--sunken)', fg: 'var(--muted)', icon: I('exit', 16) };
+      return { title: `${m.name} turned you down`, text: `Your pitch was worth ${o.made} against a price of ${m.needs}. He signed, and the points are gone.`, bg: 'var(--sunken)', fg: 'var(--muted)', icon: I('exit', 16) };
+    };
+    const openId = st.open;
+    const caseFor = (m) => {
+      const pitch = st.pitch[m.id] || null; const offer = Math.min(st.offer[m.id] ?? 0, left);
+      const setOffer = (n) => this.setState((s) => ({ offer: { ...s.offer, [m.id]: Math.max(0, Math.min(left, n)) }, armed: null }));
+      const armed = st.armed === m.id; const relArmed = st.relArmed === m.id;
+      const ready = !!pitch && offer > 0;
+      const o = st.out[m.id];
+      const read = !pitch ? 'Choose a pitch first.' : offer === 0 ? 'Add points to your offer.' : offer < m.needs * 0.7 ? `Well under the usual price. Only a pitch that really lands will hold him.` : offer < m.needs ? `Just under the usual price of ${m.needs}.` : `At or above the usual price of ${m.needs}.`;
+      return {
+        ...m, ini: m.name.split(' ').map((w) => w[0]).join(''), offer, done: !!o, res: resOf(m) || {},
+        argName: pitch ? ARGS[pitch][0] : '',
+        args: Object.entries(ARGS).map(([k, [title, cs, when]]) => {
+          const on = pitch === k;
+          return { title, case: cs, when, rests: `Works when: ${when.charAt(0).toLowerCase() + when.slice(1)}`, restsRaw: when, bd: on ? 'var(--accent)' : 'var(--line)', bg: on ? 'var(--accent-soft)' : 'var(--surface)', sh: on ? 'inset 0 0 0 1px var(--accent)' : 'none', ring: on ? 'var(--command)' : 'var(--line-strong)', dot: on ? 'var(--command)' : 'transparent', on: () => this.setState((s) => ({ pitch: { ...s.pitch, [m.id]: k }, armed: null })) };
+        }),
+        quick: [[Math.round(m.needs / 2), `Half · ${Math.round(m.needs / 2)}`, `${Math.round(m.needs / 2)}`], [m.needs, `Usual · ${m.needs}`, `The usual: ${m.needs}`], [left, `All · ${left}`, `All ${left}`]].map(([n, label, labelCur]) => ({ label, labelCur, on: () => setOffer(n), bg: offer === n ? 'var(--accent-soft)' : 'var(--surface)', fg: offer === n ? 'var(--accent)' : 'var(--ink)', bd: offer === n ? 'var(--accent)' : 'var(--line)' })),
+        down: () => setOffer(offer - 5), up: () => setOffer(offer + 5),
+        offerW: Math.min(100, offer / Math.max(1, left) * 100) + '%', needW: Math.min(100, m.needs / Math.max(1, left) * 100) + '%',
+        offerBar: offer >= m.needs ? 'var(--positive)' : 'var(--accent)', read, readFg: ready && offer < m.needs * 0.7 ? 'var(--warning)' : 'var(--muted)',
+        makeLabel: !ready ? (pitch ? 'Add points' : 'Choose a pitch') : armed ? 'Tap again: points are spent either way' : `Make the offer · ${offer} pts`,
+        makeMeta: armed ? `${left - offer} left after` : '',
+        makeBg: !ready ? 'var(--sunken)' : armed ? 'var(--ink)' : 'var(--command)', makeFg: !ready ? 'var(--disabled)' : armed ? 'var(--bg)' : 'var(--on-command)',
+        make: () => { if (!ready || o) return; if (!armed) this.setState({ armed: m.id, relArmed: null }); else this.resolve(m); },
+        relLabel: relArmed ? 'Tap again: he signs' : 'Let him sign', relBg: relArmed ? 'var(--negative-soft)' : 'var(--surface)', relFg: 'var(--negative)',
+        release: () => { if (o) return; if (!relArmed) this.setState({ relArmed: m.id, armed: null }); else this.setState((s) => ({ out: { ...s.out, [m.id]: { kind: 'released' } }, relArmed: null })); },
+        summary: pitch ? `${ARGS[pitch][0]} · ${offer} pts` : 'No pitch chosen', after: `${left - offer} of ${pool} left after`,
+        s1: pitch ? 'var(--positive)' : 'var(--ink)', s2: pitch ? 'var(--ink)' : 'var(--sunken)', s2fg: pitch ? 'var(--bg)' : 'var(--muted)', s2sh: pitch ? 'none' : 'inset 0 0 0 1px var(--line-strong)', s2title: pitch ? 'var(--ink)' : 'var(--muted)',
+      };
+    };
+    const men = MEN.map((m, i) => {
+      const o = st.out[m.id]; const cse = caseFor(m); const inline = isB && openId === m.id && !o;
+      const stt = !o ? { label: 'Waiting on you', bg: 'var(--warning-soft)', fg: 'var(--warning)', icon: I('clock', 12) } : o.kind === 'stayed' ? { label: 'Coming back', bg: 'var(--positive-soft)', fg: 'var(--positive)', icon: null } : { label: 'Signed with his club', bg: 'var(--sunken)', fg: 'var(--muted)', icon: I('exit', 12) };
+      return { ...cse, bd: i ? '1px solid var(--line)' : '0', st: stt, pending: !o && !inline, inline, done: !!o,
+        holeFg: m.holeW ? 'var(--warning)' : 'var(--positive)',
+        cardBd: !o ? 'var(--line)' : o.kind === 'stayed' ? 'color-mix(in srgb, var(--positive) 40%, var(--line))' : 'var(--line)', cardSh: !o ? 'inset 3px 0 0 var(--warning), var(--sh-card)' : 'var(--sh-card)',
+        relBd: 'var(--line-strong)', relBg: st.relArmed === m.id ? 'var(--negative-soft)' : 'var(--surface)', relFg: st.relArmed === m.id ? 'var(--negative)' : 'var(--ink)', relLabel: st.relArmed === m.id ? 'Tap again' : 'Let him sign',
+        openLabel: isB ? 'Make your pitch here' : 'Make your pitch',
+        open: () => this.setState({ open: m.id, armed: null, relArmed: null }) };
+    });
+    const pending = MEN.filter((m) => !st.out[m.id]).length;
+    const cm = openId ? men.find((m) => m.id === openId) : null;
+    const labels = ['Review', 'Coach points', 'Draft', 'Portal', 'Signing'];
+    const before = (this.props.phase ?? 'After the draft').startsWith('Before');
+    const ini = (n) => n.split(' ').map((w) => w[0]).join('');
+    const badge = (t) => ({ neg: ['var(--negative-soft)', 'var(--negative)'], warn: ['var(--warning-soft)', 'var(--warning)'], pos: ['var(--positive-soft)', 'var(--positive)'], info: ['var(--info-soft)', 'var(--info)'], none: ['var(--sunken)', 'var(--muted)'] }[t]);
+    const outRow = (m) => { const o = st.out[m.id]; return !o ? null : [m.name, m.pos, m.clsName, m.ovr, o.kind === 'stayed' ? ['Stayed', 'pos'] : [`Drafted · round ${m.round}`, 'info']]; };
+    const leavingRaw = [...MEN.map(outRow).filter(Boolean), ['Nate Holloway', 'C', 'Senior', 68, ['Graduated', 'none']], ['Ruben Diaz', '3B', 'Senior', 63, ['Graduated', 'none']], ['Kyle Ames', '3B', 'Senior', 58, ['Graduated', 'none']], ['Owen Bright', 'LF', 'Senior', 41, ['Walk-on, year up', 'none']]];
+    const leaving = leavingRaw.map(([name, pos, cls, ovr, [b, t]], i) => { const [bBg, bFg] = badge(t); return { name, pos, cls, ovr, badge: b, bBg, bFg, ini: ini(name), bd: i ? '1px solid var(--line)' : '0' }; });
+    const lostSP = st.out.m1 && st.out.m1.kind !== 'stayed'; const lostCF = st.out.m2 && st.out.m2.kind !== 'stayed';
+    const holes = ['Catcher', 'Third base (2)', ...(lostSP ? ['Starting pitcher'] : []), ...(lostCF ? ['Center field'] : [])];
+    const BOARD = [[1, [['Drew Harlan', 'Gulf Coast State', 'Junior', 21, 82], ['Kenji Morrow', 'Savannah A&M', 'Junior', 21, 80]]], [2, [['Cal Mercer', 'Bayshore State', 'Junior', 20, 71, 'm1'], ['Ty Bell', 'Rio Grande Tech', 'Senior', 22, 74]]], [5, [['Luis Ortega', 'Bayshore State', 'Junior', 20, 66, 'm2'], ['Sam Pruitt', 'Mobile Bay', 'Junior', 21, 67]]], [9, [['Brady Kessler', 'Bayshore State', 'Junior', 20, 60, 'm3'], ['Jace Lowe', 'Delta State', 'Senior', 22, 61]]]];
+    const rounds = [...BOARD.map(([r, list]) => ({ title: `Round ${r}`, rows: list })), { title: 'Not drafted', rows: [['Nate Holloway', 'Bayshore State', 'Senior', 22, 68], ['Marco Diaz', 'Pine Hollow', 'Senior', 22, 66]] }].map((r) => ({ title: r.title, n: r.rows.length, rows: r.rows.map(([name, school, cls, age, ovr, id], i) => { const yours = school === 'Bayshore State'; return { name, school, cls, age, ovr, yours, ini: ini(name), bd: i ? '1px solid var(--line)' : '0', mark: yours ? 'inset 3px 0 0 var(--info)' : 'none' }; }) }));
+    const tabs = [['keep', 'Waiting on you', pending], ['leaving', 'Leaving', 0], ['board', 'Draft board', 0]].map(([k, label, n]) => ({ label, n: n || null, on: () => this.setState({ tab: k }), bg: st.tab === k ? 'var(--raised)' : 'transparent', fg: st.tab === k ? 'var(--ink)' : 'var(--muted)', sh: st.tab === k ? 'var(--sh-ctl)' : 'none' }));
+    const oddsRow = (name, pos, cls, age, ovr, b, t) => { const [bBg, bFg] = badge(t); return { name, pos, cls, age, ovr, badge: b, bBg, bFg, ini: ini(name) }; };
+    const eligible = [oddsRow('Cal Mercer', 'SP', 'Junior', 20, 71, 'Likely to leave', 'neg'), oddsRow('Luis Ortega', 'CF', 'Junior', 20, 66, 'Could leave', 'warn'), oddsRow('Tanner Cobb', 'C', 'Junior', 20, 64, 'Could leave', 'warn'), oddsRow('Brady Kessler', 'RP', 'Junior', 20, 60, 'Outside chance', 'none'), oddsRow('Jalen Tucker', 'SP', 'Sophomore', 19, 81, 'Should stay', 'pos')];
+    const seniors = [oddsRow('Nate Holloway', 'C', 'Senior', 21, 68, 'Graduating', 'none'), oddsRow('Ruben Diaz', '3B', 'Senior', 21, 63, 'Graduating', 'none'), oddsRow('Kyle Ames', '3B', 'Senior', 21, 58, 'Graduating', 'none')];
+    const atRisk = eligible.filter((p) => p.badge === 'Likely to leave' || p.badge === 'Could leave').length;
+    const extra = {
+      before, after: !before, newAfter: !isCur && !before, isCur: isCur && !before,
+      eyebrow: before ? 'Bayshore State · 2032 · Who could be taken' : '2032 draft · Decision time',
+      title: before ? 'The draft' : 'Draft',
+      intro: before ? 'The draft is in June. Juniors and older can be taken; seniors leave either way.' : `Pro clubs drafted ${MEN.length} of your players who still have eligibility. None has signed yet. Each will hear one pitch from you, backed by offseason points that are spent whether he stays or not.`,
+      tabs, onKeep: st.tab === 'keep', onLeaving: st.tab === 'leaving', onBoard: st.tab === 'board',
+      leaving, hasHoles: holes.length > 0, holesText: holes.join(', ') + '.', rounds,
+      oddsStats: [['Seniors', seniors.length, 'Graduating', 'var(--ink)'], ['Eligible', eligible.length, 'Can be drafted', 'var(--ink)'], ['At risk', atRisk, 'Likely or could leave', atRisk ? 'var(--warning)' : 'var(--ink)']].map(([label, v, note, fg], i) => ({ label, v, note, fg, bd: i ? '1px solid var(--line)' : '0' })),
+      oddsGroups: [{ title: 'Eligible for the draft', desc: 'Juniors and older. A strong season raises the odds a club takes him.', rows: eligible }, { title: 'Leaving anyway', desc: 'Seniors in their final season.', rows: seniors }].map((g) => ({ ...g, n: g.rows.length, rows: g.rows.map((r, i) => ({ ...r, bd: i ? '1px solid var(--line)' : '0' })) })),
+    };
+    return {
+      theme: (this.props.theme ?? 'Light').toLowerCase(),
+      ic: { chevR: I('chevron-right', 20), cross: I('cross', 18), chat: I('chat', 15), minus: I('minus', 15), plus: I('plus', 15), alert: I('alert', 16), globe: I('globe', 18), arrow: I('arrow-right', 16) },
+      rail: labels.map((label, i) => ({ label, bar: i < 2 ? 'var(--positive)' : i === 2 ? 'var(--accent)' : 'var(--track)', fg: i <= 2 ? 'var(--ink)' : 'var(--muted)' })),
+      isCur, isA, isNew: !isCur, pool, left, leftW: left / pool * 100 + '%',
+      pendingCount: pending, keptCount: MEN.filter((m) => st.out[m.id]?.kind === 'stayed').length,
+      pendingLine: pending ? `${pending} to decide` : 'All decided',
+      men, c: cm || { args: [], quick: [], res: {} }, sheet: !!cm && !isB,
+      close: () => this.setState({ open: null, armed: null, relArmed: null }),
+      _gone: [['Nate Holloway', 'C', 'Graduated', 68], ['Ruben Diaz', '3B', 'Graduated', 63], ['Kyle Ames', '3B', 'Graduated', 58], ['Owen Bright', 'LF', 'Walk-on, his year was up', 41]].map(([name, pos, why, ovr], i) => ({ name, pos, why, ovr, ini: name.split(' ').map((w) => w[0]).join(''), bd: i ? '1px solid var(--line)' : '0' })),
+      contNote: before ? '' : pending ? `${pending} ${pending === 1 ? 'player still needs' : 'players still need'} an answer. If you move on, ${pending === 1 ? 'he signs' : 'they sign'} with ${pending === 1 ? 'his club' : 'their clubs'}.` : 'Every drafted player has an answer.',
+      contLabel: before ? 'Continue' : 'Continue to the transfer portal', ...extra,
+      contFg: pending ? 'var(--warning)' : 'var(--positive)',
+      contBg: pending && !before ? 'var(--surface)' : 'var(--command)', contTx: pending && !before ? 'var(--ink)' : 'var(--on-command)', contBd: pending && !before ? 'var(--line-strong)' : 'transparent',
+    };
+  }
+}
+</script>
+</body>
+</html>

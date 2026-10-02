@@ -9,7 +9,7 @@
 // Keeping and signing are both two-press buttons; not enough points is a
 // disabled button that says how many are missing.
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { FirstVisit } from '../Tutorial.js';
 import { handles } from '../../state/depth.js';
 import { flightRisk, mood } from '../../engine/morale.js';
@@ -21,7 +21,7 @@ import { isTwoWay } from '../../engine/types.js';
 import type { Hitter, Pitcher, Player, Position } from '../../engine/types.js';
 import type { PortalMan } from '../../engine/portal.js';
 import {
-  Button, Card, CompareTable, ConfirmButton, EmptyState, Face, Marquee, PlayerRow, SegmentedControl,
+  Button, Card, CompareTable, ConfirmButton, EmptyState, Face, Marquee, PlayerRow, SectionHeader, SegmentedControl,
 } from '../components/ui/index.js';
 import { CLASS_NAME, POSITION_NAME, plural } from '../words.js';
 import { ContinueBar, OffseasonPointsCard, StepScreen, useOffseasonPoints } from './OffseasonStep.js';
@@ -69,7 +69,23 @@ export function Portal() {
   const left = pts.left;
   const leavingCount = portal.leaving.length;
   const list = view === 'leaving' ? portal.leaving : portal.available;
-  const visible = view === 'available' ? list.slice(0, shown) : list;
+  /*
+    Available: the men your points can pay for first, best first within
+    each group, under a head that carries the points left.
+
+    The pool is sorted by rating and paged at twenty five, and price follows
+    rating, so a winter down to its last thirty points opened on twenty five
+    men at forty and more, every button saying how many points were missing,
+    with the thirty-nine it could afford behind "Show more". Reported
+    2026-09-26: "when we spend points it keeps saying that we still have the
+    same amount of points even tho we just spent them and it would not let us
+    spend more". The total sat once at the top of a long page; now the number
+    you are spending is right above the men it buys.
+  */
+  const within = view === 'available' ? list.filter((m) => m.cost <= left) : [];
+  const beyond = view === 'available' ? list.filter((m) => m.cost > left) : [];
+  const ordered = view === 'available' ? [...within, ...beyond] : list;
+  const visible = view === 'available' ? ordered.slice(0, shown) : ordered;
 
   return (
     <StepScreen
@@ -111,17 +127,24 @@ export function Portal() {
             : runsPortal
               ? <EmptyState icon="search" title="Nobody available" text="No transfers are available right now." />
               : <EmptyState icon="person" title="Your staff is working it" text="In this career your staff handles the players coming in." />
-        ) : visible.map((m) => (
-          <PortalCard
-            key={m.player.id}
-            m={m}
-            mode={view}
-            left={left}
-            abbr={view === 'leaving' ? rec.def.abbr : undefined}
-            onOpen={() => openPlayer(m.player.id)}
-            onKeep={(cost) => keepFromPortal(m.player.id, cost)}
-            onSign={() => takeFromPortal(m.player.id)}
-          />
+        ) : visible.map((m, i) => (
+          <Fragment key={m.player.id}>
+            {view === 'available' && i === 0 && within.length > 0 && (
+              <SectionHeader className="pb-portal-group" title={`Within your ${left} points`} count={within.length} />
+            )}
+            {view === 'available' && i === within.length && (
+              <SectionHeader className="pb-portal-group" title="Out of reach" count={beyond.length} />
+            )}
+            <PortalCard
+              m={m}
+              mode={view}
+              left={left}
+              abbr={view === 'leaving' ? rec.def.abbr : undefined}
+              onOpen={() => openPlayer(m.player.id)}
+              onKeep={(cost) => keepFromPortal(m.player.id, cost)}
+              onSign={() => takeFromPortal(m.player.id)}
+            />
+          </Fragment>
         ))}
 
         {view === 'available' && list.length > shown && (

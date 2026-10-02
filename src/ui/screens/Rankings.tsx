@@ -8,7 +8,7 @@
 // is outside the view, a row at the bottom says where you are and shows you.
 
 import { leagueName } from '../../engine/leagueNames.js';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { rpiOrder, regularRecord, nationalOrder, pollIsProjected } from '../../engine/season.js';
 import { rosterStrength } from '../../engine/program.js';
@@ -22,7 +22,7 @@ import { ordinal, recordText } from '../words.js';
 
 type Depth = 'top25' | 'all';
 
-export function Rankings() {
+export function Rankings({ head }: { head?: ReactNode } = {}) {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
@@ -67,6 +67,7 @@ export function Rankings() {
 
   return (
     <main className="pb-page">
+      {head}
       <Marquee
         mark={<Crest abbr={team.def.abbr} size={44} />}
         eyebrow={`The country · ${rows.length} programs`}

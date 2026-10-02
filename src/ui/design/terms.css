@@ -1,0 +1,162 @@
+/* design/terms.css
+ * The board's terms at the top of a season: the full-screen signing step.
+ * From the UI clarity review (design/UI Clarity Review/Season Start.dc.html, 2026-09-25).
+ */
+
+/* ------------------------------------------------------------------ the step */
+/* Over the whole frame: the header, the tabs and the nav go under it, because
+   nothing else is open to the coach until the terms are signed. Above the
+   tables (25) and the cards (30); under a first-visit tip (38), a sheet (60)
+   and a dialog (65), so the week-stopped card and the scouting invite can
+   still speak over it. */
+.pb-terms {
+  /* The dark panel the target sits on, in both themes, stated the way
+     tokens.css states a theme: once for the Settings choice, once for the OS. */
+  --terms-panel: #153a2b;
+  --terms-on-panel: #f4f8f4;
+  position: absolute; inset: 0; z-index: 37;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg); color: var(--ink); font-family: var(--font-sans);
+  animation: pb-overlay-in var(--duration-base) var(--ease-standard) both;
+}
+:root[data-theme='dark'] .pb-terms { --terms-panel: #26312a; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .pb-terms { --terms-panel: #26312a; }
+}
+:root[data-motion='reduced'] .pb-terms { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) .pb-terms { animation: none; }
+}
+
+/* The three parts, pinned under the header. Each bar fills as the page is
+   read past it; the whole cell is the button, not just the words. */
+.pb-terms__rail {
+  flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-1);
+  padding: 0 var(--space-4); background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.pb-terms__rail button {
+  display: flex; flex-direction: column; gap: 5px; min-width: 0;
+  padding: 10px 0; border: 0; border-radius: var(--radius-inner); background: none;
+  color: var(--ink-muted); font: 600 calc(11.5px * var(--pb-ts, 1))/14px var(--font-sans);
+  text-align: left; cursor: pointer;
+}
+.pb-terms__rail i {
+  display: block; height: 4px; border-radius: var(--radius-pill); background: var(--track);
+  transition: background-color var(--duration-base) var(--ease-standard);
+}
+.pb-terms__rail span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pb-terms__rail button.is-on { color: var(--ink); }
+.pb-terms__rail button.is-on i { background: var(--accent); }
+.pb-terms__rail button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+:root[data-motion='reduced'] .pb-terms__rail i { transition: none; }
+
+/* The one scroller between the rail and the bar. Positioned, so each part's
+   offsetTop is measured from the top of the page it scrolls. */
+.pb-terms__scroll {
+  position: relative; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+}
+.pb-terms__body { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-4) var(--space-4) var(--space-6); }
+
+.pb-terms__title { display: flex; flex-direction: column; gap: 6px; }
+.pb-terms__title h1 {
+  margin: 0; font: 700 calc(28px * var(--pb-ts, 1))/1.2 var(--font-sans); letter-spacing: -0.02em; color: var(--ink);
+}
+.pb-terms__title h1:focus { outline: none; }
+.pb-terms__title p { margin: 0; font: 400 calc(15px * var(--pb-ts, 1))/1.45 var(--font-sans); color: var(--ink-muted); }
+
+/* ----------------------------------------------------------------- the parts */
+.pb-terms__part { display: flex; flex-direction: column; gap: var(--space-3); }
+.pb-terms__parthead { display: flex; align-items: center; gap: 10px; }
+.pb-terms__num {
+  flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--radius-pill);
+  background: var(--ink); color: var(--bg); font: 700 calc(13px * var(--pb-ts, 1))/1 var(--font-sans);
+}
+.pb-terms__parthead h2 { margin: 0; font: 600 calc(17px * var(--pb-ts, 1))/24px var(--font-sans); color: var(--ink); }
+
+/* 1 · Your winter */
+.pb-terms__line { margin: 0; font: 400 calc(14px * var(--pb-ts, 1))/1.43 var(--font-sans); color: var(--ink); }
+.pb-callout.pb-terms__sting { gap: 10px; padding: 10px 12px; border-radius: var(--radius-control); }
+
+/* 2 · The targets: the number on the dark panel, then the two lists. */
+.pb-terms__panel {
+  display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4);
+  border-radius: var(--radius-card); background: var(--terms-panel); color: var(--terms-on-panel);
+}
+.pb-terms__target { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 82px; }
+.pb-terms__target b { font: 700 calc(52px * var(--pb-ts, 1))/1 var(--font-numeral); font-variant-numeric: tabular-nums; }
+.pb-terms__target small {
+  font: 600 calc(11px * var(--pb-ts, 1))/14px var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase;
+  white-space: nowrap; opacity: 0.8;
+}
+.pb-terms__ask { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.pb-terms__ask b { font: 600 calc(16px * var(--pb-ts, 1))/1.35 var(--font-sans); }
+.pb-terms__ask span { font: 400 calc(13px * var(--pb-ts, 1))/1.4 var(--font-sans); opacity: 0.85; }
+
+.pb-terms__group { display: flex; flex-direction: column; gap: var(--space-2); }
+.pb-terms__subhead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+.pb-terms__subhead span { min-width: 0; font: 600 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink); }
+.pb-terms__subhead small { flex: none; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-terms__label { min-width: 0; color: var(--ink); }
+
+.pb-terms__must {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card);
+}
+.pb-terms__mustrow { display: flex; align-items: center; gap: var(--space-3); min-height: 56px; padding: 10px 14px; }
+.pb-terms__mustrow + .pb-terms__mustrow { border-top: 1px solid var(--line); }
+.pb-terms__musticon {
+  flex: none; display: grid; place-items: center; width: 32px; height: 32px;
+  border-radius: var(--radius-inner); background: var(--accent-soft); color: var(--accent);
+}
+.pb-terms__mustrow .pb-terms__label { flex: 1; font: 600 calc(15px * var(--pb-ts, 1))/1.35 var(--font-sans); }
+
+.pb-terms__extra { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.pb-terms__extracard {
+  display: flex; flex-direction: column; gap: 6px; min-height: 76px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface);
+}
+.pb-terms__extracard .pb-icon { color: var(--gold); }
+.pb-terms__extracard .pb-terms__label { font: 600 calc(13.5px * var(--pb-ts, 1))/1.33 var(--font-sans); }
+
+/* 3 · The stakes */
+.pb-terms__tickright { display: inline-block; transform: translateX(40%); }
+.pb-terms__stakes {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px;
+  border-radius: var(--radius-control); overflow: hidden; background: var(--line);
+}
+.pb-terms__stakes > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 12px; background: var(--surface-sunken); }
+.pb-terms__stakes small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-terms__stakes b { font: 600 calc(14px * var(--pb-ts, 1))/20px var(--font-sans); }
+.pb-terms__fine { margin: 0; font: 400 calc(13px * var(--pb-ts, 1))/1.4 var(--font-sans); color: var(--ink-muted); }
+
+/* ------------------------------------------------------------------- the bar */
+.pb-terms > .pb-actionbar { position: relative; flex: none; }
+
+/* The note is its own container: the summary and the reading status share
+   one line where the bar is wide enough for both and stack into two where it
+   is not. The width decides, measured in the note's own ems so a larger text
+   size stacks sooner, and never the state, so the bar is one height whether
+   it says "Read all three parts to sign" or "All terms read". */
+.pb-terms__bar .pb-actionbar__note { container-type: inline-size; }
+.pb-terms__note { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; }
+.pb-terms__note > span { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pb-terms__status { font-weight: 600; color: var(--warning); }
+.pb-terms__status.is-read { color: var(--positive); }
+@container (min-width: 31em) {
+  .pb-terms__note { grid-template-columns: minmax(0, 1fr) auto; justify-items: stretch; column-gap: var(--space-2); text-align: left; }
+  .pb-terms__status { text-align: right; }
+}
+
+/* Push back narrower than the signature, and gone once it is spent: one
+   column then, never a second row. */
+.pb-terms__bar .pb-actionbar__buttons { grid-template-columns: minmax(0, 1fr); }
+.pb-terms__bar.has-two .pb-actionbar__buttons { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr); }
+.pb-terms__bar .pb-btn { padding: 0 var(--space-3); line-height: 1.2; text-align: center; }
+
+/* A back press refused while the terms are unsigned. */
+.pb-terms__bar.is-nudged .pb-actionbar__buttons { animation: pb-nudge 360ms ease; }
+:root[data-motion='reduced'] .pb-terms__bar.is-nudged .pb-actionbar__buttons { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) .pb-terms__bar.is-nudged .pb-actionbar__buttons { animation: none; }
+}

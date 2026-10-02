@@ -9,7 +9,7 @@ import {
 } from '../src/ui/guide.js';
 
 const at = (over: Partial<GuideView> = {}, present: string[] = []): GuideView => ({
-  tab: 'home', screen: 'today', overlay: null, programSheet: 'overview',
+  tab: 'home', screen: 'today', overlay: null,
   live: false, inning: 0, half: 'top', batting: false, over: false, pending: false,
   playerOpen: false, wordGuide: false, wordSeen: false,
   hittingHired: false, hittingDirective: 'balanced', cageLevel: 0,
@@ -106,7 +106,7 @@ describe('the guided first stretch', () => {
   });
 
   it('walks the budget: staff, the hire, the directive, the barn — and gives up honestly', () => {
-    const money = { tab: 'program' as const, screen: 'records', programSheet: 'money' as const };
+    const money = { tab: 'office' as const, screen: 'budget' };
     expect(by.staff!.where(at(money, ['money-staff']))).toBe(true);
     expect(by.staff!.done!(at(money, ['seat-hitting']))).toBe(true);
     expect(by.hire!.done!(at({ ...money, hittingHired: true }))).toBe(true);
@@ -121,14 +121,21 @@ describe('the guided first stretch', () => {
     expect(by.build!.done!(at(money))).toBe(false);
   });
 
-  it('continues hiring and facility guidance through the direct Program destinations', () => {
-    const staff = { tab: 'program' as const, screen: 'records', programSheet: 'staff' as const };
+  it('continues hiring and facility guidance through the Office tab', () => {
+    const staff = { tab: 'office' as const, screen: 'staff' };
+    expect(by.program!.done!(at(staff))).toBe(true);
     expect(by.money!.done!(at(staff))).toBe(true);
+    expect(by.money!.where(at({ tab: 'office', screen: 'recruiting' }))).toBe(true);
     expect(by.hire!.where(at(staff, ['seat-hitting']))).toBe(true);
     expect(by.task!.where(at({ ...staff, hittingHired: true }, ['directive']))).toBe(true);
     expect(by.facilities!.target?.[0]).toBe('overlay-back');
-    expect(by.build!.where(at({ ...staff, programSheet: 'facilities' }, ['facility-cta']))).toBe(true);
-    expect(by.hire!.where(at({ ...staff, programSheet: 'board' }, ['seat-hitting']))).toBe(false);
+    expect(by.facilities!.where(at(staff, ['screen-facilities']))).toBe(true);
+    expect(by.facilities!.where(at({ ...staff, screen: 'facilities' }, ['screen-facilities']))).toBe(false);
+    expect(by.build!.where(at({ ...staff, screen: 'facilities' }, ['facility-cta']))).toBe(true);
+    expect(by.hire!.where(at({ ...staff, screen: 'board' }, ['seat-hitting']))).toBe(false);
+    // The profile is a layer of its own, not a Program sheet.
+    expect(by.coach!.done!(at({ overlay: 'coach' }))).toBe(true);
+    expect(by.done!.where(at({ overlay: 'coach' }))).toBe(true);
   });
 
   it('teaches the lineup by the order and the positions actually changing', () => {

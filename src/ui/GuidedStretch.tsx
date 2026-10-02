@@ -22,7 +22,7 @@ import { createPortal } from 'react-dom';
 import { assistantFor } from '../engine/program.js';
 import { facilityLevel, staffPlan } from '../engine/economy.js';
 import { readPrefs } from '../state/devicePrefs.js';
-import { blockingCardUp, useDynasty, useUserTeam } from '../state/store.js';
+import { blockingCardUp, seasonPlanShowing, useDynasty, useUserTeam } from '../state/store.js';
 import {
   activeGuideStep, dueGuideStamps, guideCard, guideSkipStamps, visibleGuideStep,
   guideProgress, guideStepStamps, type GuideCard, type GuideStep, type GuideView,
@@ -43,6 +43,8 @@ function resolveTarget(frame: HTMLElement, names: readonly string[]): { el: HTML
   for (const name of names) {
     for (const el of frame.querySelectorAll<HTMLElement>(`[data-guide="${name}"]`)) {
       if ((el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') continue;
+      // An overlay under the top one stays drawn but inert (back plan S5).
+      if (el.closest('[inert]')) continue;
       const r = el.getBoundingClientRect();
       const css = getComputedStyle(el);
       if (!r.width || !r.height || css.visibility === 'hidden' || css.display === 'none') continue;
@@ -230,7 +232,6 @@ export function GuidedStretch() {
   const tab = useDynasty((s) => s.tab);
   const screen = useDynasty((s) => s.screen);
   const overlay = useDynasty((s) => s.overlay);
-  const programSheet = useDynasty((s) => s.programSheet);
   const live = useDynasty((s) => s.live !== null);
   const userHome = useDynasty((s) => s.liveMeta !== null && s.liveMeta.home === s.userTeam);
   const pending = useDynasty((s) => s.pendingGame !== null);
@@ -239,10 +240,10 @@ export function GuidedStretch() {
   const hittingHired = useDynasty((s) => Boolean(s.economy.staff.hitting));
   const hittingDirective = useDynasty((s) => staffPlan(s.economy, 'hitting').directive);
   const cageLevel = useDynasty((s) => facilityLevel(s.economy, 'cage'));
-  // A modal the tour must not talk over: the season's opener, a big moment,
-  // the resume prompt. A player's card is not one — the word errand is
-  // taught on it.
-  const blocked = useDynasty((s) => s.pendingGame !== null || blockingCardUp(s));
+  // A modal the tour must not talk over: the season's opener, the Season
+  // plan, a big moment, the resume prompt. A player's card is not one — the
+  // word errand is taught on it.
+  const blocked = useDynasty((s) => s.pendingGame !== null || blockingCardUp(s) || seasonPlanShowing(s));
   const user = useUserTeam();
   const version = useDynasty((s) => s.version);
 
@@ -316,7 +317,10 @@ export function GuidedStretch() {
   void version;
 
   const frame = typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('.app-frame');
-  const has = (name: string): boolean => frame !== null && frame.querySelector(`[data-guide="${name}"]`) !== null;
+  // Only what is on screen: the screens the back gesture can return to stay
+  // mounted but hidden (App.tsx), and their controls are not "in the frame".
+  const has = (name: string): boolean => frame !== null
+    && Array.from(frame.querySelectorAll<HTMLElement>(`[data-guide="${name}"]`)).some((el) => el.getClientRects().length > 0);
 
   const current = activeGuideStep(seen, firstSeason, readPrefs().tutorials);
   /*
@@ -328,7 +332,7 @@ export function GuidedStretch() {
   const since = lit !== null && current !== null && lit.id === current.id ? lit : null;
 
   const view: GuideView = {
-    tab, screen, overlay, programSheet,
+    tab, screen, overlay,
     live, inning: field.inning, half: field.half, over: field.over,
     batting: live && (userHome ? field.half === 'bottom' : field.half === 'top'),
     pending, playerOpen, wordGuide,

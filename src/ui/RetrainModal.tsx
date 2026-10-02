@@ -9,7 +9,7 @@
 // and can be taken back until then.
 
 import { useDynasty } from '../state/store.js';
-import { coverTier, fieldingAt, retrainOdds, retrainablePositions } from '../engine/positions.js';
+import { coverTier, fieldingAt, naturalPos, retrainOdds, retrainablePositions } from '../engine/positions.js';
 import { overallOf } from '../engine/ratings.js';
 import { promiseSpent } from '../engine/morale.js';
 import type { Hitter, Position } from '../engine/types.js';
@@ -19,6 +19,19 @@ import {
 import { POSITION_NAME } from './words.js';
 
 const posName = (pos: string): string => POSITION_NAME[pos as Position] ?? pos;
+
+/**
+ * The man as he stands at his own spot, which is where every position line
+ * reads him from: `homePos` while a cover or the DH has relabelled him, and
+ * for a bat-first man the spot his glove says he is, the way his card's header
+ * names him. Never tonight's label. A first baseman who was the DH tonight
+ * read "First base, also covers right and first": the covers, and the moves
+ * this sheet offered, were those of the outfield spot the DH label guessed.
+ */
+export function ownSpot(p: Hitter): Hitter {
+  const home = naturalPos(p.homePos ? { ...p, pos: p.homePos } : p);
+  return home === p.pos ? p : { ...p, pos: home };
+}
 
 export function RetrainSheet(
   { p, canMove, onClose }: { p: Hitter; canMove: boolean; onClose: () => void },
@@ -31,9 +44,10 @@ export function RetrainSheet(
   const planned = (p as Hitter & { retrainTo?: Position }).retrainTo;
   const promise = !promiseSpent(p.recruitPromise) ? p.recruitPromise : undefined;
   const promisedPos = promise?.kind === 'keepPosition' ? promise.promisedPos : undefined;
-  const spots = retrainablePositions(p);
-  const home = (p as Hitter & { homePos?: Position }).homePos ?? p.pos;
-  const own = home === p.pos ? p : { ...p, pos: home };
+  // From his own spot, the list included. See `ownSpot`.
+  const own = ownSpot(p);
+  const home = own.pos;
+  const spots = retrainablePositions(own);
 
   const how = !canMove
     ? 'What a winter could make of him, if he were yours to move.'

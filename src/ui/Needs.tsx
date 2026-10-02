@@ -47,12 +47,13 @@
 // what the simulation does. Either way the man is hurt and either way somebody
 // covers him.
 
-import { useDynasty, useUserTeam } from '../state/store.js';
+import { boardBudget, useDynasty, useUserTeam } from '../state/store.js';
 import { List, ListRow, SectionHeader, StatusBadge, type IconName } from './components/ui/index.js';
-import { ordinal } from './words.js';
+import { ordinal, plural } from './words.js';
 import { handles } from '../state/depth.js';
 import { available, squad } from '../engine/depthChart.js';
-import { injuryClock } from '../engine/season.js';
+import { injuryClock, seasonComplete } from '../engine/season.js';
+import { RECRUITING_WEEKS, SCHOLARSHIPS, totalWeekSpend } from '../engine/recruiting.js';
 import { standing, WORDS_A_SEASON } from '../engine/eligibility.js';
 import { isHurt, prognosis } from '../engine/injury.js';
 import { captainOf, candidates } from '../engine/captains.js';
@@ -318,6 +319,58 @@ export function useNeeds(): Need[] {
   }
 
   /*
+    Points not yet spent on the board this week. The week closes on its own
+    when the calendar crosses into the next one, and what is left is lost —
+    which used to happen in silence to anyone who simmed Friday to Sunday
+    without opening the board. Not red: tonight's game does not wait on it.
+    Only for a coach working his own board; a coordinator spends his.
+  */
+  if (phase === null && handles(depth, 'recruiting') && !seasonComplete(season)
+    && season.recruiting.week >= 1 && season.recruiting.week <= RECRUITING_WEEKS) {
+    const budget = boardBudget(season, team.index, economy.recruitingGrant);
+    const left = Math.max(0, budget - totalWeekSpend(season.recruiting.prospects, team.index));
+    if (left > 0) {
+      const week = season.schedule[season.dayIndex]?.week;
+      let last = season.dayIndex;
+      while (season.schedule[last + 1]?.week === week) last += 1;
+      const daysLeft = last - season.dayIndex;
+      needs.push({
+        id: 'recruiting-points',
+        title: `${plural(left, 'recruiting point')} unspent`,
+        note: daysLeft <= 0 ? 'Lost when the week ends tonight.' : `Lost when the week ends, in ${plural(daysLeft, 'day')}.`,
+        where: 'opens recruiting',
+        badge: `Week ${season.recruiting.week}`,
+        icon: 'clock',
+        must: false,
+        cta: 'Spend them',
+        go: () => { useDynasty.getState().go('office', 'recruiting'); },
+      });
+    }
+  }
+
+  /*
+    The staff's half of the row above. Since 2026-09-30 the staff works only
+    the men the coach stars, so an empty list is a week of nothing, as quiet as
+    unspent points were. Not red, and gone with the first star.
+  */
+  if (phase === null && !handles(depth, 'recruiting') && !seasonComplete(season)
+    && season.recruiting.week >= 1 && season.recruiting.week <= RECRUITING_WEEKS
+    && (season.recruiting.staffList ?? []).length === 0
+    && season.recruiting.prospects.filter((p) => p.signedBy === team.index).length < SCHOLARSHIPS) {
+    needs.push({
+      id: 'recruiting-list',
+      title: 'Your staff list is empty',
+      note: 'The staff works only the recruits you star.',
+      where: 'opens recruiting',
+      badge: `Week ${season.recruiting.week}`,
+      icon: 'star',
+      must: false,
+      cta: 'Pick recruits',
+      go: () => { useDynasty.getState().go('office', 'recruiting'); },
+    });
+  }
+
+  /*
     A contract up, in the winter. Staff contracts, 2026-09-10: "right now it
     is easy to forget they are even there." Two or three years on a hire,
     and the offseason is when the seat is renewed or left to open in June.
@@ -334,7 +387,7 @@ export function useNeeds(): Need[] {
         must: true,
         icon: 'clock',
         cta: 'Renew or replace',
-        go: () => { const st = useDynasty.getState(); st.setProgramSheet('staff'); st.go('program', 'records'); },
+        go: () => { useDynasty.getState().openRoom('staff'); },
       });
     }
   }

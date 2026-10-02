@@ -1,32 +1,43 @@
 // StaffWorkPanel.tsx
 // What an assistant coach is working on, and how to give him the next thing.
 //
-// Two layers, as the design system's coach sheet draws them: the coaching
-// focus, which is always on, and one time-limited project. A project is set up
-// in three numbered steps (the skill, the player, then the review) with the
-// start button pinned in the sheet's footer, so the panel returns its body and
-// its footer separately for the sheet to place.
+// Two layers, as the coach sheet draws them: the focus, which is always on,
+// and one assignment a season (2026-09-28). A coach's assignment is built in
+// two numbered steps — what to work on, then who, up to three men with what
+// each stands to gain — and the start button is pinned in the sheet's footer
+// under a line that says what is about to start and whether it matches the
+// focus. So the panel returns its body and its footer separately for the
+// sheet to place (the Season plan sheet places them too).
+//
+// Everything that appears as the coach chooses lives in space kept for it —
+// the "Matches focus" badge on every tile, the footer's summary line, a row
+// greyed rather than removed at three picked — so a tap never moves the list
+// under the thumb.
 
 import { useState, type ReactNode } from 'react';
 import { ALL_STATES } from '../data/schools.js';
 import {
   BUILDINGS, DIRECTIVE_LABEL, PROJECT_LABEL, PIPELINE_MIN, dollars, facilityLevel,
-  facilityUpgradeCost, pipelineStrength, projectFacility, staffPlan, staffProjectWeeks,
-  type Building, type Economy, type StaffDirective, type StaffProjectKind, type StaffSeat,
+  facilityUpgradeCost, pipelineStrength, projectFacility, staffPlan,
+  type Economy, type StaffDirective, type StaffProjectKind, type StaffSeat, type Building,
 } from '../engine/economy.js';
 import { RECRUITING_WEEKS } from '../engine/recruiting.js';
 import type { SeasonState } from '../engine/season.js';
+import { isTwoWay, type Player } from '../engine/types.js';
 import {
-  pipelineProjectGain, projectCandidates, projectOdds, PROJECT_ATTRIBUTE, PROJECT_FOCUS,
-  PROJECT_FOCUS_GAIN, PROJECT_GAIN,
+  FOCUS_SHARE, pipelineProjectGain, pipelineSeasonPreview, projectCandidates, projectOdds, PROJECT_ATTRIBUTE,
+  PROJECT_FOCUS, PROJECT_FOCUS_GAIN, PROJECT_GAIN, SEASON_GROUP_MAX, SEAT_KINDS, seasonEach, seasonFocus,
+  seasonGainFull, seasonGainOn, suggestedTargets,
 } from '../engine/staffProjects.js';
 import { handles } from '../state/depth.js';
 import { useDynasty } from '../state/store.js';
 import {
-  Button, Callout, ConfirmButton, Face, List, ListRow, Meter, Monogram, OptionCard, OptionGroup,
-  ProjectProgress, SearchField, SectionHeader, StatGroup, StatusBadge, Step,
+  Button, Callout, ConfirmButton, Face, FocusChips, KindTiles, List, Meter, Monogram, PickList, PlayerRow,
+  ProjectProgress, SubHead, cx, type ProjectFact,
 } from './components/ui/index.js';
-import { CLASS_NAME, FACILITY_NAME, POSITION_NAME, firstName, plural, stateName } from './words.js';
+import { CLASS_NAME, FACILITY_NAME, POSITION_NAME, firstName, lastName, plural, stateName } from './words.js';
+
+type Owner = SeasonState['teams'][number];
 
 const FOCUSES: Record<StaffSeat, StaffDirective[]> = {
   hitting: ['balanced', 'contact', 'power', 'discipline'],
@@ -34,66 +45,240 @@ const FOCUSES: Record<StaffSeat, StaffDirective[]> = {
   recruiting: ['balanced', 'pipeline', 'stars', 'sleepers', 'needs'],
 };
 
-/** What each focus buys, in a sentence the option card can carry. */
+/**
+ * What each focus does, in one line under the chips.
+ *
+ * Only what the engine does. A hitting or pitching focus does exactly one
+ * thing: the matching season work earns +1 a man (`projectAligned`). The
+ * recruiting focuses are real multipliers on recruiting points
+ * (`recruitingDirectiveMultiplier`).
+ */
 const FOCUS_HINT: Record<StaffDirective, string> = {
-  balanced: 'General support, no project bonus',
-  contact: 'Contact projects earn the bonus',
-  power: 'Power projects earn the bonus',
-  discipline: 'Discipline projects earn the bonus',
-  command: 'Control projects earn the bonus',
-  velocity: 'Strikeout stuff projects earn the bonus',
-  armCare: 'Stamina projects earn the bonus',
-  pipeline: 'Pipeline projects earn the bonus; recruiting points go 4% further',
-  stars: 'Points go 10% further with 4 and 5 star recruits',
-  sleepers: 'Points go 10% further with 1 to 3 star recruits',
-  needs: 'Points go 10% further at positions you need',
+  balanced: 'No focus bonus.',
+  contact: 'Contact work gains +1.',
+  power: 'Power work gains +1.',
+  discipline: 'Approach work gains +1.',
+  command: 'Command work gains +1.',
+  velocity: 'Velocity work gains +1.',
+  armCare: 'Arm-care work gains +1.',
+  pipeline: 'Pipeline work gains more. Points go 4% further.',
+  stars: 'Points go 10% further with 4 and 5 star recruits.',
+  sleepers: 'Points go 10% further with 1 to 3 star recruits.',
+  needs: 'Points go 10% further at positions you need.',
 };
 
-const PIPELINE_HINT: Partial<Record<StaffProjectKind, string>> = {
-  'pipeline-build': 'Start a relationship in a new state',
-  'pipeline-deepen': 'Make a pipeline stronger',
-  'pipeline-maintain': 'Keep a pipeline from cooling',
+/** A coach's kinds of work, in tile order. */
+const TRAINING: Record<'hitting' | 'pitching', readonly StaffProjectKind[]> = {
+  hitting: SEAT_KINDS.hitting,
+  pitching: SEAT_KINDS.pitching,
 };
 
-const TRAINING: Record<'hitting' | 'pitching', StaffProjectKind[]> = {
-  hitting: ['hitting-contact', 'hitting-power', 'hitting-discipline'],
-  pitching: ['pitching-command', 'pitching-velocity', 'pitching-arm-care'],
-};
+/** How many of a legacy project's weeks have to be on the matching focus. */
+export const focusWeeksNeeded = (weeks: number): number => Math.ceil(weeks * FOCUS_SHARE);
 
-/** How many of a project's weeks have to be on the matching focus. */
-export const focusWeeksNeeded = (weeks: number): number => Math.ceil(weeks * 0.6);
+/** The recruiting weeks still to come this season: the clock all season work runs on. */
+export const recruitingWeeksLeft = (week: number): number =>
+  (week >= 1 ? Math.max(0, RECRUITING_WEEKS - week + 1) : 0);
+
+/** A man's place in a work line: a pitcher by his role, anybody else by his position. */
+function placeOf(p: Player, seat: StaffSeat): string {
+  if (p.type === 'pitcher') return POSITION_NAME[p.role];
+  if (seat === 'pitching' && isTwoWay(p)) return POSITION_NAME[p.role];
+  return POSITION_NAME[p.pos];
+}
 
 export type WorkState = 'locked' | 'ready' | 'active' | 'paused' | 'waiting';
+
+/**
+ * Whether the calendar still lets this seat start season work: the store's
+ * own gate. A coach needs a point's worth of weeks, so never the last one.
+ */
+export function seasonWorkOpens(seat: StaffSeat, level: number, weeksAvailable: number): boolean {
+  return weeksAvailable > 0 && (seat === 'recruiting' || seasonGainFull(Math.max(1, level), true, weeksAvailable) >= 1);
+}
 
 /**
  * The same status on the staff card and in the coach's sheet.
  *
  * `label` and `detail` are the legacy words, still read by the needs list and
- * the tour; `state` is the design system's.
+ * the tour; `state` is the design system's. A coach's season work opens only
+ * while enough of the season is left to be worth a point.
  */
 export function staffWorkStatus(economy: Economy, seat: StaffSeat, weeksAvailable: number) {
   const project = staffPlan(economy, seat).project;
   const facility = BUILDINGS.find((b) => b.key === projectFacility(seat))!;
   const level = facilityLevel(economy, facility.key);
   if (!project) {
-    const state: WorkState = level < 1 ? 'locked' : weeksAvailable === 0 ? 'waiting' : 'ready';
+    const open = seasonWorkOpens(seat, level, weeksAvailable);
+    const state: WorkState = level < 1 ? 'locked' : !open ? 'waiting' : 'ready';
     return {
       state,
-      label: level < 1 ? 'Projects locked' : weeksAvailable === 0 ? 'Opens next season' : 'No project',
-      detail: level < 1 ? FACILITY_NAME[facility.key] : weeksAvailable === 0 ? 'Calendar closed' : 'Ready to assign',
+      label: level < 1 ? 'Season work locked' : !open ? 'Opens next season' : 'No season work',
+      detail: level < 1 ? FACILITY_NAME[facility.key] : !open ? 'Calendar closed' : 'Ready to assign',
       progress: 0,
       facility: facility.key,
       level,
     };
   }
-  const paused = level < 1 || weeksAvailable === 0;
+  const paused = level < 1 || (!project.season && weeksAvailable === 0);
   return {
     state: (paused ? 'paused' : 'active') as WorkState,
     label: paused ? 'Paused' : 'In progress',
-    detail: `${PROJECT_LABEL[project.kind]} · ${plural(project.weeksLeft, 'week')} left`,
+    detail: project.season
+      ? `${PROJECT_LABEL[project.kind]} · lands at season's end`
+      : `${PROJECT_LABEL[project.kind]} · ${plural(project.weeksLeft, 'week')} left`,
     progress: Math.max(0, Math.min(100, Math.round((1 - project.weeksLeft / Math.max(1, project.weeksTotal)) * 100))),
     facility: facility.key,
     level,
+  };
+}
+
+/**
+ * Whether this coach could start season work right now: a man, a building,
+ * a free hand and enough of the season left. The staff room's "has no season
+ * work" line reads this, so it never asks for the impossible.
+ */
+export function canAssignProject(economy: Economy, seat: StaffSeat, weeksAvailable: number): boolean {
+  return !!economy.staff[seat] && staffWorkStatus(economy, seat, weeksAvailable).state === 'ready';
+}
+
+/** A running assignment, read the way both the seat card and the sheet print it. */
+export interface ProjectOutlook {
+  kind: StaffProjectKind;
+  /** Season work (2026-09-28); false for a legacy project from an older save. */
+  season: boolean;
+  /** What the work is about: a man (legacy), a state, a group of players, or nothing. */
+  type: 'player' | 'state' | 'group' | 'none';
+  subject: string;
+  player?: Player;
+  /** Pipeline work: the state's strength now. */
+  strength?: number;
+  /** Season pipeline work: the strength it has added so far. */
+  added?: number;
+  /** Season coach work: each man's points if it runs to week 12 with the focus as it stands. */
+  each?: number;
+  /** Season coach work: the men it names, each with what he can still take. */
+  men?: Array<{ id: string; player?: Player; gain: number }>;
+  done: number;
+  total: number;
+  /** "+3", or a legacy "+2 to +3". */
+  gain: string | null;
+  attribute: string;
+  /** Legacy: percent, fixed when the work started. */
+  odds: number | null;
+  focus: { text: string; tone: 'positive' | 'warning' };
+  /** Why the weeks are not moving, when they are not. */
+  paused: 'facility' | 'calendar' | null;
+}
+
+/**
+ * The seat's running work, or null.
+ *
+ * Season work reads the engine's own focus rule (`seasonFocus`): the bonus is
+ * earned once enough of the weeks run are on the matching focus, lost once
+ * the weeks left cannot reach it, and on track in between only while the
+ * focus matches. A legacy project keeps its old reading.
+ */
+export function projectOutlook(economy: Economy, team: Owner, seat: StaffSeat, weeksAvailable: number): ProjectOutlook | null {
+  const plan = staffPlan(economy, seat);
+  const project = plan.project;
+  if (!project) return null;
+  const want = PROJECT_FOCUS[project.kind];
+  const level = facilityLevel(economy, projectFacility(seat));
+
+  if (project.season) {
+    const f = seasonFocus(project, plan.directive).state;
+    const focus = f === 'earned' ? { text: 'Focus bonus earned', tone: 'positive' as const }
+      : f === 'on-track' ? { text: 'Focus bonus on track', tone: 'positive' as const }
+        : f === 'needs' ? { text: `Needs ${DIRECTIVE_LABEL[want]} focus`, tone: 'warning' as const }
+          : { text: 'Focus bonus lost', tone: 'warning' as const };
+    const base = {
+      kind: project.kind, season: true, done: project.weeksTotal - project.weeksLeft, total: project.weeksTotal,
+      focus, paused: level < 1 ? 'facility' as const : null,
+    };
+    if (seat === 'recruiting') {
+      if (!project.state) {
+        return { ...base, type: 'none', subject: 'No state chosen', gain: null, attribute: PROJECT_ATTRIBUTE[project.kind], odds: null };
+      }
+      const strength = pipelineStrength(economy, project.state, team.def.state);
+      const added = Math.max(0, strength - (project.from ?? strength));
+      return {
+        ...base, type: 'state', subject: stateName(project.state), strength, added,
+        gain: `+${added}`, attribute: 'Strength', odds: null,
+      };
+    }
+    const each = seasonEach(economy, seat, project, plan.directive);
+    const pool = new Map(projectCandidates(team.team, seat, project.kind).map((p) => [String(p.id), p]));
+    const men = (project.targetIds ?? []).map((id) => {
+      const player = pool.get(id);
+      return { id, player, gain: player ? seasonGainOn(player, project.kind, each) : 0 };
+    });
+    return {
+      ...base, type: 'group',
+      subject: men.map((m) => (m.player ? lastName(m.player.name) : 'Left')).join(', '),
+      men, each, gain: `+${each}`, attribute: PROJECT_ATTRIBUTE[project.kind], odds: null,
+    };
+  }
+
+  // A legacy project from a save before 2026-09-28, read the old way.
+  const done = project.weeksTotal - project.weeksLeft;
+  const needed = focusWeeksNeeded(project.weeksTotal);
+  const aligned = project.alignedWeeks ?? (want === plan.directive ? done : 0);
+  const earned = aligned >= needed;
+  const reachable = aligned + project.weeksLeft >= needed;
+  const focus = earned ? { text: 'Focus bonus earned', tone: 'positive' as const }
+    : !reachable ? { text: 'Focus bonus lost', tone: 'warning' as const }
+      : plan.directive === want ? { text: 'Focus bonus on track', tone: 'positive' as const }
+        : { text: `Needs ${DIRECTIVE_LABEL[want]} focus`, tone: 'warning' as const };
+  const range = (lo: number, hi: number): string => {
+    if (earned) return `+${hi}`;
+    if (!reachable || lo === hi) return `+${lo}`;
+    return `+${lo} to +${hi}`;
+  };
+  const paused = level < 1 ? 'facility' as const : weeksAvailable === 0 ? 'calendar' as const : null;
+  const base = { kind: project.kind, season: false, done, total: project.weeksTotal, focus, paused };
+
+  if (project.state) {
+    const strength = pipelineStrength(economy, project.state, team.def.state);
+    return {
+      ...base,
+      type: 'state',
+      subject: stateName(project.state),
+      strength,
+      gain: range(
+        pipelineProjectGain(economy, project.kind, strength, false),
+        pipelineProjectGain(economy, project.kind, strength, true),
+      ),
+      attribute: 'Strength',
+      odds: null,
+    };
+  }
+  // A stateless recruiting project from an old save earns nothing, so it promises nothing.
+  if (seat === 'recruiting') {
+    return { ...base, type: 'none', subject: 'No state chosen', gain: null, attribute: PROJECT_ATTRIBUTE[project.kind], odds: null };
+  }
+  if (project.playerId) {
+    const player = projectCandidates(team.team, seat, project.kind).find((p) => String(p.id) === project.playerId);
+    const odds = player ? project.odds ?? projectOdds(economy, seat, player, project.kind) : null;
+    return {
+      ...base,
+      type: 'player',
+      subject: player?.name ?? 'Player left the roster',
+      player,
+      gain: player ? range(PROJECT_GAIN, PROJECT_FOCUS_GAIN) : null,
+      attribute: PROJECT_ATTRIBUTE[project.kind],
+      odds: odds === null ? null : Math.round(odds * 100),
+    };
+  }
+  // A group project from a save before 2026-09-10: a point a man, two with the focus.
+  const count = project.targetIds?.length ?? project.targetCount ?? 0;
+  return {
+    ...base,
+    type: 'group',
+    subject: plural(count, 'player'),
+    gain: range(1, 2),
+    attribute: PROJECT_ATTRIBUTE[project.kind],
+    odds: null,
   };
 }
 
@@ -104,7 +289,7 @@ export interface StaffWork { body: ReactNode; footer: ReactNode }
  * A hook rather than a component so the sheet can pin the footer.
  */
 export function useStaffWork({ team, seat, initialState, onFacility }: {
-  team: SeasonState['teams'][number];
+  team: Owner;
   seat: StaffSeat;
   initialState?: string;
   onFacility: (facility: Building) => void;
@@ -115,127 +300,176 @@ export function useStaffWork({ team, seat, initialState, onFacility }: {
   const setFocus = useDynasty((s) => s.setStaffDirective);
   const start = useDynasty((s) => s.startStaffProject);
   const cancel = useDynasty((s) => s.cancelStaffProject);
-  const [state, setState] = useState(initialState ?? team.def.state);
-  const [selectedKind, setSelectedKind] = useState<StaffProjectKind | null>(null);
-  const [playerId, setPlayerId] = useState('');
-  const [query, setQuery] = useState('');
+  const home = team.def.state;
+  const plan = staffPlan(economy, seat);
+  const [state, setState] = useState(initialState ?? home);
+  // The first tile is the one the focus already favours, so the default earns the bonus.
+  const [selectedKind, setSelectedKind] = useState<StaffProjectKind | null>(() => (
+    seat === 'recruiting' ? null : TRAINING[seat].find((k) => PROJECT_FOCUS[k] === plan.directive) ?? null
+  ));
+  // The coach's own picks; null is the staff's suggestion, which follows the kind.
+  const [picked, setPicked] = useState<string[] | null>(null);
   const [error, setError] = useState('');
 
   const man = economy.staff[seat];
-  const plan = staffPlan(economy, seat);
-  const facility = BUILDINGS.find((b) => b.key === projectFacility(seat))!;
-  const facilityName = FACILITY_NAME[facility.key];
-  const level = facilityLevel(economy, facility.key);
-  const weeksAvailable = week >= 1 ? Math.max(0, RECRUITING_WEEKS - week + 1) : 0;
-  const strength = pipelineStrength(economy, state, team.def.state);
-  const projects: StaffProjectKind[] = seat === 'recruiting'
+  const facility = projectFacility(seat);
+  const facilityName = FACILITY_NAME[facility];
+  const level = facilityLevel(economy, facility);
+  const weeksAvailable = recruitingWeeksLeft(week);
+  const status = staffWorkStatus(economy, seat, weeksAvailable);
+  const strength = pipelineStrength(economy, state, home);
+  const kinds: readonly StaffProjectKind[] = seat === 'recruiting'
     ? strength >= PIPELINE_MIN ? ['pipeline-deepen', 'pipeline-maintain'] : ['pipeline-build']
     : TRAINING[seat];
-  const kind = selectedKind && projects.includes(selectedKind) ? selectedKind : projects[0]!;
-  const pool = projectCandidates(team.team, seat, kind);
-  // No implicit player selection: the coach chooses a named target.
-  const chosen = pool.find((p) => String(p.id) === playerId);
-  const visiblePlayers = pool.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase()));
-  const weeks = staffProjectWeeks(economy, seat, kind);
-  const enoughTime = weeks <= weeksAvailable;
+  const kind = selectedKind && kinds.includes(selectedKind) ? selectedKind : kinds[0]!;
   const matched = plan.directive === PROJECT_FOCUS[kind];
-  const odds = chosen ? Math.round(projectOdds(economy, seat, chosen, kind) * 100) : null;
-  const gain = seat === 'recruiting' ? pipelineProjectGain(economy, kind, strength, false) : PROJECT_GAIN;
-  const focusedGain = seat === 'recruiting' ? pipelineProjectGain(economy, kind, strength, true) : PROJECT_FOCUS_GAIN;
   const project = plan.project;
-  const activeTarget = project?.playerId
-    ? projectCandidates(team.team, seat, project.kind).find((p) => String(p.id) === project.playerId) : undefined;
-  const activeOdds = project ? project.odds ?? (activeTarget ? projectOdds(economy, seat, activeTarget, project.kind) : null) : null;
-  const alignedWeeks = project
-    ? project.alignedWeeks ?? (PROJECT_FOCUS[project.kind] === plan.directive ? project.weeksTotal - project.weeksLeft : 0)
-    : 0;
   const who = man ? firstName(man.name) : 'your coach';
+  const calendarWeek = Math.max(1, Math.min(RECRUITING_WEEKS, week));
 
   /* ------------------------------------------------------------- focus */
   const focusSection = (
-    <section className="pb-stack">
-      <SectionHeader
-        level={3}
-        title="Coaching focus"
-        description="Matching projects gain more"
+    <section className="pb-work">
+      <SubHead title="Focus" muted="always on" aside={canManage ? 'Change any time' : undefined} />
+      <FocusChips
+        label="Coaching focus"
+        value={plan.directive}
+        options={FOCUSES[seat].map((f) => ({ value: f, label: DIRECTIVE_LABEL[f] }))}
+        disabled={!canManage}
+        guide={seat === 'hitting' && canManage ? 'directive' : undefined}
+        onChange={(f) => setFocus(seat, f)}
       />
-      <OptionGroup label="Coaching focus" columns={2} guide={seat === 'hitting' && canManage ? 'directive' : undefined}>
-        {FOCUSES[seat].map((focus) => (
-          <OptionCard
-            key={focus}
-            title={DIRECTIVE_LABEL[focus]}
-            hint={FOCUS_HINT[focus]}
-            selected={plan.directive === focus}
-            disabled={!canManage}
-            onSelect={() => setFocus(seat, focus)}
-          />
-        ))}
-      </OptionGroup>
+      <p className={cx('pb-work__hint', seat === 'recruiting' && 'is-two')}>{FOCUS_HINT[plan.directive]}</p>
     </section>
   );
 
-  /* ------------------------------------------------------------ project */
-  let projectSection: ReactNode;
+  /* -------------------------------------------------------- season work */
+  let workBody: ReactNode;
   let footer: ReactNode = null;
 
-  if (project) {
-    const subjectName = project.state ? stateName(project.state)
-      : project.playerId ? activeTarget?.name ?? 'Player left the roster'
-        : plural(project.targetIds?.length ?? project.targetCount ?? 0, 'player');
-    const kindLine = project.state ? `${PROJECT_LABEL[project.kind]} · Recruiting territory`
-      : project.playerId ? PROJECT_LABEL[project.kind]
-        : `${PROJECT_LABEL[project.kind]} · Group project`;
-    const focusNeeded = focusWeeksNeeded(project.weeksTotal);
-    /*
-      Once the weeks left cannot carry the aligned weeks to the threshold, the
-      focus bonus is arithmetically gone (the engine decides it with
-      `alignedWeeks >= ceil(weeksTotal * 0.6)`), so the card stops promising it.
-    */
-    const focusReachable = alignedWeeks + project.weeksLeft >= focusNeeded;
-    const liveStrength = project.state ? pipelineStrength(economy, project.state, team.def.state) : 0;
-    const lo = seat === 'recruiting' ? pipelineProjectGain(economy, project.kind, liveStrength, false) : PROJECT_GAIN;
-    const hi = seat === 'recruiting' ? pipelineProjectGain(economy, project.kind, liveStrength, true) : PROJECT_FOCUS_GAIN;
-    // A stateless legacy recruiting project earns nothing, so it promises nothing.
-    const showGain = seat !== 'recruiting' || !!project.state;
-    const paused = level < 1 || weeksAvailable === 0;
-    projectSection = (
-      <section className="pb-stack">
-        <SectionHeader level={3} title="Current project" />
+  if (project?.season) {
+    const o = projectOutlook(economy, team, seat, weeksAvailable)!;
+    const weekFact: ProjectFact = {
+      label: 'Week', value: `${calendarWeek} of ${RECRUITING_WEEKS}`, note: o.focus.text, noteTone: o.focus.tone,
+    };
+    const paused = o.paused === 'facility' ? `Paused · needs the ${facilityName}` : undefined;
+    const build = level < 1 && (
+      <Button variant="tonal" block onClick={() => onFacility(facility)} iconAfter="chevron-right">
+        Build the {facilityName}
+      </Button>
+    );
+    if (o.type === 'group') {
+      const men = o.men ?? [];
+      workBody = (
+        <>
+          <ProjectProgress
+            lead={<Monogram icon="person" tone="info" size={44} />}
+            name={PROJECT_LABEL[o.kind]}
+            sub={`${plural(men.length, 'player')} · Lands at season's end`}
+            done={o.done}
+            total={o.total}
+            facts={[{ label: 'Each gains', value: `+${o.each ?? 0}`, note: o.attribute }, weekFact]}
+            paused={paused}
+          >
+            {build}
+          </ProjectProgress>
+          <List label="Players">
+            {men.map((m) => (m.player ? (
+              <PlayerRow
+                key={m.id}
+                name={m.player.name}
+                avatar={<Face id={m.id} team={team.def.abbr} size={36} />}
+                meta={`${placeOf(m.player, seat)} · ${CLASS_NAME[m.player.classYear]}`}
+                value={`+${m.gain}`}
+              />
+            ) : (
+              <PlayerRow key={m.id} name="Left the roster" avatar={<Monogram vacant size={36} />} value="—" />
+            )))}
+          </List>
+        </>
+      );
+    } else {
+      workBody = (
         <ProjectProgress
-          subject={{
-            name: subjectName,
-            meta: activeTarget ? `${POSITION_NAME[activeTarget.pos]} · ${CLASS_NAME[activeTarget.classYear]}` : undefined,
-            lead: project.playerId
-              ? <Face id={project.playerId} team={team.def.abbr} size={44} />
-              : <Monogram icon="globe" tone="info" size={44} />,
-          }}
-          kind={kindLine}
-          done={project.weeksTotal - project.weeksLeft}
-          total={project.weeksTotal}
-          status={paused ? { tone: 'warning', icon: 'pause', label: 'Paused' } : undefined}
-          gain={showGain ? {
-            lo, hi: focusReachable ? hi : lo,
-            attribute: seat === 'recruiting' ? `Strength · ${liveStrength} now` : PROJECT_ATTRIBUTE[project.kind],
-          } : undefined}
-          chance={project.playerId && activeOdds !== null ? Math.round(activeOdds * 100) : undefined}
-          chanceNote="Set at the start"
-          focus={{
-            label: DIRECTIVE_LABEL[PROJECT_FOCUS[project.kind]],
-            matched: alignedWeeks,
-            needed: focusNeeded,
-            reachable: focusReachable,
-          }}
-          note={level < 1 ? `The ${facilityName} is needed to resume.`
-            : weeksAvailable === 0 ? 'Resumes when the next recruiting season opens.'
-              : 'Moves on after each recruiting week. Gains apply only if it works, up to 99.'}
+          lead={<Monogram icon="globe" tone="info" size={44} />}
+          name={o.subject}
+          sub={`${PROJECT_LABEL[o.kind]} · Adds every week`}
+          done={o.done}
+          total={o.total}
+          facts={o.type === 'state' ? [
+            { label: 'Added', value: `+${o.added ?? 0}`, note: 'So far' },
+            { label: 'Strength', value: o.strength ?? 0, note: 'Now' },
+            weekFact,
+          ] : [weekFact]}
+          paused={paused}
         >
-          {level < 1 && (
-            <Button variant="tonal" block onClick={() => onFacility(facility.key)} iconAfter="chevron-right">
-              Build the {facilityName}
-            </Button>
-          )}
+          {build}
         </ProjectProgress>
-      </section>
+      );
+    }
+    if (canManage) {
+      // In a coach's last week nothing new can start, so the button says stop, not change.
+      const change = seasonWorkOpens(seat, level, weeksAvailable);
+      footer = (
+        <ConfirmButton
+          variant="secondary"
+          block
+          idle={change ? 'Change assignment' : 'Stop season work'}
+          armed={change ? 'Tap again to change' : 'Tap again to stop'}
+          armedMeta={!change ? 'Nothing new can start this season'
+            : seat === 'recruiting' ? 'Strength added stays' : 'The work so far is lost'}
+          onConfirm={() => { setPicked(null); setError(''); cancel(seat); }}
+        />
+      );
+    }
+  } else if (project) {
+    // A legacy project from an older save, shown and cancelled the old way.
+    const o = projectOutlook(economy, team, seat, weeksAvailable)!;
+    const weekFact: ProjectFact = {
+      label: 'Week',
+      value: `${Math.min(o.total, o.done + 1)} of ${o.total}`,
+      note: o.focus.text,
+      noteTone: o.focus.tone,
+    };
+    const facts: ProjectFact[] = o.type === 'state'
+      ? [
+        { label: 'Adds', value: o.gain ?? '—', note: 'Strength' },
+        { label: 'Strength', value: o.strength ?? 0, note: 'Now' },
+        weekFact,
+      ]
+      : o.type === 'player'
+        ? [
+          { label: 'If it works', value: o.gain ?? '—', note: o.attribute },
+          { label: 'Chance', value: o.odds === null ? '—' : `${o.odds}%`, note: 'Set at the start' },
+          weekFact,
+        ]
+        : o.type === 'group'
+          ? [{ label: 'Adds', value: o.gain ?? '—', note: `${o.attribute} each` }, weekFact]
+          : [weekFact];
+    const sub = o.player
+      ? `${PROJECT_LABEL[o.kind]} · ${placeOf(o.player, seat)} · ${CLASS_NAME[o.player.classYear]}`
+      : o.type === 'state' ? `${PROJECT_LABEL[o.kind]} · Recruiting territory`
+        : o.type === 'group' ? `${PROJECT_LABEL[o.kind]} · Group project`
+          : PROJECT_LABEL[o.kind];
+    workBody = (
+      <ProjectProgress
+        lead={o.player && project.playerId
+          ? <Face id={project.playerId} team={team.def.abbr} size={44} />
+          : <Monogram icon={o.type === 'group' ? 'person' : 'globe'} tone="info" size={44} />}
+        name={o.subject}
+        sub={sub}
+        done={o.done}
+        total={o.total}
+        facts={facts}
+        paused={o.paused === 'facility' ? `Paused · needs the ${facilityName}`
+          : o.paused === 'calendar' ? 'Paused · resumes next season' : undefined}
+      >
+        {level < 1 && (
+          <Button variant="tonal" block onClick={() => onFacility(facility)} iconAfter="chevron-right">
+            Build the {facilityName}
+          </Button>
+        )}
+      </ProjectProgress>
     );
     if (canManage) {
       footer = (
@@ -250,201 +484,175 @@ export function useStaffWork({ team, seat, initialState, onFacility }: {
       );
     }
   } else if (level < 1) {
-    projectSection = (
-      <section className="pb-stack">
-        <SectionHeader level={3} title="Projects" />
-        <Callout
-          tone="neutral"
-          icon="lock"
-          title="Projects locked"
-          action={{
-            label: `See the ${facilityName}`,
-            meta: dollars(facilityUpgradeCost(facility.key, 1)),
-            variant: 'tonal',
-            onClick: () => onFacility(facility.key),
+    workBody = (
+      <Callout
+        tone="neutral"
+        icon="lock"
+        title="Season work locked"
+        action={{
+          label: `See the ${facilityName}`,
+          meta: dollars(facilityUpgradeCost(facility, 1)),
+          variant: 'tonal',
+          onClick: () => onFacility(facility),
+        }}
+      >
+        Build the {facilityName} to give {who} season work.
+      </Callout>
+    );
+  } else if (status.state === 'waiting') {
+    workBody = <Callout tone="neutral" icon="clock" title="Opens next season" />;
+  } else if (!canManage) {
+    // The athletic director's staff picks its own at the next week's close.
+    workBody = <Callout tone="neutral" icon="clock" title="Picks its own work next week" />;
+  } else if (seat === 'recruiting') {
+    const total = pipelineSeasonPreview(economy, kind, strength, weeksAvailable, matched);
+    workBody = (
+      <>
+        <span className="pb-work__step">1 · Which state</span>
+        <label className="pb-field">
+          <span className="pb-sr">State</span>
+          <select
+            className="pb-field__input pb-select"
+            value={state}
+            onChange={(e) => { setState(e.currentTarget.value); setError(''); }}
+          >
+            {ALL_STATES.map((value) => <option key={value} value={value}>{stateName(value)}</option>)}
+          </select>
+        </label>
+        <Meter
+          size="sm"
+          label="Strength now"
+          valueText={`${strength} / 100`}
+          value={strength}
+          markers={[{ at: PIPELINE_MIN }, { at: 60 }]}
+        />
+        <span className="pb-work__step">2 · What to work on</span>
+        <KindTiles
+          label="What to work on"
+          value={kind}
+          options={kinds.map((k) => ({
+            value: k,
+            label: PROJECT_LABEL[k],
+            meta: `+${pipelineSeasonPreview(economy, k, strength, weeksAvailable, PROJECT_FOCUS[k] === plan.directive)} strength`,
+            match: PROJECT_FOCUS[k] === plan.directive,
+          }))}
+          onChange={(k) => { setSelectedKind(k); setError(''); }}
+        />
+      </>
+    );
+    const summary = error ? { text: error, tone: 'negative' as const } : { text: `${PROJECT_LABEL[kind]} · ${stateName(state)}` };
+    const match = error ? null
+      : matched ? { text: `Matches focus: +${total}`, tone: 'positive' } : { text: `No focus bonus: +${total}`, tone: 'warning' };
+    footer = (
+      <>
+        <div className="pb-work__sum">
+          <span className={summary.tone ? `is-${summary.tone}` : undefined}>{summary.text}</span>
+          {match && <span className={`is-${match.tone}`}>{match.text}</span>}
+        </div>
+        <Button
+          variant="primary"
+          block
+          onClick={() => {
+            if (!start(seat, kind, state, undefined)) setError('Could not start. Check the players and the week.');
+            else setError('');
           }}
-        >
-          Build the {facilityName} to give {who} projects.
-        </Callout>
-      </section>
+        >Start season work</Button>
+      </>
     );
   } else {
-    const noTime = !enoughTime;
-    const attr = PROJECT_ATTRIBUTE[kind];
-    const steps = seat === 'recruiting' ? (
+    // A coach: what to work on, then up to three of his men.
+    const each = seasonGainFull(level, matched, weeksAvailable);
+    const focusedFull = seasonGainFull(level, true, weeksAvailable);
+    const pool = projectCandidates(team.team, seat, kind);
+    const suggestion = suggestedTargets(economy, team.team, seat, kind, weeksAvailable);
+    const inPool = new Set(pool.map((p) => String(p.id)));
+    const ids = (picked ?? suggestion).filter((id) => inPool.has(id));
+    // The suggestion first, in its order, then the rest weakest first: it
+    // depends on the kind only, so a focus tap never reorders the list.
+    const rows = [
+      ...suggestion.map((id) => pool.find((p) => String(p.id) === id)!).filter(Boolean),
+      ...pool.filter((p) => !suggestion.includes(String(p.id))),
+    ];
+    workBody = (
       <>
-        <Step number={1} state="done" title="Choose a state" summary={stateName(state)}>
-          <div className="pb-stack">
-            <label className="pb-field">
-              <span className="pb-field__label">State</span>
-              <select
-                className="pb-field__input pb-select"
-                value={state}
-                disabled={!canManage}
-                onChange={(e) => { setState(e.currentTarget.value); setError(''); }}
-              >
-                {ALL_STATES.map((value) => <option key={value} value={value}>{stateName(value)}</option>)}
-              </select>
-            </label>
-            <Meter
-              size="sm"
-              label="Strength now"
-              valueText={`${strength} / 100`}
-              value={strength}
-              markers={[{ at: PIPELINE_MIN }, { at: 60 }]}
-            />
-          </div>
-        </Step>
-        <Step number={2} state="done" title="Choose the project" summary={PROJECT_LABEL[kind]}>
-          <OptionGroup label="Project">
-            {projects.map((option) => (
-              <OptionCard
-                key={option}
-                title={PROJECT_LABEL[option]}
-                hint={PIPELINE_HINT[option]}
-                meta={plural(staffProjectWeeks(economy, seat, option), 'week')}
-                badge={PROJECT_FOCUS[option] === plan.directive ? 'Matches focus' : undefined}
-                selected={kind === option}
-                disabled={!canManage}
-                onSelect={() => { setSelectedKind(option); setError(''); }}
-              />
-            ))}
-          </OptionGroup>
-        </Step>
-        <Step number={3} state="current" title="Review and start">
-          <div className="pb-stack">
-            <StatGroup
-              size="sm"
-              items={[
-                { label: 'Strength', value: `${strength}→${Math.min(100, strength + gain)}`, note: `Up to ${Math.min(100, strength + focusedGain)} with the focus` },
-                { label: 'Takes', value: weeks, unit: 'wk', note: `of ${weeksAvailable} left` },
-              ]}
-            />
-            <FocusNote matched={matched} kind={kind} weeks={weeks} bonus={`${Math.min(100, strength + focusedGain)} strength`} />
-          </div>
-        </Step>
-      </>
-    ) : (
-      <>
-        <Step number={1} state="done" title="Choose a skill" summary={attr}>
-          <OptionGroup label="Project skill" columns={3}>
-            {projects.map((option) => (
-              <OptionCard
-                key={option}
-                title={PROJECT_ATTRIBUTE[option]}
-                meta={`${staffProjectWeeks(economy, seat, option)} wk`}
-                badge={PROJECT_FOCUS[option] === plan.directive ? 'Matches focus' : undefined}
-                selected={kind === option}
-                disabled={!canManage}
-                onSelect={() => { setSelectedKind(option); setError(''); }}
-              />
-            ))}
-          </OptionGroup>
-        </Step>
-        <Step number={2} state={chosen ? 'done' : 'current'} title="Choose a player" summary={chosen?.name}>
-          <div className="pb-stack">
-            {pool.length > 8 && (
-              <SearchField label="Search eligible players" placeholder="Search players" value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
-            )}
-            {pool.length === 0 ? (
-              <Callout tone="neutral">No player on the roster is eligible for this project.</Callout>
-            ) : (
-              <>
-              <p className="pb-list-caption"><span>Player</span><span>Chance it works</span></p>
-              <List label="Eligible players" role="radiogroup">
-                {visiblePlayers.map((p) => {
-                  const on = String(p.id) === playerId;
-                  return (
-                    <ListRow
-                      key={String(p.id)}
-                      lead={<Face id={String(p.id)} team={team.def.abbr} size={36} />}
-                      title={p.name}
-                      subtitle={`${POSITION_NAME[p.pos]} · ${CLASS_NAME[p.classYear]}`}
-                      value={`${Math.round(projectOdds(economy, seat, p, kind) * 100)}%`}
-                      selected={on}
-                      chevron={false}
-                      disabled={!canManage}
-                      status={on ? <StatusBadge tone="accent" icon="check">Selected</StatusBadge> : undefined}
-                      onClick={() => { setPlayerId(String(p.id)); setError(''); }}
-                    />
-                  );
-                })}
-                {visiblePlayers.length === 0 && <ListRow title="No players match that name" />}
-              </List>
-              </>
-            )}
-          </div>
-        </Step>
-        <Step number={3} state={chosen ? 'current' : 'upcoming'} title="Review and start">
-          <div className="pb-stack">
-            <StatGroup
-              size="sm"
-              items={[
-                { label: 'If it works', value: `+${gain} to +${focusedGain}`, note: attr },
-                { label: 'Chance', value: odds === null ? '—' : `${odds}%`, note: 'Set at the start' },
-                { label: 'Takes', value: weeks, unit: 'wk', note: `of ${weeksAvailable} left` },
-              ]}
-            />
-            <FocusNote matched={matched} kind={kind} weeks={weeks} bonus={`+${focusedGain} ${attr}`} />
-          </div>
-        </Step>
-      </>
-    );
-    projectSection = (
-      <section className="pb-stack">
-        <SectionHeader level={3} title="Assign a project" description={`${plural(weeksAvailable, 'week')} left · one at a time`} />
-        <div className="pb-steps">{steps}</div>
-        {noTime && (
-          <Callout tone="warning" title={weeksAvailable === 0 ? 'Projects open when recruiting starts' : 'Not enough weeks left'}>
-            {weeksAvailable === 0 ? undefined : `It takes ${plural(weeks, 'week')}; ${weeksAvailable} left.`}
-          </Callout>
+        <span className="pb-work__step">1 · What to work on</span>
+        <KindTiles
+          label="What to work on"
+          value={kind}
+          options={kinds.map((k) => ({
+            value: k,
+            // Named for the focus they match, so the match reads straight across from the chips.
+            label: DIRECTIVE_LABEL[PROJECT_FOCUS[k]],
+            meta: `+${seasonGainFull(level, PROJECT_FOCUS[k] === plan.directive, weeksAvailable)} each`,
+            match: PROJECT_FOCUS[k] === plan.directive,
+          }))}
+          onChange={(k) => { setSelectedKind(k); setPicked(null); setError(''); }}
+        />
+        <span className="pb-work__step">2 · Who · {ids.length} of {SEASON_GROUP_MAX}</span>
+        {pool.length === 0 ? (
+          <Callout tone="neutral">No eligible players on the roster.</Callout>
+        ) : (
+          <PickList
+            label="Who"
+            head={['Player', 'Gain']}
+            max={SEASON_GROUP_MAX}
+            values={ids}
+            items={rows.map((p) => {
+              const room = seasonGainOn(p, kind, focusedFull) > 0;
+              return {
+                id: String(p.id),
+                name: p.name,
+                sub: `${placeOf(p, seat)} · ${CLASS_NAME[p.classYear]}`,
+                value: room ? `+${seasonGainOn(p, kind, each)}` : <small>At ceiling</small>,
+                disabled: !room,
+              };
+            })}
+            onToggle={(id) => {
+              setPicked(ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id].slice(0, SEASON_GROUP_MAX));
+              setError('');
+            }}
+          />
         )}
-        {error && <Callout tone="negative" role="alert">{error}</Callout>}
-      </section>
+      </>
     );
-    const label = !canManage ? 'Managed by your athletic director'
-      : seat !== 'recruiting' && !chosen ? 'Choose a player to continue'
-        : noTime ? 'Not enough weeks left'
-          : seat === 'recruiting' ? `Start: ${PROJECT_LABEL[kind].toLowerCase()}`
-            : `Start ${attr.toLowerCase()} project`;
+    const summary = error ? { text: error, tone: 'negative' as const }
+      : ids.length === 0 ? { text: 'Pick up to 3 players' }
+        : { text: `${PROJECT_LABEL[kind]} · ${plural(ids.length, 'player')}` };
+    const match = error || ids.length === 0 ? null
+      : matched ? { text: `Matches focus: +${each} each`, tone: 'positive' } : { text: `No focus bonus: +${each} each`, tone: 'warning' };
     footer = (
-      <Button
-        variant="primary"
-        block
-        meta={canManage && !noTime && (seat === 'recruiting' || chosen) ? plural(weeks, 'week') : undefined}
-        disabled={!canManage || noTime || (seat !== 'recruiting' && !chosen)}
-        onClick={() => {
-          if (!start(seat, kind, seat === 'recruiting' ? state : undefined, seat === 'recruiting' ? undefined : playerId)) {
-            setError('The project could not start. Check the player, the building and the weeks left.');
-          } else setError('');
-        }}
-      >{label}</Button>
+      <>
+        <div className="pb-work__sum">
+          <span className={summary.tone ? `is-${summary.tone}` : undefined}>{summary.text}</span>
+          {match && <span className={`is-${match.tone}`}>{match.text}</span>}
+        </div>
+        <Button
+          variant="primary"
+          block
+          disabled={ids.length === 0}
+          onClick={() => {
+            if (!start(seat, kind, undefined, ids)) setError('Could not start. Check the players and the week.');
+            else { setError(''); setPicked(null); }
+          }}
+        >{ids.length === 0 ? 'Choose players' : 'Start season work'}</Button>
+      </>
     );
   }
 
   const body = (
     <>
-      {!canManage && (
-        <Callout tone="info" title="Managed by your athletic director" />
-      )}
+      {!canManage && <Callout tone="info" title="Managed by your athletic director" />}
       {focusSection}
-      {projectSection}
+      <section className="pb-work">
+        <SubHead
+          title="Season assignment"
+          // Once, not twice: the waiting callout below already says it.
+          aside={weeksAvailable > 0 ? `Week ${calendarWeek} of ${RECRUITING_WEEKS}`
+            : status.state === 'waiting' ? undefined : 'Opens next season'}
+        />
+        {workBody}
+      </section>
     </>
   );
   return { body, footer };
-}
-
-/** Whether the project will earn the focus bonus, said before it starts. */
-function FocusNote({ matched, kind, weeks, bonus }: { matched: boolean; kind: StaffProjectKind; weeks: number; bonus: string }) {
-  const focus = DIRECTIVE_LABEL[PROJECT_FOCUS[kind]];
-  const need = focusWeeksNeeded(weeks);
-  return matched ? (
-    <Callout tone="positive" icon="check-circled" title={`Matches the ${focus} focus`}>
-      Keep the focus for {need} of the {weeks} weeks to earn {bonus}.
-    </Callout>
-  ) : (
-    <Callout tone="neutral" title="No focus bonus yet">
-      Set the focus to {focus} for {need} of the {weeks} weeks to earn {bonus}.
-    </Callout>
-  );
 }

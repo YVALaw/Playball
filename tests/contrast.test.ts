@@ -295,6 +295,13 @@ describe('the frame stylesheet follows the tokens', () => {
     const css = readFileSync(new URL('../src/ui/prototype-frame.css', import.meta.url), 'utf8');
     expect(css).not.toMatch(/#fff\b|#ffffff\b|rgba\(\s*255\s*,\s*255\s*,\s*255/i);
   });
+
+  it('draws the picker’s tick in the ink made for the command fill', () => {
+    // It was --surface: white in light, near black in dark, 1.84 on a purple school's fill.
+    const css = readFileSync(new URL('../src/ui/design/office.css', import.meta.url), 'utf8');
+    const check = css.match(/\.pb-pick__check\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(check).toMatch(/color:\s*var\(--on-command\)/);
+  });
 });
 
 // ---------------------------------------------------------------------------

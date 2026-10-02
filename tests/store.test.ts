@@ -371,14 +371,24 @@ describe('the coach profile survives the disk', () => {
 });
 
 describe('release-candidate UI state regressions', () => {
-  it('switching Program subpages does not invalidate the whole engine tree', () => {
+  it('opening the Office rooms does not invalidate the whole engine tree', () => {
     useDynasty.getState().start(4242, 0);
     const before = useDynasty.getState().version;
-    useDynasty.getState().setProgramSheet('money');
-    expect(useDynasty.getState().programSheet).toBe('money');
+    // An in-season desk with the nav, whatever the tests above left behind.
+    const coach = useDynasty.getState().coach;
+    useDynasty.setState({
+      tab: 'home', screen: 'today', overlay: null, overlayStack: [], phase: null,
+      jobSearch: false, live: null, coach: { ...coach, retiredYear: undefined },
+    });
+    useDynasty.getState().openRoom('budget');
+    expect(useDynasty.getState().tab).toBe('office');
+    expect(useDynasty.getState().screen).toBe('budget');
+    useDynasty.getState().setScreen('staff');
     expect(useDynasty.getState().version).toBe(before);
-    useDynasty.getState().setProgramSheet('overview');
+    useDynasty.getState().openRoom('coach');
+    expect(useDynasty.getState().overlay).toBe('coach');
     expect(useDynasty.getState().version).toBe(before);
+    useDynasty.getState().closeOverlay();
   });
 
   it('switches adjacent context-nav screens synchronously without touching engine state', () => {
@@ -388,8 +398,8 @@ describe('release-candidate UI state regressions', () => {
     useDynasty.getState().setScreen('history');
     expect(useDynasty.getState().screen).toBe('history');
     expect(useDynasty.getState().version).toBe(before);
-    useDynasty.getState().setScreen('strategy');
-    expect(useDynasty.getState().screen).toBe('strategy');
+    useDynasty.getState().setScreen('alumni');
+    expect(useDynasty.getState().screen).toBe('alumni');
     expect(useDynasty.getState().version).toBe(before);
   });
 

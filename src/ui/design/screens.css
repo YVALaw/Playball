@@ -6,11 +6,13 @@
 /* ------------------------------------------------------------ the chrome */
 /* The header, tabs and nav are rows of the frame (.app-frame is a column);
    only the screen between them scrolls. */
+/* A tad shorter than the design system's 64: on a small phone every row of
+   chrome is a row of the page. */
 .pb-appbar {
   flex: none; position: relative; z-index: 3;
   gap: var(--space-2);
-  min-height: 60px;
-  padding: calc(env(safe-area-inset-top) + var(--space-2)) var(--space-3) var(--space-2) var(--space-4);
+  min-height: 52px;
+  padding: calc(env(safe-area-inset-top) + var(--space-1)) var(--space-3) var(--space-1) var(--space-4);
 }
 .pb-appbar__id {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-3);
@@ -29,6 +31,12 @@ button.pb-appbar__id { cursor: pointer; }
 .pb-appbar .pb-godbolt { width: 40px; height: 40px; }
 
 .pb-toptabs { flex: none; position: relative; z-index: 2; }
+.pb-toptabs button { min-height: 44px; }
+/* Five sections to a tab since the Season tab folded away: tighter, so a
+   phone shows all five without scrolling the strip. */
+.pb-toptabs { gap: 0; padding: 0 var(--space-2); }
+.pb-toptabs button { padding: 0 9px; }
+.pb-toptabs button.is-active::after { left: 9px; right: 9px; }
 .pb-toptabs[data-more='right'] { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); }
 .pb-toptabs button .pb-dot { margin-left: 2px; }
 .pb-tabbar { flex: none; position: relative; z-index: 2; }
@@ -83,6 +91,8 @@ button.pb-appbar__id { cursor: pointer; }
 /* A screen built from the components: one column, one gap. */
 .pb-page { min-height: 100%; background: var(--bg); color: var(--ink); font-family: var(--font-sans); }
 .pb-page > section { display: flex; flex-direction: column; }
+/* Home: the date is the title, on one line beside the rank and the crest. */
+.pb-head--today .pb-screen-head__title { white-space: nowrap; }
 .pb-page .pb-section-head { margin-bottom: var(--space-3); }
 
 /* ------------------------------------------------------- tips and the tour */
@@ -239,6 +249,12 @@ button.pb-appbar__id { cursor: pointer; }
 .pb-callbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pb-callbtn:disabled { cursor: not-allowed; opacity: 0.55; }
 .pb-live__bar.pb-actionbar { position: relative; flex: none; box-shadow: none; }
+/* A back press a June game refuses: the way on shakes. Manage.tsx. */
+.pb-live__bar .pb-btn.is-nudged { animation: pb-nudge 360ms ease; }
+:root[data-motion='reduced'] .pb-live__bar .pb-btn.is-nudged { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) .pb-live__bar .pb-btn.is-nudged { animation: none; }
+}
 .pb-prow.is-resting { opacity: 0.72; }
 
 /* ------------------------------------------------------ full-frame overlay */
@@ -316,6 +332,13 @@ button.pb-appbar__id { cursor: pointer; }
 }
 :root[data-motion='reduced'] :is(.pb-dialog-host, .pb-dialog, .pb-dialog.is-nudged) { animation: none; }
 
+/* A level held while the frame under it paints, so the back swipe's picture
+   is that frame (back plan V1, 2026-09-30). Hidden, never taken out of the
+   layout: nothing moves, and its entrance plays once it shows. */
+[data-pb-hold], [data-pb-hold] * {
+  visibility: hidden !important; pointer-events: none !important; animation-play-state: paused !important;
+}
+
 /* ----------------------------------------------------------------- bracket */
 /* A bracket side: rounds as columns, scrolling sideways edge to edge. */
 .pb-bracket {
@@ -335,6 +358,17 @@ button.pb-appbar__id { cursor: pointer; }
 .pb-june { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
 .pb-june__scroll { position: relative; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
 .pb-june > .pb-actionbar { position: relative; flex: none; }
+/* The bar that is left, where no card holds the buttons: the buttons on the
+   page's own ground, not a raised grey block over the nav (2026-09-26). */
+.pb-june > .pb-actionbar.pb-june__bar {
+  gap: var(--space-1); padding-top: var(--space-2);
+  background: var(--bg); border-top: 0; box-shadow: none;
+}
+/* The header, short enough that your next game fits over the nav: the rail
+   already says which stage, so its "Step 1 of 3" goes, and the banner is the
+   title where there is one (Postseason.tsx). */
+.pb-june .pb-phases__count { display: none; }
+.pb-june__decided .pb-buttons-2 { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
 .pb-june__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
 .pb-june__tools > .pb-text-muted { flex: 1 1 100%; min-height: 18px; }
 .pb-june__halfhead { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
@@ -383,6 +417,9 @@ button.pb-appbar__id { cursor: pointer; }
 .pb-stepscreen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
 .pb-stepscreen__scroll { position: relative; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
 .pb-stepscreen > .pb-actionbar { position: relative; flex: none; }
+/* The portal's Available groups: what your points buy, then what they do not
+   (Portal.tsx). The page's own gap spaces them. */
+.pb-page .pb-portal-group.pb-section-head { margin: var(--space-2) 0 0; }
 
 /* Awards: a winner, and the card you turn to find out who. */
 .pb-award-list { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -414,6 +451,28 @@ button.pb-appbar__id { cursor: pointer; }
 .pb-flip__front strong { font: 700 calc(26px * var(--pb-ts, 1))/1 var(--font-numeral); }
 .pb-flip__front span { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); opacity: 0.8; }
 .pb-flip__tap { position: absolute; inset: 0; z-index: 2; padding: 0; border: 0; border-radius: var(--radius-card); background: transparent; cursor: pointer; }
+/* A card with the award's emblem on its back stands taller than the winner under
+   it; the winner fills the card once it turns, so nothing jumps. */
+.pb-flip__back > .pb-award { height: 100%; }
+
+/* The trophy over a big moment rises in; only a national title's glows. */
+.big-moment-trophy { margin-bottom: 6px; animation: pbTrophyRise 900ms cubic-bezier(0.2, 0.9, 0.25, 1.2) 0.2s both; }
+.big-moment.title .big-moment-trophy { filter: drop-shadow(0 0 18px rgba(242, 207, 107, 0.55)); }
+@keyframes pbTrophyRise { from { transform: translateY(18px) scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
+:root[data-motion='reduced'] .big-moment-trophy { animation: none; }
+@media (prefers-reduced-motion: reduce) { :root:not([data-motion='full']) .big-moment-trophy { animation: none; } }
+
+/* The Hall of Fame's own logo, over a career that made it in. */
+.pb-hall-banner { margin-inline: auto; }
+
+/* A coach background's icon: line art as a mask, in the text colour, the accent once picked. */
+.pb-bg-icon {
+  display: block; width: 44px; height: 42px; background-color: currentColor;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+}
+.pb-option.is-selected .pb-bg-icon { color: var(--accent); }
 .pb-flip__tap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 :root[data-motion='reduced'] .pb-flip__inner { transition: none; }
 @media (prefers-reduced-motion: reduce) { :root:not([data-motion='full']) .pb-flip__inner { transition: none; } }
@@ -480,7 +539,7 @@ button.pb-pitch:focus-visible { outline: 2px solid var(--accent); outline-offset
 .pb-start { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); color: var(--ink); font-family: var(--font-sans); }
 .pb-start__inner { box-sizing: border-box; min-height: 100%; max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; justify-content: center; gap: var(--space-5); padding: var(--space-8) var(--space-4) calc(var(--space-8) + env(safe-area-inset-bottom, 0px)); }
 .pb-start__brand { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
-.pb-start__mark { width: 56px; height: 56px; margin-bottom: var(--space-2); }
+.pb-start__mark { display: block; width: 76px; height: 76px; object-fit: contain; margin-bottom: var(--space-2); }
 .pb-start__title { margin: 0; font: 800 calc(44px * var(--pb-ts, 1))/48px var(--font-sans); letter-spacing: -0.03em; color: var(--ink); }
 .pb-start__lede { margin: 0; max-width: 34ch; font: 400 calc(16px * var(--pb-ts, 1))/24px var(--font-sans); color: var(--ink-muted); }
 .pb-start .pb-card .pb-card__body { gap: var(--space-3); }
@@ -583,6 +642,11 @@ button.pb-pitch:focus-visible { outline: 2px solid var(--accent); outline-offset
 .pb-pickhint > .pb-icon { flex: none; color: var(--info); }
 .pb-pickhint__text { flex: 1; min-width: 0; font: 400 calc(14px * var(--pb-ts, 1))/20px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pb-pickhint__text b { font-weight: 600; }
+/* The hint pinned to the foot of the screen, over the lists: a tap never pushes
+   the row you were about to tap next. */
+.pb-pickbar { position: sticky; bottom: var(--space-2); z-index: 5; display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+.pb-pickbar > * { box-shadow: var(--shadow-float); }
+.pb-pickbar .pb-pickhint { border: 1px solid var(--line); }
 
 /* ------------------------------------------------------------ board goals */
 /* A scoreboard rather than a queue: state first, then the ask, then the
@@ -675,3 +739,193 @@ button.pb-pitch:focus-visible { outline: 2px solid var(--accent); outline-offset
 .pb-run__bar.is-title i { background: var(--gold); }
 .pb-run__axis { display: flex; justify-content: space-between; font: 500 calc(11.5px * var(--pb-ts, 1))/15px var(--font-sans); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 .pb-run__note { margin: 2px 0 0; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+
+/* ------------------------------------------------------------- home */
+/* Three parts, and the page never scrolls: the wheel, the to-do list (which
+   scrolls inside itself), then the three buttons. */
+.screen-surface--fill { height: 100%; }
+.pb-page.pb-home { height: 100%; min-height: 0; gap: 0; padding: 0; overflow: hidden; }
+.pb-home__bar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: 28px; padding: 4px var(--space-4) 0; }
+.pb-home__label { display: flex; align-items: center; gap: 5px; min-width: 0; min-height: 26px; padding: 0; border: 0; background: none; cursor: pointer; font: 600 calc(11px * var(--pb-ts, 1))/14px var(--font-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-muted); }
+.pb-home__label > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-home__label .pb-icon { flex: none; }
+.pb-home__rank { font: 700 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.pb-home__jump { display: flex; align-items: center; gap: 4px; min-height: 26px; padding: 0 10px; border: 0; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--accent); font: 600 calc(11px * var(--pb-ts, 1))/1 var(--font-sans); cursor: pointer; }
+
+.pb-wheel { flex: none; height: clamp(190px, 30vh, 290px); display: flex; gap: 4px; padding: 0 8px 0 var(--space-4); }
+.pb-wheel__drum { flex: 1; min-width: 0; position: relative; overflow: hidden; touch-action: none; cursor: grab; isolation: isolate; outline: none; user-select: none; -webkit-user-select: none; }
+.pb-wheel__drum:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); border-radius: var(--radius-card); }
+.pb-wheel__drum.is-dragging { cursor: grabbing; }
+.pb-wheel__slot { position: absolute; left: 0; right: 0; top: 50%; height: 168px; margin-top: -84px; pointer-events: none; will-change: transform; }
+.pb-wheel__dim { position: absolute; inset: 0; border-radius: 18px; background: var(--bg); pointer-events: none; z-index: 2; }
+.pb-wheel__fade { position: absolute; left: 0; right: 0; height: 48px; pointer-events: none; z-index: 200; }
+.pb-wheel__fade--top { top: 0; background: linear-gradient(var(--bg), transparent); }
+.pb-wheel__fade--bottom { bottom: 0; background: linear-gradient(transparent, var(--bg)); }
+.pb-wheel__rail { flex: none; width: 28px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; }
+.pb-wheel__rail > button { width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-muted); display: grid; place-items: center; cursor: pointer; }
+.pb-wheel__up { transform: rotate(180deg); }
+.pb-wheel__weeks { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 2px 0; }
+.pb-wheel__weeks button { width: 22px; flex: 1; max-height: 14px; min-height: 6px; border: 0; background: transparent; padding: 0; display: grid; place-items: center; cursor: pointer; }
+.pb-wheel__weeks span { display: block; width: 8px; height: 4px; border-radius: var(--radius-pill); background: var(--track); transition: width var(--duration-base) var(--ease-standard); }
+.pb-wheel__weeks span.is-past { background: var(--line-strong); }
+.pb-wheel__weeks span.is-now { width: 12px; background: var(--line-strong); }
+.pb-wheel__weeks span.is-on { width: 18px; background: var(--accent); }
+
+/* A game on the wheel. */
+.pb-gcard { position: relative; height: 100%; display: flex; flex-direction: column; gap: 7px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); overflow: hidden; }
+.pb-gcard.is-front { background: var(--surface-raised); box-shadow: 0 12px 30px rgba(0,0,0,.22); }
+.pb-gcard.is-next { border: 1.5px solid var(--accent); }
+.pb-gcard__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pb-gcard__when { font: 600 calc(11px * var(--pb-ts, 1))/14px var(--font-sans); letter-spacing: .06em; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-gcard__badge { flex: none; padding: 3px 8px; border-radius: var(--radius-pill); font: 700 calc(11px * var(--pb-ts, 1))/1 var(--font-sans); letter-spacing: .04em; white-space: nowrap; background: var(--surface-sunken); color: var(--ink-muted); }
+.pb-gcard__badge.is-positive { background: var(--positive-soft); color: var(--positive); }
+.pb-gcard__badge.is-negative { background: var(--negative-soft); color: var(--negative); }
+.pb-gcard__badge.is-command { background: var(--command); color: var(--on-command); }
+.pb-gcard__teams { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; gap: 4px; }
+.pb-gcard__side { min-width: 0; display: flex; align-items: center; gap: 5px; }
+.pb-gcard__side.is-right { justify-content: flex-end; text-align: right; }
+.pb-gcard__side .pb-crest { flex: none; }
+.pb-gcard__name { min-width: 0; display: flex; flex-direction: column; }
+.pb-gcard__side.is-right .pb-gcard__name { align-items: flex-end; }
+.pb-gcard__name b { font: 700 calc(12.5px * var(--pb-ts, 1))/15px var(--font-sans); color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.pb-gcard__name small, .pb-gcard__arms small { font: 500 calc(11px * var(--pb-ts, 1))/14px var(--font-sans); color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.pb-gcard__score { flex: none; min-width: 44px; display: flex; flex-direction: column; align-items: center; }
+.pb-gcard__score > span { display: flex; align-items: center; gap: 6px; }
+.pb-gcard__score b { font: 700 30px/1 var(--font-numeral); color: var(--ink); font-variant-numeric: tabular-nums; }
+.pb-gcard__score b.is-muted { color: var(--ink-muted); }
+.pb-gcard__score i { font: 600 calc(13px * var(--pb-ts, 1))/30px var(--font-sans); font-style: normal; color: var(--ink-muted); }
+.pb-gcard__score small { font: 600 calc(10px * var(--pb-ts, 1))/12px var(--font-sans); letter-spacing: .06em; color: var(--ink-muted); }
+.pb-gcard__arms { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; padding-top: 7px; border-top: 1px solid var(--line); }
+.pb-gcard__arms > span { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pb-gcard__arms > span.is-right { align-items: flex-end; text-align: right; }
+.pb-gcard__arms b { font: 600 calc(12px * var(--pb-ts, 1))/15px var(--font-sans); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.pb-gcard__line { display: flex; align-items: center; gap: 6px; min-width: 0; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-gcard__lineicon { display: flex; flex: none; }
+.pb-gcard__lineicon.is-gold { color: var(--gold); }
+.pb-gcard__lineicon.is-accent { color: var(--accent); }
+.pb-gcard__linetext { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-gcard__rival { flex: none; display: flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: var(--radius-pill); background: var(--warning-soft); color: var(--warning); font: 600 calc(10px * var(--pb-ts, 1))/1.2 var(--font-sans); }
+
+/* The to-do list. */
+.pb-home__todo { flex: 1; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.pb-home__todohead { flex: none; display: flex; align-items: baseline; justify-content: space-between; padding: 8px var(--space-4) 5px; }
+.pb-home__todohead span { font: 700 calc(17px * var(--pb-ts, 1))/22px var(--font-sans); color: var(--ink); }
+.pb-home__todohead small { font: 600 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); }
+.pb-home__todohead small.is-warning { color: var(--warning); }
+.pb-home__todohead small.is-positive { color: var(--positive); }
+.pb-home__todolist { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 var(--space-4) 10px; display: flex; flex-direction: column; gap: 6px; }
+.pb-home__clear { margin: 8px 0; font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-todo { flex: none; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); --t: var(--accent); --ts: var(--accent-soft); }
+.pb-todo.is-warning { --t: var(--warning); --ts: var(--warning-soft); }
+.pb-todo.is-negative { --t: var(--negative); --ts: var(--negative-soft); }
+.pb-todo.is-info { --t: var(--info); --ts: var(--info-soft); }
+.pb-todo.is-positive { --t: var(--positive); --ts: var(--positive-soft); }
+.pb-todo.is-muted { --t: var(--ink-muted); --ts: var(--surface-sunken); }
+.pb-todo.is-must { background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 35%, var(--line)); }
+.pb-todo.is-done { background: transparent; border-style: dashed; opacity: .65; --t: var(--positive); --ts: var(--positive-soft); }
+.pb-todo__icon { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--ts); color: var(--t); }
+.pb-todo.is-must .pb-todo__icon { background: var(--surface); }
+.pb-todo__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pb-todo__text b { font: 600 calc(13px * var(--pb-ts, 1))/17px var(--font-sans); color: var(--ink); }
+.pb-todo__text small { font: 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-todo__btn { flex: none; min-height: 34px; padding: 0 12px; border: 0; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font: 600 calc(12px * var(--pb-ts, 1))/1 var(--font-sans); white-space: nowrap; cursor: pointer; }
+.pb-todo.is-warning .pb-todo__btn, .pb-todo.is-must .pb-todo__btn { background: var(--command); color: var(--on-command); }
+
+/* The three buttons. */
+.pb-home__actions { flex: none; display: grid; grid-template-columns: 1fr 1.35fr 1fr; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--bg); }
+.pb-home__act { min-width: 0; min-height: 54px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; cursor: pointer; font: 600 calc(13px * var(--pb-ts, 1))/1.15 var(--font-sans); }
+.pb-home__act:last-child { border-color: transparent; background: var(--accent-soft); color: var(--accent); }
+.pb-home__act.is-main { border: 0; background: var(--command); color: var(--on-command); font-weight: 700; font-size: calc(15px * var(--pb-ts, 1)); }
+.pb-home__act.is-warn { border-color: transparent; background: var(--warning-soft); color: var(--warning); }
+.pb-home__act:disabled { cursor: default; opacity: .45; }
+.pb-home__act small { font: 500 calc(11px * var(--pb-ts, 1))/14px var(--font-sans); opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.pb-home__act:not(.is-main):not(:last-child):not(.is-warn) small { color: var(--ink-muted); opacity: 1; }
+.pb-home__actlabel { display: flex; align-items: center; gap: 6px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.pb-home__act:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* A page opened from inside a sheet goes over it (Overlay.tsx). */
+.pb-fulloverlay.is-over-sheet { z-index: 60; }
+/* A sheet whose person can be opened: the name and the face are the door. */
+.pb-sheet__who {
+  display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 0; border: 0; background: none;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.pb-sheet__who > .pb-icon { flex: none; color: var(--ink-muted); }
+.pb-sheet__face { flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--radius-pill); background: none; cursor: pointer; }
+.pb-sheet__who:focus-visible, .pb-sheet__face:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* June's next-game card keeps one height whatever the night is: one-line
+   starters and one-line stakes (Postseason.tsx, NextGame). */
+.pb-game--june .pb-game__facts dd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-game--june .pb-game__head { flex-wrap: nowrap; }
+.pb-game--june .pb-game__when { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-game--june .pb-game__head > :not(.pb-game__when) { flex: none; }
+/* The round, then its format, muted, on the head's one line; the lineup at
+   its right end. */
+.pb-game--june .pb-game__format { font-weight: 500; color: var(--ink-muted); }
+.pb-game--june .pb-game__head { min-height: 32px; padding-right: var(--space-2); }
+.pb-game--june .pb-btn.pb-game__lineup { min-height: 32px; padding: 0 var(--space-2); }
+/* The night's buttons, in the card: one or two, sharing the width. */
+.pb-game--june .pb-game__actions {
+  display: grid; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  gap: var(--space-2); padding: var(--space-3) var(--space-4) 0;
+}
+.pb-game--june .pb-game__actions .pb-btn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-game--june .pb-game__body { padding-top: var(--space-2); }
+.pb-game--june .pb-game__teams { padding-top: var(--space-3); padding-bottom: var(--space-3); }
+/* And June's pinned bar keeps one height: its buttons are one line each. */
+.pb-june > .pb-actionbar .pb-btn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-inlinerow.is-warning { background: var(--warning-soft); }
+.pb-inlinerow.is-warning > .pb-icon { color: var(--warning); }
+.pb-inlinerow.is-info { background: var(--info-soft); }
+.pb-inlinerow.is-info > .pb-icon { color: var(--info); }
+
+/* A screen that has arrived, or came back by the back gesture, never fades
+   in again (App.tsx, ScreenSurface). */
+.screen-surface.is-still { animation: none; }
+
+/* The card that took you somewhere, still pressed as a back swipe lands, then
+   fading (returnMark.ts): the browser's swipe previewed it pressed. */
+.pb-returning { background-color: var(--surface-sunken) !important; transition: none !important; }
+.pb-returned { transition: background-color 380ms ease !important; }
+
+/* ------------------------------------------------------- predictive back */
+/* While a back swipe moves the screen or a layer (predictiveBack.ts), the
+   frame behind it darkens a touch so the shrinking edge reads as an edge. */
+:root[data-backdrag='screen'] .app-frame,
+:root[data-backdrag='screen'] .pb-tableoverlay { background: color-mix(in srgb, var(--ink) 9%, var(--bg)); }
+
+/* ------------------------------------------------------ program overview */
+/* The trophy case: the art large, on a shelf, each with its count. */
+.pb-case {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: var(--space-2); align-items: end;
+  padding: var(--space-4) var(--space-3) 0; border: 1px solid var(--line); border-radius: var(--radius-card);
+  background: linear-gradient(var(--surface), var(--surface-sunken));
+  box-shadow: inset 0 -10px 0 -4px color-mix(in srgb, var(--gold) 28%, var(--line));
+}
+.pb-case__item {
+  min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0 0 16px;
+  border: 0; background: none; color: var(--ink); cursor: pointer; text-align: center;
+}
+.pb-case__item .pb-honour { filter: drop-shadow(0 6px 8px rgba(0,0,0,.18)); }
+.pb-case__item b { margin-top: 6px; font: 700 calc(22px * var(--pb-ts, 1))/1 var(--font-numeral); font-variant-numeric: tabular-nums; }
+.pb-case__item small { font: 600 calc(11px * var(--pb-ts, 1))/14px var(--font-sans); color: var(--ink-muted); }
+.pb-case__item small.pb-case__years { font-weight: 500; letter-spacing: .02em; }
+.pb-case--empty { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; padding-bottom: 18px; cursor: pointer; font: inherit; color: var(--ink-muted); }
+.pb-case__ghosts { display: flex; align-items: flex-end; gap: var(--space-4); opacity: .22; filter: grayscale(1); }
+.pb-case__empty { font: 600 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); }
+
+/* The Hall and the alumni: two big doors side by side. */
+.pb-legacy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.pb-legacy__door {
+  min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2);
+  padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-card);
+  background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; box-shadow: var(--shadow-card);
+}
+.pb-legacy__icon { display: grid; place-items: center; width: 54px; height: 54px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--accent); }
+.pb-legacy__count { display: flex; align-items: baseline; gap: 6px; }
+.pb-legacy__count b { font: 700 calc(28px * var(--pb-ts, 1))/1 var(--font-numeral); font-variant-numeric: tabular-nums; }
+.pb-legacy__count small { font: 600 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-legacy__names { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pb-legacy__names span { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-case__item:focus-visible, .pb-case--empty:focus-visible, .pb-legacy__door:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

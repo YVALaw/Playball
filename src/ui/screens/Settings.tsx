@@ -12,6 +12,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react
 import { billingState, onBilling, buyGodMode, restorePurchases } from '../../state/billing.js';
 import { useDynasty } from '../../state/store.js';
 import { TEST_SHORTCUTS } from '../../state/testBuild.js';
+import { SCOUTING } from '../../state/features.js';
 import {
   SYSTEMS, handles, presetSays, type DepthMode, type SystemKey,
 } from '../../state/depth.js';
@@ -373,9 +374,17 @@ export function Settings() {
       <section>
         <SectionHeader title="What you handle" />
         <List label="What you handle">
-          {SYSTEMS.map((sys) => {
+          {/* Scouting reports are switched off in this version (features.ts), so
+              their row is not offered: a live switch that did nothing read as
+              the recruiting switch (2026-09-29, "I selected to run the scouting
+              myself but I can not spend points"). */}
+          {SYSTEMS.filter((sys) => SCOUTING || sys.key !== 'scouting').map((sys) => {
             const on = handles(depth, sys.key);
-            const overridden = !sys.comingIn && presetSays(depth.mode, sys.key) !== on;
+            // Recruiting in a casual career is either way by default: a new one
+            // starts with the staff running it (the creation step's default,
+            // 2026-09-28), an older one with the coach. Neither is a change.
+            const eitherWay = sys.key === 'recruiting' && depth.mode === 'casual';
+            const overridden = !sys.comingIn && !eitherWay && presetSays(depth.mode, sys.key) !== on;
             return (
               <Switch
                 key={sys.key}

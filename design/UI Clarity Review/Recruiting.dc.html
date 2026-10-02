@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="./pb-icons.js"></script>
+<style>
+body{margin:0;background:#101410;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer;text-align:left}
+::-webkit-scrollbar{width:0;height:0}
+[data-theme="light"]{color-scheme:light;--bg:#f6f8f5;--surface:#fff;--raised:#fff;--sunken:#eef2ee;--track:#e1e7e2;--line:#e1e8e2;--line-strong:#7a877d;--ink:#102019;--muted:#505e55;--disabled:#7f8a82;--accent:#236b42;--accent-strong:#1a5433;--accent-soft:#e6f0e8;--command:#236b42;--on-command:#fff;--positive:#1b7a47;--positive-soft:#e2f2e7;--warning:#8c5a00;--warning-soft:#fcefd5;--negative:#c9362f;--negative-soft:#fdefed;--info:#2f4f7a;--info-soft:#e8eef6;--gold:#8a6b16;--scrim:rgba(9,16,12,.48);--sh-card:0 1px 2px rgba(16,32,25,.04),0 4px 16px rgba(16,32,25,.05);--sh-ctl:0 1px 3px rgba(16,32,25,.14);--sh-float:0 10px 32px rgba(16,32,25,.14)}
+[data-theme="dark"]{color-scheme:dark;--bg:#0e1511;--surface:#151f19;--raised:#1c2821;--sunken:#0f1712;--track:#26332b;--line:#28352c;--line-strong:#5f6d63;--ink:#eef3ef;--muted:#a3b1a7;--disabled:#6b776f;--accent:#4da97a;--accent-strong:#6cc193;--accent-soft:#1b3326;--command:#2f7a52;--on-command:#f4f8f4;--positive:#5cc28b;--positive-soft:#163022;--warning:#f0b04a;--warning-soft:#33270e;--negative:#ef7d76;--negative-soft:#3a1a18;--info:#8db3e0;--info-soft:#172538;--gold:#e3bb4f;--scrim:rgba(0,0,0,.62);--sh-card:0 1px 2px rgba(0,0,0,.35);--sh-ctl:0 1px 3px rgba(0,0,0,.5);--sh-float:0 16px 48px rgba(0,0,0,.45)}
+@keyframes sheetRise{from{transform:translateY(100%)}to{transform:none}}
+@keyframes scrimIn{from{opacity:0}to{opacity:1}}
+@keyframes armPulse{0%,100%{box-shadow:inset 0 0 0 1px var(--warning)}50%{box-shadow:inset 0 0 0 2px var(--warning)}}
+</style>
+</helmet>
+
+<div data-theme="{{ theme }}" style="min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:16px;box-sizing:border-box;background:#101410">
+<div style="position:relative;width:412px;height:min(892px, calc(100vh - 32px));min-height:560px;flex:none;display:flex;flex-direction:column;overflow:hidden;border-radius:28px;background:var(--bg);color:var(--ink);box-shadow:0 24px 70px rgba(0,0,0,.45)">
+
+  <!-- App header -->
+  <div style="flex:none;display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line);box-sizing:border-box">
+    <img src="./assets/BAY.webp" alt="" style="width:30px;height:30px;object-fit:contain;flex:none">
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+      <small style="font:500 12px/16px 'DM Sans';color:var(--muted)">2031 · Week 4</small>
+      <strong style="font:700 17px/22px 'DM Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Bayshore State</strong>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end">
+      <small style="font:500 11px/14px 'DM Sans';color:var(--muted)">Record</small>
+      <b style="font:700 18px/20px 'Barlow Condensed';font-variant-numeric:tabular-nums">14–6</b>
+    </div>
+    <div style="width:40px;height:40px;display:grid;place-items:center;position:relative"><img src="./assets/ball.webp" alt="Inbox" style="width:26px;height:26px"><span style="position:absolute;top:4px;right:2px;min-width:16px;height:16px;border-radius:99px;background:var(--negative);color:var(--bg);font:700 10px/16px 'DM Sans';text-align:center">2</span></div>
+    <div style="width:36px;height:36px;border-radius:99px;background:var(--sunken);box-shadow:inset 0 0 0 1px var(--line);flex:none"></div>
+  </div>
+  <!-- Office tabs -->
+  <div style="flex:none;display:flex;gap:4px;padding:0 12px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none">
+    <a href="#" style="position:relative;flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--ink)">Recruiting<span style="position:absolute;left:12px;right:12px;bottom:0;height:3px;border-radius:99px;background:var(--accent)"></span></a>
+    <a href="Staff%20and%20Facilities.dc.html" style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Staff</a>
+    <a href="Staff%20and%20Facilities.dc.html#facilities" style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Facilities</a>
+    <a href="Staff%20and%20Facilities.dc.html#budget" style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Budget</a>
+    <a href="Season%20Start.dc.html" style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Board</a>
+  </div>
+
+  <!-- Screen -->
+  <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none">
+    <div style="display:flex;flex-direction:column;gap:16px;padding:14px 16px 32px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font:500 13px/18px 'DM Sans';color:var(--muted)">2031 class · Week 4 of 12</span>
+        <h1 style="margin:0;font:700 28px/34px 'DM Sans';letter-spacing:-.02em">Recruiting</h1>
+      </div>
+
+      <!-- CURRENT: this-week card -->
+      <sc-if value="{{ boardCurrent }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);overflow:hidden">
+          <div style="display:flex;justify-content:space-between;gap:12px;padding:16px 16px 0">
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font:600 12px/16px 'DM Sans';color:var(--muted)">This week</span><span style="font:600 17px/24px 'DM Sans'">{{ left }} of {{ weekly }} points left</span></div>
+            <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:0 8px;border-radius:99px;background:var(--sunken);color:var(--muted);font:600 12px/1 'DM Sans'">{{ ic.clock }}Resets weekly</span>
+          </div>
+          <div style="padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px">
+            <div style="height:8px;border-radius:99px;background:var(--track);overflow:hidden"><div style="height:100%;width:{{ leftPct }};background:var(--accent);border-radius:99px"></div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:16px;overflow:hidden">
+              <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Scholarships</span><b style="font:700 22px/24px 'Barlow Condensed'">3 of 8</b></div>
+              <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Program pull</span><span style="display:flex;gap:1px;color:var(--gold)">{{ ic.starF }}{{ ic.starF }}{{ ic.starF }}<span style="color:var(--line-strong);display:flex;gap:1px">{{ ic.star }}{{ ic.star }}</span></span></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- REDESIGN: week band -->
+      <sc-if value="{{ boardNew }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:14px;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card)">
+          <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:end">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Points this week</span>
+              <span style="display:flex;align-items:baseline;gap:3px"><b style="font:700 38px/1 'Barlow Condensed';font-variant-numeric:tabular-nums">{{ left }}</b><i style="font:600 15px/1 'Barlow Condensed';font-style:normal;color:var(--muted)">/{{ weekly }} left</i></span>
+              <div style="display:flex;height:8px;border-radius:99px;background:var(--track);overflow:hidden"><div style="height:100%;width:{{ spentPct }};background:var(--info);opacity:.55"></div></div>
+              <span style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ spentLine }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Scholarships</span>
+              <span style="display:flex;align-items:baseline;gap:3px"><b style="font:700 38px/1 'Barlow Condensed'">3</b><i style="font:600 15px/1 'Barlow Condensed';font-style:normal;color:var(--muted)">/8 signed</i></span>
+              <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:3px"><sc-for list="{{ scholarPips }}" as="s" hint-placeholder-count="8"><i style="height:8px;border-radius:99px;background:{{ s.bg }}"></i></sc-for></div>
+              <span style="font:500 12px/16px 'DM Sans';color:var(--muted)">5 open spots</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid var(--line)">
+            <div style="display:flex;justify-content:space-between;font:500 12px/16px 'DM Sans';color:var(--muted)"><span>Recruiting window</span><span><b style="color:var(--ink);font-weight:600">Week 4</b> of 12 · signing day after week 12</span></div>
+            <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:3px"><sc-for list="{{ weekPips }}" as="w" hint-placeholder-count="12"><i style="height:6px;border-radius:99px;background:{{ w.bg }}"></i></sc-for></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- view + filter bar -->
+      <div style="position:sticky;top:0;z-index:3;margin:0 -16px;padding:8px 16px 10px;display:flex;flex-direction:column;gap:8px;background:var(--bg);box-shadow:0 1px 0 var(--line)">
+        <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="5">
+            <button onClick="{{ c.on }}" style="flex:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border-radius:99px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 13px/1 'DM Sans';white-space:nowrap">{{ c.label }}<sc-if value="{{ c.count }}" hint-placeholder-val="{{ false }}"><span style="min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:{{ c.cntBg }};color:{{ c.cntFg }};display:inline-grid;place-items:center;font:700 11px/1 'DM Sans'">{{ c.count }}</span></sc-if></button>
+          </sc-for>
+        </div>
+        <sc-if value="{{ showFilterRow }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <button onClick="{{ openFilters }}" style="flex:none;display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:99px;border:1px solid {{ fBtn.bd }};background:{{ fBtn.bg }};color:{{ fBtn.fg }};font:600 13px/1 'DM Sans'">{{ ic.mixer }}{{ fBtn.label }}<sc-if value="{{ fBtn.n }}" hint-placeholder-val="{{ false }}"><span style="min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--command);color:var(--on-command);display:inline-grid;place-items:center;font:700 11px/1 'DM Sans'">{{ fBtn.n }}</span></sc-if></button>
+            <sc-for list="{{ activePills }}" as="p" hint-placeholder-count="0">
+              <button onClick="{{ p.off }}" style="display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 6px 0 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font:600 12px/1 'DM Sans'">{{ p.label }}<span style="display:flex;color:var(--gold)">{{ p.stars }}</span><span style="display:grid;place-items:center;width:18px;height:18px">{{ ic.crossS }}</span></button>
+            </sc-for>
+            <sc-if value="{{ hasActive }}" hint-placeholder-val="{{ false }}"><button onClick="{{ clearFilters }}" style="min-height:32px;padding:0 6px;font:600 12px/1 'DM Sans';color:var(--muted)">Clear all</button></sc-if>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- list header -->
+      <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:-4px">
+          <div><h2 style="margin:0;font:600 17px/24px 'DM Sans'">{{ listTitle }}<span style="margin-left:6px;font-weight:500;color:var(--muted)">{{ listCount }}</span></h2>
+          <sc-if value="{{ boardNew }}" hint-placeholder-val="{{ true }}"><p style="margin:2px 0 0;font:400 13px/18px 'DM Sans';color:var(--muted)">{{ listDesc }}</p></sc-if></div>
+          <span style="font:500 12px/16px 'DM Sans';color:var(--muted);white-space:nowrap;padding-bottom:2px">{{ sortLabel }}</span>
+        </div>
+      </sc-if>
+
+      <!-- CURRENT prospect cards -->
+      <sc-if value="{{ boardCurrentList }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ rows }}" as="p" hint-placeholder-count="4">
+            <article style="display:flex;flex-direction:column;gap:10px;padding-bottom:14px;background:{{ p.cardBg }};border:1px solid {{ p.cardBd }};border-radius:16px;box-shadow:{{ p.cardSh }};overflow:hidden">
+              <button onClick="{{ p.open }}" style="display:flex;align-items:center;gap:12px;padding:12px 16px 0">
+                <span style="width:40px;height:40px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 13px/1 'DM Sans';color:var(--muted);flex:none">{{ p.ini }}</span>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                  <span style="font:700 17px/22px 'DM Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</span>
+                  <span style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font:400 13px/18px 'DM Sans';color:var(--muted)"><span style="min-height:20px;padding:0 6px;border-radius:6px;background:var(--sunken);color:var(--ink);display:inline-flex;align-items:center;font:600 12px/1 'DM Sans'">{{ p.pos }}</span><span style="min-height:20px;padding:0 6px;border-radius:6px;background:var(--sunken);color:var(--ink);display:inline-flex;align-items:center;font:600 12px/1 'DM Sans'">{{ p.state }}</span><span style="display:flex;gap:1px;color:var(--gold)">{{ p.starEls }}</span><span>{{ p.weekMeta }}</span></span>
+                  <span><span style="display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:0 8px;border-radius:99px;background:{{ p.st.bg }};color:{{ p.st.fg }};font:600 12px/1 'DM Sans'">{{ p.st.label }}</span></span>
+                </span>
+                <span style="display:flex;flex-direction:column;align-items:flex-end"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">National</small><b style="font:700 26px/1 'Barlow Condensed'">#{{ p.rank }}</b></span>
+                <span style="color:var(--muted)">{{ ic.chevR }}</span>
+              </button>
+              <span style="display:flex;flex-wrap:wrap;gap:2px 16px;margin:0 16px;align-items:baseline">
+                <span style="display:inline-flex;gap:5px;align-items:baseline"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">Now</small><b style="font:700 19px/22px 'Barlow Condensed'">{{ p.nowText }}</b></span>
+                <span style="display:inline-flex;gap:5px;align-items:baseline"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">Ceiling</small><b style="font:700 19px/22px 'Barlow Condensed'">{{ p.ceil }}</b></span>
+                <span style="display:inline-flex;gap:5px;align-items:baseline"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">Interest</small><b style="font:700 19px/22px 'Barlow Condensed'">{{ p.youPct }}%</b><em style="font:400 12px/16px 'DM Sans';font-style:normal;color:var(--muted)">{{ p.leadLine }}</em></span>
+              </span>
+              <div style="position:relative;margin:0 16px;height:4px;border-radius:99px;background:var(--track)"><div style="height:100%;width:{{ p.youW }};background:var(--accent);border-radius:99px"></div><i style="position:absolute;top:-4px;bottom:-4px;left:{{ p.leadW }};width:2px;background:var(--ink);border-radius:99px"></i></div>
+              <span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 16px"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">Wants</small><sc-for list="{{ p.wantTags }}" as="w" hint-placeholder-count="3"><span style="min-height:20px;padding:0 6px;border-radius:6px;background:{{ w.bg }};color:{{ w.fg }};display:inline-flex;align-items:center;gap:2px;font:600 12px/1 'DM Sans'">{{ w.icon }}{{ w.text }}</span></sc-for></span>
+              <div style="margin:0 16px"><button onClick="{{ p.open }}" style="width:100%;display:flex;justify-content:center;align-items:center;min-height:40px;border-radius:12px;background:{{ p.btnBg }};color:{{ p.btnFg }};border:1px solid {{ p.btnBd }};font:600 13px/1 'DM Sans'">{{ p.btnLabel }}</button></div>
+            </article>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- REDESIGN prospect rows -->
+      <sc-if value="{{ boardNewList }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="1">
+            <section style="display:flex;flex-direction:column;gap:8px">
+              <sc-if value="{{ g.title }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:8px;font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)"><i style="width:8px;height:8px;border-radius:99px;background:{{ g.dot }}"></i>{{ g.title }}<span style="letter-spacing:0">· {{ g.n }}</span></div></sc-if>
+              <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);overflow:hidden">
+                <sc-for list="{{ g.rows }}" as="p" hint-placeholder-count="4">
+                  <button onClick="{{ p.open }}" style="position:relative;width:100%;display:grid;grid-template-columns:30px 40px minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 14px 12px 10px;border-top:{{ p.topBd }};background:{{ p.rowBg }};box-shadow:{{ p.rowMark }}">
+                    <b style="text-align:center;font:700 18px/1 'Barlow Condensed';color:var(--muted);font-variant-numeric:tabular-nums">{{ p.rank }}</b>
+                    <span style="width:40px;height:40px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 13px/1 'DM Sans';color:var(--muted)">{{ p.ini }}</span>
+                    <span style="min-width:0;display:flex;flex-direction:column;gap:5px">
+                      <span style="display:flex;align-items:center;gap:6px;min-width:0"><span style="font:600 15px/20px 'DM Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</span><span style="display:flex;gap:0;color:var(--gold);flex:none">{{ p.starEls }}</span></span>
+                      <span style="display:flex;align-items:center;gap:6px;font:500 12px/16px 'DM Sans';color:var(--muted)"><b style="color:var(--ink);font-weight:600">{{ p.pos }}</b><span>{{ p.state }}</span><span>·</span><span>Now {{ p.nowText }}</span><span>·</span><span>Ceiling {{ p.ceil }}</span></span>
+                      <span style="display:flex;align-items:center;gap:8px">
+                        <span style="position:relative;flex:1;display:flex;height:6px;border-radius:99px;background:var(--track);overflow:hidden"><i style="width:{{ p.youW }};background:var(--accent)"></i><i style="width:{{ p.gainW }};background:repeating-linear-gradient(135deg,var(--accent) 0 2px,transparent 2px 5px);opacity:.7"></i><i style="position:absolute;left:{{ p.leadW }};top:0;bottom:0;width:2px;background:var(--ink)"></i></span>
+                        <span style="flex:none;font:600 12px/16px 'DM Sans';font-variant-numeric:tabular-nums;color:var(--ink)">{{ p.raceText }}</span>
+                      </span>
+                    </span>
+                    <span style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                      <span style="display:inline-flex;align-items:center;gap:4px;min-height:22px;padding:0 8px;border-radius:99px;background:{{ p.st.bg }};color:{{ p.st.fg }};font:600 11.5px/1 'DM Sans';white-space:nowrap">{{ p.st.icon }}{{ p.st.short }}</span>
+                      <sc-if value="{{ p.planned }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;min-height:20px;padding:0 7px;border-radius:6px;background:var(--accent-soft);color:var(--accent);font:700 11.5px/1 'DM Sans';white-space:nowrap">{{ p.weekPts }} pts planned</span></sc-if>
+                    </span>
+                  </button>
+                </sc-for>
+              </div>
+            </section>
+          </sc-for>
+          <p style="margin:0;font:400 12px/16px 'DM Sans';color:var(--muted);display:flex;align-items:center;gap:8px"><span style="display:inline-flex;width:28px;height:6px;border-radius:99px;background:var(--accent)"></span>Your share of his interest<span style="display:inline-block;width:2px;height:12px;background:var(--ink);border-radius:2px"></span>Leading school</p>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 16px;border:1px dashed var(--line-strong);border-radius:16px;text-align:center"><b style="font:600 15px/22px 'DM Sans'">No prospects match</b><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">Loosen a filter or clear them all.</span><button onClick="{{ clearFilters }}" style="margin-top:4px;min-height:40px;padding:0 16px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font:600 13px/1 'DM Sans'">Clear filters</button></div>
+      </sc-if>
+
+      <!-- positions needed -->
+      <sc-if value="{{ showNeeds }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:12px;padding:12px 16px;border-radius:16px;background:var(--warning-soft)"><span style="color:var(--warning);padding-top:2px">{{ ic.alert }}</span><div><div style="font:600 15px/22px 'DM Sans'">4 spots would go to walk-ons</div><div style="font:400 13px/18px 'DM Sans'">Counting 6 players leaving in June.</div></div></div>
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+            <sc-for list="{{ needs }}" as="n" hint-placeholder-count="4">
+              <button onClick="{{ n.pick }}" style="width:100%;display:flex;align-items:center;gap:12px;min-height:64px;padding:12px 16px;border-top:{{ n.bd }}">
+                <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font:600 15px/22px 'DM Sans'">{{ n.pos }}</span><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">{{ n.sub }}</span></span>
+                <span style="display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border-radius:99px;background:{{ n.bg }};color:{{ n.fg }};font:600 12px/1 'DM Sans'">{{ n.badge }}</span>
+                <span style="color:var(--muted)">{{ ic.chevR }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px 10px;background:var(--surface);border-top:1px solid var(--line)">
+    <a href="#" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border-radius:12px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.home }}Home</a>
+    <a href="Lineup.dc.html" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border-radius:12px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.idcard }}Team</a>
+    <span style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font:600 12px/16px 'DM Sans'">{{ ic.backpack }}Office</span>
+    <span style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border-radius:12px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.starNav }}Program</span>
+  </div>
+
+  <!-- ================= FILTER SHEET ================= -->
+  <sc-if value="{{ filterOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:25;display:flex;flex-direction:column;justify-content:flex-end">
+      <button onClick="{{ closeFilters }}" aria-label="Close" style="position:absolute;inset:0;background:var(--scrim);animation:scrimIn 170ms ease-out both"></button>
+      <div style="position:relative;max-height:88%;display:flex;flex-direction:column;overflow:hidden;background:var(--raised);border-radius:24px 24px 0 0;box-shadow:var(--sh-float);animation:sheetRise 220ms cubic-bezier(.22,.85,.28,1) both">
+        <span style="align-self:center;flex:none;width:44px;height:5px;margin-top:8px;border-radius:99px;background:var(--line-strong)"></span>
+        <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:10px 20px 8px"><div style="display:flex;flex-direction:column"><sc-if value="{{ hasActive }}" hint-placeholder-val="{{ false }}"><span style="font:600 12px/16px 'DM Sans';color:var(--accent)">{{ activeLine }}</span></sc-if><h2 style="margin:0;font:700 20px/26px 'DM Sans'">Filter prospects</h2></div><button onClick="{{ closeFilters }}" aria-label="Close" style="width:44px;height:44px;margin-right:-10px;display:grid;place-items:center;color:var(--muted)">{{ ic.cross }}</button></div>
+        <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;gap:20px;padding:4px 20px 20px">
+          <section style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Position</span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">Pick one</span></div>
+            <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px">
+              <sc-for list="{{ posOpts }}" as="o" hint-placeholder-count="10"><button onClick="{{ o.on }}" title="{{ o.name }}" style="min-height:40px;border-radius:10px;border:1px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.sh }};font:700 13px/1 'DM Sans';text-align:center">{{ o.label }}</button></sc-for>
+            </div>
+          </section>
+          <section style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Stars</span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">Pick any</span></div>
+            <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px">
+              <sc-for list="{{ starOpts }}" as="o" hint-placeholder-count="5"><button onClick="{{ o.on }}" aria-label="{{ o.aria }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:10px;border:1px solid {{ o.bd }};background:{{ o.bg }};box-shadow:{{ o.sh }}"><b style="font:700 18px/1 'Barlow Condensed';color:{{ o.fg }}">{{ o.n }}</b><span style="display:flex;gap:0;color:var(--gold)">{{ o.stars }}</span></button></sc-for>
+            </div>
+          </section>
+          <section style="display:flex;flex-direction:column;gap:10px">
+            <span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Home state</span>
+            <label style="position:relative;display:flex;align-items:center;min-height:48px;padding:0 14px;border-radius:12px;border:1px solid {{ stateBd }};background:{{ stateBg }}">
+              <select value="{{ fState }}" onChange="{{ onState }}" style="appearance:none;-webkit-appearance:none;flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--ink);font:500 15px/20px 'DM Sans';cursor:pointer">
+                <sc-for list="{{ stateOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+              </select>
+              <span style="pointer-events:none;color:var(--muted)">{{ ic.chevD }}</span>
+            </label>
+          </section>
+          <section style="display:flex;flex-direction:column;gap:10px">
+            <span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">More filters</span>
+            <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden">
+              <sc-for list="{{ toggles }}" as="t" hint-placeholder-count="3">
+                <button onClick="{{ t.on }}" role="switch" aria-checked="{{ t.checked }}" style="width:100%;display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 14px;border-top:{{ t.bd }}">
+                  <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px"><b style="font:600 14.5px/20px 'DM Sans'">{{ t.label }}</b><small style="font:400 12.5px/17px 'DM Sans';color:var(--muted)">{{ t.hint }}</small></span>
+                  <span style="position:relative;flex:none;width:44px;height:26px;border-radius:99px;background:{{ t.track }};transition:background 160ms"><i style="position:absolute;top:3px;left:{{ t.knobX }};width:20px;height:20px;border-radius:99px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left 160ms"></i></span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+        </div>
+        <div style="flex:none;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;padding:12px 20px 14px;border-top:1px solid var(--line);background:var(--raised)">
+          <button onClick="{{ clearFilters }}" style="min-height:48px;padding:0 16px;border-radius:12px;border:1px solid var(--line-strong);background:var(--surface);color:{{ clearFg }};font:600 14px/1 'DM Sans'">Clear all</button>
+          <button onClick="{{ closeFilters }}" style="min-height:48px;border-radius:12px;background:{{ showBg }};color:{{ showFg }};font:600 15px/1 'DM Sans';text-align:center">{{ showLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ================= PROSPECT SHEET ================= -->
+  <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;justify-content:flex-end">
+      <button onClick="{{ close }}" aria-label="Close" style="position:absolute;inset:0;background:var(--scrim);animation:scrimIn 170ms ease-out both"></button>
+      <div style="position:relative;height:93%;display:flex;flex-direction:column;overflow:hidden;background:var(--raised);border-radius:24px 24px 0 0;box-shadow:var(--sh-float);animation:sheetRise 220ms cubic-bezier(.22,.85,.28,1) both">
+        <span style="align-self:center;flex:none;width:44px;height:5px;margin-top:8px;border-radius:99px;background:var(--line-strong)"></span>
+
+        <!-- head -->
+        <div style="flex:none;display:flex;align-items:flex-start;gap:12px;padding:10px 20px 12px">
+          <sc-if value="{{ sub.on }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ hubBack }}" style="width:40px;height:40px;margin:-4px 0 0 -10px;display:grid;place-items:center;border-radius:99px;color:var(--accent);flex:none">{{ ic.chevL }}</button>
+          </sc-if>
+          <span style="width:48px;height:48px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 15px/1 'DM Sans';color:var(--muted);flex:none">{{ cur.ini }}</span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+            <span style="font:500 13px/18px 'DM Sans';color:var(--muted)">#{{ cur.rank }} nationally · {{ cur.stateName }}</span>
+            <h2 style="margin:0;font:700 20px/26px 'DM Sans';letter-spacing:-.01em">{{ cur.name }}</h2>
+            <span style="font:400 13px/18px 'DM Sans';color:var(--muted)">{{ cur.posName }} · {{ cur.hands }}</span>
+          </div>
+          <button onClick="{{ close }}" aria-label="Close" style="width:44px;height:44px;margin:-6px -10px 0 0;display:grid;place-items:center;border-radius:99px;color:var(--muted);flex:none">{{ ic.cross }}</button>
+        </div>
+
+        <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;gap:16px;padding:0 20px 20px">
+
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+            <span style="display:flex;gap:1px;color:var(--gold)">{{ cur.starEls }}</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:0 8px;border-radius:99px;background:{{ cur.st.bg }};color:{{ cur.st.fg }};font:600 12px/1 'DM Sans'">{{ cur.st.icon }}{{ cur.st.label }}</span>
+            <span style="min-height:20px;padding:0 6px;border-radius:6px;background:var(--sunken);display:inline-flex;align-items:center;font:600 12px/1 'DM Sans'">{{ cur.decides }}</span>
+            <sc-if value="{{ cur.pipeline }}" hint-placeholder-val="{{ false }}"><span style="min-height:20px;padding:0 6px;border-radius:6px;background:var(--positive-soft);color:var(--positive);display:inline-flex;align-items:center;font:600 12px/1 'DM Sans'">Pipeline: strong</span></sc-if>
+          </div>
+
+          <!-- ===== CURRENT SHEET ===== -->
+          <sc-if value="{{ isCur }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+              <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Rating now</span><b style="font:700 22px/24px 'Barlow Condensed'">{{ cur.nowText }}</b><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">of 100</span></div>
+              <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Ceiling</span><b style="font:700 22px/24px 'Barlow Condensed'">{{ cur.ceil }}</b><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">D to S</span></div>
+              <div style="padding:10px 12px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Interest in you</span><b style="font:700 22px/24px 'Barlow Condensed'">{{ cur.youPct }}%</b><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ cur.leadLine }}</span></div>
+            </div>
+          </sc-if>
+
+          <!-- ===== RACE (A + B) ===== -->
+          <sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:16px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+                <span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">The race for him</span>
+                <span style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ cur.decidesNote }}</span>
+              </div>
+              <div style="position:relative;display:flex;height:14px;border-radius:99px;background:var(--track);overflow:hidden">
+                <i style="width:{{ cur.youW }};background:var(--accent);transition:width 420ms cubic-bezier(.2,.8,.3,1)"></i>
+                <i style="width:{{ cur.gainW }};background:repeating-linear-gradient(135deg,var(--accent) 0 3px,transparent 3px 6px);opacity:.75;transition:width 420ms cubic-bezier(.2,.8,.3,1)"></i>
+                <i style="position:absolute;left:{{ cur.leadW }};top:0;bottom:0;width:3px;margin-left:-1px;background:var(--ink)"></i>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+                <div style="display:flex;flex-direction:column;gap:2px"><span style="display:flex;align-items:center;gap:6px;font:500 12px/16px 'DM Sans';color:var(--muted)"><i style="width:10px;height:10px;border-radius:99px;background:var(--accent)"></i>You</span><span style="display:flex;align-items:baseline;gap:4px"><b style="font:700 22px/24px 'Barlow Condensed'">{{ cur.youPct }}%</b><sc-if value="{{ cur.hasGain }}" hint-placeholder-val="{{ false }}"><span style="font:600 13px/16px 'DM Sans';color:var(--positive)">→ {{ cur.projPct }}%</span></sc-if></span></div>
+                <div style="display:flex;flex-direction:column;gap:2px"><span style="display:flex;align-items:center;gap:6px;font:500 12px/16px 'DM Sans';color:var(--muted)"><i style="width:3px;height:12px;border-radius:2px;background:var(--ink)"></i><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ cur.leadName }}</span></span><b style="font:700 22px/24px 'Barlow Condensed'">{{ cur.leadPct }}%</b></div>
+                <div style="display:flex;flex-direction:column;gap:2px"><span style="display:flex;align-items:center;gap:6px;font:500 12px/16px 'DM Sans';color:var(--muted)"><i style="width:10px;height:10px;border-radius:99px;background:var(--track);box-shadow:inset 0 0 0 1px var(--line-strong)"></i>{{ cur.othersN }} others</span><b style="font:700 22px/24px 'Barlow Condensed'">{{ cur.othersPct }}%</b></div>
+              </div>
+              <p style="margin:0;padding-top:10px;border-top:1px solid var(--line);font:500 13px/18px 'DM Sans';color:var(--ink)">{{ cur.raceSay }}</p>
+            </div>
+          </sc-if>
+
+          <!-- tabs (current + A) -->
+          <sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--sunken)">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+                <button onClick="{{ t.on }}" style="flex:1 0 auto;display:inline-flex;justify-content:center;align-items:center;min-height:40px;padding:0 12px;border-radius:8px;background:{{ t.bg }};color:{{ t.fg }};box-shadow:{{ t.sh }};font:600 13px/1 'DM Sans'">{{ t.label }}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <!-- ===== CURRENT: week steps ===== -->
+          <sc-if value="{{ curWeek }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:20px">
+              <div style="position:relative;padding-left:40px">
+                <span style="position:absolute;left:0;top:0;width:28px;height:28px;border-radius:99px;display:grid;place-items:center;background:{{ steps.s1 }};color:var(--bg);font:700 13px/1 'DM Sans'">1</span>
+                <div style="display:flex;align-items:center;gap:8px;min-height:28px"><span style="flex:1;font:600 15px/22px 'DM Sans'">Put in effort</span><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">{{ plan.effortSum }}</span></div>
+                <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px">
+                  <div style="display:flex;flex-direction:column;gap:2px"><span style="font:600 15px/20px 'DM Sans'">Points on him</span><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">Up to 12</span></div>
+                  <div style="display:flex;align-items:center;gap:4px;padding:4px;border-radius:12px;background:var(--sunken)"><button onClick="{{ effortDown }}" style="width:40px;height:40px;display:grid;place-items:center;border-radius:8px;background:var(--raised);box-shadow:var(--sh-ctl)">{{ ic.minus }}</button><output style="min-width:44px;text-align:center;font:700 22px/1 'Barlow Condensed'">{{ plan.effort }}</output><button onClick="{{ effortUp }}" style="width:40px;height:40px;display:grid;place-items:center;border-radius:8px;background:var(--raised);box-shadow:var(--sh-ctl)">{{ ic.plus }}</button></div>
+                </div>
+                <p style="display:flex;gap:8px;align-items:baseline;margin:8px 0 0;font:400 14px/20px 'DM Sans';color:var(--muted)"><span>Interest</span><b style="font:700 16px/20px 'DM Sans';color:var(--ink)">{{ cur.curPts }} → {{ cur.projPts }}</b></p>
+              </div>
+              <div style="position:relative;padding-left:40px">
+                <span style="position:absolute;left:0;top:0;width:28px;height:28px;border-radius:99px;display:grid;place-items:center;background:{{ steps.s2 }};color:var(--bg);font:700 13px/1 'DM Sans'">2</span>
+                <div style="display:flex;align-items:center;gap:8px;min-height:28px"><span style="flex:1;font:600 15px/22px 'DM Sans'">Pitch one thing · 3 pts</span><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">{{ plan.pitchSum }}</span></div>
+                <p style="margin:12px 0 8px;font:400 12px/16px 'DM Sans';color:var(--muted)">Your grade vs. what he wants, his top 3 numbered.</p>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px">
+                  <sc-for list="{{ pitchTiles }}" as="f" hint-placeholder-count="9">
+                    <button onClick="{{ f.on }}" style="position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:88px;padding:8px 12px;border:1px solid {{ f.bd }};border-radius:8px;background:{{ f.bg }};box-shadow:{{ f.sh }}">
+                      <sc-if value="{{ f.rank }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:99px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font:700 11px/1 'DM Sans'">{{ f.rank }}</span></sc-if>
+                      <span style="font:600 13px/18px 'DM Sans'">{{ f.name }}</span>
+                      <span style="display:flex;align-items:baseline;gap:4px"><b style="font:700 22px/26px 'Barlow Condensed'">{{ f.mine }}</b><small style="font:400 12px/16px 'DM Sans';color:var(--muted)">wants {{ f.want }}</small></span>
+                      <span style="display:inline-flex;align-items:center;gap:4px;font:600 12px/16px 'DM Sans';color:{{ f.vfg }}">{{ f.vicon }}{{ f.vword }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="position:relative;padding-left:40px">
+                <span style="position:absolute;left:0;top:0;width:28px;height:28px;border-radius:99px;display:grid;place-items:center;background:{{ steps.s3 }};color:var(--bg);font:700 13px/1 'DM Sans'">3</span>
+                <div style="display:flex;align-items:center;gap:8px;min-height:28px"><span style="flex:1;font:600 15px/22px 'DM Sans'">One big move</span><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">{{ plan.moveSum }}</span></div>
+                <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px">
+                  <sc-for list="{{ moveTilesCur }}" as="m" hint-placeholder-count="7">
+                    <button onClick="{{ m.on }}" style="display:flex;flex-direction:column;align-items:stretch;gap:4px;min-height:72px;padding:8px 12px;border:1px solid {{ m.bd }};border-radius:8px;background:{{ m.bg }};box-shadow:{{ m.sh }};opacity:{{ m.op }}">
+                      <span style="display:flex;align-items:flex-start;gap:4px;font:600 14px/18px 'DM Sans'"><span style="color:var(--warning)">{{ m.bolt }}</span>{{ m.title }}</span>
+                      <span style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ m.subCur }}</span>
+                      <span style="margin-top:auto;font:600 12px/16px 'DM Sans'">{{ m.cost }} pts</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ===== A: one-page plan ===== -->
+          <sc-if value="{{ aWeek }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <!-- Effort -->
+              <div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--surface);border:1px solid {{ blocks.effortBd }};border-radius:16px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="width:24px;height:24px;border-radius:99px;display:grid;place-items:center;background:{{ blocks.effortNum }};color:var(--bg);font:700 12px/1 'DM Sans';flex:none">1</span>
+                  <div style="flex:1;min-width:0"><div style="font:600 15px/20px 'DM Sans'">Effort</div><div style="font:400 12px/16px 'DM Sans';color:var(--muted)">Steady interest every week · up to 12 pts</div></div>
+                  <div style="display:flex;align-items:center;gap:4px;padding:4px;border-radius:12px;background:var(--sunken)"><button onClick="{{ effortDown }}" style="width:36px;height:36px;display:grid;place-items:center;border-radius:8px;background:var(--raised);box-shadow:var(--sh-ctl)">{{ ic.minus }}</button><output style="min-width:34px;text-align:center;font:700 22px/1 'Barlow Condensed'">{{ plan.effort }}</output><button onClick="{{ effortUp }}" style="width:36px;height:36px;display:grid;place-items:center;border-radius:8px;background:var(--raised);box-shadow:var(--sh-ctl)">{{ ic.plus }}</button></div>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <sc-for list="{{ effortQuick }}" as="q" hint-placeholder-count="4"><button onClick="{{ q.on }}" style="flex:1;min-height:32px;border-radius:8px;border:1px solid {{ q.bd }};background:{{ q.bg }};color:{{ q.fg }};font:600 12px/1 'DM Sans';text-align:center">{{ q.label }}</button></sc-for>
+                </div>
+              </div>
+              <!-- Pitch -->
+              <div style="display:flex;flex-direction:column;gap:10px;padding:14px 0 14px 16px;background:var(--surface);border:1px solid {{ blocks.pitchBd }};border-radius:16px">
+                <div style="display:flex;align-items:center;gap:10px;padding-right:16px">
+                  <span style="width:24px;height:24px;border-radius:99px;display:grid;place-items:center;background:{{ blocks.pitchNum }};color:var(--bg);font:700 12px/1 'DM Sans';flex:none">2</span>
+                  <div style="flex:1;min-width:0"><div style="font:600 15px/20px 'DM Sans'">Pitch one thing <span style="font-weight:500;color:var(--muted)">· 3 pts</span></div><div style="font:400 12px/16px 'DM Sans';color:var(--muted)">Optional · his top 3 wants come first</div></div>
+                  <span style="font:600 13px/18px 'DM Sans';color:var(--accent);white-space:nowrap">{{ plan.pitchShort }}</span>
+                </div>
+                <div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 16px 2px 0">
+                  <sc-for list="{{ pitchTiles }}" as="f" hint-placeholder-count="5">
+                    <button onClick="{{ f.on }}" style="position:relative;flex:none;width:118px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:86px;padding:8px 10px;border:1px solid {{ f.bd }};border-radius:10px;background:{{ f.bg }};box-shadow:{{ f.sh }}">
+                      <sc-if value="{{ f.rank }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:99px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font:700 11px/1 'DM Sans'">{{ f.rank }}</span></sc-if>
+                      <span style="font:600 13px/18px 'DM Sans';max-width:84px">{{ f.name }}</span>
+                      <span style="display:flex;align-items:baseline;gap:4px"><b style="font:700 22px/26px 'Barlow Condensed'">{{ f.mine }}</b><small style="font:400 12px/16px 'DM Sans';color:var(--muted)">wants {{ f.want }}</small></span>
+                      <span style="display:inline-flex;align-items:center;gap:4px;font:600 12px/16px 'DM Sans';color:{{ f.vfg }}">{{ f.vicon }}{{ f.vword }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <!-- Big move -->
+              <div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--surface);border:1px solid {{ blocks.moveBd }};border-radius:16px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="width:24px;height:24px;border-radius:99px;display:grid;place-items:center;background:{{ blocks.moveNum }};color:var(--bg);font:700 12px/1 'DM Sans';flex:none">3</span>
+                  <div style="flex:1;min-width:0"><div style="font:600 15px/20px 'DM Sans'">One big move</div><div style="font:400 12px/16px 'DM Sans';color:var(--muted)">Optional · pick at most one a week</div></div>
+                  <span style="font:600 13px/18px 'DM Sans';color:var(--accent);white-space:nowrap">{{ plan.moveShort }}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+                  <sc-for list="{{ moveTiles }}" as="m" hint-placeholder-count="5">
+                    <button onClick="{{ m.on }}" style="display:flex;flex-direction:column;gap:3px;min-height:84px;padding:10px 12px;border:1px solid {{ m.bd }};border-radius:10px;background:{{ m.bg }};box-shadow:{{ m.sh }};opacity:{{ m.op }};animation:{{ m.anim }}">
+                      <span style="display:flex;align-items:center;justify-content:space-between;gap:6px"><span style="display:flex;align-items:center;gap:4px;font:600 14px/18px 'DM Sans'"><span style="color:var(--warning)">{{ m.bolt }}</span>{{ m.title }}</span><span style="font:700 15px/1 'Barlow Condensed';color:var(--muted);font-variant-numeric:tabular-nums">{{ m.cost }}</span></span>
+                      <span style="font:400 12px/16px 'DM Sans';color:{{ m.subFg }};font-weight:{{ m.subW }}">{{ m.sub }}</span>
+                      <span style="margin-top:auto;font:600 11.5px/15px 'DM Sans';color:{{ m.effFg }}">{{ m.effect }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ promiseOpen }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:12px;background:var(--sunken)">
+                    <span style="font:600 12px/16px 'DM Sans';color:var(--muted)">Pick the promise · it binds you if he signs</span>
+                    <sc-for list="{{ promises }}" as="pr" hint-placeholder-count="3">
+                      <button onClick="{{ pr.on }}" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid {{ pr.bd }};background:{{ pr.bg }}">
+                        <span style="width:18px;height:18px;margin-top:1px;border-radius:99px;border:2px solid {{ pr.ring }};background:{{ pr.dot }};flex:none;box-sizing:border-box"></span>
+                        <span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font:600 14px/18px 'DM Sans'">{{ pr.label }}</b><small style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ pr.detail }}</small></span>
+                        <span style="font:700 15px/18px 'Barlow Condensed';color:var(--muted)">{{ pr.cost }}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ moveNote.on }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;gap:10px;padding:10px 12px;border-radius:12px;background:{{ moveNote.bg }}"><span style="color:{{ moveNote.fg }};padding-top:1px">{{ moveNote.icon }}</span><div style="display:flex;flex-direction:column;gap:2px"><b style="font:600 14px/20px 'DM Sans'">{{ moveNote.title }}</b><span style="font:400 13px/18px 'DM Sans'">{{ moveNote.text }}</span></div></div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ===== B: hub ===== -->
+          <sc-if value="{{ bHub }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="font:600 17px/24px 'DM Sans'">This week's plan</span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">Tap a row to change it</span></div>
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+                  <sc-for list="{{ hubRows }}" as="h" hint-placeholder-count="3">
+                    <button onClick="{{ h.on }}" style="width:100%;display:flex;align-items:center;gap:12px;min-height:68px;padding:12px 16px;border-top:{{ h.bd }}">
+                      <span style="width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:{{ h.markBg }};color:{{ h.markFg }};flex:none">{{ h.icon }}</span>
+                      <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font:600 15px/22px 'DM Sans'">{{ h.title }}</span><span style="font:400 13px/18px 'DM Sans';color:{{ h.subFg }}">{{ h.sub }}</span></span>
+                      <span style="display:flex;flex-direction:column;align-items:flex-end"><b style="font:700 24px/1 'Barlow Condensed';color:{{ h.valFg }}">{{ h.value }}</b><small style="font:500 11px/14px 'DM Sans';color:var(--muted)">pts</small></span>
+                      <span style="color:var(--muted)">{{ ic.chevR }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <div>
+                <div style="margin-bottom:8px;font:600 17px/24px 'DM Sans'">About him</div>
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+                  <sc-for list="{{ hubInfo }}" as="h" hint-placeholder-count="2">
+                    <button onClick="{{ h.on }}" style="width:100%;display:flex;align-items:center;gap:12px;min-height:64px;padding:12px 16px;border-top:{{ h.bd }}">
+                      <span style="width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--sunken);color:var(--muted);flex:none">{{ h.icon }}</span>
+                      <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font:600 15px/22px 'DM Sans'">{{ h.title }}</span><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">{{ h.sub }}</span></span>
+                      <span style="color:var(--muted)">{{ ic.chevR }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- B subpage title -->
+          <sc-if value="{{ sub.on }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:2px;margin-top:-4px"><h3 style="margin:0;font:700 20px/26px 'DM Sans'">{{ sub.title }}</h3><p style="margin:0;font:400 13px/18px 'DM Sans';color:var(--muted)">{{ sub.desc }}</p></div>
+          </sc-if>
+          <!-- B: effort page -->
+          <sc-if value="{{ sub.effort }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:14px;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px">
+              <div style="display:flex;align-items:center;justify-content:center;gap:16px">
+                <button onClick="{{ effortDown }}" style="width:52px;height:52px;display:grid;place-items:center;border-radius:12px;background:var(--sunken)">{{ ic.minus }}</button>
+                <div style="display:flex;flex-direction:column;align-items:center"><b style="font:700 56px/1 'Barlow Condensed';font-variant-numeric:tabular-nums">{{ plan.effort }}</b><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">of 12 points</small></div>
+                <button onClick="{{ effortUp }}" style="width:52px;height:52px;display:grid;place-items:center;border-radius:12px;background:var(--command);color:var(--on-command)">{{ ic.plus }}</button>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:3px"><sc-for list="{{ effortPips }}" as="e" hint-placeholder-count="12"><i style="height:8px;border-radius:99px;background:{{ e.bg }}"></i></sc-for></div>
+              <div style="display:flex;justify-content:space-between;font:500 13px/18px 'DM Sans';color:var(--muted)"><span>His interest in you</span><b style="color:var(--ink)">{{ cur.youPct }}% → {{ cur.projPct }}%</b></div>
+            </div>
+          </sc-if>
+          <!-- B: pitch page -->
+          <sc-if value="{{ sub.pitch }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ pitchTiles }}" as="f" hint-placeholder-count="9">
+                <button onClick="{{ f.on }}" style="display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 14px;border:1px solid {{ f.bd }};border-radius:12px;background:{{ f.bg }};box-shadow:{{ f.sh }}">
+                  <span style="width:22px;height:22px;border-radius:99px;display:grid;place-items:center;background:{{ f.rankBg }};color:{{ f.rankFg }};font:700 11px/1 'DM Sans'">{{ f.order }}</span>
+                  <span style="display:flex;flex-direction:column;gap:1px;min-width:0"><b style="font:600 15px/20px 'DM Sans'">{{ f.name }}</b><small style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ f.blurb }}</small></span>
+                  <span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><span style="font:600 13px/16px 'DM Sans'"><b style="font:700 20px/1 'Barlow Condensed'">{{ f.mine }}</b> <span style="color:var(--muted)">vs {{ f.want }}</span></span><span style="display:inline-flex;align-items:center;gap:3px;font:600 12px/16px 'DM Sans';color:{{ f.vfg }}">{{ f.vicon }}{{ f.vword }}</span></span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <!-- B: move page -->
+          <sc-if value="{{ sub.move }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ moveRows }}" as="m" hint-placeholder-count="7">
+                <button onClick="{{ m.on }}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid {{ m.bd }};border-radius:12px;background:{{ m.bg }};box-shadow:{{ m.sh }};opacity:{{ m.op }};animation:{{ m.anim }}">
+                  <span style="width:20px;height:20px;border-radius:99px;border:2px solid {{ m.ring }};background:{{ m.dot }};flex:none;box-sizing:border-box"></span>
+                  <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><b style="display:flex;align-items:center;gap:4px;font:600 15px/20px 'DM Sans'"><span style="color:var(--warning)">{{ m.bolt }}</span>{{ m.title }}</b><small style="font:400 12px/16px 'DM Sans';color:{{ m.subFg }};font-weight:{{ m.subW }}">{{ m.sub }}</small><small style="font:600 12px/16px 'DM Sans';color:{{ m.effFg }}">{{ m.effect }}</small></span>
+                  <b style="font:700 20px/1 'Barlow Condensed';color:var(--muted)">{{ m.cost }}</b>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <!-- ===== REPORT ===== -->
+          <sc-if value="{{ showReport }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+                <div style="padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)"><span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Rating now</span><div style="display:flex;align-items:baseline;gap:3px"><b style="font:700 30px/1.1 'Barlow Condensed'">{{ cur.nowText }}</b><i style="font:600 13px/1 'DM Sans';font-style:normal;color:var(--muted)">/100</i></div><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">A range: your scouts are not sure</span></div>
+                <div style="padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)"><span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Ceiling</span><div style="display:flex;align-items:baseline;gap:6px"><b style="font:700 30px/1.1 'Barlow Condensed'">{{ cur.ceil }}</b><i style="font:600 13px/1 'DM Sans';font-style:normal;color:var(--muted)">grade</i></div><div style="display:flex;gap:3px;margin-top:4px"><sc-for list="{{ cur.ceilScale }}" as="g" hint-placeholder-count="5"><span style="flex:1;text-align:center;padding:2px 0;border-radius:4px;background:{{ g.bg }};color:{{ g.fg }};font:700 11px/1.2 'DM Sans'">{{ g.l }}</span></sc-for></div></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ cur.quotes }}" as="q" hint-placeholder-count="2">
+                  <div style="display:flex;gap:10px;padding:12px 14px;border-radius:12px;background:var(--sunken)"><span style="color:var(--muted);padding-top:2px">{{ ic.chat }}</span><div style="display:flex;flex-direction:column;gap:2px"><small style="font:600 11px/14px 'DM Sans';letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">{{ q.k }}</small><span style="font:500 14px/20px 'DM Sans';font-style:italic">“{{ q.t }}”</span></div></div>
+                </sc-for>
+              </div>
+              <div style="padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--surface);display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 15px/22px 'DM Sans'">Tools</span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">Scouted range, of 100</span></div>
+                <sc-for list="{{ cur.tools }}" as="t" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:minmax(96px,38%) minmax(0,1fr) 54px;gap:10px;align-items:center;min-height:28px">
+                    <span style="font:500 13px/18px 'DM Sans'">{{ t.label }}</span>
+                    <span style="position:relative;height:8px;border-radius:99px;background:var(--track)"><i style="position:absolute;left:0;top:0;bottom:0;width:{{ t.loW }};border-radius:99px;background:var(--accent)"></i><i style="position:absolute;top:0;bottom:0;left:{{ t.loW }};width:{{ t.spanW }};background:repeating-linear-gradient(135deg,var(--accent) 0 2px,transparent 2px 5px);opacity:.6"></i></span>
+                    <b style="text-align:right;font:700 17px/1 'Barlow Condensed';font-variant-numeric:tabular-nums">{{ t.text }}</b>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--surface);display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 15px/22px 'DM Sans'">Last spring</span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">High school</span></div>
+                <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;border-radius:12px;overflow:hidden;background:var(--line)"><sc-for list="{{ cur.line }}" as="l" hint-placeholder-count="4"><div style="padding:8px 10px;background:var(--sunken);display:flex;flex-direction:column;gap:2px"><small style="font:500 11px/14px 'DM Sans';color:var(--muted)">{{ l.k }}</small><b style="font:700 20px/22px 'Barlow Condensed'">{{ l.v }}</b></div></sc-for></div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ===== OTHER PROGRAMS ===== -->
+          <sc-if value="{{ showSchools }}" hint-placeholder-val="{{ false }}">
+            <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;padding:14px 16px 10px"><span style="font:600 15px/22px 'DM Sans'">Who is recruiting him</span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">His interest</span></div>
+              <sc-for list="{{ cur.schools }}" as="s" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) 110px 44px;gap:10px;align-items:center;min-height:48px;padding:6px 16px;border-top:1px solid var(--line);background:{{ s.bg }}">
+                  <span style="font:600 14px/20px 'DM Sans';color:{{ s.fg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.name }}</span>
+                  <span style="height:6px;border-radius:99px;background:var(--track);overflow:hidden"><i style="display:block;height:100%;width:{{ s.w }};background:{{ s.bar }}"></i></span>
+                  <b style="text-align:right;font:700 17px/1 'Barlow Condensed'">{{ s.pct }}%</b>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- footer -->
+        <sc-if value="{{ showFoot }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:none;display:flex;flex-direction:column;gap:10px;padding:12px 20px 14px;border-top:1px solid var(--line);background:var(--raised)">
+            <sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <sc-for list="{{ receipt }}" as="r" hint-placeholder-count="3"><span style="display:inline-flex;align-items:center;gap:5px;min-height:26px;padding:0 9px;border-radius:99px;background:{{ r.bg }};color:{{ r.fg }};font:600 12px/1 'DM Sans'">{{ r.label }}<b style="font:700 14px/1 'Barlow Condensed'">{{ r.pts }}</b></span></sc-for>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <span style="display:flex;flex-direction:column;min-width:0"><b style="font:600 15px/20px 'DM Sans'">{{ plan.total }} points on him</b><small style="font:400 12px/16px 'DM Sans';color:{{ plan.leftFg }}">{{ plan.leftLine }}</small></span>
+              <div style="display:flex;gap:8px">
+                <button onClick="{{ clearPlan }}" style="min-height:40px;padding:0 10px;border-radius:12px;color:{{ plan.clearFg }};font:600 13px/1 'DM Sans'">Clear</button>
+                <sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}"><button onClick="{{ close }}" style="min-height:40px;padding:0 18px;border-radius:12px;background:var(--command);color:var(--on-command);font:600 13px/1 'DM Sans'">Done</button></sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;sheetVariant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Current&quot;,&quot;A · One-page plan&quot;,&quot;B · Plan hub&quot;],&quot;default&quot;:&quot;A · One-page plan&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Recruit sheet&quot;},&quot;boardVariant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Current&quot;,&quot;Race rows&quot;,&quot;Grouped by status&quot;],&quot;default&quot;:&quot;Race rows&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Board list&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Light&quot;,&quot;Dark&quot;],&quot;default&quot;:&quot;Light&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const GR = ['F','D','D+','C-','C','C+','B-','B','B+','A-','A','A+'];
+const gi = (g) => GR.indexOf(g);
+const F = {
+  tradition: ['Tradition', 'The weight of the program name'],
+  coach: ['Coach', 'Who he believes will lead him'],
+  conference: ['Conference', 'The stage he will play on'],
+  playingTime: ['Playing time', 'How quickly the depth chart opens'],
+  winning: ['Winning now', 'Whether meaningful games are waiting'],
+  development: ['Development', 'How well players improve here'],
+  facilities: ['Facilities', 'What he will train in every day'],
+  proximity: ['Close to home', 'How close home stays'],
+  proPipeline: ['Path to pros', 'Recent proof that players get drafted'],
+};
+const MINE = { tradition: 'B', coach: 'B+', conference: 'A-', playingTime: 'A', winning: 'B-', development: 'A-', facilities: 'C+', proximity: 'B+', proPipeline: 'B' };
+const V = {
+  strong: { w: 'Strong', fg: 'var(--positive)', icon: 'check-circled', rate: 1.2 },
+  fair: { w: 'Fair', fg: 'var(--muted)', icon: 'minus-circled', rate: 1 },
+  thin: { w: 'Thin', fg: 'var(--warning)', icon: 'alert', rate: 0.5 },
+  hollow: { w: 'Backfires', fg: 'var(--negative)', icon: 'cross-circled', rate: -0.6 },
+};
+const verdict = (mine, want) => { const d = gi(mine) - gi(want); return d >= 1 ? 'strong' : d >= -1 ? 'fair' : d >= -3 ? 'thin' : 'hollow'; };
+const STATES = { FL: 'Florida', GA: 'Georgia', AL: 'Alabama', TX: 'Texas', LA: 'Louisiana', SC: 'South Carolina', MS: 'Mississippi', CA: 'California' };
+const POS = { SS: 'Shortstop', SP: 'Starting pitcher', RP: 'Relief pitcher', C: 'Catcher', CF: 'Center field', '1B': 'First base', '3B': 'Third base', LF: 'Left field', '2B': 'Second base', RF: 'Right field' };
+const ORDER = ['tradition','coach','conference','playingTime','winning','development','facilities','proximity','proPipeline'];
+const mk = (o) => Object.assign({ others: 10, othersN: 2, decides: 'Steady', week: 0 }, o);
+const P = [
+  mk({ id: 'p1', name: 'Marcus Ellery', pos: 'SS', state: 'FL', stars: 4, rank: 37, now: [52, 58], ceil: 'A', you: 38, lead: 44, leadName: 'Gulf Coast State', others: 18, othersN: 3, decides: 'Late decider', hands: 'Bats right, throws right', pipeline: true,
+    wants: [['playingTime','A-'],['development','B+'],['proximity','B']], tools: [['Contact',48,58],['Power',40,52],['Plate discipline',50,56],['Speed',62,70],['Range in the field',58,66],['Arm strength',55,63]], quotes: ['Plays the game the right way and gets better every month.','Raw at the plate, but the glove is ready now.'], line: [['AVG','.388'],['HR','6'],['SB','24'],['OPS','1.041']] }),
+  mk({ id: 'p2', name: 'Tyrese Vann', pos: 'SP', state: 'GA', stars: 5, rank: 8, now: [61, 66], ceil: 'S', you: 21, lead: 52, leadName: 'Savannah A&M', others: 27, othersN: 4, decides: 'Early decider', hands: 'Bats left, throws left', reach: false,
+    wants: [['proPipeline','A'],['winning','A-'],['facilities','B+']], tools: [['Strikeout stuff',66,74],['Keeps hits down',55,63],['Control',50,60],['Stamina',58,64]], quotes: ['A pro arm already. Clubs are watching every start.','He wants to pitch on a big stage in June.'], line: [['ERA','1.12'],['K','118'],['BB','21'],['IP','72']] }),
+  mk({ id: 'p3', name: 'Dante Okafor', pos: 'C', state: 'FL', stars: 3, rank: 142, now: [44, 52], ceil: 'B', you: 54, lead: 31, leadName: 'Mobile Bay', others: 15, othersN: 1, hands: 'Bats right, throws right', pipeline: true,
+    wants: [['proximity','B'],['coach','B'],['playingTime','B+']], tools: [['Contact',42,50],['Power',46,54],['Plate discipline',44,52],['Speed',30,38],['Range in the field',48,54],['Arm strength',58,64]], quotes: ['Calls a good game. Pitchers trust him.','Wants to stay near his family.'], line: [['AVG','.311'],['HR','9'],['SB','2'],['OPS','.902']] }),
+  mk({ id: 'p4', name: 'Rafael Quintero', pos: 'CF', state: 'TX', stars: 4, rank: 51, now: [50, 56], ceil: 'A', you: 0, lead: 40, leadName: 'Rio Grande Tech', others: 60, othersN: 3, hands: 'Bats left, throws left',
+    wants: [['winning','A'],['tradition','A-'],['conference','B+']], tools: [['Contact',52,58],['Power',38,46],['Plate discipline',48,56],['Speed',66,74],['Range in the field',62,70],['Arm strength',50,56]], quotes: ['Covers ground like a veteran.','Wants a program that wins now.'], line: [['AVG','.402'],['HR','3'],['SB','31'],['OPS','1.010']] }),
+  mk({ id: 'p5', name: 'Cole Brannigan', pos: 'RP', state: 'AL', stars: 3, rank: 188, now: [42, 50], ceil: 'B', you: 30, lead: 34, leadName: 'Tuscaloosa Poly', others: 36, othersN: 2, hands: 'Bats right, throws right',
+    wants: [['development','B'],['facilities','C'],['coach','B-']], tools: [['Strikeout stuff',50,58],['Keeps hits down',44,50],['Control',40,48],['Stamina',30,38]], quotes: ['A live arm. Needs coaching on the breaking ball.','Would thrive with a good pitching coach.'], line: [['ERA','2.40'],['K','61'],['BB','19'],['IP','41']] }),
+  mk({ id: 'p6', name: 'Jonah Whitfield', pos: '3B', state: 'SC', stars: 3, rank: 205, now: [40, 48], ceil: 'C', you: 0, lead: 0, leadName: '', others: 0, othersN: 0, hands: 'Bats right, throws right',
+    wants: [['playingTime','B'],['winning','B-'],['proximity','C+']], tools: [['Contact',40,48],['Power',42,50],['Plate discipline',38,46],['Speed',36,42],['Range in the field',40,48],['Arm strength',48,54]], quotes: ['Solid, not flashy.','Still growing into his frame.'], line: [['AVG','.296'],['HR','5'],['SB','4'],['OPS','.844']] }),
+  mk({ id: 'p7', name: 'Isaiah Montrose', pos: '2B', state: 'LA', stars: 2, rank: 310, now: [36, 44], ceil: 'B', you: 12, lead: 58, leadName: 'Bayou State', others: 30, othersN: 2, hands: 'Bats switch, throws right',
+    wants: [['coach','B'],['development','B'],['tradition','C']], tools: [['Contact',40,48],['Power',28,36],['Plate discipline',42,50],['Speed',50,58],['Range in the field',46,52],['Arm strength',38,44]], quotes: ['A project with real bat speed.','Coachable kid.'], line: [['AVG','.284'],['HR','1'],['SB','15'],['OPS','.760']] }),
+];
+const SCHOOLS_OTHER = ['Coastal Tech', 'Pine Hollow', 'Magnolia College', 'Delta State'];
+
+class Component extends DCLogic {
+  state = { flt: { pos: null, state: null, stars: [], pipelineOnly: false, untouchedOnly: false, reachOnly: false }, filterOpen: false, openId: null, tab: 'week', hub: null, plans: { p3: { effort: 8, pitch: 'proximity', major: null } }, armed: null, view: 'recruits', promiseOpen: false, asked: {}, swayed: false };
+
+  I(n, s) { return window.pbIcon ? window.pbIcon(React, n, s || 15) : null; }
+  plan(id) { return this.state.plans[id] || { effort: 0, pitch: null, major: null }; }
+  wantsFull(p) {
+    const top = p.wants.map((w) => w[0]);
+    const rest = ORDER.filter((k) => !top.includes(k)).map((k) => [k, GR[Math.max(0, gi(MINE[k]) - 2 - (ORDER.indexOf(k) % 3))]]);
+    return [...p.wants, ...rest];
+  }
+  mineFor(p, k) { return k === 'proximity' ? (p.state === 'FL' ? 'A' : ['GA', 'AL'].includes(p.state) ? 'B-' : 'D+') : MINE[k]; }
+  cost(pl) {
+    const mc = { hardSell: 5, visit: 8, sway: 6, ask: 6 };
+    const pc = { immediateRole: 12, noRedshirt: 8, keepPosition: 9 };
+    let c = pl.effort + (pl.pitch ? 3 : 0);
+    if (pl.major) c += pl.major.kind === 'promise' ? pc[pl.major.promise] : mc[pl.major.kind];
+    return c;
+  }
+  gain(p, pl) {
+    let g = pl.effort * 1.6;
+    if (pl.pitch) g += 4 * V[verdict(this.mineFor(p, pl.pitch), this.wantsFull(p).find((w) => w[0] === pl.pitch)[1])].rate;
+    const top = p.wants[0];
+    const topV = V[verdict(this.mineFor(p, top[0]), top[1])];
+    if (pl.major) {
+      const k = pl.major.kind;
+      if (k === 'hardSell') g += 7 * topV.rate;
+      if (k === 'visit') g += topV.rate >= 1 ? 12 : 5;
+      if (k === 'promise') g += 10;
+    }
+    return Math.round(g);
+  }
+  status(p, youPts) {
+    const I = this.I.bind(this);
+    if (youPts <= 0 && p.lead <= 0) return { label: 'Nobody on him yet', short: 'Untouched', bg: 'var(--sunken)', fg: 'var(--muted)', icon: null, dot: 'var(--line-strong)', g: 'open' };
+    if (youPts <= 0) return { label: 'Others are on him', short: 'Not started', bg: 'var(--sunken)', fg: 'var(--muted)', icon: null, dot: 'var(--line-strong)', g: 'open' };
+    if (youPts >= p.lead) return { label: 'You lead', short: 'You lead', bg: 'var(--positive-soft)', fg: 'var(--positive)', icon: I('arrow-right', 12) && null, dot: 'var(--positive)', g: 'lead' };
+    const b = (p.lead - youPts) / p.lead;
+    if (b < 0.2) return { label: 'Close behind', short: 'Close behind', bg: 'var(--info-soft)', fg: 'var(--info)', icon: null, dot: 'var(--info)', g: 'race' };
+    if (b < 0.5) return { label: 'Behind', short: 'Behind', bg: 'var(--warning-soft)', fg: 'var(--warning)', icon: null, dot: 'var(--warning)', g: 'race' };
+    return { label: 'Far behind', short: 'Far behind', bg: 'var(--negative-soft)', fg: 'var(--negative)', icon: null, dot: 'var(--negative)', g: 'race' };
+  }
+  setPlan(id, patch) { this.setState((s) => ({ plans: { ...s.plans, [id]: { ...this.plan(id), ...patch } }, armed: null })); }
+  stars(n, size) { const out = []; for (let i = 0; i < n; i++) out.push(React.cloneElement(this.I('star-filled', size || 12), { key: i })); return out; }
+
+  renderVals() {
+    const I = this.I.bind(this);
+    const variant = this.props.sheetVariant ?? 'A · One-page plan';
+    const isCur = variant.startsWith('Current');
+    const isA = variant.startsWith('A');
+    const isB = variant.startsWith('B');
+    const boardV = this.props.boardVariant ?? 'Race rows';
+    const boardCurrent = boardV.startsWith('Current');
+    const grouped = boardV.startsWith('Grouped');
+    const weekly = 56;
+    const spent = P.reduce((a, p) => a + this.cost(this.plan(p.id)), 0);
+    const left = weekly - spent;
+    const st = this.state;
+
+    const rowOf = (p) => {
+      const pl = this.plan(p.id);
+      const g = this.gain(p, pl);
+      const total = p.you + p.lead + p.others;
+      const youPct = total ? Math.round(p.you / total * 100) : 0;
+      const leadPct = total ? Math.round(p.lead / total * 100) : 0;
+      const projPct = total + g > 0 ? Math.round((p.you + g) / (total + g) * 100) : 0;
+      const s = this.status(p, p.you);
+      const wk = this.cost(pl);
+      const wf = this.wantsFull(p);
+      return {
+        ...p, ini: p.name.split(' ').map((w) => w[0]).join(''), st: s, youPct, leadPct, projPct, g, wk,
+        nowText: `${p.now[0]}–${p.now[1]}`, starEls: this.stars(p.stars, 12),
+        youW: youPct + '%', leadW: (total ? Math.round((p.you + p.lead) / total * 100) - 0 : 0) > 0 ? leadPct + '%' : '0%',
+        gainW: Math.max(0, projPct - youPct) + '%',
+        leadLine: p.lead > 0 && p.lead > p.you ? `${p.leadName} ${leadPct}%` : p.you > 0 ? 'You lead' : '',
+        raceText: p.you + p.lead === 0 ? 'No interest yet' : p.you === 0 ? `${p.leadName.split(' ')[0]} ${leadPct}%` : `${youPct}%${g > 0 ? ' → ' + projPct + '%' : ''}`,
+        planned: wk > 0, weekPts: wk, weekMeta: wk > 0 ? `${wk} pts this week` : '',
+        open: () => this.setState({ openId: p.id, tab: 'week', hub: null, promiseOpen: false, armed: null }),
+        wantTags: p.wants.map(([k, w]) => { const ok = ['strong', 'fair'].includes(verdict(this.mineFor(p, k), w)); return { text: F[k][0], bg: ok ? 'var(--positive-soft)' : 'var(--sunken)', fg: ok ? 'var(--positive)' : 'var(--ink)', icon: ok ? I('check', 12) : null }; }),
+        cardBg: wk > 0 ? 'color-mix(in srgb, var(--accent-soft) 60%, var(--surface))' : 'var(--surface)',
+        cardBd: wk > 0 ? 'var(--accent)' : 'var(--line)',
+        cardSh: wk > 0 ? 'inset 0 0 0 1px var(--accent)' : p.you > 0 ? 'inset 4px 0 0 var(--accent), var(--sh-card)' : 'var(--sh-card)',
+        btnLabel: wk > 0 ? 'Change his week' : 'Plan his week', btnBg: wk > 0 ? 'var(--surface)' : 'var(--accent-soft)', btnFg: wk > 0 ? 'var(--ink)' : 'var(--accent)', btnBd: wk > 0 ? 'var(--line-strong)' : 'transparent',
+        rowBg: wk > 0 ? 'color-mix(in srgb, var(--accent-soft) 55%, var(--surface))' : 'transparent',
+        rowMark: wk > 0 ? 'inset 3px 0 0 var(--accent)' : 'none', wf, pl,
+      };
+    };
+    const all = P.map(rowOf);
+    const view = st.view;
+    let base = view === 'targets' ? all.filter((r) => r.you > 0 || r.wk > 0) : view === 'commits' ? [] : all;
+    const f = st.flt;
+    const pass = (r) => (!f.pos || r.pos === f.pos) && (!f.state || r.state === f.state) && (!f.stars.length || f.stars.includes(r.stars)) && (!f.pipelineOnly || r.pipeline) && (!f.untouchedOnly || (r.you + r.lead + r.others === 0)) && (!f.reachOnly || r.reach !== false);
+    let rows = view === 'recruits' ? base.filter(pass) : base;
+    const setF = (patch) => this.setState((s) => ({ flt: { ...s.flt, ...patch } }));
+    const sel = (on) => ({ bd: on ? 'var(--accent)' : 'var(--line)', bg: on ? 'var(--accent-soft)' : 'var(--surface)', fg: on ? 'var(--accent)' : 'var(--ink)', sh: on ? 'inset 0 0 0 1px var(--accent)' : 'none' });
+    const posOpts = ['C', '1B', '2B', 'SS', '3B', 'LF', 'CF', 'RF', 'SP', 'RP'].map((p) => ({ label: p, name: POS[p], ...sel(f.pos === p), on: () => setF({ pos: f.pos === p ? null : p }) }));
+    const starOpts = [5, 4, 3, 2, 1].map((n) => ({ n, aria: n + ' stars', stars: this.stars(n, 9), ...sel(f.stars.includes(n)), on: () => setF({ stars: f.stars.includes(n) ? f.stars.filter((x) => x !== n) : [...f.stars, n].sort((a, b) => b - a) }) }));
+    const stateOpts = [{ v: '', label: 'Anywhere' }, ...Object.entries(STATES).sort((a, b) => a[1].localeCompare(b[1])).map(([k, n]) => ({ v: k, label: k === 'FL' ? n + ' (yours)' : n }))];
+    const toggles = [['pipelineOnly', 'Pipeline states only', 'Home, staff or earned pipelines'], ['untouchedOnly', 'Nobody recruiting him yet', 'No program has put a point on him'], ['reachOnly', 'In reach only', 'Hide the men who will not take your call']].map(([k, label, hint], i) => ({ label, hint, checked: !!f[k], bd: i ? '1px solid var(--line)' : '0', track: f[k] ? 'var(--command)' : 'var(--track)', knobX: f[k] ? '21px' : '3px', on: () => setF({ [k]: !f[k] }) }));
+    const activePills = [
+      ...(f.pos ? [{ label: POS[f.pos], stars: null, off: () => setF({ pos: null }) }] : []),
+      ...(f.stars.length ? [{ label: f.stars.join(', '), stars: this.stars(1, 11), off: () => setF({ stars: [] }) }] : []),
+      ...(f.state ? [{ label: STATES[f.state], stars: null, off: () => setF({ state: null }) }] : []),
+      ...(f.pipelineOnly ? [{ label: 'Pipeline states', stars: null, off: () => setF({ pipelineOnly: false }) }] : []),
+      ...(f.untouchedOnly ? [{ label: 'Nobody on him yet', stars: null, off: () => setF({ untouchedOnly: false }) }] : []),
+      ...(f.reachOnly ? [{ label: 'In reach', stars: null, off: () => setF({ reachOnly: false }) }] : []),
+    ];
+    const nActive = activePills.length;
+    const groupsRaw = grouped && view === 'recruits'
+      ? [
+        { title: 'Planned this week', dot: 'var(--accent)', rows: rows.filter((r) => r.wk > 0) },
+        { title: 'In the race', dot: 'var(--info)', rows: rows.filter((r) => r.wk === 0 && r.you > 0) },
+        { title: 'Not started', dot: 'var(--line-strong)', rows: rows.filter((r) => r.wk === 0 && r.you === 0) },
+      ].filter((g) => g.rows.length)
+      : [{ title: '', rows }];
+    const groups = groupsRaw.map((g) => ({ ...g, n: g.rows.length, rows: g.rows.map((r, i) => ({ ...r, topBd: i ? '1px solid var(--line)' : '0' })) }));
+
+    const chipDefs = [['recruits', 'Prospects', 0], ['targets', 'Your targets', all.filter((r) => r.you > 0 || r.wk > 0).length], ['commits', 'Committed', 3], ['needs', 'Positions needed', 4], ['roster', 'Your roster', 0]];
+    const chips = chipDefs.map(([k, label, count]) => ({ label, count: count || null, cntBg: view === k ? 'var(--accent)' : 'var(--sunken)', cntFg: view === k ? 'var(--on-command)' : 'var(--ink)', on: () => this.setState({ view: k }), bg: view === k ? 'var(--accent-soft)' : 'var(--surface)', fg: view === k ? 'var(--accent)' : 'var(--ink)', bd: view === k ? 'var(--accent)' : 'var(--line)' }));
+
+    // sheet
+    const cp = st.openId ? all.find((r) => r.id === st.openId) : null;
+    let cur = {}; let plan = {}; let pitchTiles = []; let moveTiles = []; let moveTilesCur = []; let moveRows = []; let promises = []; let receipt = []; let hubRows = []; let hubInfo = []; let moveNote = { on: false };
+    let blocks = {}; let effortQuick = []; let effortPips = []; let steps = {};
+    if (cp) {
+      const pl = cp.pl;
+      const total = cp.you + cp.lead + cp.others;
+      const top = cp.wants[0][0];
+      const focus = pl.pitch || top;
+      const ceilL = ['D', 'C', 'B', 'A', 'S'];
+      const behind = cp.lead - cp.you;
+      const projLead = cp.you + cp.g >= cp.lead && cp.lead > 0;
+      cur = {
+        ...cp, stateName: STATES[cp.state], posName: POS[cp.pos], hasGain: cp.g > 0,
+        othersPct: total ? 100 - cp.youPct - cp.leadPct : 0, leadName: cp.leadName || 'Leader', starEls: this.stars(cp.stars, 14),
+        st: { ...cp.st, icon: cp.st.g === 'lead' ? I('check', 12) : null },
+        leadW: total ? Math.round((cp.lead / total) * 100) + '%' : '0%',
+        decidesNote: cp.decides === 'Late decider' ? 'Decides late · after week 6' : cp.decides === 'Early decider' ? 'Decides early · watch the clock' : 'Week 4 of 12',
+        raceSay: cp.you + cp.lead === 0 ? 'Nobody is recruiting him yet. Any effort puts you in front.'
+          : cp.you === 0 ? `You are not on him yet. ${cp.leadName} holds ${cp.leadPct}% of his interest.`
+            : cp.you >= cp.lead ? (cp.g > 0 ? `You lead. This week's plan takes you to ${cp.projPct}%.` : 'You lead. Keep effort on him or the others catch up.')
+              : projLead ? `${cp.st.label}. This week's plan puts you in front.` : cp.g > 0 ? `${cp.st.label}. This plan closes part of the gap to ${cp.leadName}.` : `${cp.st.label}, ${behind} points of interest back. Nothing planned yet.`,
+        curPts: cp.you, projPts: cp.you + cp.g,
+        ceilScale: ceilL.map((l) => ({ l, bg: l === cp.ceil ? 'var(--command)' : 'var(--sunken)', fg: l === cp.ceil ? 'var(--on-command)' : 'var(--muted)' })),
+        quotes: [{ k: 'Ceiling', t: cp.quotes[0] }, { k: 'Development', t: cp.quotes[1] }],
+        tools: cp.tools.map(([label, lo, hi]) => ({ label, loW: lo + '%', spanW: (hi - lo) + '%', text: `${lo}–${hi}` })),
+        line: cp.line.map(([k, v]) => ({ k, v })),
+        schools: [
+          ...(cp.you > 0 ? [{ name: 'Bayshore State (you)', pts: cp.you, you: true }] : []),
+          ...(cp.lead > 0 ? [{ name: cp.leadName, pts: cp.lead }] : []),
+          ...SCHOOLS_OTHER.slice(0, cp.othersN).map((n, i) => ({ name: n, pts: Math.round(cp.others / cp.othersN) - i })),
+        ].sort((a, b) => b.pts - a.pts).map((s) => ({ name: s.name, pct: Math.round(s.pts / Math.max(1, total) * 100), w: Math.round(s.pts / Math.max(1, total) * 100) + '%', bg: s.you ? 'var(--info-soft)' : 'transparent', fg: s.you ? 'var(--info)' : 'var(--ink)', bar: s.you ? 'var(--accent)' : 'var(--line-strong)' })),
+      };
+      const pitchWord = pl.pitch ? F[pl.pitch][0] : 'None';
+      const mk2 = pl.major;
+      const MW = { hardSell: 'Hard sell', visit: 'Program visit', sway: 'Sway', ask: 'Asked to commit', promise: 'Promise' };
+      const cost = this.cost(pl);
+      plan = {
+        effort: pl.effort, total: cost,
+        effortSum: pl.effort > 0 ? `${pl.effort} points` : '',
+        pitchSum: pl.pitch ? F[pl.pitch][0] : 'Optional', pitchShort: pl.pitch ? F[pl.pitch][0] : '',
+        moveSum: mk2 ? MW[mk2.kind] : 'Optional', moveShort: mk2 ? MW[mk2.kind] : '',
+        leftLine: left < 0 ? `${-left} over this week's budget` : `${left} of ${weekly} left this week`, leftFg: left < 0 ? 'var(--negative)' : 'var(--muted)',
+        clearFg: cost > 0 ? 'var(--accent)' : 'var(--disabled)',
+      };
+      steps = { s1: pl.effort > 0 ? 'var(--positive)' : 'var(--ink)', s2: pl.pitch ? 'var(--positive)' : 'var(--ink)', s3: mk2 ? 'var(--positive)' : 'var(--ink)' };
+      blocks = {
+        effortBd: pl.effort > 0 ? 'color-mix(in srgb, var(--accent) 45%, var(--line))' : 'var(--line)', effortNum: pl.effort > 0 ? 'var(--positive)' : 'var(--ink)',
+        pitchBd: pl.pitch ? 'color-mix(in srgb, var(--accent) 45%, var(--line))' : 'var(--line)', pitchNum: pl.pitch ? 'var(--positive)' : 'var(--ink)',
+        moveBd: mk2 ? 'color-mix(in srgb, var(--accent) 45%, var(--line))' : 'var(--line)', moveNum: mk2 ? 'var(--positive)' : 'var(--ink)',
+      };
+      const setE = (n) => this.setPlan(cp.id, { effort: Math.max(0, Math.min(12, n)) });
+      effortQuick = [0, 4, 8, 12].map((n) => ({ label: n === 0 ? 'None' : n === 12 ? 'Max 12' : String(n), on: () => setE(n), bg: pl.effort === n ? 'var(--accent-soft)' : 'var(--surface)', fg: pl.effort === n ? 'var(--accent)' : 'var(--ink)', bd: pl.effort === n ? 'var(--accent)' : 'var(--line)' }));
+      effortPips = Array.from({ length: 12 }, (_, i) => ({ bg: i < pl.effort ? 'var(--accent)' : 'var(--track)' }));
+      pitchTiles = cp.wf.map(([k, want], i) => {
+        const mine = this.mineFor(cp, k); const v = V[verdict(mine, want)]; const on = pl.pitch === k;
+        return { name: F[k][0], blurb: F[k][1], mine, want, vword: v.w, vfg: v.fg, vicon: I(v.icon, 14), rank: i < 3 ? i + 1 : null, order: i + 1,
+          rankBg: i < 3 ? 'var(--ink)' : 'var(--sunken)', rankFg: i < 3 ? 'var(--bg)' : 'var(--muted)',
+          bd: on ? 'var(--accent)' : 'var(--line)', bg: on ? 'var(--accent-soft)' : 'var(--surface)', sh: on ? 'inset 0 0 0 1px var(--accent)' : 'none',
+          on: () => this.setPlan(cp.id, { pitch: on ? null : k }) };
+      });
+      const week = 4;
+      const topV = V[verdict(this.mineFor(cp, top), cp.wants[0][1])];
+      const armed = st.armed;
+      const asked = st.asked[cp.id];
+      const defs = [
+        { k: 'hardSell', title: 'Hard sell', cost: 5, sub: `Presses ${F[focus][0].toLowerCase()}`, effect: `Worth ~${Math.round(7 * V[verdict(this.mineFor(cp, focus), (cp.wf.find((w) => w[0] === focus) || cp.wants[0])[1])].rate)} interest`, subCur: F[focus][0] },
+        { k: 'visit', title: 'Program visit', cost: 8, sub: topV.rate >= 1 ? 'He fits here: big boost' : 'Weak fit: small boost', effect: `Worth ~${topV.rate >= 1 ? 12 : 5} interest`, subCur: 'Better if he fits' },
+        { k: 'promise', title: 'Promise', cost: '8–12', sub: mk2 && mk2.kind === 'promise' ? PROM[mk2.promise][0] : 'Binding if he signs', effect: 'Worth ~10 interest', subCur: 'Immediate role' },
+        { k: 'sway', title: 'Sway him', cost: 6, bolt: true, confirm: true, sub: st.swayed ? 'Used this season' : `Makes him care about ${F[focus][0].toLowerCase()}`, effect: 'Once a season · happens now', disabled: st.swayed, subCur: `Toward ${F[focus][0].toLowerCase()}` },
+        { k: 'ask', title: 'Ask to commit', cost: 6, bolt: true, confirm: true, sub: asked ? (asked === 'yes' ? 'He said yes' : 'He said no') : cp.youPct >= 45 ? 'He answers now' : 'Unlikely yet: under 45%', effect: 'He answers the moment you ask', disabled: !!asked, subCur: 'He answers now' },
+      ];
+      const pickMove = (d) => {
+        if (d.disabled) return;
+        if (d.k === 'promise') { this.setState((s) => ({ promiseOpen: !s.promiseOpen, armed: null })); return; }
+        const sel = mk2 && mk2.kind === d.k;
+        if (d.confirm && !sel) {
+          if (armed !== d.k) { this.setState({ armed: d.k }); return; }
+          if (d.k === 'ask') { const yes = cp.youPct + cp.g * 0.6 >= 45; this.setState((s) => ({ asked: { ...s.asked, [cp.id]: yes ? 'yes' : 'no' } })); }
+          if (d.k === 'sway') this.setState({ swayed: true });
+        }
+        this.setPlan(cp.id, { major: sel ? null : { kind: d.k } });
+        this.setState({ promiseOpen: false });
+      };
+      const tileOf = (d) => {
+        const sel = mk2 && mk2.kind === d.k; const isArmed = armed === d.k;
+        return { ...d, bolt: d.bolt ? I('lightning', 14) : null, sub: isArmed ? 'Tap again to do it now' : d.sub,
+          subFg: isArmed ? 'var(--ink)' : 'var(--muted)', subW: isArmed ? 600 : 400,
+          effFg: sel ? 'var(--accent)' : 'var(--muted)',
+          bd: isArmed ? 'var(--warning)' : sel ? 'var(--accent)' : 'var(--line)',
+          bg: isArmed ? 'var(--warning-soft)' : sel ? 'var(--accent-soft)' : d.bolt ? 'color-mix(in srgb, var(--warning-soft) 45%, var(--surface))' : 'var(--surface)',
+          sh: sel ? 'inset 0 0 0 1px var(--accent)' : 'none', op: d.disabled && !sel ? 0.55 : 1, anim: isArmed ? 'armPulse 1.2s ease-in-out infinite' : 'none',
+          ring: sel ? 'var(--command)' : 'var(--line-strong)', dot: sel ? 'var(--command)' : 'transparent',
+          on: () => pickMove(d) };
+      };
+      moveTiles = defs.map(tileOf);
+      moveTilesCur = [defs[0], defs[1], { ...defs[2], k: 'promise', subCur: 'Immediate role', cost: 12 }, { ...defs[2], subCur: 'No redshirt', cost: 8 }, { ...defs[2], subCur: 'Stay at your position', cost: 9 }, defs[3], defs[4]].map(tileOf);
+      moveRows = moveTiles;
+      promises = Object.entries(PROM).map(([k, [label, detail, c]]) => { const on = mk2 && mk2.kind === 'promise' && mk2.promise === k; return { label, detail, cost: c, bd: on ? 'var(--accent)' : 'var(--line)', bg: on ? 'var(--accent-soft)' : 'var(--surface)', ring: on ? 'var(--command)' : 'var(--line-strong)', dot: on ? 'var(--command)' : 'transparent', on: () => { this.setPlan(cp.id, { major: on ? null : { kind: 'promise', promise: k } }); this.setState({ promiseOpen: false }); } }; });
+      if (mk2) {
+        const T = {
+          hardSell: ['Hard sell this week', `You press ${F[focus][0].toLowerCase()} with everything you have. Lands when the week ends.`],
+          visit: ['He visits campus', topV.rate >= 1 ? 'He already likes what you offer, so the visit lands big.' : 'He is not sold on your top selling point yet, so the visit lands small.'],
+          promise: ['Promise made', mk2.promise ? PROM[mk2.promise][1] : ''],
+          sway: ['The sway is done', `He cares more about ${F[focus][0].toLowerCase()} now.`],
+          ask: [asked === 'yes' ? 'He said yes' : 'He said no', asked === 'yes' ? 'He commits when the week ends.' : 'He doubts your case. Ask again in week 6.'],
+        }[mk2.kind];
+        moveNote = { on: true, title: T[0], text: T[1], bg: mk2.kind === 'ask' && asked === 'no' ? 'var(--warning-soft)' : 'var(--info-soft)', fg: 'var(--info)', icon: I('info', 15) };
+      }
+      const chip = (label, pts, on) => ({ label, pts, bg: on ? 'var(--accent-soft)' : 'var(--sunken)', fg: on ? 'var(--accent)' : 'var(--disabled)' });
+      receipt = [chip('Effort', pl.effort, pl.effort > 0), chip(pl.pitch ? `Pitch: ${F[pl.pitch][0]}` : 'Pitch', pl.pitch ? 3 : 0, !!pl.pitch), chip(mk2 ? MW[mk2.kind] : 'Big move', mk2 ? this.cost({ effort: 0, pitch: null, major: mk2 }) : 0, !!mk2)];
+      const hr = (key, icon, title, sub, value, on) => ({ icon: I(icon, 18), title, sub, value, bd: key === 'effort' ? '0' : '1px solid var(--line)', markBg: on ? 'var(--accent-soft)' : 'var(--sunken)', markFg: on ? 'var(--accent)' : 'var(--muted)', subFg: on ? 'var(--ink)' : 'var(--muted)', valFg: on ? 'var(--ink)' : 'var(--disabled)', on: () => this.setState({ hub: key }) });
+      hubRows = [
+        hr('effort', 'bar-chart', 'Effort', pl.effort > 0 ? `${pl.effort} points · +${Math.round(pl.effort * 1.6)} interest` : 'Nothing yet · steady interest each week', pl.effort, pl.effort > 0),
+        hr('pitch', 'chat', 'Pitch one thing', pl.pitch ? `${F[pl.pitch][0]} · ${pitchTiles.find((t) => t.name === F[pl.pitch][0]).vword}` : `Optional · his #1 is ${F[top][0].toLowerCase()}`, pl.pitch ? 3 : 0, !!pl.pitch),
+        hr('move', 'lightning', 'One big move', mk2 ? MW[mk2.kind] : 'Optional · visit, promise, hard sell…', mk2 ? this.cost({ effort: 0, pitch: null, major: mk2 }) : 0, !!mk2),
+      ];
+      hubInfo = [
+        { icon: I('reader', 18), title: 'Scouting report', sub: `Now ${cp.nowText} · Ceiling ${cp.ceil} · tools and last spring`, bd: '0', on: () => this.setState({ hub: 'report' }) },
+        { icon: I('globe', 18), title: 'Other programs', sub: cp.lead > 0 ? `${cp.othersN + 1} programs · ${cp.leadName} ${cp.leadPct}%` : 'Nobody else yet', bd: '1px solid var(--line)', on: () => this.setState({ hub: 'programs' }) },
+      ];
+    }
+    const hub = st.hub;
+    const SUB = { effort: ['Effort', 'Points on him this week, up to 12. Each point adds steady interest.'], pitch: ['Pitch one thing · 3 pts', 'Your grade against what he wants, most important first. Strong lands, thin barely does, and backfires costs you.'], move: ['One big move', 'Optional. Pick at most one a week. Bolted moves happen the moment you confirm.'], report: ['Scouting report', 'Ranges narrow as your recruiting skill grows.'], programs: ['Other programs', 'His interest, split between everyone chasing him.'] };
+    const sub = isB && hub ? { on: true, title: SUB[hub][0], desc: SUB[hub][1], effort: hub === 'effort', pitch: hub === 'pitch', move: hub === 'move' } : { on: false };
+    const tabV = st.tab;
+    const tabs = [['week', 'This week'], ['report', 'Scouting'], ['schools', 'Other programs']].map(([k, l]) => ({ label: l, on: () => this.setState({ tab: k }), bg: tabV === k ? 'var(--raised)' : 'transparent', fg: tabV === k ? 'var(--ink)' : 'var(--muted)', sh: tabV === k ? 'var(--sh-ctl)' : 'none' }));
+
+    const needs = [['Catcher', 'Nobody on your board', '1 open', 1], ['Center field', '1 target on your board', 'Covered', 0], ['Relief pitcher', '1 target on your board', '1 open', 1], ['Third base', 'Nobody on your board', '2 open', 1]].map(([pos, s, badge, warn], i) => ({ pos, sub: s, badge, bg: warn ? 'var(--warning-soft)' : 'var(--positive-soft)', fg: warn ? 'var(--warning)' : 'var(--positive)', bd: i ? '1px solid var(--line)' : '0', pick: () => this.setState({ view: 'recruits' }) }));
+
+    const listDesc = grouped ? 'Sorted by where you stand with him' : 'Best fits for your program first';
+    return {
+      theme: (this.props.theme ?? 'Light').toLowerCase(),
+      ic: { chevD: I('chevron-down', 16), crossS: I('cross', 11), clock: I('clock', 12), starF: I('star-filled', 14), star: I('star', 14), chevR: I('chevron-right', 20), chevL: I('chevron-left', 22), cross: I('cross', 18), minus: I('minus', 15), plus: I('plus', 15), mixer: I('mixer', 15), alert: I('alert', 16), chat: I('chat', 15), home: I('home', 20), idcard: I('id-card', 20), backpack: I('backpack', 20), starNav: I('star', 20) },
+      weekly, left: Math.max(0, left), leftPct: Math.max(0, left) / weekly * 100 + '%', spentPct: Math.min(100, spent / weekly * 100) + '%',
+      spentLine: spent > 0 ? `${spent} planned on ${all.filter((r) => r.wk > 0).length} ${all.filter((r) => r.wk > 0).length === 1 ? 'prospect' : 'prospects'} · resets each week` : 'Nothing planned yet · resets each week',
+      scholarPips: Array.from({ length: 8 }, (_, i) => ({ bg: i < 3 ? 'var(--positive)' : 'var(--track)' })),
+      weekPips: Array.from({ length: 12 }, (_, i) => ({ bg: i < 3 ? 'var(--line-strong)' : i === 3 ? 'var(--accent)' : 'var(--track)' })),
+      boardCurrent, boardNew: !boardCurrent, chips,
+      showList: view === 'recruits' || view === 'targets' || view === 'commits',
+      listTitle: view === 'targets' ? 'Your targets' : view === 'commits' ? 'Committed to you' : 'Prospects', listCount: view === 'recruits' && !nActive ? 42 : rows.length, listDesc,
+      showFilterRow: view === 'recruits',
+      fBtn: { label: nActive ? 'Filters on' : 'Filter', n: nActive || null, bd: nActive ? 'var(--accent)' : 'var(--line)', bg: nActive ? 'var(--accent-soft)' : 'var(--surface)', fg: nActive ? 'var(--accent)' : 'var(--ink)' },
+      hasActive: nActive > 0, activeLine: nActive + (nActive === 1 ? ' filter on' : ' filters on'), activePills, clearFilters: () => this.setState({ flt: { pos: null, state: null, stars: [], pipelineOnly: false, untouchedOnly: false, reachOnly: false } }),
+      filterOpen: st.filterOpen, openFilters: () => this.setState({ filterOpen: true }), closeFilters: () => this.setState({ filterOpen: false }),
+      posOpts, starOpts, stateOpts, toggles, fState: f.state || '', onState: (e) => setF({ state: e.target.value || null }),
+      stateBd: f.state ? 'var(--accent)' : 'var(--line)', stateBg: f.state ? 'var(--accent-soft)' : 'var(--surface)',
+      sortLabel: 'Best fit first',
+      showLabel: rows.length ? `Show ${rows.length} ${rows.length === 1 ? 'prospect' : 'prospects'}` : 'Nobody matches', showBg: rows.length ? 'var(--command)' : 'var(--sunken)', showFg: rows.length ? 'var(--on-command)' : 'var(--disabled)', clearFg: nActive ? 'var(--ink)' : 'var(--disabled)',
+      noResults: view === 'recruits' && rows.length === 0,
+      boardCurrentList: boardCurrent && (view === 'recruits' || view === 'targets'), boardNewList: !boardCurrent && (view === 'recruits' || view === 'targets'),
+      rows, groups, showNeeds: view === 'needs', needs,
+      sheetOpen: !!cp, close: () => this.setState({ openId: null, armed: null }), cur, plan, steps, blocks,
+      isCur, isNew: !isCur, showTabs: !isB, tabs,
+      curWeek: isCur && tabV === 'week', aWeek: isA && tabV === 'week', bHub: isB && !hub,
+      showReport: (!isB && tabV === 'report') || (isB && hub === 'report'), showSchools: (!isB && tabV === 'schools') || (isB && hub === 'programs'),
+      showFoot: (!isB && tabV === 'week') || (isB && (!hub || hub === 'effort' || hub === 'pitch' || hub === 'move')),
+      sub, hubBack: () => this.setState({ hub: null }), hubRows, hubInfo,
+      pitchTiles, moveTiles, moveTilesCur, moveRows, promises, promiseOpen: isA && st.promiseOpen, moveNote: isA ? moveNote : { on: false }, receipt, effortQuick, effortPips,
+      effortDown: () => cp && this.setPlan(cp.id, { effort: Math.max(0, cp.pl.effort - 1) }),
+      effortUp: () => cp && this.setPlan(cp.id, { effort: Math.min(12, cp.pl.effort + 1) }),
+      clearPlan: () => cp && this.setPlan(cp.id, { effort: 0, pitch: null, major: null }),
+    };
+  }
+}
+const PROM = {
+  immediateRole: ['Immediate role', 'First season: start at least 62% of games.', 12],
+  noRedshirt: ['No redshirt', 'First season: keep him on the active roster instead of redshirting.', 8],
+  keepPosition: ['Stay at your position', 'First two seasons: keep his recruited position.', 9],
+};
+</script>
+</body>
+</html>

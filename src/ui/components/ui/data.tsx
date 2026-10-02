@@ -205,7 +205,6 @@ export function PlayerRow({
           </span>
         )}
         {flags && <span className="pb-prow__flags">{flags}</span>}
-        {warning && <span className="pb-prow__warning"><Icon name="alert" size={14} />{warning}</span>}
       </span>
       {stats && (
         <span className="pb-prow__stats">
@@ -219,9 +218,15 @@ export function PlayerRow({
       )}
       {trailing}
       {clickable && chevron !== false && <Icon name="chevron-right" size={20} className="pb-prow__chevron" />}
+      {/* Its own line under the row, the full width: the text column beside
+          the stats is too narrow for even a short warning to keep its number. */}
+      {warning && <span className="pb-prow__warning"><Icon name="alert" size={14} /><span className="pb-ellipsis">{warning}</span></span>}
     </>
   );
-  const cls = cx('pb-prow', clickable && 'is-interactive', selected && 'is-selected', warning ? 'has-warning' : null, className);
+  const cls = cx(
+    'pb-prow', clickable && 'is-interactive', selected && 'is-selected', warning ? 'has-warning' : null,
+    lead != null && 'has-lead', avatar ? 'has-avatar' : null, className,
+  );
   if (!clickable) return <div ref={elRef} className={cls} data-guide={guide}>{inner}</div>;
   return (
     <button
@@ -350,9 +355,12 @@ function TeamSide({ side }: { side: GameSide }) {
 
 /** The next game (or the last one): who, where, when, what is at stake, and the ways to play it. */
 export function GameCard({
-  when, kind, kindTone = 'neutral', away, home, score, facts, actions, actionsNote, label, children, className,
+  when, kind, kindTone = 'neutral', headAction, away, home, score, facts, actions, actionsNote, label, children, className,
 }: {
-  when: ReactNode; kind?: ReactNode; kindTone?: Tone; away: GameSide; home: GameSide; score?: ReactNode;
+  when: ReactNode; kind?: ReactNode; kindTone?: Tone;
+  /** A small control at the right of the head, in place of room for a badge: June's "Lineup". */
+  headAction?: ReactNode;
+  away: GameSide; home: GameSide; score?: ReactNode;
   facts?: Array<{ label: string; value: ReactNode; note?: ReactNode }>;
   actions?: ReactNode; actionsNote?: ReactNode; label?: string; children?: ReactNode; className?: string;
 }) {
@@ -361,6 +369,7 @@ export function GameCard({
       <header className="pb-game__head">
         <span className="pb-game__when">{when}</span>
         {kind && <StatusBadge tone={kindTone} icon={false}>{kind}</StatusBadge>}
+        {headAction}
       </header>
       <div className="pb-game__teams">
         <TeamSide side={away} />
@@ -374,9 +383,12 @@ export function GameCard({
           ))}
         </dl>
       )}
-      {children && <div className="pb-game__body">{children}</div>}
       {actions && <footer className="pb-game__actions">{actions}</footer>}
       {actionsNote && <p className="pb-game__note">{actionsNote}</p>}
+      {/* The notes come last. Between the facts and the buttons, a note that
+          arrived — a rivalry, a hold on the lineup — pushed the buttons down
+          the screen; under them, the card grows where nothing is tapped. */}
+      {children && <div className="pb-game__body">{children}</div>}
     </section>
   );
 }
@@ -512,9 +524,7 @@ export interface ProspectCardProps {
   rank?: number;
   ratingLow: number;
   ratingHigh: number;
-  ratingNote?: ReactNode;
   ceiling: ReactNode;
-  ceilingNote?: ReactNode;
   status?: { tone: Tone; icon?: IconName; label: string };
   interest?: { you: number; leader?: number; leaderName?: string };
   wants?: Array<string | { text: string; fit?: boolean }>;
@@ -524,24 +534,34 @@ export interface ProspectCardProps {
   className?: string;
 }
 
-/** A recruit: how good he is now, how good he can get, and how much he likes you. */
+/**
+ * A recruit: how good he is now, how good he can get, and how much he likes you.
+ *
+ * Built short. The first cut stacked a two-cell grid, a captioned meter and a
+ * labelled tag row under the head, and a board of thirty read as a scroll
+ * ("we have to scroll way too much"). The numbers now share one line, the
+ * meter is a bare bar with the leader's tick, and the sheet the head opens
+ * keeps every caption this card no longer carries.
+ */
 export function ProspectCard({
-  name, id, team, tags, meta, stars = 0, rank, ratingLow, ratingHigh, ratingNote, ceiling, ceilingNote,
+  name, id, team, tags, meta, stars = 0, rank, ratingLow, ratingHigh, ceiling,
   status, interest, wants, action, onOpen, children, className,
 }: ProspectCardProps) {
   const head = (
     <>
-      <Face id={id} team={team} size={48} />
+      <Face id={id} team={team} size={40} />
       <span className="pb-prospect__who">
         <span className="pb-prospect__name">{name}</span>
         <span className="pb-prospect__meta">
           {(tags ?? []).map((t, i) => <Tag key={i}>{t}</Tag>)}
+          <Stars value={stars} size={12} label="Recruit rating" />
           {meta && <span>{meta}</span>}
         </span>
-        <span className="pb-prospect__line">
-          <Stars value={stars} label="Recruit rating" />
-          {status && <StatusBadge tone={status.tone} icon={status.icon}>{status.label}</StatusBadge>}
-        </span>
+        {status && (
+          <span className="pb-prospect__line">
+            <StatusBadge tone={status.tone} icon={status.icon}>{status.label}</StatusBadge>
+          </span>
+        )}
       </span>
       {rank != null && <span className="pb-prospect__rank"><small>National</small><b>#{rank}</b></span>}
       {onOpen && <Icon name="chevron-right" size={20} className="pb-prospect__chevron" />}
@@ -552,28 +572,29 @@ export function ProspectCard({
       {onOpen
         ? <button type="button" className="pb-prospect__head" onClick={onOpen}>{head}</button>
         : <div className="pb-prospect__head">{head}</div>}
-      <div className="pb-prospect__grid">
-        <span>
-          <small>Rating now</small>
-          <b>{ratingLow === ratingHigh ? ratingLow : `${ratingLow}–${ratingHigh}`}</b>
-          <em>{ratingNote ?? 'Scouted range'}</em>
-        </span>
-        <span><small>Ceiling</small><b>{ceiling}</b><em>{ceilingNote ?? 'How good he can get'}</em></span>
-      </div>
+      <span className="pb-prospect__facts">
+        <span><small>Now</small><b>{ratingLow === ratingHigh ? ratingLow : `${ratingLow}–${ratingHigh}`}</b></span>
+        <span><small>Ceiling</small><b>{ceiling}</b></span>
+        {interest && (
+          <span>
+            <small>Interest</small>
+            <b>{interest.you}%</b>
+            {interest.leader != null && <em>{interest.leaderName ?? 'Leader'} {interest.leader}%</em>}
+          </span>
+        )}
+      </span>
       {interest && (
         <Meter
-          label="Interest in you"
-          valueText={`${interest.you}%`}
           value={interest.you}
           max={100}
-          markers={interest.leader != null
-            ? [{ at: interest.leader, text: <>{interest.leaderName ?? 'The leader'} <b>{interest.leader}%</b></> }]
-            : undefined}
+          size="sm"
+          ariaLabel="Interest in you"
+          markers={interest.leader != null ? [{ at: interest.leader }] : undefined}
         />
       )}
       {wants && wants.length > 0 && (
         <span className="pb-prospect__wants">
-          <small>Cares about</small>
+          <small>Wants</small>
           {wants.map((w, i) => {
             const it = typeof w === 'string' ? { text: w, fit: false } : w;
             return <Tag key={i} tone={it.fit ? 'positive' : undefined}>{it.fit && <Icon name="check" size={12} />}{it.text}</Tag>;

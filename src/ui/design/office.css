@@ -1,0 +1,446 @@
+/* design/office.css
+ * The Office rooms: coaching staff, the coach sheet, facilities and budget.
+ * From the UI clarity review (design/UI Clarity Review/Staff and Facilities.dc.html, 2026-09-25).
+ * The parts are in components/ui/program.tsx.
+ *
+ * Most controls here are bare <button>s, and the legacy layers round every
+ * bare button (rounded-ui.css, minimal-ui.css), so each one states its own
+ * corners. Status colours on small text use is-positive / is-warning on the
+ * element itself: a part's own colour rule would outrank pb-tone-- there.
+ */
+
+/* ------------------------------------------------------------- the pill */
+/* What is left, at the right of a room's title: a fact, so ink, not muted. */
+.pb-money-pill { color: var(--ink); }
+
+/* ------------------------------------------------------------- sub-heads */
+.pb-subhead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.pb-subhead__title { margin: 0; min-width: 0; font: 600 calc(15px * var(--pb-ts, 1))/22px var(--font-sans); color: var(--ink); }
+.pb-subhead__title span { font-weight: 500; color: var(--ink-muted); }
+.pb-subhead--md .pb-subhead__title { font-size: calc(17px * var(--pb-ts, 1)); line-height: 24px; }
+.pb-subhead__aside { flex: none; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); white-space: nowrap; }
+.pb-buyrail { gap: var(--space-2); }
+
+/* ---------------------------------------------------- how a coach helps */
+.pb-howto {
+  display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) 14px;
+  border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface);
+}
+.pb-howto__title {
+  font: 600 calc(10.5px * var(--pb-ts, 1))/14px var(--font-sans); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-muted);
+}
+.pb-howto__row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch; gap: 6px;
+}
+.pb-howto__box {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--space-2);
+  border-radius: 10px; background: var(--surface-sunken);
+}
+.pb-howto__box b { font: 600 calc(13px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink); }
+.pb-howto__box small { font: 400 calc(11.5px * var(--pb-ts, 1))/15px var(--font-sans); color: var(--ink-muted); }
+.pb-howto__box.is-accent { background: var(--accent-soft); }
+.pb-howto__box.is-accent b { color: var(--accent); }
+.pb-howto__op { align-self: center; color: var(--ink-muted); font: 700 calc(16px * var(--pb-ts, 1))/1 var(--font-sans); }
+
+/* -------------------------------------------------------------- needs you */
+.pb-needs { display: flex; flex-direction: column; gap: var(--space-2); }
+.pb-needs__title { font: 600 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink); }
+.pb-needs__row {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: var(--space-2) var(--space-3);
+  border: 0; border-radius: var(--radius-control); background: var(--warning-soft); color: var(--ink);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.pb-needs__row.is-info { background: var(--info-soft); }
+.pb-needs__icon { color: var(--warning); }
+.pb-needs__row.is-info .pb-needs__icon { color: var(--info); }
+.pb-needs__text { flex: 1; min-width: 0; font: 600 calc(14px * var(--pb-ts, 1))/18px var(--font-sans); }
+.pb-needs__cta { flex: none; font: 600 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--accent); }
+
+/* ------------------------------------------------------------ a staff seat */
+.pb-seat {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+}
+.pb-seat.is-vacant { background: transparent; border: 2px dashed var(--line-strong); box-shadow: none; }
+.pb-seat__head {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: 14px var(--space-4) var(--space-3);
+  border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: background-color var(--duration-quick) ease;
+}
+.pb-seat__head:active { background: var(--surface-sunken); }
+.pb-seat__who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pb-seat__role {
+  font: 600 calc(10.5px * var(--pb-ts, 1))/14px var(--font-sans); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-muted);
+}
+.pb-seat__name {
+  overflow: hidden; font: 700 calc(18px * var(--pb-ts, 1))/24px var(--font-sans); color: var(--ink);
+  white-space: nowrap; text-overflow: ellipsis;
+}
+.pb-seat__spec { font: 400 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-seat__rating { flex: none; display: flex; flex-direction: column; align-items: flex-end; }
+.pb-seat__rating b { font: 700 calc(30px * var(--pb-ts, 1))/1 var(--font-numeral); color: var(--ink); font-variant-numeric: tabular-nums; }
+.pb-seat__rating small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); white-space: nowrap; }
+.pb-seat__chevron { flex: none; color: var(--ink-muted); margin-right: -6px; }
+.pb-seat__strip {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0 var(--space-4);
+  overflow: hidden; border-radius: var(--radius-control); background: var(--line);
+}
+.pb-seat__cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--space-2) 10px; background: var(--surface-sunken); }
+.pb-seat__cell small { font: 500 calc(11.5px * var(--pb-ts, 1))/14px var(--font-sans); color: var(--ink-muted); }
+.pb-seat__cell b { font: 600 calc(14px * var(--pb-ts, 1))/20px var(--font-sans); color: var(--ink); }
+.pb-seat__cell b.is-warning { color: var(--warning); }
+.pb-seat__cell b.is-muted { color: var(--ink-muted); }
+.pb-seat__progress { display: flex; flex-direction: column; gap: 6px; margin: 10px var(--space-4) 0; }
+.pb-seat__progress-top {
+  display: flex; justify-content: space-between; gap: var(--space-2);
+  font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted);
+}
+.pb-seat__progress-top > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-seat__progress-top > :last-child { flex: none; white-space: nowrap; }
+.pb-seat__progress-top > .is-warning { font-weight: 600; color: var(--warning); }
+.pb-seat__foot {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap;
+  margin-top: var(--space-3); padding: 10px var(--space-4); border-top: 1px solid var(--line);
+  font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted);
+}
+.pb-seat__foot b { font-weight: 600; color: var(--ink); }
+.pb-seat__contract { display: inline-flex; align-items: center; gap: 4px; }
+.pb-seat__contract.is-ending { font-weight: 600; color: var(--warning); }
+.pb-seat__pitch { margin: 0; padding: 0 var(--space-4); font: 400 calc(14px * var(--pb-ts, 1))/20px var(--font-sans); color: var(--ink-muted); }
+.pb-seat__cta { padding: var(--space-3) var(--space-4) var(--space-4); }
+
+/* ------------------------------------------------------------- week pips */
+.pb-weeks { display: grid; gap: 3px; }
+.pb-weeks i { display: block; height: 6px; border-radius: var(--radius-pill); background: var(--track); }
+.pb-weeks--md i { height: 8px; }
+.pb-weeks i.is-done { background: var(--accent); }
+.pb-weeks i.is-now { background: color-mix(in srgb, var(--accent) 40%, var(--track)); }
+.pb-weeks.is-paused i.is-now { background: color-mix(in srgb, var(--warning) 45%, var(--track)); }
+
+/* ------------------------------------------------------- the coach sheet */
+.pb-coachsheet .pb-seg__opt { flex: 1 1 0; }
+.pb-coachsheet .pb-seg__badge.is-dot { background: var(--warning); }
+.pb-work { display: flex; flex-direction: column; gap: 10px; }
+.pb-work__hint { margin: 0; min-height: 18px; font: 400 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+/* A coordinator's focus lines run longer: two lines kept, so a tap never lifts the rest. */
+.pb-work__hint.is-two { min-height: 36px; }
+.pb-work__step { font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink); }
+/* The pinned footer's line over the start button: always there, one line, so the button never moves. */
+.pb-work__sum {
+  display: flex; justify-content: space-between; gap: var(--space-3); min-height: 16px;
+  font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted);
+}
+.pb-work__sum > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-work__sum > :last-child:not(:first-child) { flex: none; font-weight: 600; white-space: nowrap; }
+.pb-work__sum .is-positive { color: var(--positive); }
+.pb-work__sum .is-warning { color: var(--warning); }
+.pb-work__sum .is-negative { color: var(--negative); }
+
+/* The focus: pills, one of them on. */
+.pb-focus { display: flex; flex-wrap: wrap; gap: 6px; }
+.pb-focus__chip {
+  min-height: 36px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-pill);
+  background: var(--surface); color: var(--ink); font: 600 calc(13px * var(--pb-ts, 1))/1 var(--font-sans);
+  white-space: nowrap; cursor: pointer;
+}
+.pb-focus__chip.is-on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.pb-focus__chip:disabled { cursor: not-allowed; color: var(--ink-disabled); }
+.pb-focus__chip.is-on:disabled { color: var(--accent); }
+
+/* What to work on: three tiles, the badge's room kept on each. */
+.pb-kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.pb-kind {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 10px;
+  border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); color: var(--ink);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.pb-kind.is-on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.pb-kind:disabled { cursor: not-allowed; }
+.pb-kind b { font: 600 calc(14px * var(--pb-ts, 1))/18px var(--font-sans); overflow-wrap: anywhere; }
+.pb-kind small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-kind__badge {
+  display: inline-flex; align-items: center; min-height: 20px; max-width: 100%; padding: 2px 6px;
+  border-radius: 10px; background: var(--positive-soft); color: var(--positive);
+  font: 600 calc(11px * var(--pb-ts, 1))/1.15 var(--font-sans);
+}
+.pb-kind__badge.is-hidden { visibility: hidden; }
+
+/* Who: a box, the man, and what he stands to gain. */
+.pb-pick { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
+.pb-pick__head {
+  display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 14px;
+  font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted);
+}
+.pb-pick__row {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 56px; padding: var(--space-2) 14px;
+  border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.pb-pick__row.is-on { background: var(--accent-soft); }
+.pb-pick__row:disabled { cursor: not-allowed; }
+.pb-pick__check {
+  flex: none; display: grid; place-items: center; width: 20px; height: 20px;
+  border: 2px solid var(--line-strong); border-radius: calc(var(--radius-inner) / 2); color: var(--on-command);
+}
+.pb-pick__row.is-on .pb-pick__check { border-color: var(--command); background: var(--command); }
+.pb-pick__who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pb-pick__who b { overflow: hidden; font: 600 calc(14px * var(--pb-ts, 1))/20px var(--font-sans); text-overflow: ellipsis; white-space: nowrap; }
+.pb-pick__who small { font: 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-pick__value { flex: none; display: flex; align-items: center; }
+.pb-pick__value b {
+  min-width: 36px; text-align: right; font: 700 calc(18px * var(--pb-ts, 1))/1 var(--font-numeral);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pb-pick__value small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); }
+.pb-pick__row:disabled .pb-pick__who b, .pb-pick__row:disabled .pb-pick__value b { color: var(--ink-muted); }
+
+/* A running project. */
+.pb-proj {
+  display: flex; flex-direction: column; gap: var(--space-3); padding: 14px;
+  border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface);
+}
+.pb-proj__head { display: flex; align-items: center; gap: var(--space-3); }
+.pb-proj__who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pb-proj__who b { font: 600 calc(17px * var(--pb-ts, 1))/24px var(--font-sans); color: var(--ink); }
+.pb-proj__who span { font: 400 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-proj__facts {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 1px;
+  overflow: hidden; border-radius: var(--radius-control); background: var(--line);
+}
+.pb-proj__fact { display: flex; flex-direction: column; min-width: 0; padding: var(--space-2) 10px; background: var(--surface-sunken); }
+.pb-proj__fact small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-proj__fact small.is-positive { color: var(--positive); }
+.pb-proj__fact small.is-warning { color: var(--warning); }
+.pb-proj__fact b {
+  font: 700 calc(20px * var(--pb-ts, 1))/24px var(--font-numeral); color: var(--ink);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pb-proj__paused {
+  display: flex; align-items: center; gap: 6px; margin: 0;
+  font: 600 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--warning);
+}
+
+/* What he adds: a bar per skill, what it does for you under its name. */
+.pb-adds {
+  display: flex; flex-direction: column; gap: var(--space-2); padding: 14px var(--space-4);
+  border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface);
+}
+.pb-adds__title { font: 600 calc(15px * var(--pb-ts, 1))/22px var(--font-sans); color: var(--ink); }
+.pb-adds__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(56px, 32%) 32px; align-items: center; gap: 10px; }
+.pb-adds__label { display: flex; flex-direction: column; min-width: 0; font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink); }
+.pb-adds__label small { font: 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-adds__bar { display: block; height: 8px; overflow: hidden; border-radius: var(--radius-pill); background: var(--track); }
+.pb-adds__bar i { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--accent); }
+.pb-adds__value { text-align: right; font: 700 calc(17px * var(--pb-ts, 1))/1 var(--font-numeral); font-variant-numeric: tabular-nums; }
+
+/* The market for a seat. */
+.pb-cands { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
+.pb-cands__head {
+  display: flex; justify-content: space-between; gap: var(--space-3); padding: 10px 14px;
+  font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted);
+}
+.pb-cands__row {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 60px; padding: var(--space-2) 14px;
+  border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.pb-cands__row:active { background: var(--surface-sunken); }
+.pb-cands__who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pb-cands__who b { font: 600 calc(14px * var(--pb-ts, 1))/20px var(--font-sans); }
+.pb-cands__who small { font: 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-cands__rating {
+  flex: none; min-width: 28px; text-align: right; font: 700 calc(22px * var(--pb-ts, 1))/1 var(--font-numeral);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------ the money */
+.pb-swatch.is-ink { background: var(--ink); opacity: 0.75; }
+.pb-swatch.is-info { background: var(--info); opacity: 0.7; }
+.pb-swatch.is-track { background: var(--track); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.pb-stackbar {
+  display: flex; gap: 2px; height: 10px; overflow: hidden;
+  border-radius: var(--radius-pill); background: var(--track);
+}
+.pb-stackbar--lg { height: 12px; }
+.pb-stackbar i { flex: none; display: block; height: 100%; }
+.pb-stackbar i.is-ink { background: var(--ink); opacity: 0.75; }
+.pb-stackbar i.is-info { background: var(--info); opacity: 0.7; }
+
+/* The campus's budget card. */
+.pb-fund {
+  display: flex; flex-direction: column; gap: var(--space-2); padding: 14px var(--space-4);
+  border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface);
+}
+.pb-fund__top {
+  display: flex; justify-content: space-between; gap: var(--space-3);
+  font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted);
+}
+.pb-fund__top b { font-weight: 600; color: var(--ink); }
+.pb-fund__legend {
+  display: flex; flex-wrap: wrap; gap: var(--space-1) 14px;
+  font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted);
+}
+.pb-fund__legend > span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* The budget room's card. */
+.pb-ledger {
+  display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4);
+  border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-card);
+}
+.pb-ledger__top { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-3); }
+.pb-ledger__left { display: flex; flex-direction: column; }
+.pb-ledger__left > span { font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-ledger__left > b {
+  font: 700 calc(44px * var(--pb-ts, 1))/44px var(--font-numeral); color: var(--ink);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pb-ledger__left > b.is-negative { color: var(--negative); }
+.pb-ledger__of { text-align: right; font: 400 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-ledger__row {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: var(--space-2) 0;
+  border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink);
+  font: inherit; text-align: left;
+}
+button.pb-ledger__row { cursor: pointer; }
+button.pb-ledger__row:active { background: var(--surface-sunken); }
+.pb-ledger__what { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pb-ledger__what b { font: 600 calc(14px * var(--pb-ts, 1))/20px var(--font-sans); }
+.pb-ledger__what small { font: 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-ledger__value { flex: none; font: 600 calc(15px * var(--pb-ts, 1))/20px var(--font-sans); font-variant-numeric: tabular-nums; }
+.pb-ledger__chevron { flex: none; width: 18px; margin-right: -4px; color: var(--ink-muted); }
+
+/* What the rest can buy. */
+.pb-buys { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
+.pb-buy {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 60px; padding: 10px 14px;
+  border: 0; border-radius: 0; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.pb-buy + .pb-buy { border-top: 1px solid var(--line); }
+.pb-buy:active { background: var(--surface-sunken); }
+.pb-buy__icon {
+  flex: none; display: grid; place-items: center; width: 36px; height: 36px;
+  border-radius: 10px; background: var(--surface-sunken); color: var(--ink-muted);
+}
+.pb-buy__what { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pb-buy__what b { font: 600 calc(14.5px * var(--pb-ts, 1))/20px var(--font-sans); }
+.pb-buy__what small { font: 400 calc(12.5px * var(--pb-ts, 1))/17px var(--font-sans); color: var(--ink-muted); }
+.pb-buy__cost { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.pb-buy__cost b { font: 700 calc(18px * var(--pb-ts, 1))/1 var(--font-numeral); font-variant-numeric: tabular-nums; }
+.pb-buy__cost small { font: 600 calc(11.5px * var(--pb-ts, 1))/15px var(--font-sans); white-space: nowrap; }
+.pb-buy__cost small.is-positive { color: var(--positive); }
+.pb-buy__cost small.is-warning { color: var(--warning); }
+
+/* ------------------------------------------------------------ a building */
+.pb-fac {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+}
+.pb-fac.is-open { border-color: var(--line-strong); }
+.pb-fac__head {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: var(--space-3);
+  width: 100%; padding: var(--space-3) 14px; border: 0; border-radius: 0; background: transparent;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: background-color var(--duration-quick) ease;
+}
+.pb-fac__head:active { background: var(--surface-sunken); }
+.pb-fac__art {
+  --pb-knockout: var(--accent-soft);
+  display: grid; place-items: center; height: 56px; overflow: hidden;
+  border-radius: 10px; background: var(--accent-soft); color: var(--accent);
+}
+.pb-fac.is-unbuilt .pb-fac__art { --pb-knockout: var(--surface-sunken); background: var(--surface-sunken); color: var(--ink-muted); }
+/* The drawing fills its tile; program.css caps .facility-art for the old plaques. */
+.pb-fac__art .facility-art { display: block; width: 100%; height: 100%; max-height: none; margin: 0; color: inherit; opacity: 1; }
+.pb-fac__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pb-fac__name { font: 700 calc(17px * var(--pb-ts, 1))/22px var(--font-sans); color: var(--ink); }
+.pb-fac__helps { font: 400 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-ladder { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pb-ladder__step {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 20px;
+  border-radius: 6px; background: var(--surface-sunken); color: var(--ink-muted);
+  font: 700 calc(11px * var(--pb-ts, 1))/1 var(--font-sans);
+}
+.pb-ladder__step.is-built { background: var(--accent); color: var(--on-command); }
+.pb-ladder__step.is-now { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.pb-ladder__step.is-next { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.pb-fac__price { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.pb-fac__price small { font: 500 calc(11.5px * var(--pb-ts, 1))/14px var(--font-sans); color: var(--ink-muted); white-space: nowrap; }
+.pb-fac__price small.is-positive { font-weight: 600; color: var(--positive); }
+.pb-fac__price small.is-warning { font-weight: 600; color: var(--warning); }
+.pb-fac__price b {
+  font: 700 calc(22px * var(--pb-ts, 1))/1 var(--font-numeral); color: var(--ink);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pb-fac__panel { display: flex; flex-direction: column; gap: 10px; padding: var(--space-3) 14px 14px; border-top: 1px solid var(--line); }
+.pb-fac__table { display: flex; flex-direction: column; }
+.pb-fac__tr {
+  display: grid; grid-template-columns: minmax(0, 1fr) 52px 60px; align-items: center; gap: var(--space-2);
+  padding: 6px 0; border-top: 1px solid var(--line);
+}
+.pb-fac__table.is-max .pb-fac__tr { grid-template-columns: minmax(0, 1fr) 60px; }
+.pb-fac__th { padding: 0 0 var(--space-1); border-top: 0; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-fac__th > :not(:first-child) { text-align: right; }
+.pb-fac__label { display: flex; flex-direction: column; min-width: 0; font: 500 calc(14px * var(--pb-ts, 1))/20px var(--font-sans); color: var(--ink); }
+.pb-fac__label small { font: 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-fac__now, .pb-fac__next {
+  text-align: right; font: 600 calc(19px * var(--pb-ts, 1))/22px var(--font-numeral); color: var(--ink-muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pb-fac__next.is-up { color: var(--positive); }
+.pb-fac__note {
+  display: flex; align-items: center; min-height: 48px; margin: 0; padding: 0 var(--space-4);
+  border-radius: var(--radius-control); background: var(--surface-sunken);
+  font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------------ focus */
+/* Rows inside a clipped card keep their ring inside it. */
+:is(.pb-needs__row, .pb-focus__chip, .pb-kind):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:is(.pb-seat__head, .pb-pick__row, .pb-cands__row, .pb-fac__head, .pb-ledger__row, .pb-buy):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-seat__head, .pb-fac__head { transition: none; }
+}
+:root[data-motion='reduced'] :is(.pb-seat__head, .pb-fac__head) { transition: none; }
+
+/* The network room's coordinator plaque, alone while scouting is held back. */
+.pb-tiles.pb-tiles--one { grid-template-columns: minmax(0, 1fr); }
+
+/* ------------------------------------------------------- the season plan */
+/* Two lines under every seat's title, kept in every row, and a line kept for
+   the note, so a tap never moves the sheet.
+   The row is a grid so the "+3 each" sits beside the title alone and the two
+   lines run under it: 221px on a 375 phone rather than 151, which holds the
+   pick and three surnames (the flex row cut both). */
+.pb-plan__part { display: flex; flex-direction: column; gap: var(--space-2); }
+.pb-plan__seat {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "lead title value chev" "lead sub sub chev" "lead who who chev";
+  column-gap: var(--space-3); row-gap: 2px; align-items: center;
+}
+.pb-plan__seat .pb-row__body { display: contents; }
+.pb-plan__seat .pb-row__lead { grid-area: lead; }
+.pb-plan__seat .pb-row__value { grid-area: value; line-height: 22px; }
+.pb-plan__seat .pb-row__chevron { grid-area: chev; }
+.pb-plan__seat .pb-row__title { grid-area: title; }
+.pb-plan__seat .pb-row__subtitle { grid-area: sub; }
+.pb-plan__seat .pb-row__status {
+  grid-area: who; display: block; margin-top: 0;
+  font: 400 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted);
+}
+.pb-plan__seat :is(.pb-row__title, .pb-row__subtitle, .pb-row__status) {
+  min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.pb-plan__note {
+  margin: 0; min-height: 1.4em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font: 400 calc(13px * var(--pb-ts, 1))/1.4 var(--font-sans); color: var(--ink-muted);
+}
+.pb-plan .pb-seg__opt { flex: 1 1 0; }
+/* The staff list under "I run it": kept in place so nothing jumps, out of
+   reach and faded (SeasonPlan.tsx). */
+.pb-plan__list.is-idle { opacity: 0.4; }

@@ -1,12 +1,19 @@
 // Roster.tsx
-// Your players: who they are, how good they are today, how good they can get,
-// and whether they can play.
+// Your players, grouped the way a lineup card thinks — catchers, infield,
+// outfield; starters and relievers — with the three things that need you
+// counted on top: who is hurt, who the draft may take, who is unhappy.
 //
-// The two numbers are defined once, at the top, in words. Every row then says
-// the same things in the same places: the face, the name, the position, the
-// class year, the potential, a status badge when there is something to say,
-// and the rating big at the right. Search and chips narrow the list; class
-// year, position and status filters sit behind the filter button.
+// From the UI clarity review (design/UI Clarity Review/Roster and Player.dc.html,
+// variant "A · Grouped with flags", 2026-09-25). It replaced a search field,
+// view chips and a panel of filters: the counters are the filters now. A tap
+// on one shows only those men, a second tap shows everyone again. Every row
+// says the same things in the same places: the face, the name, the position
+// and the class, what is wrong if anything is, then his potential and, big,
+// his rating now. A row with something wrong carries its colour down its left
+// edge, so a long list can be read by its edge alone.
+//
+// The words on the chips are the player card's (PlayerHub.tsx), so a row and
+// the card it opens never disagree about a man.
 
 import { useMemo, useState } from 'react';
 import { useDynasty, useUserTeam } from '../../state/store.js';
@@ -16,224 +23,233 @@ import { FirstVisit } from '../Tutorial.js';
 import { overallOf, naturalPos } from '../../engine/ratings.js';
 import { captainOf } from '../../engine/captains.js';
 import { potentialGrade } from '../../engine/scouting.js';
-import { battingAverage, era, inningsPitched, injuryClock } from '../../engine/season.js';
+import { injuryClock } from '../../engine/season.js';
 import { isHurt } from '../../engine/injury.js';
-import { mood } from '../../engine/morale.js';
-import { draftEligible } from '../../engine/draft.js';
-import { available } from '../../engine/depthChart.js';
-import { uniquePlayers } from '../../engine/types.js';
+import { isTwoWay, uniquePlayers } from '../../engine/types.js';
 import type { Hitter, Pitcher, Player } from '../../engine/types.js';
-import { whyOut } from '../Needs.js';
-import { ipText, pct } from '../format.js';
 import {
-  Button, Chip, Chips, EmptyState, Face, IconButton, List, Marquee, Monogram, NamePlate, PlayerRow,
-  SearchField, SectionHeader, StatusBadge, Tag,
+  EmptyState, Face, Icon, List, Marquee, Monogram, NamePlate, PlayerRow, SectionHeader,
+  SegmentedControl, Tag, cx, type IconName,
 } from '../components/ui/index.js';
-import { CLASS_NAME, POSITION_NAME } from '../words.js';
+import {
+  availabilityOf, classWord, draftOutlook, moodFlag, posName, type Tint,
+} from './PlayerHub.js';
 
-type Mode = 'all' | 'bat' | 'arm' | 'hurt';
+type View = 'bat' | 'arm' | 'all';
+type Flag = 'hurt' | 'draft' | 'mood';
 
-/** The order a lineup card thinks in; pitcher roles ride at the end. */
-const SLOT_ORDER = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'SP', 'RP'];
+/** The counters, in the review's order: what is wrong, then what could go wrong. */
+const FLAGS: ReadonlyArray<{ key: Flag; label: string; tone: 'negative' | 'warning'; icon: IconName; none: string }> = [
+  { key: 'hurt', label: 'Injured', tone: 'negative', icon: 'cross-circled', none: 'injured' },
+  { key: 'draft', label: 'Draft risk', tone: 'warning', icon: 'alert', none: 'at risk in the draft' },
+  { key: 'mood', label: 'Unhappy', tone: 'warning', icon: 'minus-circled', none: 'unhappy' },
+];
 
-// A DH reads as the position he actually plays: the DH is a lineup slot, not a
-// player. See `naturalPos`.
-const slotOf = (p: Player): string =>
-  p.type === 'pitcher' ? (p as Pitcher).role : naturalPos(p as Hitter);
+/*
+  Where a man is listed. A hitter by the position he actually plays — his own,
+  not the one the chart has him covering tonight, so the list does not
+  reshuffle every time the lineup moves somebody for a night — and a man the
+  roster calls a DH by the spot his glove says he is (`naturalPos`), because
+  the DH is a lineup slot and not a position: he lands at first base or in a
+  corner of the outfield. An arm by his own role, for the same reason
+  (`homeRole`). A two-way man on the staff is both, so he is listed in both:
+  at his position among the hitters and in his role among the pitchers, once
+  under Everyone, and his tag says both halves ("SS/SP") wherever he appears.
+*/
+const HITTER_GROUPS: ReadonlyArray<[string, readonly string[]]> = [
+  ['Catchers', ['C']],
+  ['Infield', ['1B', '2B', 'SS', '3B']],
+  ['Outfield', ['LF', 'CF', 'RF']],
+];
+const ARM_GROUPS: ReadonlyArray<[string, readonly string[]]> = [
+  ['Starting pitchers', ['SP']],
+  ['Relief pitchers', ['RP']],
+];
 
-const sentence = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+interface Chip { text: string; tint: Tint; icon?: IconName; flag?: Flag }
 
-/**
- * Why a player is not playing, as a badge that says which reason: the
- * trainer's, the registrar's, a season you chose to redshirt, or a rest.
- * Nothing for a player who is fit, which is nearly everybody nearly always.
- */
-function statusBadge(p: Player, day: number) {
-  if ((p as Player & { redshirt?: boolean }).redshirt) {
-    return <StatusBadge tone="neutral" icon="pause">Redshirt · sits out this season</StatusBadge>;
-  }
-  if (available(p, day)) return null;
-  if (isHurt(p, day)) return <StatusBadge tone="negative" icon="cross-circled">Injured · {whyOut(p, day)}</StatusBadge>;
-  if ((p as Player & { why?: string }).why === 'academic') {
-    return <StatusBadge tone="warning" icon="reader">Academic hold · {whyOut(p, day)}</StatusBadge>;
-  }
-  return <StatusBadge tone="neutral" icon="clock">{sentence(whyOut(p, day))}</StatusBadge>;
+interface Row {
+  p: Player;
+  /** His position among the hitters, or null for a man who only pitches. */
+  pos: string | null;
+  /** His role on the staff, or null for a man who only hits. */
+  role: string | null;
+  chips: Chip[];
+  flags: Set<Flag>;
+  /** The left edge: the first chip that is a problem or a watch. */
+  edge: 'negative' | 'warning' | null;
 }
 
 export function Roster() {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
+  const phase = useDynasty((s) => s.phase);
+  const winter = phase !== null;
   const team = useUserTeam();
   const openOverlay = useDynasty((st) => st.openOverlay);
   // The captaincy has its own switch; this door reads that one.
   const namesCaptain = useDynasty((st) => handles(st.depth, 'captains'));
   const openPlayer = useDynasty((s) => s.openPlayer);
-  const [mode, setMode] = useState<Mode>('all');
-  const [query, setQuery] = useState('');
-  const [yearF, setYearF] = useState<string | null>(null);
-  const [posF, setPosF] = useState<string | null>(null);
-  const [statusF, setStatusF] = useState<string | null>(null);
-  const [filterOpen, setFilterOpen] = useState(false);
-  void version;
+  const [view, setView] = useState<View>('bat');
+  const [flag, setFlag] = useState<Flag | null>(null);
 
   const day = season ? injuryClock(season) : 0;
-  const all = useMemo(() => (team ? uniquePlayers([
-    ...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen,
-  ]) : []), [team, version]);
+  const rows = useMemo((): Row[] => {
+    if (!team) return [];
+    const men = uniquePlayers([
+      ...team.team.lineup, ...team.team.bench, ...team.team.rotation, ...team.team.bullpen,
+    ]);
+    const hitters = new Set([...team.team.lineup, ...team.team.bench].map((p) => p.id));
+    const arms = new Set([...team.team.rotation, ...team.team.bullpen].map((p) => p.id));
+    return men.map((p): Row => {
+      const homePos = p.type === 'hitter' ? (p as Hitter).homePos : undefined;
+      const pos = p.type === 'hitter' && (hitters.has(p.id) || !arms.has(p.id))
+        ? naturalPos(homePos ? { ...(p as Hitter), pos: homePos } : (p as Hitter)) : null;
+      const arm = p.type === 'pitcher' || isTwoWay(p)
+        ? (p as Pitcher & { homeRole?: Pitcher['role'] }) : null;
+      const role = arm && (arms.has(p.id) || p.type === 'pitcher') ? (arm.homeRole ?? arm.role) : null;
+
+      const chips: Chip[] = [];
+      const status = availabilityOf(p, day, winter);
+      if (status.chip) {
+        const hurt = isHurt(p, day);
+        chips.push({ text: status.chip, tint: status.tint, icon: hurt ? 'cross-circled' : undefined, flag: hurt ? 'hurt' : undefined });
+      }
+      const draft = draftOutlook(p, phase, season);
+      if (draft.risk) chips.push({ text: draft.value, tint: 'warn', flag: 'draft' });
+      const feeling = moodFlag(p);
+      if (feeling) chips.push({ text: feeling.text, tint: feeling.tint, flag: 'mood' });
+
+      const loud = chips.find((c) => c.tint === 'bad' || c.tint === 'warn');
+      return {
+        p,
+        pos,
+        role,
+        chips,
+        flags: new Set(chips.flatMap((c) => (c.flag ? [c.flag] : []))),
+        edge: loud ? (loud.tint === 'bad' ? 'negative' : 'warning') : null,
+      };
+    });
+    // The engine mutates the men in place; the version is what says they moved.
+  }, [team, version, day, phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!season || !team) return null;
 
-  const hittersAll = uniquePlayers([...team.team.lineup, ...team.team.bench]);
-  const armsAll = uniquePlayers([...team.team.rotation, ...team.team.bullpen]);
   const captain = captainOf(team.team);
-  const hurtCount = all.filter((p) => isHurt(p, day)).length;
-
-  const keep = (p: Player): boolean => {
-    const feeling = mood(p);
-    const statusOk = statusF === null
-      || (statusF === 'unhappy' && (feeling === 'unhappy' || feeling === 'restless'))
-      || (statusF === 'draft' && (p.classYear === 'SR' || draftEligible({ classYear: p.classYear, age: p.age + 1 })))
-      || (statusF === 'redshirt' && Boolean((p as Player & { redshirt?: boolean }).redshirt));
-    const q = query.trim().toLowerCase();
-    return (yearF === null || p.classYear === yearF)
-      && (posF === null || slotOf(p) === posF)
-      && (q === '' || p.name.toLowerCase().includes(q))
-      && statusOk;
+  const counts: Record<Flag, number> = {
+    hurt: rows.filter((r) => r.flags.has('hurt')).length,
+    draft: rows.filter((r) => r.flags.has('draft')).length,
+    mood: rows.filter((r) => r.flags.has('mood')).length,
   };
 
-  const base = mode === 'bat' ? hittersAll : mode === 'arm' ? armsAll : mode === 'hurt' ? all.filter((p) => isHurt(p, day)) : all;
-  const rows = base.filter(keep).sort((a, b) => overallOf(b) - overallOf(a));
-  const slots = [...new Set(all.map(slotOf))].sort((a, b) => {
-    const ai = SLOT_ORDER.indexOf(a); const bi = SLOT_ORDER.indexOf(b);
-    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi) || a.localeCompare(b);
-  });
-  const filtered = yearF !== null || posF !== null || statusF !== null;
-  const clearFilters = (): void => { setYearF(null); setPosF(null); setStatusF(null); };
+  const pool = view === 'bat' ? rows.filter((r) => r.pos !== null)
+    : view === 'arm' ? rows.filter((r) => r.role !== null)
+      : rows;
+  const shown = pool
+    .filter((r) => flag === null || r.flags.has(flag))
+    .sort((a, b) => overallOf(b.p) - overallOf(a.p));
 
-  const statsFor = (p: Player): Array<{ label: string; value: string; title?: string }> | undefined => {
-    if (mode === 'bat' && p.type !== 'pitcher') {
-      const line = season.batting.get(p.id);
-      return [
-        { label: 'AVG', title: 'Batting average', value: line && line.ab > 0 ? pct(battingAverage(line)) : '—' },
-        { label: 'HR', title: 'Home runs', value: line ? String(line.hr) : '—' },
-      ];
-    }
-    if (mode === 'arm' && p.type === 'pitcher') {
-      const line = season.pitching.get(p.id);
-      return [
-        { label: 'ERA', title: 'Earned runs per 9 innings', value: line && line.outs > 0 ? era(line).toFixed(2) : '—' },
-        { label: 'IP', title: 'Innings pitched', value: line && line.outs > 0 ? ipText(inningsPitched(line)) : '—' },
-      ];
-    }
-    return undefined;
+  const defs = view === 'bat' ? HITTER_GROUPS : ARM_GROUPS;
+  const slotOf = (r: Row): string => (view === 'arm' ? r.role : r.pos) ?? '';
+  const groups: Array<{ title: string; rows: Row[]; cols: string }> = view === 'all'
+    ? [{ title: 'Everyone', rows: shown, cols: '' }]
+    : [
+      ...defs.map(([title, spots]) => ({ title, rows: shown.filter((r) => spots.includes(slotOf(r))), cols: 'Pot. · Now' })),
+      // Nobody should ever be missing from his own roster: a spot no group
+      // names (none today) still gets a home at the end.
+      {
+        title: 'Others',
+        rows: shown.filter((r) => !defs.some(([, spots]) => spots.includes(slotOf(r)))),
+        cols: 'Pot. · Now',
+      },
+    ].filter((g) => g.rows.length > 0);
+
+  const who = view === 'bat' ? 'hitters' : view === 'arm' ? 'pitchers' : 'players';
+  const flagged = FLAGS.find((f) => f.key === flag);
+
+  const row = (r: Row) => {
+    const { p } = r;
+    // Both halves of a two-way man, wherever he is listed.
+    const slot = r.pos && r.role ? `${r.pos}/${r.role}` : (r.pos ?? r.role ?? '');
+    const slotTitle = r.pos && r.role
+      ? `${posName(r.pos)} and ${posName(r.role).toLowerCase()}` : posName(slot);
+    return (
+      <PlayerRow
+        key={p.id}
+        className={cx(r.edge && `is-flag-${r.edge}`)}
+        name={p.name}
+        avatar={<Face id={p.id} team={team.def.abbr} size={36} />}
+        mark={captain?.id === p.id ? <Tag tone="positive" title="Team captain">Captain</Tag> : undefined}
+        tags={[{ text: slot, title: slotTitle }, classWord(p.classYear)]}
+        meta={r.chips.length > 0 ? r.chips.map((c) => (
+          <span key={c.text} className={cx('pb-roster__chip', `is-${c.tint}`)}>
+            {c.icon && <Icon name={c.icon} size={11} />}{c.text}
+          </span>
+        )) : undefined}
+        stats={[{ label: 'Pot.', value: potentialGrade(p.potential), title: 'Potential' }]}
+        value={overallOf(p)}
+        valueLabel="Now"
+        chevron={false}
+        onClick={() => openPlayer(p.id as Parameters<typeof openPlayer>[0])}
+      />
+    );
   };
-
-  const title = mode === 'bat' ? 'Hitters' : mode === 'arm' ? 'Pitchers' : mode === 'hurt' ? 'Injured' : 'All players';
 
   return (
-    <main className="pb-page">
+    <main className="pb-page pb-roster">
       <FirstVisit id="roster" />
       <Marquee
-        eyebrow={`${team.def.school} · ${all.length} on the card`}
+        eyebrow={`${team.def.school} · ${rows.length} on the card`}
         title="Roster"
         trailing={<GodBolt target={{ kind: 'roster', team: team.index }} label="Edit the roster in god mode" />}
-        numbers={[
-          { label: 'Hitters', value: hittersAll.length },
-          { label: 'Pitchers', value: armsAll.length },
-          { label: 'Freshmen', value: all.filter((p) => p.classYear === 'FR').length },
-          {
-            label: 'Injured',
-            value: hurtCount,
-            tone: hurtCount > 0 ? 'negative' : undefined,
-          },
+      />
+
+      <div className="pb-roster__flags" role="group" aria-label="Needs a look">
+        {FLAGS.map((f) => {
+          const n = counts[f.key];
+          const on = flag === f.key;
+          return (
+            <button
+              key={f.key}
+              type="button"
+              className={cx('pb-roster__flag', `is-${f.tone}`, on && 'is-on', n === 0 && 'is-zero')}
+              aria-pressed={on}
+              disabled={n === 0 && !on}
+              onClick={() => setFlag(on ? null : f.key)}
+            >
+              <span className="pb-roster__flag-count"><Icon name={f.icon} size={14} /><b>{n}</b></span>
+              <small>{f.label}</small>
+            </button>
+          );
+        })}
+      </div>
+
+      <SegmentedControl<View>
+        label="Show"
+        value={view}
+        onChange={setView}
+        options={[
+          { value: 'bat', label: 'Hitters' },
+          { value: 'arm', label: 'Pitchers' },
+          { value: 'all', label: 'Everyone' },
         ]}
       />
 
-      <div className="pb-stack">
-        <SearchField
-          label="Search your roster"
-          placeholder={`Search ${all.length} players`}
-          value={query}
-          onChange={(e) => setQuery(e.currentTarget.value)}
-          trailing={(
-            <IconButton
-              icon="filter"
-              label={filtered ? 'More filters, some on' : 'More filters'}
-              tone="quiet"
-              badge={filtered ? '•' : undefined}
-              aria-expanded={filterOpen}
-              onClick={() => setFilterOpen((v) => !v)}
-            />
-          )}
+      {groups.length === 0 ? (
+        <EmptyState
+          icon={flagged?.icon ?? 'person'}
+          title={flagged ? `No ${who} ${flagged.none}` : `No ${who}`}
+          action={flagged ? { label: 'Clear filter', onClick: () => setFlag(null) } : undefined}
         />
-        <Chips label="Show">
-          <Chip selected={mode === 'all'} count={all.length} onClick={() => setMode('all')}>All</Chip>
-          <Chip selected={mode === 'bat'} count={hittersAll.length} onClick={() => setMode('bat')}>Hitters</Chip>
-          <Chip selected={mode === 'arm'} count={armsAll.length} onClick={() => setMode('arm')}>Pitchers</Chip>
-          {hurtCount > 0 && <Chip selected={mode === 'hurt'} count={hurtCount} onClick={() => setMode('hurt')}>Injured</Chip>}
-        </Chips>
-        {filterOpen && (
-          <div className="pb-filters">
-            <Chips label="Class year">
-              {(['FR', 'SO', 'JR', 'SR'] as const).map((y) => (
-                <Chip key={y} selected={yearF === y} onClick={() => setYearF(yearF === y ? null : y)}>{CLASS_NAME[y]}</Chip>
-              ))}
-            </Chips>
-            <Chips label="Position">
-              {slots.map((s) => (
-                <Chip key={s} selected={posF === s} onClick={() => setPosF(posF === s ? null : s)}>
-                  {POSITION_NAME[s as keyof typeof POSITION_NAME] ?? s}
-                </Chip>
-              ))}
-            </Chips>
-            <Chips label="Status">
-              {[['unhappy', 'Unhappy'], ['draft', 'Draft eligible'], ['redshirt', 'Redshirt']].map(([k, label]) => (
-                <Chip key={k} selected={statusF === k} onClick={() => setStatusF(statusF === k ? null : k!)}>{label}</Chip>
-              ))}
-            </Chips>
-            {filtered && <Button variant="quiet" size="sm" icon="cross" onClick={clearFilters}>Clear filters</Button>}
+      ) : groups.map((g) => (
+        <section key={g.title} className="pb-roster__group" aria-label={g.title}>
+          <div className="pb-roster__grouphead">
+            <h2>{g.title}<span>{g.rows.length}</span></h2>
+            {g.cols && <small>{g.cols}</small>}
           </div>
-        )}
-      </div>
-
-      <section>
-        <SectionHeader
-          title={title}
-          count={rows.length === base.length ? rows.length : `${rows.length} of ${base.length}`}
-        />
-        {rows.length === 0 ? (
-          <EmptyState
-            icon="search"
-            title="Nobody matches"
-            text="Try a different search or clear the filters."
-            action={filtered || query ? { label: 'Clear search and filters', onClick: () => { clearFilters(); setQuery(''); } } : undefined}
-          />
-        ) : (
-          <List label="Players">
-            {rows.map((p) => {
-              const slot = slotOf(p);
-              return (
-                <PlayerRow
-                  key={p.id}
-                  name={p.name}
-                  avatar={<Face id={p.id} team={team.def.abbr} size={40} />}
-                  mark={captain?.id === p.id ? <Tag tone="positive" title="Team captain">Captain</Tag> : undefined}
-                  tags={[
-                    { text: slot, title: POSITION_NAME[slot as keyof typeof POSITION_NAME] ?? slot },
-                    CLASS_NAME[p.classYear],
-                  ]}
-                  meta={`Potential ${potentialGrade(p.potential)}`}
-                  flags={statusBadge(p, day) ?? undefined}
-                  stats={statsFor(p)}
-                  value={overallOf(p)}
-                  valueLabel="Rating"
-                  onClick={() => openPlayer(p.id as Parameters<typeof openPlayer>[0])}
-                />
-              );
-            })}
-          </List>
-        )}
-      </section>
+          <List label={g.title}>{g.rows.map(row)}</List>
+        </section>
+      ))}
 
       {namesCaptain && (
         <section>

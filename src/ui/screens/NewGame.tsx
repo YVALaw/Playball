@@ -52,6 +52,7 @@ import { BACKGROUNDS, type BackgroundId } from '../../data/backgrounds.js';
 import { badgeOf } from '../../data/badges.js';
 import { Crest } from '../Crest.js';
 import { StepRail } from '../StepRail.js';
+import { BackLevel } from '../BackLevel.js';
 import { StepScreen } from './OffseasonStep.js';
 import { policyWords } from './StrategyScreen.js';
 import {
@@ -123,6 +124,11 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   // How deep a game this career is. Held here rather than written to the store
   // because no career exists yet; it is handed to `start` with the rest.
   const [mode, setMode] = useState<DepthMode>('full');
+  // Who runs recruiting (2026-09-28). Unanswered, it follows the style: a
+  // casual career hands the week to the staff, a full one keeps it. Once the
+  // coach picks, his pick stands whichever style he then chooses.
+  const [recruitBy, setRecruitBy] = useState<'me' | 'staff' | null>(null);
+  const effective: 'me' | 'staff' = recruitBy ?? (mode === 'casual' ? 'staff' : 'me');
   // God mode, for this career. Offered only on a device that owns it.
   const godOwned = readPrefs().godMode;
   const [godMode, setGodMode] = useState(false);
@@ -212,9 +218,22 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
       <Button variant="primary" iconAfter="arrow-right" onClick={onClick}>{label}</Button>
     </ActionBar>
   );
+  /*
+    Back walks the steps, then returns to Start (2026-09-30): one level for
+    the wizard and one per step behind this one, oldest first, ahead of the
+    step so they keep their place when it changes. A rail jump registers or
+    gives back the difference in one commit, so the browser gets one write.
+  */
+  const levels = (
+    <>
+      {onExit && <BackLevel onBack={onExit} />}
+      {Array.from({ length: step }, (_, i) => <BackLevel key={i} onBack={() => setStep(i as StepIndex)} />)}
+    </>
+  );
+  const levelled = (node: ReactNode) => <>{levels}{node}</>;
 
   if (step === 0) {
-    return (
+    return levelled(
       <Identity
         rail={rail}
         profile={coach}
@@ -233,11 +252,13 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   }
 
   if (step === 1) {
-    return (
+    return levelled(
       <DepthStep
         rail={rail}
         chosen={mode}
         onChoose={setMode}
+        recruitBy={effective}
+        onRecruitBy={setRecruitBy}
         godOwned={godOwned}
         god={godMode}
         onGod={setGodMode}
@@ -250,7 +271,7 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   }
 
   if (step === 2) {
-    return (
+    return levelled(
       <BackgroundStep
         rail={rail}
         chosen={backgroundId}
@@ -262,7 +283,7 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   }
 
   if (step === 3) {
-    return (
+    return levelled(
       <PlayStyle
         rail={rail}
         chosen={coach.philosophy ?? DEFAULT_PHILOSOPHY}
@@ -278,7 +299,7 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   const culture = picked ? cultureOf(picked.abbr) : undefined;
   const record = picked ? world.teams.find((t) => t.def.abbr === picked.abbr) : undefined;
 
-  return (
+  return levelled(
     <StepScreen top={rail}>
       <main className="pb-page">
         <ScreenHeader
@@ -353,7 +374,7 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
                 skills: outcome.skills,
                 badges: outcome.badges,
                 leans: outcome.leans,
-              }, godMode, rules)}
+              }, godMode, rules, effective === 'staff' ? { recruiting: false } : undefined)}
             >Take the {picked.school} job</Button>
           ) : (
             <Button variant="secondary" block onClick={() => setPicked(null)}>Back to the offers</Button>
@@ -661,10 +682,13 @@ function WorldRules(
  * the game easier or the world smaller.
  */
 function DepthStep(
-  { rail, chosen, onChoose, godOwned, god, onGod, rules, onRules, onBack, bar }: {
+  { rail, chosen, onChoose, recruitBy, onRecruitBy, godOwned, god, onGod, rules, onRules, onBack, bar }: {
     rail: ReactNode;
     chosen: DepthMode;
     onChoose: (m: DepthMode) => void;
+    /** Who runs recruiting, as this career will start. */
+    recruitBy: 'me' | 'staff';
+    onRecruitBy: (v: 'me' | 'staff') => void;
     /** The device owns god mode, so the sandbox switch is offered. */
     godOwned: boolean;
     god: boolean;
@@ -682,14 +706,18 @@ function DepthStep(
     },
     {
       id: 'casual', title: 'Casual',
-      line: 'Your staff handles the routine and you handle the season. Recruiting, the draft and the big calls stay yours.',
+      line: 'Your staff handles the routine and you handle the season. The draft and the big calls stay yours.',
     },
   ];
   // What the chosen style moves, read off the same SYSTEMS table the settings
   // screen enforces, so this preview and the career it starts cannot disagree.
-  const shown = SYSTEMS.filter((sys) => DESK_KEYS.includes(sys.key));
-  const desk = chosen === 'full' ? shown : shown.filter((sys) => sys.casual);
-  const staff = chosen === 'full' ? [] : shown.filter((sys) => !sys.casual);
+  // Recruiting is its own answer, in its own card above, so it is not a tag
+  // here: a tag that jumped between the two rows on its switch grew this card
+  // under the thumb and pushed everything below it down.
+  const shown = SYSTEMS.filter((sys) => DESK_KEYS.includes(sys.key) && sys.key !== 'recruiting');
+  const yours = (sys: (typeof SYSTEMS)[number]): boolean => chosen === 'full' || sys.casual;
+  const desk = shown.filter(yours);
+  const staff = shown.filter((sys) => !yours(sys));
 
   return (
     <StepScreen top={rail} bar={bar}>
@@ -706,7 +734,25 @@ function DepthStep(
           ))}
         </OptionGroup>
 
-        <Card title="You handle" eyebrow={chosen === 'full' ? 'Everything' : 'The big calls'}>
+        <Card title="Recruiting">
+          <SegmentedControl<'me' | 'staff'>
+            kind="radio"
+            label="Who runs recruiting"
+            value={recruitBy}
+            options={[{ value: 'me', label: 'I run it' }, { value: 'staff', label: 'Staff runs it' }]}
+            onChange={onRecruitBy}
+          />
+          {/* Both lines fit one line on a 375 phone at every text size, so
+              the card keeps its height on the switch. */}
+          <p className="pb-text-muted">
+            {recruitBy === 'staff' ? 'Your staff works the recruits you star.' : 'You spend the points each week.'}
+          </p>
+        </Card>
+
+        <Card
+          title="You handle"
+          eyebrow={chosen === 'full' ? (recruitBy === 'me' ? 'Everything' : 'Everything else') : 'The big calls'}
+        >
           <div className="pb-cluster">
             {desk.map((sys) => <Tag key={sys.key}>{sys.label}</Tag>)}
           </div>
@@ -761,6 +807,23 @@ function Swatch(
   );
 }
 
+/*
+  The four backgrounds' icons: line art in ../backgrounds, drawn as a mask so
+  the line takes the text colour on either theme, and the accent once chosen.
+  The same glob-through-a-cast as Crest.tsx.
+*/
+type UrlGlob = (pattern: string, options: { eager: true; query: '?url'; import: 'default' }) => Record<string, string>;
+const BACKGROUND_ICONS = (import.meta as unknown as { glob: UrlGlob }).glob('../backgrounds/*.webp', {
+  eager: true, query: '?url', import: 'default',
+});
+
+function BackgroundIcon({ id }: { id: BackgroundId }) {
+  const src = BACKGROUND_ICONS[`../backgrounds/${id}.webp`];
+  if (!src) return null;
+  const mask = `url("${src}")`;
+  return <span className="pb-bg-icon" aria-hidden style={{ WebkitMaskImage: mask, maskImage: mask }} />;
+}
+
 /** Exported for the successor screen. See `screens/Legacy.tsx`. */
 export function BackgroundStep(
   { rail, chosen, onChoose, onBack, bar }: {
@@ -783,7 +846,10 @@ export function BackgroundStep(
         />
         <OptionGroup label="Your background">
           {BACKGROUNDS.map((b) => (
-            <OptionCard key={b.id} title={b.title} hint={b.blurb} selected={chosen === b.id} onSelect={() => onChoose(b.id)} />
+            <OptionCard
+              key={b.id} title={b.title} hint={b.blurb} meta={<BackgroundIcon id={b.id} />}
+              selected={chosen === b.id} onSelect={() => onChoose(b.id)}
+            />
           ))}
         </OptionGroup>
 

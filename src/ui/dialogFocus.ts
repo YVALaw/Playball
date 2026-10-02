@@ -15,7 +15,7 @@
 // sheet does not close both. When the dialog goes, focus goes home to the
 // element that opened it.
 
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import { registerBackLayer, releaseBackLayer } from '../state/backLayers.js';
 
 const TABBABLE = [
@@ -46,11 +46,23 @@ export function useDialogFocus(
   const { initial, active = true, layer = true } = opts;
   const dismissRef = useRef(dismiss);
   dismissRef.current = dismiss;
+  /*
+    The layer's history entry is spent BEFORE the dialog paints (2026-09-24).
+    A phone's back swipe in a browser previews the screenshot taken of the
+    entry it returns to, at the moment that entry was left; spent after the
+    paint, that screenshot already had this dialog in it, so the swipe that
+    closes it showed it still open and then flicked it away. The element rides
+    along for the Android gesture, which moves it with the finger.
+  */
+  useLayoutEffect(() => {
+    if (!active || !layer) return undefined;
+    const layerId = registerBackLayer(() => dismissRef.current(), () => dialog.current);
+    return () => releaseBackLayer(layerId);
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!active) return undefined;
     const token = Symbol('dialog');
     open.push(token);
-    const layerId = layer ? registerBackLayer(() => dismissRef.current()) : 0;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const first = initial?.current
       ?? dialog.current?.querySelector<HTMLElement>(TABBABLE)
@@ -77,10 +89,19 @@ export function useDialogFocus(
       }
     };
     document.addEventListener('keydown', onKey);
+    // A dialog held while the frame under it painted (historySync, V1) could
+    // not take focus hidden: it takes it when shown, if nothing inside has it.
+    const onReveal = (): void => {
+      const box = dialog.current;
+      if (!box || open[open.length - 1] !== token) return;
+      if (document.activeElement instanceof Node && box.contains(document.activeElement)) return;
+      (initial?.current ?? box.querySelector<HTMLElement>(TABBABLE) ?? box).focus();
+    };
+    window.addEventListener('pb:reveal', onReveal);
     return () => {
+      window.removeEventListener('pb:reveal', onReveal);
       document.removeEventListener('keydown', onKey);
       open.splice(open.indexOf(token), 1);
-      if (layerId) releaseBackLayer(layerId);
       opener?.focus();
     };
     // The refs are stable boxes; `active` is the only input that changes.

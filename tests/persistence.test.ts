@@ -49,12 +49,47 @@ describe('the save record', () => {
     expect(file.postseason).toBeDefined();
   });
 
+  it("carries the winter's report, and writes nothing when there is none", () => {
+    // The Draft board tab and a departed man's card read it; it lived only in
+    // the store, so a career reopened mid-offseason came back without it.
+    const report = {
+      graduated: [], drafted: [], recruits: 0, signed: [], walkOns: [],
+      developmentNet: 0, improved: 0, declined: 0, badges: [], holes: [{ pos: 'C', count: 1 }],
+    };
+    const file = buildSaveFile('s', 'Test', season(), 2027, 0, { lastOffseason: report }, 0);
+    expect(file.lastOffseason).toEqual(report);
+    const none = buildSaveFile('s', 'Test', season(), 2027, 0, { lastOffseason: null }, 0);
+    expect('lastOffseason' in none).toBe(false);
+  });
+
   it('omits an absent phase rather than writing undefined', () => {
     // In season there is no phase, and a key holding undefined is not the same
     // as no key — structured clone keeps it, and the load path reads it back as
     // a phase that exists and is nothing.
     const file = buildSaveFile('s', 'Test', season(), 2027, 0, {}, 0);
     expect('phase' in file).toBe(false);
+  });
+
+  it("writes the staff's replacement rule only when it is off", () => {
+    // Absent is on, which is what every save from before the staff list says,
+    // so only the coach's "no" has to reach the disk (2026-09-28).
+    const off = buildSaveFile('s', 'Test', season(), 2027, 0, { replaceLost: false }, 0);
+    expect(off.replaceLost).toBe(false);
+    const on = buildSaveFile('s', 'Test', season(), 2027, 0, { replaceLost: true }, 0);
+    expect('replaceLost' in on).toBe(false);
+    const absent = buildSaveFile('s', 'Test', season(), 2027, 0, {}, 0);
+    expect('replaceLost' in absent).toBe(false);
+  });
+
+  it('writes the Season plan\'s year only when there is one', () => {
+    // Absent is "owed one", which is also what every save from before the
+    // sheet says (2026-09-29).
+    const file = buildSaveFile('s', 'Test', season(), 2027, 0, { seasonPlanYear: 2027 }, 0);
+    expect(file.seasonPlanYear).toBe(2027);
+    const owed = buildSaveFile('s', 'Test', season(), 2027, 0, { seasonPlanYear: null }, 0);
+    expect('seasonPlanYear' in owed).toBe(false);
+    const absent = buildSaveFile('s', 'Test', season(), 2027, 0, {}, 0);
+    expect('seasonPlanYear' in absent).toBe(false);
   });
 
   it('keeps the season the engine can rebuild from', () => {

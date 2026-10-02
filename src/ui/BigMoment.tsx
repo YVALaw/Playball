@@ -11,6 +11,7 @@ import { useEffect, useRef } from 'react';
 import { useDynasty } from '../state/store.js';
 import { InFrame } from './Overlay.js';
 import { Crest, shade } from './Crest.js';
+import { Trophy, type TrophyKind } from './Honours.js';
 import { teamColour } from './Avatar.js';
 import { burstConfetti } from './celebrate.js';
 import { sfx, buzz, crowdSwell } from './sound.js';
@@ -35,6 +36,18 @@ const SENTENCE: Record<string, string> = {
   final4: 'Two teams left in the country. Yours is one.',
   title: 'Everything the program is for, and it happened this June.',
   'runner-up': 'The last series of the year went the other way.',
+};
+
+/**
+ * The silverware each finish lifts, so a conference cup no longer reads like a
+ * national title: each rung has its own trophy, and only the title's glows.
+ */
+const TROPHY: Record<string, TrophyKind> = {
+  cup: 'conference',
+  regional: 'regional',
+  final4: 'bracket',
+  title: 'national',
+  'runner-up': 'runnerUp',
 };
 
 const BUTTON: Record<string, string> = {
@@ -120,10 +133,9 @@ export function BigMomentCard() {
         }}
       >
         <div className="big-moment-card">
-          {moment.kind === 'title' && (
-            <svg className="title-trophy" viewBox="0 0 64 64" aria-hidden="true">
-              <path fill="currentColor" d="M18 6h28v6h8v8c0 7-5 12-11 13-2 4-6 7-9 8v7h8v6H22v-6h8v-7c-3-1-7-4-9-8C15 32 10 27 10 20v-8h8V6zm-2 12h-2v2c0 4 3 7 6 8-2-3-3-6-4-10zm32 0c-1 4-2 7-4 10 3-1 6-4 6-8v-2h-2z" />
-            </svg>
+          {/* The national trophy is the tall narrow one, and the biggest night: it stands tallest. */}
+          {TROPHY[moment.kind] && (
+            <Trophy kind={TROPHY[moment.kind]!} size={moment.kind === 'title' ? 150 : 112} className="big-moment-trophy" />
           )}
           <Crest abbr={abbr} size={92} />
           <small>{KICKER[moment.kind]}</small>

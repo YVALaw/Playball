@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="./pb-icons.js"></script>
+<style>
+body{margin:0;background:#101410;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer;text-align:left}
+button:disabled{cursor:not-allowed}
+::-webkit-scrollbar{width:0;height:0}
+[data-theme="light"]{color-scheme:light;--bg:#f6f8f5;--surface:#fff;--raised:#fff;--sunken:#eef2ee;--track:#e1e7e2;--line:#e1e8e2;--line-strong:#7a877d;--ink:#102019;--muted:#505e55;--disabled:#7f8a82;--accent:#236b42;--accent-soft:#e6f0e8;--command:#236b42;--on-command:#fff;--positive:#1b7a47;--positive-soft:#e2f2e7;--warning:#8c5a00;--warning-soft:#fcefd5;--negative:#c9362f;--negative-soft:#fdefed;--info:#2f4f7a;--info-soft:#e8eef6;--gold:#8a6b16;--panel:#153a2b;--sh-card:0 1px 2px rgba(16,32,25,.04),0 4px 16px rgba(16,32,25,.05);--sh-ctl:0 1px 3px rgba(16,32,25,.14)}
+[data-theme="dark"]{color-scheme:dark;--bg:#0e1511;--surface:#151f19;--raised:#1c2821;--sunken:#0f1712;--track:#26332b;--line:#28352c;--line-strong:#5f6d63;--ink:#eef3ef;--muted:#a3b1a7;--disabled:#6b776f;--accent:#4da97a;--accent-soft:#1b3326;--command:#2f7a52;--on-command:#f4f8f4;--positive:#5cc28b;--positive-soft:#163022;--warning:#f0b04a;--warning-soft:#33270e;--negative:#ef7d76;--negative-soft:#3a1a18;--info:#8db3e0;--info-soft:#172538;--gold:#e3bb4f;--panel:#26312a;--sh-card:0 1px 2px rgba(0,0,0,.35);--sh-ctl:0 1px 3px rgba(0,0,0,.5)}
+</style>
+</helmet>
+
+<div data-theme="{{ theme }}" style="min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:16px;box-sizing:border-box;background:#101410">
+<div style="position:relative;width:412px;height:min(892px, calc(100vh - 32px));min-height:560px;flex:none;display:flex;flex-direction:column;overflow:hidden;border-radius:28px;background:var(--bg);color:var(--ink);box-shadow:0 24px 70px rgba(0,0,0,.45)">
+
+  <sc-if value="{{ showTerms }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:none;display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line)">
+      <img src="./assets/BAY.webp" alt="" style="width:28px;height:28px;object-fit:contain">
+      <div style="flex:1;display:flex;flex-direction:column"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">2032 · Before the first pitch</small><strong style="font:700 16px/20px 'DM Sans'">Bayshore State</strong></div>
+      <span style="display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:0 8px;border-radius:99px;background:var(--warning-soft);color:var(--warning);font:600 12px/1 'DM Sans'">Waiting on you</span>
+    </div>
+    <div style="flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line)">
+      <sc-for list="{{ rail }}" as="r" hint-placeholder-count="3">
+        <button onClick="{{ r.go }}" style="display:flex;flex-direction:column;gap:5px">
+          <i style="height:4px;border-radius:99px;background:{{ r.bar }}"></i>
+          <span style="font:600 11.5px/14px 'DM Sans';color:{{ r.fg }}">{{ r.n }} · {{ r.label }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div onScroll="{{ onScroll }}" ref="{{ scrollRef }}" style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none">
+      <div style="display:flex;flex-direction:column;gap:22px;padding:18px 16px 28px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <h1 style="margin:0;font:700 28px/34px 'DM Sans';letter-spacing:-.02em">The board’s terms for 2032</h1>
+          <p style="margin:0;font:400 15px/22px 'DM Sans';color:var(--muted)">Before the first pitch, the board wants your signature on this season’s targets. Read all three parts, then sign or push back.</p>
+        </div>
+
+        <sc-if value="{{ isB }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);overflow:hidden">
+            <div style="padding:16px 18px;background:var(--panel);color:#f4f8f4;display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
+              <div><div style="font:600 10.5px/14px 'DM Sans';letter-spacing:.1em;text-transform:uppercase;opacity:.8">Season terms · 2032</div><div style="font:700 20px/26px 'DM Sans'">Bayshore State Athletics</div></div>
+              <div style="text-align:right"><b style="display:block;font:700 34px/1 'Barlow Condensed'">{{ target }}</b><small style="font:500 12px/16px 'DM Sans';opacity:.8">wins required</small></div>
+            </div>
+            <sc-for list="{{ clauses }}" as="c" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:14px 18px;border-top:1px solid var(--line)">
+                <b style="font:700 18px/22px 'Barlow Condensed';color:var(--muted)">§{{ c.n }}</b>
+                <div style="display:flex;flex-direction:column;gap:4px"><b style="font:600 15px/20px 'DM Sans'">{{ c.title }}</b><span style="font:400 13px/19px 'DM Sans';color:var(--muted)">{{ c.text }}</span>
+                  <sc-if value="{{ c.tags }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"><sc-for list="{{ c.tags }}" as="t" hint-placeholder-count="3"><span style="min-height:22px;padding:0 8px;border-radius:6px;display:inline-flex;align-items:center;background:{{ t.bg }};color:{{ t.fg }};font:600 12px/1 'DM Sans'">{{ t.text }}</span></sc-for></div></sc-if>
+                </div>
+              </div>
+            </sc-for>
+            <div style="padding:16px 18px;border-top:1px dashed var(--line-strong);display:flex;flex-direction:column;gap:10px">
+              <sc-if value="{{ argued.on }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 12px;border-radius:12px;background:{{ argued.bg }};font:500 13px/18px 'DM Sans'"><b style="font-weight:600">{{ argued.title }}.</b> {{ argued.text }}</div></sc-if>
+              <div style="display:flex;align-items:flex-end;gap:12px"><div style="flex:1;border-bottom:1px solid var(--line-strong);padding-bottom:4px;font:italic 500 18px/24px 'DM Sans';color:{{ signFg }}">{{ signText }}</div><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">Head coach</small></div>
+              <button onClick="{{ accept }}" style="display:flex;justify-content:center;align-items:center;gap:8px;min-height:48px;border-radius:12px;background:var(--command);color:var(--on-command);font:600 15px/1 'DM Sans'">{{ ic.check }}Sign and open the season</button>
+              <sc-if value="{{ canArgue }}" hint-placeholder-val="{{ true }}"><button onClick="{{ argue }}" style="display:flex;justify-content:center;align-items:center;min-height:44px;border-radius:12px;border:1px solid var(--line-strong);background:var(--surface);font:600 14px/1 'DM Sans'">Push back · one chance</button></sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isA }}" hint-placeholder-val="{{ true }}">
+          <section id="s1" style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:99px;display:grid;place-items:center;background:var(--ink);color:var(--bg);font:700 13px/1 'DM Sans'">1</span><h2 style="margin:0;font:600 17px/24px 'DM Sans'">How the winter went</h2></div>
+            <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+              <p style="margin:0;font:400 14px/20px 'DM Sans'">A regional run lifted your prestige. The draft took two of your starters.</p>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 52px 60px 64px;column-gap:8px;padding-bottom:6px;font:500 12px/16px 'DM Sans';color:var(--muted)"><span>Prestige, of 100</span><span style="text-align:right">Last year</span><span style="text-align:right">Now</span><span></span></div>
+              <sc-for list="{{ moved }}" as="m" hint-placeholder-count="2">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) 52px 60px 64px;column-gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">
+                  <span style="font:500 15px/20px 'DM Sans'">{{ m.label }}</span><b style="text-align:right;font:600 22px/24px 'Barlow Condensed';color:var(--muted)">{{ m.a }}</b><b style="text-align:right;font:600 22px/24px 'Barlow Condensed'">{{ m.b }}</b>
+                  <span style="display:flex;justify-content:flex-end"><span style="padding:2px 6px;border-radius:99px;background:var(--positive-soft);color:var(--positive);font:600 12px/16px 'DM Sans'">+{{ m.d }}</span></span>
+                </div>
+              </sc-for>
+              <div style="display:flex;gap:10px;padding:10px 12px;border-radius:12px;background:var(--warning-soft)"><span style="color:var(--warning);padding-top:2px">{{ ic.alert }}</span><span style="font:400 13px/18px 'DM Sans'">Tyrese Vann and Cal Mercer signed pro contracts. Your top two starters are gone.</span></div>
+            </div>
+          </section>
+
+          <section id="s2" style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:99px;display:grid;place-items:center;background:var(--ink);color:var(--bg);font:700 13px/1 'DM Sans'">2</span><h2 style="margin:0;font:600 17px/24px 'DM Sans'">What they expect</h2></div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px;border-radius:16px;background:var(--panel);color:#f4f8f4">
+              <div style="display:flex;flex-direction:column;align-items:center;min-width:82px"><b style="font:700 52px/1 'Barlow Condensed'">{{ target }}</b><small style="font:600 11px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;opacity:.8">wins of 45</small></div>
+              <div style="display:flex;flex-direction:column;gap:4px"><b style="font:600 16px/22px 'DM Sans'">{{ askSummary }}</b><span style="font:400 13px/18px 'DM Sans';opacity:.85">Based on your roster and prestige. You won 31 last season.</span></div>
+            </div>
+            <sc-if value="{{ argued.on }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:10px;padding:12px 14px;border-radius:16px;background:{{ argued.bg }}"><span style="color:{{ argued.fg }};padding-top:2px">{{ ic.info }}</span><div><b style="display:block;font:600 15px/22px 'DM Sans'">{{ argued.title }}</b><span style="font:400 13px/18px 'DM Sans'">{{ argued.text }}</span></div></div></sc-if>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 13px/18px 'DM Sans'">Must hit · judged at your review</span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ reqCount }}</span></div>
+              <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+                <sc-for list="{{ required }}" as="g" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 14px;border-top:{{ g.bd }}"><span style="width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none">{{ ic.target }}</span><span style="flex:1;font:600 15px/20px 'DM Sans'">{{ g.label }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 13px/18px 'DM Sans'">Extra credit · each one builds trust</span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ bonusCount }}</span></div>
+              <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+                <sc-for list="{{ bonus }}" as="g" hint-placeholder-count="3">
+                  <div style="display:flex;flex-direction:column;gap:6px;min-height:76px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)"><span style="color:var(--gold)">{{ ic.star }}</span><span style="font:600 13.5px/18px 'DM Sans'">{{ g.label }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+
+          <section id="s3" style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:99px;display:grid;place-items:center;background:var(--ink);color:var(--bg);font:700 13px/1 'DM Sans'">3</span><h2 style="margin:0;font:600 17px/24px 'DM Sans'">What is at stake</h2></div>
+            <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Board confidence</span><span style="font:600 13px/18px 'DM Sans'">62<small style="color:var(--muted);font-weight:500">/100 · Secure</small></span></div>
+              <div style="position:relative"><div style="height:12px;border-radius:99px;background:var(--track);overflow:hidden"><div style="height:100%;width:62%;background:var(--positive);border-radius:0 99px 99px 0"></div></div><i style="position:absolute;top:-4px;bottom:-4px;left:35%;width:2px;background:var(--ink);border-radius:99px"></i><i style="position:absolute;top:-4px;bottom:-4px;left:55%;width:2px;background:var(--ink);border-radius:99px"></i></div>
+              <div style="position:relative;height:16px;font:500 12px/16px 'DM Sans';color:var(--muted)"><span style="position:absolute;left:35%;transform:translateX(-50%)"><b style="color:var(--ink)">35</b> Review</span><span style="position:absolute;left:55%;transform:translateX(-10%)"><b style="color:var(--ink)">55</b> Secure</span></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;border-radius:12px;overflow:hidden;background:var(--line)">
+                <div style="padding:10px 12px;background:var(--sunken);display:flex;flex-direction:column;gap:2px"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">Hit every required target</small><b style="font:600 14px/20px 'DM Sans';color:var(--positive)">Confidence goes up</b></div>
+                <div style="padding:10px 12px;background:var(--sunken);display:flex;flex-direction:column;gap:2px"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">Miss any of them</small><b style="font:600 14px/20px 'DM Sans';color:var(--warning)">Confidence drops</b></div>
+              </div>
+              <p style="margin:0;font:400 13px/18px 'DM Sans';color:var(--muted)">Fall below 35 and your job is under review at season’s end. Three years remain on your contract.</p>
+            </div>
+          </section>
+          <div ref="{{ endRef }}" style="height:1px"></div>
+        </sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{ isA }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:none;display:flex;flex-direction:column;gap:8px;padding:12px 16px 14px;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(0,0,0,.06)">
+        <div style="display:flex;justify-content:space-between;align-items:center;font:500 12px/16px 'DM Sans';color:var(--muted)"><span>{{ barSummary }}</span><span style="color:{{ readFg }};font-weight:600">{{ readText }}</span></div>
+        <div style="display:grid;grid-template-columns:{{ barCols }};gap:8px">
+          <sc-if value="{{ canArgue }}" hint-placeholder-val="{{ true }}"><button onClick="{{ argue }}" disabled="{{ notRead }}" style="min-height:48px;padding:0 12px;border-radius:12px;border:1px solid {{ argBd }};background:var(--surface);color:{{ argFg }};font:600 14px/1.2 'DM Sans';text-align:center">Push back</button></sc-if>
+          <button onClick="{{ accept }}" disabled="{{ notRead }}" style="display:flex;justify-content:center;align-items:center;gap:8px;min-height:48px;border-radius:12px;background:{{ accBg }};color:{{ accFg }};font:600 15px/1 'DM Sans'">{{ accLabel }}</button>
+        </div>
+      </div>
+    </sc-if>
+  </sc-if>
+
+  <sc-if value="{{ showRoom }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:none;display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line)">
+      <img src="./assets/BAY.webp" alt="" style="width:30px;height:30px;object-fit:contain">
+      <div style="flex:1;display:flex;flex-direction:column"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">2032 · Preseason</small><strong style="font:700 17px/22px 'DM Sans'">Bayshore State</strong></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end"><small style="font:500 11px/14px 'DM Sans';color:var(--muted)">Record</small><b style="font:700 18px/20px 'Barlow Condensed'">0–0</b></div>
+      <img src="./assets/ball.webp" alt="" style="width:26px;height:26px;margin:0 7px">
+      <div style="width:36px;height:36px;border-radius:99px;background:var(--sunken);box-shadow:inset 0 0 0 1px var(--line)"></div>
+    </div>
+    <div style="flex:none;display:flex;gap:4px;padding:0 12px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none">
+      <a href="Recruiting.dc.html" style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Recruiting</a>
+      <a href="Staff%20and%20Facilities.dc.html" style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Staff</a>
+      <a href="Staff%20and%20Facilities.dc.html#facilities" style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Facilities</a>
+      <a href="Staff%20and%20Facilities.dc.html#budget" style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Budget</a>
+      <span style="position:relative;flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans'">Board<span style="position:absolute;left:12px;right:12px;bottom:0;height:3px;border-radius:99px;background:var(--accent)"></span></span>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none">
+      <div style="display:flex;flex-direction:column;gap:18px;padding:14px 16px 32px">
+        <div style="display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Bayshore State · Year 3</span><h1 style="margin:0;font:700 28px/34px 'DM Sans';letter-spacing:-.02em">Board</h1></div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);overflow:hidden">
+          <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Security</span><b style="font:700 32px/1 'Barlow Condensed'">62<small style="font:500 13px/1 'DM Sans';color:var(--muted)">/100</small></b><span style="font:500 12px/16px 'DM Sans';color:var(--positive)">Secure</span></div>
+          <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Win target</span><b style="font:700 32px/1 'Barlow Condensed'">{{ target }}</b><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">0 wins so far</span></div>
+          <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Contract</span><b style="font:700 32px/1 'Barlow Condensed'">3<small style="font:500 13px/1 'DM Sans';color:var(--muted)"> yrs</small></b><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">4-year deal</span></div>
+        </div>
+
+        <sc-if value="{{ curOpener }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);overflow:hidden">
+            <div style="padding:16px 16px 0;display:flex;flex-direction:column;gap:2px"><span style="font:600 12px/16px 'DM Sans';color:var(--muted)">2032 · The board’s terms</span><span style="font:600 17px/24px 'DM Sans'">{{ askSummary }}</span></div>
+            <div style="padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px">
+              <p style="margin:0;font:400 15px/22px 'DM Sans'">Accept them to start the season.</p>
+              <button onClick="{{ acceptCur }}" style="min-height:48px;border-radius:12px;background:var(--command);color:var(--on-command);font:600 15px/1 'DM Sans';text-align:center">Accept the terms</button>
+              <button style="min-height:48px;border-radius:12px;border:1px solid var(--line-strong);background:var(--surface);font:600 15px/1 'DM Sans';text-align:center">Ask them to reconsider</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ accepted }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:10px;padding:12px 14px;border-radius:16px;background:var(--positive-soft)"><span style="color:var(--positive);padding-top:2px">{{ ic.check }}</span><div><b style="display:block;font:600 15px/22px 'DM Sans'">Signed. The season is on.</b><span style="font:400 13px/18px 'DM Sans'">Your targets are tracked below as games are played.</span></div></div>
+        </sc-if>
+
+        <div style="display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-card);overflow:hidden">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 16px 0"><span style="font:600 17px/24px 'DM Sans'">Board confidence</span><span style="min-height:24px;padding:0 8px;border-radius:99px;display:inline-flex;align-items:center;background:var(--positive-soft);color:var(--positive);font:600 12px/1 'DM Sans'">Secure</span></div>
+          <div style="padding:12px 16px 16px;display:flex;flex-direction:column;gap:6px">
+            <div style="position:relative"><div style="height:8px;border-radius:99px;background:var(--track);overflow:hidden"><div style="height:100%;width:62%;background:var(--positive)"></div></div><i style="position:absolute;top:-4px;bottom:-4px;left:35%;width:2px;background:var(--ink)"></i><i style="position:absolute;top:-4px;bottom:-4px;left:55%;width:2px;background:var(--ink)"></i></div>
+            <div style="position:relative;height:16px;font:500 12px/16px 'DM Sans';color:var(--muted)"><span style="position:absolute;left:35%;transform:translateX(-50%)">Review</span><span style="position:absolute;left:55%;transform:translateX(-20%)">Secure</span></div>
+          </div>
+        </div>
+
+        <section>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px"><h2 style="margin:0;font:600 17px/24px 'DM Sans'">This year's goals<span style="margin-left:6px;font-weight:500;color:var(--muted)">0 of 5 met</span></h2></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">
+            <sc-for list="{{ allGoals }}" as="g" hint-placeholder-count="5">
+              <div style="display:flex;flex-direction:column;gap:6px;min-height:92px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)">
+                <span><span style="min-height:22px;padding:0 8px;border-radius:99px;display:inline-flex;align-items:center;background:var(--sunken);color:var(--muted);font:600 12px/1 'DM Sans'">Open</span></span>
+                <span style="font:600 13.5px/18px 'DM Sans'">{{ g.label }}</span>
+                <span style="margin-top:auto;font:400 11.5px/15px 'DM Sans';color:var(--muted)">{{ g.kind }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+    </div>
+    <div style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px 10px;background:var(--surface);border-top:1px solid var(--line)">
+      <span style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.home }}Home</span>
+      <a href="Roster%20and%20Player.dc.html" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.idcard }}Team</a>
+      <span style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font:600 12px/16px 'DM Sans'">{{ ic.backpack }}Office</span>
+      <span style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.starNav }}Program</span>
+    </div>
+    <sc-if value="{{ accepted }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ reset }}" style="position:absolute;right:12px;bottom:84px;min-height:32px;padding:0 12px;border-radius:99px;background:var(--ink);color:var(--bg);font:600 12px/1 'DM Sans'">Replay the terms</button>
+    </sc-if>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Current&quot;,&quot;A · Terms step&quot;,&quot;B · Contract to sign&quot;],&quot;default&quot;:&quot;A · Terms step&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Light&quot;,&quot;Dark&quot;],&quot;default&quot;:&quot;Light&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { accepted: false, read: false, argued: null, section: 0 };
+  scrollEl = null; endEl = null;
+  I(n, s) { return window.pbIcon ? window.pbIcon(React, n, s || 15) : null; }
+  check(el) {
+    if (!el) return;
+    const max = el.scrollHeight - el.clientHeight;
+    const y = el.scrollTop;
+    const secs = ['s1', 's2', 's3'].map((id) => el.querySelector('#' + id)).filter(Boolean);
+    let section = 0;
+    secs.forEach((s, i) => { if (s.offsetTop - el.offsetTop - 120 <= y) section = i; });
+    if (y >= max - 24) section = 2;
+    const read = this.state.read || y >= max - 24 || max <= 4;
+    if (read !== this.state.read || section !== this.state.section) this.setState({ read, section });
+  }
+  componentDidMount() { setTimeout(() => this.check(this.scrollEl), 400); }
+  renderVals() {
+    const I = this.I.bind(this);
+    const v = this.props.variant ?? 'A · Terms step';
+    const isCur = v.startsWith('Current');
+    const isB = v.startsWith('B');
+    const isA = v.startsWith('A');
+    const st = this.state;
+    const target = 30 - (st.argued || 0);
+    const required = [`Win ${target} games`, 'Reach the conference tournament'];
+    const bonus = ['Finish in the top 25', 'Win 18 conference games', 'Sign a 4-star recruit'];
+    const read = st.read || isB;
+    const canArgue = st.argued === null;
+    const labels = ['Your winter', 'The targets', 'The stakes'];
+    const rail = labels.map((label, i) => ({ n: i + 1, label, bar: i <= st.section ? 'var(--accent)' : 'var(--track)', fg: i <= st.section ? 'var(--ink)' : 'var(--muted)', go: () => { const el = this.scrollEl && this.scrollEl.querySelector('#s' + (i + 1)); if (el && this.scrollEl) this.scrollEl.scrollTo({ top: el.offsetTop - 12, behavior: 'smooth' }); } }));
+    const argued = st.argued === null ? { on: false } : st.argued > 0
+      ? { on: true, title: 'They lowered the target', text: `Down 2 wins, to ${target}. You cannot push back again this season.`, bg: 'var(--positive-soft)', fg: 'var(--positive)' }
+      : { on: true, title: 'They held firm', text: 'The target stands.', bg: 'var(--sunken)', fg: 'var(--muted)' };
+    return {
+      theme: (this.props.theme ?? 'Light').toLowerCase(),
+      ic: { check: I('check', 16), alert: I('alert', 16), info: I('info', 16), target: I('target', 16), star: I('star-filled', 15), home: I('home', 20), idcard: I('id-card', 20), backpack: I('backpack', 20), starNav: I('star', 20) },
+      showTerms: !isCur && !st.accepted, showRoom: isCur || st.accepted, isA, isB,
+      curOpener: isCur && !st.accepted, accepted: st.accepted,
+      target, askSummary: `Win ${target} games and reach the conference tournament`,
+      moved: [{ label: 'Your school', a: 58, b: 61, d: 3 }, { label: 'You', a: 44, b: 47, d: 3 }],
+      required: required.map((label, i) => ({ label, bd: i ? '1px solid var(--line)' : '0' })), reqCount: `${required.length} goals`,
+      bonus: bonus.map((label) => ({ label })), bonusCount: `${bonus.length} goals`,
+      allGoals: [...required.map((label) => ({ label, kind: 'Required' })), ...bonus.map((label) => ({ label, kind: 'Bonus' }))],
+      clauses: [
+        { n: 1, title: `Win ${target} of 45 games`, text: 'Based on your roster and prestige. You won 31 last season.', tags: null },
+        { n: 2, title: 'Reach the conference tournament', text: 'Required. Missing it counts against you at your season-end review.', tags: null },
+        { n: 3, title: 'Extra credit', text: 'Not required. Each one you hit builds the board’s trust in you.', tags: bonus.map((t) => ({ text: t, bg: 'var(--sunken)', fg: 'var(--ink)' })) },
+        { n: 4, title: 'Job security 62 of 100 · 3 years left', text: 'Hit every required target and confidence goes up. Fall below 35 and your job is under review at season’s end.', tags: [{ text: 'Secure now', bg: 'var(--positive-soft)', fg: 'var(--positive)' }] },
+      ],
+      signText: st.accepted ? 'Coach D. Reyes' : 'Sign here', signFg: 'var(--muted)',
+      rail, argued, canArgue,
+      barSummary: `${target} wins · ${required.length} must-hit · ${bonus.length} extra credit`,
+      readText: read ? 'All terms read' : 'Read all three parts to sign', readFg: read ? 'var(--positive)' : 'var(--warning)',
+      notRead: !read, barCols: canArgue ? '0.8fr 1.4fr' : '1fr',
+      accBg: read ? 'var(--command)' : 'var(--sunken)', accFg: read ? 'var(--on-command)' : 'var(--disabled)', accLabel: read ? 'Sign and open the season' : 'Keep reading to sign',
+      argBd: read ? 'var(--line-strong)' : 'var(--line)', argFg: read ? 'var(--ink)' : 'var(--disabled)',
+      onScroll: (e) => this.check(e.currentTarget),
+      scrollRef: (el) => { this.scrollEl = el; },
+      endRef: (el) => { this.endEl = el; },
+      accept: () => this.setState({ accepted: true }),
+      acceptCur: () => this.setState({ accepted: true }),
+      argue: () => this.setState({ argued: 2 }),
+      reset: () => this.setState({ accepted: false, read: false, argued: null, section: 0 }),
+    };
+  }
+}
+</script>
+</body>
+</html>

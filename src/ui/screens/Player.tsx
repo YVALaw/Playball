@@ -1,11 +1,15 @@
 // Player.tsx
 // One player's card.
 //
-// A header that says who he is, with the two numbers that are true on every
-// tab: his Rating today and, for your own men, his Potential. Under it four
-// views of him — Overview, Ratings, Stats and Career — and, for your own
-// players, a Decisions section on the Overview that replaces the old floating
-// Manage button: every decision in plain sight, with what it costs.
+// The top of it is the hub (PlayerHub.tsx): who he is with his Rating and,
+// for your own men, his Potential; four facts at a glance; what you owe him;
+// and five rows into the rest of him — Ratings, This season, Badges,
+// Positions and Career. A row opens its page one level deeper inside the
+// card, and the bar's way back then names him and returns to the top (the UI
+// clarity review, 2026-09-25, variant "A · Glance + hub"). Those pages are
+// this file, and each holds what one of the old card's tabs held. Your own
+// men keep their Decisions at the bottom of the top: every decision in plain
+// sight, with what it costs.
 //
 // Another program's player shows what a box score and a scouting report would
 // tell you, and says what it withholds: his potential, mood and promises stay
@@ -14,57 +18,50 @@
 // A man who has left (graduated, drafted, a walk-on whose year was up) opens
 // as an alumnus card: how he left, what he did here, and what came after.
 
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { RosterMoves } from './RosterMoves.js';
-import { seasonAwards } from '../../engine/postseason.js';
+import {
+  CardHeader, Glance, MoreAboutHim, PromiseTracker, careerYears, classWord, posName, useAwardsWon,
+  type Owner, type Section,
+} from './PlayerHub.js';
 import { useDynasty, useUserTeam } from '../../state/store.js';
 import { BADGES, TIER_NAME, badgeCap, badgesOf } from '../../engine/badges.js';
 import { PITCHES, repertoireOf, speedOf } from '../../engine/pitches.js';
-import { potentialGrade } from '../../engine/scouting.js';
 import {
   HITTER_TENDENCIES, PITCHER_TENDENCIES, TENDENCIES, isKnown, tendenciesOf,
   tendencyLabel, watchProgress, type TendencyId,
 } from '../../engine/tendencies.js';
-import { draftEligible } from '../../engine/draft.js';
-import { draftChance } from '../../engine/progression.js';
-import {
-  expectationOf, flightRisk, mood, promiseOf, squadRanks, recruitPromiseProgress,
-} from '../../engine/morale.js';
-import { available } from '../../engine/depthChart.js';
-import { isHurt, prognosis } from '../../engine/injury.js';
+import { promiseSpent } from '../../engine/morale.js';
 import { overallOf, platoonSplit, naturalPos } from '../../engine/ratings.js';
-import { secondaryPositions } from '../../engine/positions.js';
-import { RetrainSheet } from '../RetrainModal.js';
-import { PROJECT_ATTRIBUTE } from '../../engine/staffProjects.js';
-import { PROJECT_LABEL } from '../../engine/economy.js';
-import { captainOf } from '../../engine/captains.js';
+import { coverTier, fieldingAt, retrainOdds, retrainablePositions } from '../../engine/positions.js';
+import { BadgeEmblem } from '../BadgeEmblem.js';
+import { SCOUTING } from '../../state/features.js';
+import { AwardEmblem } from '../Honours.js';
+import { PROJECT_ATTRIBUTE, seasonEach, seasonGainOn } from '../../engine/staffProjects.js';
+import { PROJECT_LABEL, staffPlan } from '../../engine/economy.js';
 import { handles } from '../../state/depth.js';
 import { proCareer, COACHING_LEVEL, type AlumnusNote, type Moment } from '../../engine/legacy.js';
 import { collegeSummary, marksHeldBy } from '../ProgramBits.js';
 import {
-  battingAverage, onBase, slugging, era, whip, inningsPitched,
-  careerName, liveCareerYear, seasonComplete, injuryClock,
+  battingAverage, onBase, slugging, era, whip, inningsPitched, careerName,
 } from '../../engine/season.js';
 import type { BoxScore, CareerYear, SeasonState } from '../../engine/season.js';
 import type { Departure } from '../../engine/progression.js';
 import { pct, ipText, shortDate } from '../format.js';
-import { whyOut } from '../Needs.js';
 import { isTwoWay } from '../../engine/types.js';
 import type {
-  ClassYear, Hitter, Pitcher, PlayerId, Position, Player as AnyPlayer,
+  Hitter, Pitcher, PlayerId, Position, Player as AnyPlayer,
 } from '../../engine/types.js';
 import {
-  Button, Callout, Card, Chip, Chips, DescriptionList, EmptyState, Face, GameRow, List, ListRow,
-  Medal, Meter, ProfileHeader, RatingRow, SegmentedControl, Sheet, StatGroup, StatusBadge, Table, Tag,
-  type DescriptionItem, type IconName, type StatTileProps, type TableColumn, type Tone,
+  Button, Callout, Card, Chip, Chips, ConfirmButton, DescriptionList, EmptyState, Face, GameRow, List,
+  ListRow, Meter, ProfileHeader, RatingRow, SegmentedControl, Sheet, StatGroup, StatusBadge, Table, Tag,
+  type DescriptionItem, type StatTileProps, type TableColumn,
 } from '../components/ui/index.js';
+import { useOverlayBack } from '../Overlay.js';
+import { useBackLayer } from '../useBackLayer.js';
 import {
-  CLASS_NAME, POSITION_NAME, boxLineWords, boxSlotWords, capsWords, conferenceName, handsText,
-  plural, proLevelName, schoolNamesIn, sentence,
+  capsWords, plural, proLevelName, schoolNamesIn, sentence,
 } from '../words.js';
-
-/** The record for one program, as the season carries it. */
-type Owner = SeasonState['teams'][number];
 
 /**
  * The keys of a player that hold a rating. A key that drifts in the engine is
@@ -116,21 +113,26 @@ const PITCHER_GLOVE: Array<[RatingKey<Pitcher>, string]> = [
   ['armAccuracy', 'Throwing accuracy'],
 ];
 
-/** What every rating card says about the numbers on it. */
-const SCALE = 'Out of 100 · 60 is solid, 75 is a strength';
+/**
+ * What every rating card says about the numbers on it: the review's caption.
+ * Measured before it was written (seed 4242, 2026-09-25): contact, power,
+ * eye, speed, stuff, movement and control all average 48 to 50 across a new
+ * league, so the hairline at 50 on every bar is the league's middle.
+ */
+const SCALE = 'Of 100 · league average 50';
 
-type View = 'overview' | 'ratings' | 'stats' | 'career';
-const VIEWS: readonly View[] = ['overview', 'ratings', 'stats', 'career'];
-
-const posName = (pos: string): string => POSITION_NAME[pos as Position] ?? pos;
-const classWord = (cy: string): string => CLASS_NAME[cy as ClassYear] ?? cy;
+/*
+  The ratings that grow. A winter moves every one of these by the same step
+  toward his potential (`develop` in development.ts); a pitcher's ground-ball
+  lean and his pickoff move never move, so they are drawn with no room.
+*/
+const GROWS: ReadonlySet<string> = new Set([
+  'contact', 'power', 'eye', 'speed', 'steal', 'bunt', 'range', 'hands', 'arm', 'armAccuracy',
+  'blocking', 'stuff', 'movement', 'control', 'stamina',
+]);
 
 /** A production change, signed, so a reverse split reads as one. */
 const pctSigned = (v: number): string => `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(1)}%`;
-
-const MOOD_WORD: Record<ReturnType<typeof mood>, string> = {
-  buzzing: 'Buzzing', fine: 'Content', restless: 'Restless', unhappy: 'Unhappy',
-};
 
 // ---------------------------------------------------------------------------
 
@@ -197,55 +199,22 @@ export function gameLogFor(
   return rows.sort((a, b) => a.day - b.day);
 }
 
-/** Whether he can play, said as a word, an icon and a colour. */
-function availability(p: AnyPlayer, day: number): {
-  tone: Tone; icon: IconName; label: string; badge: string; note: string;
-} {
-  if ((p as AnyPlayer & { redshirt?: boolean }).redshirt) {
-    return {
-      tone: 'neutral', icon: 'pause', label: 'Redshirt', badge: 'Redshirt · sits out this season',
-      note: 'Sits out the season and keeps the year of eligibility',
-    };
-  }
-  if (available(p, day)) {
-    return { tone: 'positive', icon: 'check', label: 'Ready to play', badge: 'Ready to play', note: 'Nothing keeping him out' };
-  }
-  if (isHurt(p, day)) {
-    const n = prognosis(p, day);
-    return { tone: 'negative', icon: 'cross-circled', label: 'Injured', badge: `Injured · ${n}`, note: sentence(n) };
-  }
-  const w = whyOut(p, day);
-  if ((p as AnyPlayer & { why?: string }).why === 'academic') {
-    return { tone: 'warning', icon: 'reader', label: 'Academic hold', badge: `Academic hold · ${w}`, note: sentence(w) };
-  }
-  return { tone: 'neutral', icon: 'clock', label: 'Resting', badge: sentence(w), note: sentence(w) };
-}
-
-const toneOf = (t: Tone): DescriptionItem['tone'] =>
-  (t === 'positive' || t === 'warning' || t === 'negative' || t === 'info' ? t : undefined);
-
 // ---------------------------------------------------------------------------
 
-export function Player() {
-  const season = useDynasty((s) => s.season);
-  const selected = useDynasty((s) => s.selectedPlayer);
-  const playerCardSection = useDynasty((s) => s.playerCardSection);
-  const report = useDynasty((s) => s.lastOffseason);
-  const portal = useDynasty((s) => s.portal);
-  const alumni = useDynasty((s) => s.alumni);
-  const version = useDynasty((s) => s.version);
-  const team = useUserTeam();
-  const [view, setView] = useState<View>(playerCardSection);
-  const [half, setHalf] = useState<'bat' | 'arm'>('bat');
-  void version;
+type PortalState = ReturnType<typeof useDynasty.getState>['portal'];
+type PortalEntry = NonNullable<PortalState>['leaving'][number];
 
-  if (!season || !team || !selected) return <Nobody />;
-
-  // Look across the whole world, not just this roster: a leaderboard is full
-  // of players you do not employ and would still like to read about.
+/**
+ * Look across the whole world, not just this roster: a leaderboard is full of
+ * players you do not employ and would still like to read about. A portal
+ * entrant is between rosters in the offseason; his card stays attached to the
+ * program he is leaving.
+ */
+function findHim(
+  season: SeasonState, team: Owner, selected: PlayerId, portal: PortalState,
+): { p: AnyPlayer; owner: Owner; portalEntry?: PortalEntry } | null {
   const rosterOf = (t: Owner): AnyPlayer[] =>
     [...t.team.lineup, ...t.team.bench, ...t.team.rotation, ...t.team.bullpen];
-
   const portalEntry = portal
     ? [...portal.leaving, ...portal.available].find((m) => m.player.id === selected)
     : undefined;
@@ -258,29 +227,102 @@ export function Player() {
       if (found) { p = found; owner = t; break; }
     }
   }
-
-  // A portal entrant is between rosters in the offseason; his card stays
-  // attached to the program he is leaving.
   if (!p && portalEntry) {
     p = portalEntry.player;
     owner = season.teams[portalEntry.from] ?? team;
   }
+  // A drafted man still waiting on your answer is off the roster and on the
+  // board, and yours until he signs: his own card, not the alumnus page of a
+  // man who has gone (2026-09-26, the draft's cards open him).
+  if (!p) {
+    const waiting = season.draft?.men.find((m) => m.player.id === selected && m.outcome === 'pending');
+    if (waiting) { p = waiting.player; owner = team; }
+  }
+  return p ? { p, owner, portalEntry } : null;
+}
+
+/**
+ * The screen the card was opened over, by the name on its tab ("Roster"), for
+ * the bar's way back — when the card sits straight on that screen. Anything
+ * laid in between (a school's page, a room, the inbox, a sheet) is where Back
+ * goes instead, so the bar keeps its plain "Back" for those. Read once, as the
+ * card opens: nothing under a card changes while it is up.
+ */
+function screenUnderneath(): string | null {
+  if (typeof document === 'undefined') return null;
+  const frame = document.querySelector('.app-frame');
+  if (!frame) return null;
+  if (frame.querySelector('.pb-fulloverlay:not(.is-player), .pb-tableoverlay, .pb-sheet-host')) return null;
+  const word = frame.querySelector<HTMLElement>('.pb-toptabs button.is-active')?.textContent?.trim();
+  return word ? word : null;
+}
+
+export function Player() {
+  const season = useDynasty((s) => s.season);
+  const selected = useDynasty((s) => s.selectedPlayer);
+  const playerCardSection = useDynasty((s) => s.playerCardSection);
+  const report = useDynasty((s) => s.lastOffseason);
+  const portal = useDynasty((s) => s.portal);
+  const alumni = useDynasty((s) => s.alumni);
+  const version = useDynasty((s) => s.version);
+  const team = useUserTeam();
+  // Where the card opens: at its top, or on his season for the lineup's
+  // hold-for-stats, which asks for the old Stats tab by name.
+  const [section, setSection] = useState<Section | null>(playerCardSection === 'stats' ? 'season' : null);
+  // The page the card was opened on, if it was opened on one. Back from there
+  // closes the card in one press, the way the old Stats tab did: the user's
+  // call (2026-09-25), "one back", over walking out through his card's top.
+  const [entry] = useState<Section | null>(section);
+  const [half, setHalf] = useState<'bat' | 'arm'>('bat');
+  const [returnsTo] = useState(screenUnderneath);
+  const pageRef = useRef<HTMLElement | null>(null);
+  const hubTop = useRef(0);
+  void version;
+
+  const found = season && team && selected ? findHim(season, team, selected, portal) : null;
+  // You only scout your own program in full.
+  const isOurs = found !== null && team !== null && found.owner.index === team.index;
+  // A page is only ever one this man has: badges are known about your own
+  // men alone, and a pitcher has no positions to learn.
+  const deeper: Section | null = found && section
+    && (section !== 'badges' || isOurs)
+    && (section !== 'positions' || found.p.type === 'hitter')
+    ? section : null;
+
+  // One level down from his card's top, the bar names him and goes back up to
+  // it; at the top, or on the page the card was opened on, it closes the card,
+  // named for the screen it returns to when known.
+  const fromTop = deeper !== null && deeper !== entry;
+  useOverlayBack(found && fromTop
+    ? { label: found.p.name, onBack: () => setSection(null), guide: 'player-actions' }
+    : returnsTo ? { label: returnsTo } : null);
+  // The back gesture takes the same step: a page first, then the card.
+  useBackLayer(fromTop, () => setSection(null));
+  // A page opens at its top; the card's top comes back where it was left.
+  useLayoutEffect(() => {
+    const scroller = pageRef.current?.closest<HTMLElement>('.pb-fulloverlay__scroll');
+    if (scroller) scroller.scrollTop = deeper === null ? hubTop.current : 0;
+  }, [deeper]);
+  const open = (s: Section): void => {
+    hubTop.current = pageRef.current?.closest<HTMLElement>('.pb-fulloverlay__scroll')?.scrollTop ?? 0;
+    setSection(s);
+  };
+
+  if (!season || !team || !selected) return <Nobody />;
 
   // Nobody's roster, and a real player rather than a bad id: a draftee, a
   // graduate, an award winner from years ago. What is left of him is how he
   // left and the record book.
-  if (!p) {
+  if (!found) {
     const gone = [...(report?.graduated ?? []), ...(report?.drafted ?? [])]
       .find((d) => d.id === selected);
     const career = season.careers?.[selected] ?? [];
     const note = alumni[selected];
     if (!gone && career.length === 0 && !note) return <Nobody />;
-    return <Alumnus id={selected} gone={gone} note={note} career={career} view={view} onView={setView} />;
+    return <Alumnus id={selected} gone={gone} note={note} career={career} />;
   }
 
-  // You only scout your own program in full. Everyone else's card shows what
-  // a box score would tell you, and withholds potential.
-  const isOurs = owner.index === team.index;
+  const { p, owner, portalEntry } = found;
   const isPitcher = p.type === 'pitcher';
   const twoWay = isTwoWay(p);
   // A DH is named by the position he actually plays, and a man the chart has
@@ -297,12 +339,9 @@ export function Player() {
     ? ((p as Pitcher).role !== own ? (p as Pitcher).role : null)
     : (p.pos !== 'DH' && p.pos !== own ? p.pos : null);
 
-  // A view that is not on offer is never the one on screen.
-  const active: View = VIEWS.includes(view) ? view : 'overview';
-
   return (
-    <main className="pb-page pb-playercard">
-      <PlayerHeader
+    <main ref={pageRef} className="pb-page pb-playercard pb-pcard">
+      <CardHeader
         p={p}
         owner={owner}
         isOurs={isOurs}
@@ -311,248 +350,100 @@ export function Player() {
         dhToday={dhToday}
         covering={covering}
       />
-      {portalEntry && (
-        <Callout tone="info" icon="enter" title={`In the transfer portal, from ${portalEntry.fromName}`}>
-          {portalEntry.reason}
-        </Callout>
-      )}
-      <SegmentedControl<View>
-        label="Player card"
-        value={active}
-        onChange={setView}
-        options={[
-          // The first-season errand for a failing player points here when the
-          // card is on another view: Decisions live on the Overview.
-          { value: 'overview', label: 'Overview', guide: 'player-actions' },
-          { value: 'ratings', label: 'Ratings' },
-          { value: 'stats', label: 'Stats' },
-          { value: 'career', label: 'Career' },
-        ]}
-      />
-      {twoWay && (active === 'stats' || active === 'career') && (
-        <Chips label="Which half of his game">
-          <Chip selected={half === 'bat'} onClick={() => setHalf('bat')}>Batting</Chip>
-          <Chip selected={half === 'arm'} onClick={() => setHalf('arm')}>Pitching</Chip>
-        </Chips>
-      )}
 
-      {active === 'overview' && (
+      {deeper === null ? (
         <>
-          <Overview p={p} owner={owner} isOurs={isOurs} own={own} onStats={() => setView('stats')} />
+          {portalEntry && (
+            <Callout tone="info" icon="enter" title={`In the transfer portal, from ${portalEntry.fromName}`}>
+              {portalEntry.reason}
+            </Callout>
+          )}
+          <Glance p={p} owner={owner} isOurs={isOurs} portalReason={isOurs ? portalEntry?.reason : undefined} />
+          {!isOurs && (
+            <Callout tone="neutral" icon="lock">His potential, mood and promises stay with his program.</Callout>
+          )}
+          {isOurs && <PromiseTracker p={p} owner={owner} />}
+          <MoreAboutHim p={p} owner={owner} isOurs={isOurs} own={own} onOpen={open} />
           <RosterMoves p={p} isOurs={isOurs} />
         </>
-      )}
-      {active === 'ratings' && <Ratings p={p} isOurs={isOurs} ownerIndex={owner.index} />}
-      {active === 'stats' && (
+      ) : (
         <>
-          <SeasonsUnder p={p} owner={owner} isOurs={isOurs} half={half} />
-          <JuneByYear p={p} owner={owner} isOurs={isOurs} half={half} />
-          <Games id={p.id} owner={owner} isOurs={isOurs} half={twoWay ? half : undefined} />
+          {twoWay && (deeper === 'season' || deeper === 'career') && (
+            <Chips label="Which half of his game">
+              <Chip selected={half === 'bat'} onClick={() => setHalf('bat')}>Batting</Chip>
+              <Chip selected={half === 'arm'} onClick={() => setHalf('arm')}>Pitching</Chip>
+            </Chips>
+          )}
+          {deeper === 'ratings' && <Ratings p={p} isOurs={isOurs} ownerIndex={owner.index} />}
+          {deeper === 'season' && (
+            <>
+              <ThisSeason p={p} half={half} />
+              <Games id={p.id} owner={owner} isOurs={isOurs} half={twoWay ? half : undefined} />
+            </>
+          )}
+          {deeper === 'badges' && <BadgesCard p={p} />}
+          {deeper === 'positions' && <Positions p={p as Hitter} isOurs={isOurs} own={own} />}
+          {deeper === 'career' && <Career p={p} owner={owner} isOurs={isOurs} half={half} />}
         </>
-      )}
-      {active === 'career' && (
-        <Career id={p.id} owner={owner} isPitcher={twoWay ? half === 'arm' : isPitcher} isOurs={isOurs} />
       )}
     </main>
   );
 }
 
-/**
- * Who he is: the face, the school, the name, what he plays and how, whether he
- * can play tonight, and the two numbers the rest of the card is read against.
- */
-function PlayerHeader(
-  { p, owner, isOurs, own, homeRole, dhToday, covering }:
-  {
-    p: AnyPlayer; owner: Owner; isOurs: boolean; own: string; homeRole?: string;
-    dhToday: boolean;
-    /** The spot the chart has him standing at tonight, when it is not his own. */
-    covering: string | null;
-  },
-) {
-  const season = useDynasty((s) => s.season);
-  const isPitcher = p.type === 'pitcher';
-  const twoWay = isTwoWay(p);
-  const status = availability(p, season ? injuryClock(season) : 0);
-  const role = twoWay
-    ? `Two-way: ${posName(homeRole ?? (p as unknown as Pitcher).role).toLowerCase()} and ${posName(own).toLowerCase()}`
-    : posName(own);
-  const captain = captainOf(owner.team)?.id === p.id;
-  const sidearm = (isPitcher || twoWay) && (p as unknown as Pitcher).sidearm;
-
-  return (
-    <ProfileHeader
-      media={<Face id={p.id} team={owner.def.abbr} size={80} />}
-      eyebrow={`${owner.def.school} · ${conferenceName(owner.conference)}`}
-      name={p.name}
-      meta={`${role} · ${CLASS_NAME[p.classYear]} · Age ${p.age}`}
-      tags={(
-        <>
-          <StatusBadge tone={status.tone} icon={status.icon}>{status.badge}</StatusBadge>
-          {captain && <Tag tone="positive">Captain</Tag>}
-          <Tag>{handsText(p.bats, p.throws)}</Tag>
-          {sidearm && <Tag>Sidearm</Tag>}
-          {dhToday && <Tag>Designated hitter tonight</Tag>}
-          {covering && (
-            <Tag>
-              {isPitcher
-                ? `Filling in as a ${posName(covering).toLowerCase()}`
-                : `Filling in at ${posName(covering).toLowerCase()}`}
-            </Tag>
-          )}
-        </>
-      )}
-      stats={[
-        { label: 'Rating', value: overallOf(p) },
-        ...(isOurs ? [{ label: 'Potential', value: potentialGrade(p.potential) }] : []),
-      ]}
-    />
-  );
-}
-
 // ---------------------------------------------------------------------------
-// Overview
+// The top of the card, for your own men
 // ---------------------------------------------------------------------------
 
-/**
- * The facts a coach checks before any number: can he play, how does he feel,
- * will the draft or the portal take him. Each one with a note that finishes
- * the sentence. Then his season so far, and his badges.
- */
-function Overview(
-  { p, owner, isOurs, own, onStats }:
-  { p: AnyPlayer; owner: Owner; isOurs: boolean; own: string; onStats: () => void },
-) {
-  const [retrainOpen, setRetrainOpen] = useState(false);
-  const season = useDynasty((s) => s.season);
-  const economy = useDynasty((s) => s.economy);
-  const isPitcher = p.type === 'pitcher';
-
-  const inJune = { classYear: p.classYear, age: p.age + 1 };
-  const eligible = p.classYear !== 'SR' && draftEligible(inJune);
-  const odds = eligible ? draftChance(overallOf(p)) : null;
-  const draft: DescriptionItem = p.classYear === 'SR'
-    ? { label: 'Draft', value: 'Graduating', note: 'His final college season' }
-    : odds === null
-      ? { label: 'Draft', value: 'Not eligible', note: 'Too young for this June’s draft' }
-      : {
-        label: 'Draft',
-        value: odds >= 0.7 ? 'Likely to leave' : odds >= 0.35 ? 'Could leave' : odds >= 0.12 ? 'Outside chance' : 'Should stay',
-        tone: odds >= 0.35 ? 'warning' : undefined,
-        note: 'Eligible for this June’s draft',
-      };
-
-  const secondaries = !isPitcher ? secondaryPositions(p as Hitter).slice(0, 3) : [];
-
-  if (!isOurs) {
-    return (
-      <>
-        <Callout tone="neutral" icon="lock">His potential, mood and promises stay with his program.</Callout>
-        <DescriptionList
-          items={[
-            draft,
-            ...(isPitcher ? [{ label: 'Fastball', value: `${(p as Pitcher).velocity} mph`, note: 'Top speed' }] : []),
-          ]}
-        />
-        <ThisSeason p={p} onStats={onStats} />
-        {!isPitcher && (
-          <List label="Positions">
-            <ListRow
-              icon="swap"
-              title="Positions"
-              subtitle={`${posName(own)}${secondaries.length ? `, also covers ${secondaries.map((s) => posName(s).toLowerCase()).join(', ')}` : ''} · where a winter could take him`}
-              onClick={() => setRetrainOpen(true)}
-            />
-          </List>
-        )}
-        {retrainOpen && !isPitcher && (
-          <RetrainSheet p={p as Hitter} canMove={false} onClose={() => setRetrainOpen(false)} />
-        )}
-      </>
-    );
-  }
-
-  const status = availability(p, season ? injuryClock(season) : 0);
-  const rank = squadRanks(owner.team).get(p.id) ?? 20;
-  const feeling = mood(p);
-  const role = promiseOf(p, rank);
-  const starts = (p as AnyPlayer & { starts?: number }).starts ?? 0;
-  const expectedShare = expectationOf(p, rank);
-  const actualShare = owner.gp > 0 ? starts / owner.gp : 0;
-  const buried = Math.max(0, expectedShare - actualShare);
-  const moodRisk = flightRisk(p);
-  // Only a hitter's starts can be judged against games played, and only once
-  // there have been a few.
-  const judged = !isPitcher && role.startsWith('expects') && owner.gp >= 5;
-
-  const transfer: DescriptionItem = p.classYear === 'SR'
-    ? { label: 'Transfer risk', value: 'None', note: 'He graduates instead' }
-    : moodRisk >= 0.4 || buried >= 0.4
-      ? { label: 'Transfer risk', value: 'High', tone: 'negative', note: buried >= 0.25 ? 'Wants more playing time' : 'Unhappy enough to leave' }
-      : moodRisk > 0 || buried >= 0.25
-        ? { label: 'Transfer risk', value: 'Worth watching', tone: 'warning', note: buried >= 0.25 ? 'Wants more playing time' : 'Starting to look around' }
-        : { label: 'Transfer risk', value: 'Low', note: 'No warning signs' };
-
-  const promise = recruitPromiseProgress(p, {
-    starts,
-    games: owner.gp,
-    battingGames: season?.batting.get(p.id)?.g ?? 0,
-    pitchingGames: season?.pitching.get(p.id)?.g ?? 0,
-  });
-
-  return (
-    <>
-      <DescriptionList
-        items={[
-          {
-            label: 'Availability', value: status.label, tone: toneOf(status.tone),
-            icon: status.tone === 'neutral' ? undefined : status.icon, note: status.note,
-          },
-          {
-            label: 'Mood',
-            value: MOOD_WORD[feeling],
-            tone: feeling === 'unhappy' ? 'negative' : feeling === 'restless' ? 'warning' : undefined,
-            note: `${sentence(role)}${judged ? (buried >= 0.25 ? ', and is not getting it' : ', and does') : ''}`,
-          },
-          draft,
-          transfer,
-        ]}
-      />
-
-      {promise && (
-        <Callout tone="info" icon="bookmark" title={`Recruiting promise: ${promise.title.toLowerCase()}`}>
-          {promise.detail} {promise.term}.
-        </Callout>
-      )}
-
-      <ProjectNote p={p} economy={economy} />
-
-      <ThisSeason p={p} onStats={onStats} />
-      <BadgesCard p={p} />
-    </>
-  );
-}
-
-/** The staff project on this man: running, or the last one's result. */
-function ProjectNote({ p, economy }: { p: AnyPlayer; economy: ReturnType<typeof useDynasty.getState>['economy'] }) {
+/** The staff's work on this man: running, or the last result. */
+export function ProjectNote({ p, economy }: { p: AnyPlayer; economy: ReturnType<typeof useDynasty.getState>['economy'] }) {
   const id = String(p.id);
   const seats = ['hitting', 'pitching'] as const;
   const live = seats
-    .map((seat) => ({ seat, project: economy.staffPlans?.[seat]?.project }))
-    .find((x) => x.project?.playerId === id);
-  if (live?.project) {
+    .map((seat) => ({ seat, plan: staffPlan(economy, seat) }))
+    .find(({ plan: { project } }) => (project?.season ? !!project.targetIds?.includes(id) : project?.playerId === id));
+  const running = live?.plan.project;
+  if (live && running?.season) {
+    // Season work (2026-09-28): what he stands to take at season's end, as the focus stands.
     const coach = economy.staff[live.seat]?.name ?? 'The staff';
-    const chance = Math.round((live.project.odds ?? 0) * 100);
+    const g = seasonGainOn(p, running.kind, seasonEach(economy, live.seat, running, live.plan.directive));
     return (
-      <Callout tone="info" icon="timer" title={`Coach's project: ${PROJECT_ATTRIBUTE[live.project.kind].toLowerCase()}`}>
-        {coach} has him for {plural(live.project.weeksLeft, 'more week')} · {chance}% chance it takes.
+      <Callout tone="info" icon="timer" title={`Season work: ${PROJECT_ATTRIBUTE[running.kind].toLowerCase()}`}>
+        {coach} has him · +{g} at season&rsquo;s end.
       </Callout>
     );
   }
-  const last = (economy.projectHistory ?? []).find((r) => r.playerId === id);
-  const c = last?.changes[0];
+  if (live && running) {
+    const coach = economy.staff[live.seat]?.name ?? 'The staff';
+    const chance = Math.round((running.odds ?? 0) * 100);
+    return (
+      <Callout tone="info" icon="timer" title={`Coach's project: ${PROJECT_ATTRIBUTE[running.kind].toLowerCase()}`}>
+        {coach} has him for {plural(running.weeksLeft, 'more week')} · {chance}% chance it takes.
+      </Callout>
+    );
+  }
+  const last = (economy.projectHistory ?? []).find((r) => r.changes.some((c) => c.id === id));
+  const c = last?.changes.find((x) => x.id === id);
   if (!last || !c) return null;
-  const coach = economy.staff[last.seat]?.name ?? 'the staff';
+  const coach = (typeof last.coach === 'string' ? last.coach : undefined) ?? economy.staff[last.seat]?.name ?? 'the staff';
+  if (last.season === true) {
+    const b = Math.round(c.before);
+    const a = Math.round(c.after);
+    const title = `Season work: ${c.attribute.toLowerCase()}`;
+    if (a - b > 0) {
+      return (
+        <Callout tone="positive" title={title}>
+          {c.attribute} {b} → {a} under {coach} in {last.year}.
+        </Callout>
+      );
+    }
+    // A zero is his ceiling only when the work paid something: a late start can round to nothing.
+    const paid = typeof last.gain !== 'number' || last.gain > 0;
+    return (
+      <Callout tone="neutral" icon="info" title={title}>
+        {paid ? `At his ceiling in ${last.year}.` : `Too few weeks in ${last.year}.`} Nothing added.
+      </Callout>
+    );
+  }
   return last.took === false ? (
     <Callout tone="neutral" icon="info" title={`Last project: ${c.attribute.toLowerCase()}`}>
       He did not take to {coach}&rsquo;s {PROJECT_LABEL[last.kind].toLowerCase()} in {last.year}.
@@ -586,7 +477,7 @@ function BadgesCard({ p }: { p: AnyPlayer }) {
           {held.map((b) => (
             <ListRow
               key={b.id}
-              lead={<Medal metal={b.tier === 3 ? 'gold' : b.tier === 2 ? 'silver' : 'bronze'} size={32} />}
+              lead={<BadgeEmblem id={b.id} tier={b.tier} size={36} />}
               title={capsWords(BADGES[b.id].label)}
               subtitle={`${capsWords(TIER_NAME[b.tier])} · ${BADGES[b.id].note}`}
             />
@@ -598,56 +489,175 @@ function BadgesCard({ p }: { p: AnyPlayer }) {
 }
 
 /**
+ * Where he plays and where a winter could take him: his own spot, then every
+ * spot he could learn with the two numbers a coach weighs — how he would rate
+ * there today, and the chance the move sticks. The list the Position decision
+ * opens as a sheet (RetrainModal.tsx), laid on the page, and on your own man
+ * the moves are made from here too, with the same two presses and the same
+ * store action: the move is permanent. In the winter it is made at once;
+ * during the season it is written down for the roll and can be taken back
+ * until then.
+ */
+function Positions({ p, isOurs, own }: { p: Hitter; isOurs: boolean; own: string }) {
+  const changePosition = useDynasty((s) => s.changePosition);
+  const winter = useDynasty((s) => s.phase) !== null;
+  // A plan written on the man re-renders the page through the version.
+  const version = useDynasty((s) => s.version);
+  void version;
+  const planned = (p as Hitter & { retrainTo?: Position }).retrainTo;
+  const promise = !promiseSpent(p.recruitPromise) ? p.recruitPromise : undefined;
+  const promisedPos = promise?.kind === 'keepPosition' ? promise.promisedPos : undefined;
+  // Measured from his own spot, which for a bat-first man is where his glove
+  // says he is: the DH is a lineup slot, and the header names him the same
+  // way. Never from tonight's label, which a cover or the DH has overwritten.
+  const home = own as Position;
+  const man: Hitter = home === p.pos ? p : { ...p, pos: home };
+  const spots = retrainablePositions(man);
+
+  const how = !isOurs
+    ? 'What a winter could make of him, if he were yours to move.'
+    : winter
+      ? 'A move is permanent. He learns the new spot over the winter and opens next season there, a step behind until it takes.'
+      : planned
+        ? `Planned: he finishes the season at ${posName(home).toLowerCase()} and moves to ${posName(planned).toLowerCase()} when it ends. You can cancel or change the plan until then.`
+        : 'A move is permanent. Choose now and it happens when the season ends: he learns the new spot over the winter.';
+
+  return (
+    <Card title="Positions" flush>
+      <List className="pb-list--inset" label="Positions he could play">
+        <ListRow
+          icon="check-circled"
+          title={posName(home)}
+          subtitle={`His own spot · rating there ${overallOf(man)}`}
+          status={<Tag>Current</Tag>}
+        />
+        {spots.map((spot) => {
+          const odds = Math.round(retrainOdds(man, spot) * 100);
+          const tier = coverTier(man, spot);
+          const plays = overallOf(fieldingAt(man, spot));
+          const breaks = promisedPos !== undefined && spot !== promisedPos;
+          const isPlan = planned === spot;
+          return (
+            <ListRow
+              key={spot}
+              icon="swap"
+              markTone={tier >= 2 ? 'warning' : undefined}
+              title={posName(spot)}
+              subtitle={`Rating there today: ${plays} · Chance it sticks: ${odds}%`}
+              status={(
+                <>
+                  <Tag tone={tier >= 2 ? 'warning' : undefined}>{tier === 1 ? 'Natural cover' : 'A stretch'}</Tag>
+                  {isPlan && <StatusBadge tone="info" icon="calendar">Planned for the offseason</StatusBadge>}
+                  {breaks && <StatusBadge tone="warning">Breaks your position promise</StatusBadge>}
+                </>
+              )}
+            >
+              {isOurs && (winter ? (
+                <ConfirmButton
+                  size="sm"
+                  variant={breaks ? 'danger' : 'secondary'}
+                  idle={`Move to ${posName(spot).toLowerCase()}`}
+                  armed="Tap again to move him"
+                  armedMeta="Permanent"
+                  onConfirm={() => changePosition(p.id, spot)}
+                />
+              ) : isPlan ? (
+                <Button size="sm" variant="quiet" icon="cross" onClick={() => changePosition(p.id, spot)}>
+                  Cancel the plan
+                </Button>
+              ) : (
+                <ConfirmButton
+                  size="sm"
+                  variant={breaks ? 'danger' : 'secondary'}
+                  idle="Move at season's end"
+                  armed="Tap again to plan the move"
+                  armedMeta={planned ? `Replaces ${posName(planned).toLowerCase()}` : 'Permanent'}
+                  onConfirm={() => changePosition(p.id, spot)}
+                />
+              ))}
+            </ListRow>
+          );
+        })}
+        {isTwoWay(p) && (
+          <ListRow icon="target" title={posName(p.role)} subtitle="His role on the mound" status={<Tag>Two-way</Tag>} />
+        )}
+      </List>
+      {spots.length === 0 && (
+        <p className="pb-note">There is no realistic spot for him to learn.</p>
+      )}
+      <p className="pb-note">{how}</p>
+    </Card>
+  );
+}
+
+/**
  * This year's line, named. A walk is an appearance: gating on at-bats alone
  * told a pinch hitter with two walks that he had not played.
+ *
+ * A two-way man's card shows one half at a time, the half the chips above
+ * picked, the way his game log and his career do (2026-09-26: "instead of
+ * keeping it separated with the sub tabs buttons it keeps it all in one
+ * singular list"). And the whole line, doubles and triples each on their own:
+ * the scorer counts them apart, and a gap hitter and a man who legs out
+ * triples are not the same player.
  */
-function ThisSeason({ p, onStats }: { p: AnyPlayer; onStats?: () => void }) {
+function ThisSeason({ p, half }: { p: AnyPlayer; half: 'bat' | 'arm' }) {
   const season = useDynasty((s) => s.season);
   const year = useDynasty((s) => s.year);
   const version = useDynasty((s) => s.version);
   void version;
-  const isPitcher = p.type === 'pitcher';
+  const twoWay = isTwoWay(p);
+  const asPitcher = twoWay ? half === 'arm' : p.type === 'pitcher';
   const bat = season?.batting.get(p.id);
   const pit = season?.pitching.get(p.id);
   const batted = !!bat && (bat.ab > 0 || bat.bb > 0 || bat.hbp > 0);
   const pitched = !!pit && pit.outs > 0;
-  const trailing = onStats
-    ? <Button size="sm" variant="quiet" iconAfter="chevron-right" onClick={onStats}>All stats</Button>
-    : undefined;
 
-  if (isTwoWay(p) ? !batted && !pitched : isPitcher ? !pitched : !batted) {
+  if (asPitcher ? !pitched : !batted) {
     return (
       <Card title="This season" eyebrow={String(year)}>
-        <p className="pb-text-muted">No games yet. His line starts with his first appearance.</p>
+        <p className="pb-text-muted">
+          {twoWay
+            ? (asPitcher ? 'No innings yet this season.' : 'No at-bats yet this season.')
+            : 'No games yet. His line starts with his first appearance.'}
+        </p>
       </Card>
     );
   }
 
-  const batting: StatTileProps[][] = bat && batted && !isPitcher ? [[
+  const rows: StatTileProps[][] = !asPitcher && bat ? [[
     { label: 'Batting average', value: bat.ab > 0 ? pct(battingAverage(bat)) : '—', note: `${bat.h} for ${bat.ab}` },
     { label: 'On-base', value: pct(onBase(bat)), note: plural(bat.bb, 'walk') },
-    { label: 'Slugging', value: bat.ab > 0 ? pct(slugging(bat)) : '—', note: plural(bat.d + bat.t + bat.hr, 'extra-base hit') },
+    { label: 'Slugging', value: bat.ab > 0 ? pct(slugging(bat)) : '—', note: bat.ab > 0 ? `${pct(onBase(bat) + slugging(bat))} OPS` : undefined },
   ], [
+    { label: 'Doubles', value: bat.d },
+    { label: 'Triples', value: bat.t },
     { label: 'Home runs', value: bat.hr },
+  ], [
+    { label: 'Runs', value: bat.r },
     { label: 'Runs batted in', value: bat.rbi },
     { label: 'Stolen bases', value: bat.sb, note: `in ${plural(bat.sb + bat.cs, 'try', 'tries')}` },
-  ]] : [];
-  const pitching: StatTileProps[][] = pit && pitched ? [[
+  ], [
+    { label: 'Walks', value: bat.bb },
+    { label: 'Strikeouts', value: bat.k },
+    { label: 'Games', value: bat.g },
+  ]] : asPitcher && pit ? [[
     { label: 'Earned run average', value: era(pit).toFixed(2), note: `${pit.w}–${pit.l} record` },
     { label: 'Innings', value: ipText(inningsPitched(pit)), note: pit.gs > 0 ? plural(pit.gs, 'start') : plural(pit.sv, 'save') },
     { label: 'Strikeouts', value: pit.k, note: plural(pit.bb, 'walk') },
   ], [
     { label: 'Walks and hits per inning', value: whip(pit).toFixed(2) },
+    { label: 'Hits allowed', value: pit.h },
+    { label: 'Home runs allowed', value: pit.hr },
+  ], [
     { label: 'Games', value: pit.g },
     { label: 'Saves', value: pit.sv },
+    { label: 'Strikeouts per 9', value: pit.outs > 0 ? ((pit.k * 27) / pit.outs).toFixed(1) : '—' },
   ]] : [];
 
   return (
-    <Card title="This season" eyebrow={String(year)} trailing={trailing}>
-      {isTwoWay(p) && batting.length > 0 && <span className="pb-eyebrow">At the plate</span>}
-      {batting.map((items, i) => <StatGroup key={`b${i}`} size="sm" items={items} />)}
-      {isTwoWay(p) && pitching.length > 0 && <span className="pb-eyebrow">On the mound</span>}
-      {pitching.map((items, i) => <StatGroup key={`p${i}`} size="sm" items={items} />)}
+    <Card title="This season" eyebrow={String(year)}>
+      {rows.map((items, i) => <StatGroup key={i} size="sm" items={items} />)}
     </Card>
   );
 }
@@ -657,45 +667,83 @@ function ThisSeason({ p, onStats }: { p: AnyPlayer; onStats?: () => void }) {
 // ---------------------------------------------------------------------------
 
 /**
- * What he can do, in one scroll of titled cards: what he throws, his ratings
- * at the plate or on the mound, his glove, how he does against each hand, and
- * the habits you have read.
+ * One rating on its bar, the review's way: the fill is where he is, a striped
+ * run past it is the room his potential leaves, a hairline at 50 marks the
+ * league's middle, and the room is printed in green beside the number. The
+ * design system's RatingRow ghosts a potential too, but writes it as an arrow
+ * to a second number and has no mark for the middle.
+ */
+function RoomRow({ label, value, room }: { label: string; value: number; room: number }) {
+  const v = Math.max(0, Math.min(100, value));
+  const up = Math.max(0, Math.min(99, v + room) - v);
+  return (
+    <span className="pb-pcard__room">
+      <span className="pb-pcard__room-label">{label}</span>
+      <span
+        className="pb-pcard__room-bar"
+        role="img"
+        aria-label={`${label} ${v} of 100${up > 0 ? `, room to reach ${v + up}` : ''}`}
+      >
+        <i className="pb-pcard__room-fill" style={{ width: `${v}%` }} />
+        {up > 0 && <i className="pb-pcard__room-ghost" style={{ left: `${v}%`, width: `${up}%` }} />}
+        <i className="pb-pcard__room-avg" />
+      </span>
+      <span className="pb-pcard__room-value" aria-hidden>
+        <b>{v}</b>{up > 0 && <small>+{up}</small>}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * What he can do, in one scroll of titled cards: his ratings at the plate or
+ * on the mound with the room each has left, his glove, what he throws, how he
+ * does against each hand, and the habits you have read. The staff's project
+ * on him leads, because it is about one of these numbers.
  */
 function Ratings(
   { p, isOurs, ownerIndex }: { p: AnyPlayer; isOurs: boolean; ownerIndex: number },
 ) {
+  const economy = useDynasty((s) => s.economy);
   const isPitcher = p.type === 'pitcher';
   const twoWay = isTwoWay(p);
+  /*
+    The room each rating has left, drawn as the striped run past it. The
+    engine keeps no ceiling per rating: potential is one number for the whole
+    man, and a winter moves every rating that grows by the same step toward it
+    (`develop`), so at his potential each has come up by about his potential
+    less his rating today — capped at 99, where every rating stops. Another
+    program keeps his potential to itself, so his bars stop at what he is.
+  */
+  const room = isOurs ? Math.max(0, Math.round(p.potential) - overallOf(p)) : 0;
+  const bars = (rows: Array<[string, string, number]>) => rows.map(([key, label, value]) => (
+    <RoomRow key={key} label={label} value={Math.round(value)} room={GROWS.has(key) ? room : 0} />
+  ));
+  const hitting = HITTING.map(([k, l]): [string, string, number] => [k, l, (p as Hitter)[k]]);
+  const pitching = PITCHING.map(([k, l]): [string, string, number] => [k, l, (p as unknown as Pitcher)[k]]);
   const glove: Array<[string, string, number]> = isPitcher
     ? PITCHER_GLOVE.map(([k, l]) => [k, l, (p as Pitcher)[k]])
     : [
       ...HITTER_GLOVE.map(([k, l]) => [k, l, (p as Hitter)[k]] as [string, string, number]),
       ...(p.pos === 'C' ? [[CATCHER_BAR[0], CATCHER_BAR[1], (p as Hitter).blocking] as [string, string, number]] : []),
     ];
+  const scale = <span className="pb-pcard__scale">{SCALE}</span>;
 
   return (
     <>
-      {isPitcher && <Repertoire p={p as Pitcher} />}
-      <Card title={isPitcher ? 'Pitching' : 'Hitting'} eyebrow={SCALE}>
-        {isPitcher
-          ? PITCHING.map(([key, label]) => <RatingRow key={key} label={label} value={Math.round((p as Pitcher)[key])} />)
-          : HITTING.map(([key, label]) => <RatingRow key={key} label={label} value={Math.round((p as Hitter)[key])} />)}
+      {isOurs && <ProjectNote p={p} economy={economy} />}
+      <Card title={isPitcher ? 'Pitching' : 'Hitting'} trailing={scale}>
+        {bars(isPitcher ? pitching : hitting)}
+        {room > 0 && <p className="pb-note">Striped: where his potential says he could get to.</p>}
       </Card>
-      {twoWay && (
-        <>
-          <Repertoire p={p as unknown as Pitcher} />
-          <Card title="Pitching" eyebrow={SCALE}>
-            {PITCHING.map(([key, label]) => (
-              <RatingRow key={key} label={label} value={Math.round((p as unknown as Pitcher)[key])} />
-            ))}
-          </Card>
-        </>
-      )}
+      {twoWay && <Card title="Pitching" trailing={scale}>{bars(pitching)}</Card>}
+      {(isPitcher || twoWay) && <Repertoire p={p as unknown as Pitcher} />}
       <Card
         title="Fielding"
         eyebrow={isPitcher ? 'Off the mound' : `At ${posName(naturalPos(p as Hitter)).toLowerCase()}`}
+        trailing={scale}
       >
-        {glove.map(([key, label, value]) => <RatingRow key={key} label={label} value={Math.round(value)} />)}
+        {bars(glove)}
       </Card>
       <Platoon p={p} />
       <Tendencies p={p} isOurs={isOurs} ownerIndex={ownerIndex} />
@@ -825,7 +873,7 @@ function Tendencies(
         note: `${Math.round(watchProgress(slot, watch) * 100)}% of the way to a read`,
       };
     }
-    return { label: SLOT_WORD[slot], value: 'No report', icon: 'lock', note: 'Scout his program to read him' };
+    return { label: SLOT_WORD[slot], value: 'No report', icon: 'lock', note: SCOUTING ? 'Scout his program to read him' : undefined };
   });
 
   return (
@@ -835,7 +883,7 @@ function Tendencies(
       flush
     >
       <DescriptionList items={items} columns={1} />
-      {!isOurs && (
+      {!isOurs && SCOUTING && (
         <p className="pb-note">
           {scouted ? 'Your scouting report is active.' : 'Scout his program to see his tendencies.'}
         </p>
@@ -845,26 +893,8 @@ function Tendencies(
 }
 
 // ---------------------------------------------------------------------------
-// Stats
+// Seasons and games
 // ---------------------------------------------------------------------------
-
-/**
- * The years he has played, newest last, with this one marked unfinished. The
- * archive is written in June, so until then the season in progress only lives
- * in the season's books, and it is computed by the same function the archive
- * will use.
- */
-function careerYears(
-  season: SeasonState | null, ownerIndex: number, id: PlayerId, isOurs: boolean,
-): { years: CareerYear[]; live: CareerYear | null } {
-  const archived = season?.careers?.[id] ?? [];
-  const live = isOurs && season ? liveCareerYear(season, ownerIndex, id) : null;
-  return {
-    years: live ? [...archived.filter((y) => y.year !== live.year), live] : archived,
-    live,
-  };
-}
-
 
 /**
  * Years as a table: newest first, three numbers a row, and every column named
@@ -892,15 +922,18 @@ function SeasonTable(
     { label: 'K', title: 'Strikeouts', width: '36px', align: 'right' },
   ] : [
     { label: 'Season', grow: true },
-    { label: 'AVG', title: 'Batting average', width: '52px', align: 'right', strong: true },
-    { label: 'HR', title: 'Home runs', width: '36px', align: 'right' },
-    { label: 'RBI', title: 'Runs batted in', width: '40px', align: 'right' },
+    { label: 'AVG', title: 'Batting average', width: '50px', align: 'right', strong: true },
+    // Doubles and triples in their own columns: asked for 2026-09-26.
+    { label: '2B', title: 'Doubles', width: '30px', align: 'right' },
+    { label: '3B', title: 'Triples', width: '30px', align: 'right' },
+    { label: 'HR', title: 'Home runs', width: '32px', align: 'right' },
+    { label: 'RBI', title: 'Runs batted in', width: '38px', align: 'right' },
   ];
 
   const rows = [...years].reverse().map((y) => {
     const inProgress = y.year === live?.year;
     const who = (
-      <span className="pb-teamcell">
+      <span className="pb-teamcell pb-seasoncell">
         <span className="pb-teamcell__text">
           <span className="pb-teamcell__name">{y.year}</span>
           <span className="pb-teamcell__sub">
@@ -911,7 +944,7 @@ function SeasonTable(
     );
     const cells = isPitcher
       ? [who, `${y.w ?? 0}–${y.l ?? 0}`, y.outs ? ((y.er ?? 0) * 27 / y.outs).toFixed(2) : '—', y.k ?? 0]
-      : [who, y.ab ? pct((y.h ?? 0) / y.ab) : '—', y.hr ?? 0, y.rbi ?? 0];
+      : [who, y.ab ? pct((y.h ?? 0) / y.ab) : '—', y.d ?? 0, y.t ?? 0, y.hr ?? 0, y.rbi ?? 0];
     return { key: y.year, cells, onClick: () => setOpenYear(y.year) };
   });
 
@@ -997,30 +1030,6 @@ function SeasonSheet(
       )}
     </Sheet>
   );
-}
-
-/** The season-by-season book, at the top of the Stats view. */
-function SeasonsUnder(
-  { p, owner, isOurs, half }:
-  { p: AnyPlayer; owner: Owner; isOurs: boolean; half?: 'bat' | 'arm' },
-) {
-  const asPitcher = isTwoWay(p) ? half === 'arm' : p.type === 'pitcher';
-  const season = useDynasty((s) => s.season);
-  const version = useDynasty((s) => s.version);
-  void version;
-  const { years, live } = careerYears(season ?? null, owner.index, p.id, isOurs);
-  if (years.length === 0) {
-    return (
-      <EmptyState
-        icon="bar-chart"
-        title={isOurs ? 'No seasons yet' : 'Kept for your own players'}
-        text={isOurs
-          ? 'His first appearance starts the book. Until then, this season lives on the Overview.'
-          : 'The season-by-season book is kept for your own program. His numbers this season are on the Overview.'}
-      />
-    );
-  }
-  return <SeasonTable title="Season by season" years={years} live={live} isPitcher={asPitcher} homeAbbr={owner.def.abbr} />;
 }
 
 /**
@@ -1183,33 +1192,6 @@ function SignatureMoments({ id }: { id: string }) {
   );
 }
 
-/**
- * Every award the book has his name on, newest first: the dynasty's archive,
- * and the season in progress read live once it is complete.
- */
-function useAwardsWon(id: PlayerId): { year: number; title: string }[] {
-  const history = useDynasty((s) => s.history);
-  const season = useDynasty((s) => s.season);
-  const year = useDynasty((s) => s.year);
-  const version = useDynasty((s) => s.version);
-  void version;
-
-  const won: { year: number; title: string }[] = [];
-  for (const rec of history) {
-    for (const a of rec.awards ?? []) {
-      if (a.id === id) won.push({ year: rec.year, title: a.title });
-    }
-  }
-  if (season && seasonComplete(season)) {
-    for (const a of seasonAwards(season)) {
-      if (a.id === id && !won.some((w) => w.year === year && w.title === a.title)) {
-        won.push({ year, title: a.title });
-      }
-    }
-  }
-  return won.sort((a, b) => b.year - a.year);
-}
-
 function AwardCase({ id }: { id: PlayerId }) {
   const won = useAwardsWon(id);
   if (won.length === 0) return null;
@@ -1217,7 +1199,7 @@ function AwardCase({ id }: { id: PlayerId }) {
     <Card title="Honors" eyebrow={plural(won.length, 'award')} flush>
       <List className="pb-list--inset" label="Honors">
         {won.map((w) => (
-          <ListRow key={`${w.year}-${w.title}`} lead={<Medal metal="gold" size={32} />} title={w.title} subtitle={String(w.year)} />
+          <ListRow key={`${w.year}-${w.title}`} lead={<AwardEmblem title={w.title} size={44} />} title={w.title} subtitle={String(w.year)} />
         ))}
       </List>
     </Card>
@@ -1225,17 +1207,20 @@ function AwardCase({ id }: { id: PlayerId }) {
 }
 
 /**
- * The marks a career is remembered by — his best year and his totals, over the
- * same rows the Stats view prints — then his nights and his honors.
+ * The marks a career is remembered by — his best year and his totals — then
+ * every season in the book, his Junes, his nights and his honors. The old
+ * card split these between a Stats tab and a Career tab; this year's line and
+ * game log are This season's now, and everything across years is here.
  */
 function Career(
-  { id, owner, isPitcher, isOurs }:
-  { id: PlayerId; owner: Owner; isPitcher: boolean; isOurs: boolean },
+  { p, owner, isOurs, half }:
+  { p: AnyPlayer; owner: Owner; isOurs: boolean; half: 'bat' | 'arm' },
 ) {
   const season = useDynasty((s) => s.season);
   const version = useDynasty((s) => s.version);
   void version;
-  const { years } = careerYears(season, owner.index, id, isOurs);
+  const isPitcher = isTwoWay(p) ? half === 'arm' : p.type === 'pitcher';
+  const { years, live } = careerYears(season, owner.index, p.id, isOurs);
 
   if (years.length === 0) {
     return (
@@ -1278,8 +1263,10 @@ function Career(
           ]}
         />
       </Card>
-      <SignatureMoments id={id} />
-      <AwardCase id={id} />
+      <SeasonTable title="Season by season" years={years} live={live} isPitcher={isPitcher} homeAbbr={owner.def.abbr} />
+      <JuneByYear p={p} owner={owner} isOurs={isOurs} half={half} />
+      <SignatureMoments id={p.id} />
+      <AwardCase id={p.id} />
     </>
   );
 }
@@ -1301,18 +1288,17 @@ function markWords(mark: string): string {
  * after, which is still being written for a man in the pros.
  */
 function Alumnus(
-  { id, gone, note, career, view, onView }:
+  { id, gone, note, career }:
   {
     id: PlayerId;
     gone: Departure | undefined;
     note: AlumnusNote | undefined;
     career: CareerYear[];
-    view: View;
-    onView: (v: View) => void;
   },
 ) {
   const season = useDynasty((s) => s.season);
   const year = useDynasty((s) => s.year);
+  const [active, setActive] = useState<'overview' | 'career'>('overview');
   const last = career[career.length - 1];
   // A departure notice survives one offseason; the book writes his name on
   // every row since ids stopped being names. Newest mechanism first.
@@ -1328,7 +1314,6 @@ function Alumnus(
   const school = season?.teams.find((t) => t.def.abbr === abbr)?.def.school ?? abbr;
 
   const wasPitcher = career.some((y) => (y.outs ?? 0) > 0) || !career.some((y) => (y.ab ?? 0) > 0);
-  const active: View = view === 'career' ? 'career' : 'overview';
 
   // What he did here, totalled. School rows only: a transfer's other college
   // is his record, not ours.
@@ -1366,18 +1351,19 @@ function Alumnus(
         : drafted ? 'His professional career starts next season' : 'His playing career ended in June';
   const over = pro.some((r) => r.final);
 
-  const totals: StatTileProps[] = [
-    ...(summary.hitting ? [
-      { label: 'Batting average', value: summary.average },
-      { label: 'Home runs', value: summary.hr },
-      { label: 'Runs batted in', value: summary.rbi },
-    ] : []),
-    ...(summary.pitching ? [
-      { label: 'Earned run average', value: summary.era },
-      { label: 'Strikeouts', value: summary.k },
-      { label: 'Innings', value: summary.innings },
-    ] : []),
-  ];
+  // His totals, three to a row. A two-way man's six numbers shared one row
+  // and ran into each other on a phone (2026-09-26, a Hall of Famer's page),
+  // so each half gets its own row under its own name.
+  const batting: StatTileProps[] = summary.hitting ? [
+    { label: 'Batting average', value: summary.average },
+    { label: 'Home runs', value: summary.hr },
+    { label: 'Runs batted in', value: summary.rbi },
+  ] : [];
+  const pitching: StatTileProps[] = summary.pitching ? [
+    { label: 'Earned run average', value: summary.era },
+    { label: 'Strikeouts', value: summary.k },
+    { label: 'Innings', value: summary.innings },
+  ] : [];
 
   return (
     <main className="pb-page pb-playercard">
@@ -1397,15 +1383,26 @@ function Alumnus(
           </>
         )}
       />
-      {totals.length > 0 && (
-        <Card title="Here" eyebrow={school ? `His totals at ${school}` : 'His college totals'}>
-          <StatGroup size="sm" items={totals} />
+      {(batting.length > 0 || pitching.length > 0) && (
+        <Card title={school ? `At ${school}` : 'In college'} eyebrow="His totals">
+          {batting.length > 0 && pitching.length > 0 ? (
+            <>
+              <div className="pb-alum-half">
+                <span className="pb-pcard__kicker">Batting</span>
+                <StatGroup size="sm" label="Batting" items={batting} />
+              </div>
+              <div className="pb-alum-half">
+                <span className="pb-pcard__kicker">Pitching</span>
+                <StatGroup size="sm" label="Pitching" items={pitching} />
+              </div>
+            </>
+          ) : <StatGroup size="sm" items={batting.length > 0 ? batting : pitching} />}
         </Card>
       )}
       <SegmentedControl<'overview' | 'career'>
         label="Alumnus card"
-        value={active === 'career' ? 'career' : 'overview'}
-        onChange={(v) => onView(v)}
+        value={active}
+        onChange={setActive}
         options={[
           { value: 'overview', label: 'After college' },
           { value: 'career', label: 'College seasons' },
@@ -1470,6 +1467,9 @@ function Alumnus(
               years={career}
               live={null}
               isPitcher={twoWay ? half === 'arm' : wasPitcher}
+              // The school he left from goes unsaid, as his own card does it:
+              // "Sophomore · Rawlins" on every row was cut off at 2B and 3B.
+              homeAbbr={abbr || undefined}
             />
           )}
         </>

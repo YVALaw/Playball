@@ -220,6 +220,20 @@ export interface RecruitClass {
   /** 1-based regular-season recruiting week. After the last week, this is RECRUITING_WEEKS + 1. */
   week: number;
   prospects: Prospect[];
+  /**
+   * The coach's staff list for this class: prospect ids in the order the
+   * coordinator works them. At most STAFF_LIST_MAX (staffRecruiting.ts). Open
+   * men only; tended whenever the staff plans. Absent is empty.
+   *
+   * On the class rather than the store so it resets with it: `generateClass`
+   * never writes it, and `nextSeason` builds every class through that.
+   */
+  staffList?: PlayerId[];
+  /**
+   * Men the staff starred in place of one who signed elsewhere: stand-in id to
+   * the lost man's id. Only keys still on the list.
+   */
+  staffStandIns?: Record<string, PlayerId>;
 }
 
 /**
@@ -594,6 +608,21 @@ export function canPursue(
 /** Whether this recruit is in that program's pipeline: the same home state. */
 export const inPipeline = (prospect: Prospect, programState: string): boolean =>
   prospect.state === programState;
+
+/**
+ * The gate, read the way the program's own pitch reads its reach: a network
+ * where the pitch has one, the home state where it does not.
+ *
+ * A rival's pitch carries sixty at home and nothing elsewhere, so for the
+ * ninety five this is exactly the home-state rule `aiTargets` always asked. The
+ * coached program's pitch carries its real pipelines, and a numeric strength
+ * of sixty or more is the rule `recruit` gates the coach's own board on — so a
+ * staff working his board reaches exactly the men he could.
+ */
+export const pursuable = (
+  p: Prospect, pitch: Pick<Pitch, 'stars' | 'state' | 'pipelineStrength'>,
+): boolean =>
+  canPursue(p, pitch.stars, pitch.pipelineStrength ? pitch.pipelineStrength(p.state) : inPipeline(p, pitch.state));
 
 /**
  * The order any list of recruits reads in: national ranking, best first.
@@ -1697,6 +1726,38 @@ export function chaseCut(week: number): number {
   return week >= 9 ? 0.15 : week >= 6 ? 0.25 : week >= 4 ? 0.33 : 0.4;
 }
 
+/**
+ * A man another program is well clear on, by the cut every board lets go at.
+ *
+ * `best` is the week-start leader (`leadersAtWeekStart`); mid-week it equals
+ * his live best, since points only move at a close. Half the cut above the
+ * program's own tier: see the note inside `aiTargets`, which reads this.
+ */
+export function lostCause(
+  p: Prospect, team: number, programStars: number, week: number,
+  best = Math.max(0, ...Object.values(p.points)),
+): boolean {
+  if (best <= 0) return false;
+  const mine = p.points[team] ?? 0;
+  if (mine >= best) return false;
+  return (best - mine) / best >= chaseCut(week) * (p.stars > programStars ? 0.5 : 1);
+}
+
+/**
+ * How winnable he is for this program: `aiTargets`' backfill score, shared
+ * with the staff's list so the two read a man the same way. A man nobody
+ * leads, or this board leads, is worth chasing at any star; a man somebody
+ * else is halfway to is worth half.
+ */
+export function winScore(
+  p: Prospect, team: number, pitch: Pitch,
+  best = Math.max(0, ...Object.values(p.points)),
+): number {
+  const mine = p.points[team] ?? 0;
+  const lead = best <= 0 ? 1.3 : mine >= best ? 1.35 : Math.max(0, 1 - (best - mine) / best);
+  return fit(p, pitch) * lead * (0.6 + 0.1 * p.stars);
+}
+
 export function aiTargets(
   team: number, pitch: Pitch, coachPrestige: number,
   prospects: readonly Prospect[], need: number, rng: Rng,
@@ -1731,15 +1792,13 @@ export function aiTargets(
 
   const tier = pitch.stars;
 
-  const available = prospects.filter((p) => {
-    if (p.signedBy !== null) return false;
+  const available = prospects.filter((p) =>
     // The pipeline is the AI's too. A gate the ninety five could not use would
     // hand the user a private exception, and the one thing this gate has to be
-    // is the same rule on both sides of the board.
-    if (!canPursue(p, tier, inPipeline(p, pitch.state))) return false;
-    const best = atWeekStart[p.id] ?? 0;
-    if (best <= 0) return true;
-    const mine = p.points[team] ?? 0;
+    // is the same rule on both sides of the board. Read through the pitch's
+    // own reach (`pursuable`): the home state for a rival, the program's real
+    // pipelines for a staff working the coached board.
+    p.signedBy === null && pursuable(p, pitch)
     // Somebody else was well clear coming into this week. Spend elsewhere.
     //
     // Cutting at 40% rather than 60% matters more than it looks: a program that
@@ -1757,10 +1816,9 @@ export function aiTargets(
     // inflation putting thirty boards in the top two tiers on the 135 top men
     // a class holds, the four-star tier signed one to three men a winter and
     // carried nine walk-ons a roster. An argument above your weight is one to
-    // leave as soon as you are clearly not winning it.
-    const cut = chaseCut(weekNo) * (p.stars > tier ? 0.5 : 1);
-    return mine >= best || (best - mine) / best < cut;
-  });
+    // leave as soon as you are clearly not winning it. The rule itself is
+    // `lostCause`, which the staff's list reads too.
+    && !lostCause(p, team, tier, weekNo, atWeekStart[p.id] ?? 0));
 
   // Always work a full board. A program short of targets is a program handing
   // roster spots to walk-ons.
@@ -1889,12 +1947,7 @@ export function aiTargets(
   if (picks.length < wants) {
     const rest = available
       .filter((p) => !taken.has(p.id))
-      .map((p) => {
-        const best = atWeekStart[p.id] ?? 0;
-        const mine = p.points[team] ?? 0;
-        const lead = best <= 0 ? 1.3 : mine >= best ? 1.35 : Math.max(0, 1 - (best - mine) / best);
-        return { p, score: fit(p, pitch) * lead * (0.6 + 0.1 * p.stars) };
-      })
+      .map((p) => ({ p, score: winScore(p, team, pitch, atWeekStart[p.id] ?? 0) }))
       .sort((a, b) => b.score - a.score);
     for (const { p } of rest.slice(0, wants - picks.length)) { picks.push(p); taken.add(p.id); }
   }
@@ -1958,7 +2011,7 @@ export function aiTargets(
 // — the coach can ask for the commitment and get an answer.
 
 /** The same stable string hash the rest of the engine derives with. */
-function stableHash(s: string): number {
+export function stableHash(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
   return h >>> 0;
@@ -2016,7 +2069,7 @@ export const commitPriceFor = (prospect: Pick<Prospect, 'id' | 'rank' | 'stars'>
   commitPointsFor(prospect.stars) * (decisionStyle(prospect) === 'early' ? 0.6 : 1);
 
 /** How far clear the leader must be before a recruit stops listening. */
-const COMMIT_MARGIN = 0.35;
+export const COMMIT_MARGIN = 0.35;
 
 /**
  * How likely a settled man is to say so this week, by how long he has been

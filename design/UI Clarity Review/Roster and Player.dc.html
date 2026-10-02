@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<script src="./pb-icons.js"></script>
+<style>
+body{margin:0;background:#101410;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer;text-align:left}
+::-webkit-scrollbar{width:0;height:0}
+[data-theme="light"]{color-scheme:light;--bg:#f6f8f5;--surface:#fff;--raised:#fff;--sunken:#eef2ee;--track:#e1e7e2;--line:#e1e8e2;--line-strong:#7a877d;--ink:#102019;--muted:#505e55;--disabled:#7f8a82;--accent:#236b42;--accent-soft:#e6f0e8;--command:#236b42;--on-command:#fff;--positive:#1b7a47;--positive-soft:#e2f2e7;--warning:#8c5a00;--warning-soft:#fcefd5;--negative:#c9362f;--negative-soft:#fdefed;--info:#2f4f7a;--info-soft:#e8eef6;--gold:#8a6b16;--sh-card:0 1px 2px rgba(16,32,25,.04),0 4px 16px rgba(16,32,25,.05);--sh-ctl:0 1px 3px rgba(16,32,25,.14)}
+[data-theme="dark"]{color-scheme:dark;--bg:#0e1511;--surface:#151f19;--raised:#1c2821;--sunken:#0f1712;--track:#26332b;--line:#28352c;--line-strong:#5f6d63;--ink:#eef3ef;--muted:#a3b1a7;--disabled:#6b776f;--accent:#4da97a;--accent-soft:#1b3326;--command:#2f7a52;--on-command:#f4f8f4;--positive:#5cc28b;--positive-soft:#163022;--warning:#f0b04a;--warning-soft:#33270e;--negative:#ef7d76;--negative-soft:#3a1a18;--info:#8db3e0;--info-soft:#172538;--gold:#e3bb4f;--sh-card:0 1px 2px rgba(0,0,0,.35);--sh-ctl:0 1px 3px rgba(0,0,0,.5)}
+@keyframes cardIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+
+<div data-theme="{{ theme }}" style="min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:16px;box-sizing:border-box;background:#101410">
+<div style="position:relative;width:412px;height:min(892px, calc(100vh - 32px));min-height:560px;flex:none;display:flex;flex-direction:column;overflow:hidden;border-radius:28px;background:var(--bg);color:var(--ink);box-shadow:0 24px 70px rgba(0,0,0,.45)">
+  <div style="flex:none;display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line)">
+    <img src="./assets/BAY.webp" alt="" style="width:30px;height:30px;object-fit:contain">
+    <div style="flex:1;display:flex;flex-direction:column"><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">2031 · Week 4</small><strong style="font:700 17px/22px 'DM Sans'">Bayshore State</strong></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end"><small style="font:500 11px/14px 'DM Sans';color:var(--muted)">Record</small><b style="font:700 18px/20px 'Barlow Condensed'">14–6</b></div>
+    <img src="./assets/ball.webp" alt="" style="width:26px;height:26px;margin:0 7px">
+    <div style="width:36px;height:36px;border-radius:99px;background:var(--sunken);box-shadow:inset 0 0 0 1px var(--line)"></div>
+  </div>
+  <div style="flex:none;display:flex;gap:4px;padding:0 12px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none">
+    <span style="position:relative;flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans'">Roster<span style="position:absolute;left:12px;right:12px;bottom:0;height:3px;border-radius:99px;background:var(--accent)"></span></span>
+    <a href="Lineup.dc.html" style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Lineup</a>
+    <span style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Stats</span>
+    <span style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Standings</span>
+    <span style="flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 12px;font:600 13px/18px 'DM Sans';color:var(--muted)">Strategy</span>
+  </div>
+
+  <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none">
+    <div style="display:flex;flex-direction:column;gap:14px;padding:14px 16px 32px">
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Bayshore State · 34 on the card</span><h1 style="margin:0;font:700 28px/34px 'DM Sans';letter-spacing:-.02em">Roster</h1></div>
+
+      <sc-if value="{{ rNew }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+          <sc-for list="{{ flags }}" as="f" hint-placeholder-count="3">
+            <button onClick="{{ f.on }}" style="display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;border:1px solid {{ f.bd }};background:{{ f.bg }}"><span style="display:flex;align-items:center;gap:6px;color:{{ f.fg }}">{{ f.icon }}<b style="font:700 22px/1 'Barlow Condensed'">{{ f.n }}</b></span><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ f.label }}</small></button>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <div style="display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--sunken)"><sc-for list="{{ seg }}" as="t" hint-placeholder-count="3"><button onClick="{{ t.on }}" style="flex:1;display:inline-flex;justify-content:center;align-items:center;gap:6px;min-height:40px;border-radius:8px;background:{{ t.bg }};color:{{ t.fg }};box-shadow:{{ t.sh }};font:600 13px/1 'DM Sans'">{{ t.label }}</button></sc-for></div>
+
+      <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+        <section style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 style="margin:0;font:600 15px/22px 'DM Sans'">{{ g.title }}<span style="margin-left:6px;font-weight:500;color:var(--muted)">{{ g.n }}</span></h2><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ g.cols }}</span></div>
+          <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+            <sc-for list="{{ g.rows }}" as="p" hint-placeholder-count="3">
+              <button onClick="{{ p.open }}" style="width:100%;display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 14px;border-top:{{ p.bd }};box-shadow:{{ p.mark }}">
+                <span style="width:36px;height:36px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 12px/1 'DM Sans';color:var(--muted);flex:none">{{ p.ini }}</span>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><span style="display:flex;align-items:center;gap:6px;font:600 15px/20px 'DM Sans'">{{ p.name }}<sc-if value="{{ p.captain }}" hint-placeholder-val="{{ false }}"><span style="min-height:20px;padding:0 6px;border-radius:6px;background:var(--positive-soft);color:var(--positive);display:inline-flex;align-items:center;font:600 12px/1 'DM Sans'">Captain</span></sc-if></span>
+                  <span style="display:flex;flex-wrap:wrap;align-items:center;gap:6px"><span style="min-height:20px;padding:0 6px;border-radius:6px;background:var(--sunken);display:inline-flex;align-items:center;font:600 12px/1 'DM Sans'">{{ p.pos }}</span><span style="min-height:20px;padding:0 6px;border-radius:6px;background:var(--sunken);display:inline-flex;align-items:center;font:600 12px/1 'DM Sans'">{{ p.cls }}</span><sc-for list="{{ p.chips }}" as="c" hint-placeholder-count="1"><span style="display:inline-flex;align-items:center;gap:3px;min-height:20px;padding:0 7px;border-radius:99px;background:{{ c.bg }};color:{{ c.fg }};font:600 11.5px/1 'DM Sans'">{{ c.icon }}{{ c.t }}</span></sc-for></span></span>
+                <sc-if value="{{ rNew }}" hint-placeholder-val="{{ true }}"><span style="display:flex;flex-direction:column;align-items:center;min-width:30px"><b style="font:700 17px/1 'Barlow Condensed';color:var(--muted)">{{ p.pot }}</b><small style="font:500 10.5px/14px 'DM Sans';color:var(--muted)">Pot.</small></span></sc-if>
+                <span style="display:flex;flex-direction:column;align-items:flex-end;min-width:36px"><b style="font:700 26px/1 'Barlow Condensed'">{{ p.ovr }}</b><small style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ p.ovrLabel }}</small></span>
+              </button>
+            </sc-for>
+          </div>
+        </section>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px 10px;background:var(--surface);border-top:1px solid var(--line)">
+    <a href="#" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.home }}Home</a>
+    <span style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font:600 12px/16px 'DM Sans'">{{ ic.idcard }}Team</span>
+    <a href="Recruiting.dc.html" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.backpack }}Office</a>
+    <span style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;color:var(--muted);font:600 12px/16px 'DM Sans'">{{ ic.starNav }}Program</span>
+  </div>
+
+  <!-- ============ PLAYER CARD ============ -->
+  <sc-if value="{{ cardOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;background:var(--bg);animation:cardIn 220ms cubic-bezier(.2,.8,.3,1) both">
+      <div style="flex:none;display:flex;align-items:center;gap:6px;min-height:52px;padding:0 8px;background:var(--surface);border-bottom:1px solid var(--line)">
+        <button onClick="{{ back }}" style="display:inline-flex;align-items:center;gap:4px;min-height:40px;padding:0 8px;color:var(--accent);font:600 13px/18px 'DM Sans'">{{ ic.chevL }}{{ backLabel }}</button>
+      </div>
+      <div style="flex:1;min-height:0;overflow-y:auto;scrollbar-width:none">
+        <div style="display:flex;flex-direction:column;gap:16px;padding:16px 16px 32px">
+          <!-- header -->
+          <div style="display:flex;gap:14px;align-items:center">
+            <span style="width:80px;height:80px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font:700 22px/1 'DM Sans';color:var(--muted);flex:none">{{ pc.ini }}</span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">Bayshore State · Gulf Conference</span><h2 style="margin:0;font:700 24px/30px 'DM Sans';letter-spacing:-.01em">{{ pc.name }}</h2><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">{{ pc.meta }}</span></div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ pc.tags }}" as="t" hint-placeholder-count="3"><span style="min-height:24px;padding:0 8px;border-radius:99px;display:inline-flex;align-items:center;background:{{ t.bg }};color:{{ t.fg }};font:600 12px/1 'DM Sans'">{{ t.t }}</span></sc-for></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+            <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Rating</span><b style="font:700 32px/1 'Barlow Condensed'">{{ pc.ovr }}</b></div>
+            <div style="padding:12px 16px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--line)"><span style="font:500 13px/18px 'DM Sans';color:var(--muted)">Potential</span><b style="font:700 32px/1 'Barlow Condensed'">{{ pc.pot }}</b></div>
+          </div>
+
+          <!-- current -->
+          <sc-if value="{{ pCur }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--sunken)"><span style="flex:1;display:inline-flex;justify-content:center;align-items:center;min-height:40px;border-radius:8px;background:var(--raised);box-shadow:var(--sh-ctl);font:600 13px/1 'DM Sans'">Overview</span><span style="flex:1;display:inline-flex;justify-content:center;align-items:center;min-height:40px;font:600 13px/1 'DM Sans';color:var(--muted)">Ratings</span><span style="flex:1;display:inline-flex;justify-content:center;align-items:center;min-height:40px;font:600 13px/1 'DM Sans';color:var(--muted)">Stats</span><span style="flex:1;display:inline-flex;justify-content:center;align-items:center;min-height:40px;font:600 13px/1 'DM Sans';color:var(--muted)">Career</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--line)">
+              <sc-for list="{{ pc.facts }}" as="f" hint-placeholder-count="4"><div style="display:flex;flex-direction:column;gap:2px;padding:12px 16px;background:var(--surface)"><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">{{ f.label }}</span><b style="font:600 17px/22px 'DM Sans';color:{{ f.fg }}">{{ f.value }}</b><span style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ f.note }}</span></div></sc-for>
+            </div>
+            <div style="display:flex;gap:12px;padding:12px 16px;border-radius:16px;background:var(--info-soft)"><span style="color:var(--info);padding-top:2px">{{ ic.bookmark }}</span><div><b style="display:block;font:600 15px/22px 'DM Sans'">Recruiting promise: immediate role</b><span style="font:400 13px/18px 'DM Sans'">First season: start at least 62% of games. 17 of 20 so far.</span></div></div>
+          </sc-if>
+
+          <!-- redesign: hub -->
+          <sc-if value="{{ pNew }}" hint-placeholder-val="{{ true }}">
+            <sc-if value="{{ hubHome }}" hint-placeholder-val="{{ true }}">
+              <section style="display:flex;flex-direction:column;gap:8px">
+                <span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">At a glance</span>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <sc-for list="{{ pc.facts }}" as="f" hint-placeholder-count="4">
+                    <div style="display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:12px;background:{{ f.bg }};border:1px solid {{ f.bd }}"><span style="display:flex;align-items:center;gap:6px;font:500 12px/16px 'DM Sans';color:var(--muted)"><i style="width:8px;height:8px;border-radius:99px;background:{{ f.dot }}"></i>{{ f.label }}</span><b style="font:600 15.5px/20px 'DM Sans';color:{{ f.fg }}">{{ f.value }}</b><span style="font:400 12px/16px 'DM Sans';color:var(--muted)">{{ f.note }}</span></div>
+                  </sc-for>
+                </div>
+              </section>
+              <section style="display:flex;flex-direction:column;gap:8px">
+                <span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">What you owe him</span>
+                <div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--line)">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font:600 14.5px/20px 'DM Sans'">Promise · immediate role</b><span style="font:600 12px/16px 'DM Sans';color:var(--positive)">On track</span></div>
+                  <div style="position:relative;height:8px;border-radius:99px;background:var(--track)"><i style="position:absolute;left:0;top:0;bottom:0;width:85%;border-radius:99px;background:var(--positive)"></i><i style="position:absolute;left:62%;top:-4px;bottom:-4px;width:2px;background:var(--ink)"></i></div>
+                  <span style="font:400 12.5px/17px 'DM Sans';color:var(--muted)">Started 17 of 20 games (85%). You promised at least 62% this season.</span>
+                </div>
+              </section>
+              <section style="display:flex;flex-direction:column;gap:8px">
+                <span style="font:600 10.5px/14px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">More about him</span>
+                <div style="background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+                  <sc-for list="{{ hub }}" as="h" hint-placeholder-count="5">
+                    <button onClick="{{ h.on }}" style="width:100%;display:flex;align-items:center;gap:12px;min-height:62px;padding:10px 14px;border-top:{{ h.bd }}">
+                      <span style="width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--sunken);color:var(--muted);flex:none">{{ h.icon }}</span>
+                      <span style="flex:1;min-width:0;display:flex;flex-direction:column"><b style="font:600 15px/20px 'DM Sans'">{{ h.title }}</b><small style="font:400 12.5px/17px 'DM Sans';color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ h.sub }}</small></span>
+                      <span style="color:var(--muted)">{{ ic.chevR }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </section>
+            </sc-if>
+            <sc-if value="{{ hubRatings }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:16px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 15px/22px 'DM Sans'">Hitting</span><span style="font:500 12px/16px 'DM Sans';color:var(--muted)">Of 100 · league average 50</span></div>
+                <sc-for list="{{ pc.ratings }}" as="r" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:minmax(96px,36%) minmax(0,1fr) 64px;gap:12px;align-items:center;min-height:30px">
+                    <span style="font:500 13px/18px 'DM Sans'">{{ r.label }}</span>
+                    <span style="position:relative;height:8px;border-radius:99px;background:var(--track)"><i style="position:absolute;left:0;top:0;bottom:0;width:{{ r.w }};border-radius:99px;background:var(--accent)"></i><i style="position:absolute;left:{{ r.w }};top:0;bottom:0;width:{{ r.gw }};background:repeating-linear-gradient(135deg,var(--accent) 0 2px,transparent 2px 5px);opacity:.55"></i><i style="position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line-strong)"></i></span>
+                    <span style="display:flex;align-items:baseline;justify-content:flex-end;gap:4px"><b style="font:700 17px/1 'Barlow Condensed'">{{ r.v }}</b><small style="font:500 12px/1 'DM Sans';color:var(--positive)">{{ r.g }}</small></span>
+                  </div>
+                </sc-for>
+                <p style="margin:0;font:400 12px/16px 'DM Sans';color:var(--muted)">Striped: where his potential says he could get to.</p>
+              </div>
+            </sc-if>
+            <sc-if value="{{ hubOther }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px 16px;border:1px dashed var(--line-strong);border-radius:16px;text-align:center"><b style="font:600 15px/22px 'DM Sans'">{{ hubOtherTitle }}</b><span style="font:400 13px/18px 'DM Sans';color:var(--muted)">Same content as today’s tab, one level deeper so the overview stays short.</span></div>
+            </sc-if>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Light&quot;,&quot;Dark&quot;],&quot;default&quot;:&quot;Light&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const HIT = [
+  ['Marco Reyes', 'SS', 'FR', 74, 'A', { captain: false, promise: true }],
+  ['Tanner Cobb', 'C', 'JR', 70, 'B', { captain: true, draft: 'Could leave' }],
+  ['Luis Ortega', 'CF', 'JR', 72, 'B', { draft: 'Likely to leave' }],
+  ['Deshawn Price', '1B', 'SO', 69, 'B', {}],
+  ['Eli Frost', 'LF', 'SO', 66, 'C', { mood: 'Restless' }],
+  ['Grant Bishop', '2B', 'SR', 64, 'C', {}],
+  ['Wes Calloway', 'RF', 'JR', 63, 'C', {}],
+  ['Cody Lane', 'SS', 'SO', 59, 'B', { hurt: '6 days' }],
+  ['Kyle Ames', '3B', 'SR', 62, 'D', {}],
+];
+const ARM = [
+  ['Jalen Tucker', 'SP', 'SO', 81, 'A', { project: true }],
+  ['Cal Mercer', 'SP', 'JR', 76, 'B', { draft: 'Likely to leave' }],
+  ['Nico Hale', 'SP', 'FR', 70, 'A', {}],
+  ['Brady Kessler', 'RP', 'JR', 68, 'C', {}],
+  ['Ian Cole', 'RP', 'SO', 60, 'C', { mood: 'Unhappy' }],
+];
+const CLS = { FR: 'Freshman', SO: 'Sophomore', JR: 'Junior', SR: 'Senior' };
+class Component extends DCLogic {
+  state = { view: 'hit', open: null, hub: null, filter: null };
+  I(n, s) { return window.pbIcon ? window.pbIcon(React, n, s || 15) : null; }
+  renderVals() {
+    const I = this.I.bind(this); const st = this.state;
+    const rNew = !(this.props.rosterVariant ?? 'A · Grouped with flags').startsWith('Current');
+    const pNew = !(this.props.cardVariant ?? 'A · Glance + hub').startsWith('Current');
+    const chipsFor = (x) => [
+      x.hurt && { t: `Out ${x.hurt}`, bg: 'var(--negative-soft)', fg: 'var(--negative)', icon: I('cross-circled', 11), k: 'hurt' },
+      x.draft && { t: x.draft, bg: 'var(--warning-soft)', fg: 'var(--warning)', icon: null, k: 'draft' },
+      x.mood && { t: x.mood, bg: x.mood === 'Unhappy' ? 'var(--negative-soft)' : 'var(--warning-soft)', fg: x.mood === 'Unhappy' ? 'var(--negative)' : 'var(--warning)', icon: null, k: 'mood' },
+    ].filter(Boolean);
+    const row = (a, i) => { const [name, pos, cls, ovr, pot, x] = a; const chips = rNew ? chipsFor(x) : (x.hurt ? chipsFor({ hurt: x.hurt }) : []); return { name, pos, cls: rNew ? CLS[cls] : cls, ovr, pot, captain: x.captain, chips, ini: name.split(' ').map((w) => w[0]).join(''), bd: i ? '1px solid var(--line)' : '0', ovrLabel: rNew ? 'Now' : 'of 100', mark: chips.length && rNew ? `inset 3px 0 0 ${chips[0].fg}` : 'none', x, open: () => this.setState({ open: a, hub: null }) }; };
+    const f = st.filter;
+    const pass = (a) => !f || chipsFor(a[5]).some((c) => c.k === f);
+    const list = (st.view === 'hit' ? HIT : st.view === 'arm' ? ARM : [...HIT, ...ARM]).filter(pass);
+    let groups;
+    if (rNew && st.view !== 'all') {
+      const defs = st.view === 'hit' ? [['Catchers', ['C']], ['Infield', ['1B', '2B', 'SS', '3B']], ['Outfield', ['LF', 'CF', 'RF']]] : [['Starting pitchers', ['SP']], ['Relief pitchers', ['RP']]];
+      groups = defs.map(([title, ps]) => { const r = list.filter((a) => ps.includes(a[1])); return { title, n: r.length, cols: 'Pot. · Now', rows: r.map(row) }; }).filter((g) => g.n);
+    } else groups = [{ title: st.view === 'hit' ? 'Hitters' : st.view === 'arm' ? 'Pitchers' : 'Everyone', n: list.length, cols: '', rows: list.map(row) }];
+    const all = [...HIT, ...ARM];
+    const count = (k) => all.filter((a) => chipsFor(a[5]).some((c) => c.k === k)).length;
+    const flags = [['hurt', 'Injured', 'var(--negative)', 'cross-circled'], ['draft', 'Draft risk', 'var(--warning)', 'alert'], ['mood', 'Unhappy', 'var(--warning)', 'minus-circled']].map(([k, label, fg, icon]) => ({ label, n: count(k), fg, icon: I(icon, 14), bd: f === k ? fg : 'var(--line)', bg: f === k ? 'var(--surface)' : 'var(--surface)', on: () => this.setState({ filter: f === k ? null : k }) }));
+    const seg = [['hit', 'Hitters'], ['arm', 'Pitchers'], ['all', 'Everyone']].map(([k, label]) => ({ label, on: () => this.setState({ view: k }), bg: st.view === k ? 'var(--raised)' : 'transparent', fg: st.view === k ? 'var(--ink)' : 'var(--muted)', sh: st.view === k ? 'var(--sh-ctl)' : 'none' }));
+
+    let pc = { tags: [], facts: [], ratings: [] };
+    if (st.open) {
+      const [name, pos, cls, ovr, pot, x] = st.open;
+      const tone = (t) => ({ ok: ['var(--surface)', 'var(--line)', 'var(--positive)', 'var(--ink)'], warn: ['var(--warning-soft)', 'color-mix(in srgb, var(--warning) 30%, var(--line))', 'var(--warning)', 'var(--warning)'], bad: ['var(--negative-soft)', 'color-mix(in srgb, var(--negative) 30%, var(--line))', 'var(--negative)', 'var(--negative)'], none: ['var(--surface)', 'var(--line)', 'var(--line-strong)', 'var(--ink)'] }[t]);
+      const fact = (label, value, note, t) => { const [bg, bd, dot, fg] = tone(t); return { label, value, note, bg, bd, dot, fg: pNew ? fg : t === 'ok' || t === 'none' ? 'var(--ink)' : fg }; };
+      pc = { name, ovr, pot, ini: name.split(' ').map((w) => w[0]).join(''), meta: `${pos} · ${CLS[cls]} · Age ${cls === 'FR' ? 18 : cls === 'SO' ? 19 : cls === 'JR' ? 20 : 21}`,
+        tags: [x.hurt ? { t: `Injured · ${x.hurt}`, bg: 'var(--negative-soft)', fg: 'var(--negative)' } : { t: 'Available', bg: 'var(--positive-soft)', fg: 'var(--positive)' }, ...(x.captain ? [{ t: 'Captain', bg: 'var(--positive-soft)', fg: 'var(--positive)' }] : []), { t: 'Bats right, throws right', bg: 'var(--sunken)', fg: 'var(--ink)' }],
+        facts: [
+          x.hurt ? fact('Availability', 'Injured', `Hamstring · back in ${x.hurt}`, 'bad') : fact('Availability', 'Ready', 'Can play tonight', 'ok'),
+          x.mood ? fact('Mood', x.mood, 'Expects to start, and is not', x.mood === 'Unhappy' ? 'bad' : 'warn') : fact('Mood', 'Content', 'Expects to start, and does', 'ok'),
+          cls === 'SR' ? fact('Draft', 'Graduating', 'His final college season', 'none') : cls === 'FR' ? fact('Draft', 'Not eligible', 'Too young for this June', 'none') : x.draft ? fact('Draft', x.draft, 'Eligible for this June’s draft', 'warn') : fact('Draft', 'Should stay', 'Eligible for this June’s draft', 'ok'),
+          x.mood ? fact('Transfer risk', 'Worth watching', 'Wants more playing time', 'warn') : fact('Transfer risk', 'Low', 'No warning signs', 'ok'),
+        ],
+        ratings: [['Contact', 68, 12], ['Power', 52, 10], ['Plate discipline', 61, 8], ['Speed', 74, 3], ['Range in the field', 77, 6], ['Arm strength', 70, 5]].map(([label, v, g]) => ({ label, v, g: `+${g}`, w: v + '%', gw: g + '%' })),
+      };
+    }
+    const hub = [['ratings', 'bar-chart', 'Ratings', 'Contact 68 · Power 52 · Speed 74 · fielding and splits'], ['stats', 'rows', 'This season', '.342 AVG · 4 HR · 18 RBI · 20 games'], ['badges', 'star', 'Badges', '2 of 3 · Wheels, Vacuum'], ['positions', 'shuffle', 'Positions', 'Shortstop, also covers second and third'], ['career', 'reader', 'Career', 'First season · signature moments']].map(([k, icon, title, sub], i) => ({ title, sub, icon: I(icon, 17), bd: i ? '1px solid var(--line)' : '0', on: () => this.setState({ hub: k }) }));
+    const hubTitles = { stats: 'This season', badges: 'Badges', positions: 'Positions', career: 'Career' };
+    return {
+      theme: (this.props.theme ?? 'Light').toLowerCase(),
+      ic: { home: I('home', 20), idcard: I('id-card', 20), backpack: I('backpack', 20), starNav: I('star', 20), chevR: I('chevron-right', 20), chevL: I('chevron-left', 18), bookmark: I('reader', 16) },
+      rNew, flags, seg, groups,
+      cardOpen: !!st.open, pc, pCur: !pNew, pNew, hub, hubHome: !st.hub, hubRatings: st.hub === 'ratings', hubOther: !!st.hub && st.hub !== 'ratings', hubOtherTitle: hubTitles[st.hub] || '',
+      backLabel: st.hub ? (st.open ? st.open[0] : 'Back') : 'Roster',
+      back: () => (st.hub ? this.setState({ hub: null }) : this.setState({ open: null })),
+    };
+  }
+}
+</script>
+</body>
+</html>

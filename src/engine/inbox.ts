@@ -43,7 +43,9 @@ export type InboxKind =
   // in the offseason, which is why the inbox used to be empty for the whole of
   // the season it is meant to be reporting on — see §17.3a.
   | 'record'
-  | 'season';
+  | 'season'
+  // Recruiting news. The weekly recap letter retired 2026-09-28; old saves keep theirs.
+  | 'recruiting';
 
 /**
  * Where a card goes when it is tapped.
@@ -77,7 +79,9 @@ export type InboxLink =
   */
   | { to: 'standings' }
   /* And one about where it sits in the country. */
-  | { to: 'rankings' };
+  | { to: 'rankings' }
+  /* The recruiting board. A screen, not an overlay: in season only. Old weekly recaps carry it. */
+  | { to: 'recruiting' };
 
 export interface InboxItem {
   /** Unique, and stable across a reload so React keys do not shuffle. */
@@ -98,6 +102,7 @@ export const INBOX_LABEL: Record<InboxKind, string> = {
   board: 'THE BOARD',
   offer: 'AN OFFER',
   wire: 'THE WIRE',
+  recruiting: 'RECRUITING',
   achievement: 'ACHIEVEMENT',
   draft: 'THE DRAFT',
   carousel: 'THE CAROUSEL',
@@ -198,7 +203,8 @@ function validLink(saved: unknown): saved is InboxLink {
     case 'book':
     case 'standings':
     case 'rankings':
-    case 'schedule': return true;
+    case 'schedule':
+    case 'recruiting': return true;
     default: return false;
   }
 }
