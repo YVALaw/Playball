@@ -72,7 +72,15 @@ Root cause D — **saves.**
 >   cover is fielded the way `coverFor` fields one.
 > - **M34:** the dugout keeps the pen and visit settings the game started with, and a flip applies next game.
 > - **M40:** while `SCOUTING` is off, `handles(…, 'scouting')` is false for every career.
-> - **L30:** the Hitting guru gets +5 bat training. Other coach badges are still unwired (LOW, Phase 7 copy).
+> - **L30 and coach badges:** every coach badge now has an effect (`src/engine/coachEdges.ts`, `tests/coach-badges.test.ts`).
+>   The exception is READS THE ROOM, which has nothing to act on while scouting is held back. In-game edges were measured
+>   over 4,000–10,000 games and sized to about a point of win rate each. The noise floor of that measurement is ±1–2
+>   points. A badge's `prized` culture now widens that kind of school's reach in the job market.
+> - **M33, revisited:** the flat 55% wage cap was replaced by a build reserve. The athletic director hires only while a
+>   year's budget, less wages, still covers the next building. 15 of 18 measured program-years built something.
+> - **C1, revisited:** measured with recruiting delegated. A 5★ staff signs 8 men at 3.6★, against its peers' 8 at
+>   4.0–4.2★. The alternative replacement rule traded a man a class for quality with the same total stars, so the
+>   rule was kept.
 
 Root cause E — **a depth switch that nothing reads.** Add a test that, for every `SYSTEMS` row,
 flipping it changes behaviour; then fix each row.
