@@ -330,15 +330,28 @@ export const staffListOf = (s: DynastyStore): readonly PlayerId[] =>
  * market prices under what is left — signed the way a coach signs one.
  */
 /**
- * The share of the budget an athletic director will put into wages. He hired
- * the best man he could afford at every seat, which took 58-89% of the money
- * and left nothing to build: no facility, so the staff he hired could not do
- * their season work either (audit 17, M33).
+ * What an athletic director keeps back when he hires: the price of the next
+ * building, so the budget always has room for one thing a year. He hired the
+ * best man he could afford at every seat, which took 58-89% of the money and
+ * left nothing to build with, so the staff he hired could not do their season
+ * work either (audit 17, M33). A flat share of the budget was tried first and
+ * measured short at the bottom of the country: a one-star program kept under
+ * $550k, below the cheapest building. Nothing is kept once every building is
+ * finished.
  */
-const AD_STAFF_SHARE = 0.55;
+function buildReserve(eco: Economy): number {
+  const next = BUILDINGS
+    .map((b) => facilityLevel(eco, b.key) + 1)
+    .map((lv, i) => (lv <= FACILITY_MAX_LEVEL ? facilityUpgradeCost(BUILDINGS[i]!.key, lv) : Infinity));
+  const cheapest = Math.min(...next);
+  return Number.isFinite(cheapest) ? cheapest : 0;
+}
+// Wages come round every year and a building is paid once, so the test is
+// on a year's money: with this man on the books, is a building still in
+// reach next year? And he has to be affordable today.
 const adCanPay = (eco: Economy, prestige: number, wage: number): boolean =>
   remaining(eco, prestige) >= wage
-  && wageBill(eco.staff) + wage <= annualBudget(prestige) * AD_STAFF_SHARE;
+  && annualBudget(prestige) + (eco.grant ?? 0) - wageBill(eco.staff) - wage >= buildReserve(eco);
 
 function adFillsSeats(economy: Economy, seed: string, year: number, prestige: number): Economy {
   let eco = economy;

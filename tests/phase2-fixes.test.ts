@@ -19,10 +19,11 @@ import { join } from 'node:path';
 import { suggestedStaffList } from '../src/state/store.js';
 import { SYSTEMS, handles } from '../src/state/depth.js';
 import { captainOf } from '../src/engine/captains.js';
-import { remaining, wageBill, annualBudget } from '../src/engine/economy.js';
+import { remaining, wageBill, annualBudget, BUILDINGS, facilityUpgradeCost } from '../src/engine/economy.js';
 import { hurt } from '../src/engine/injury.js';
 import { injuryClock } from '../src/engine/season.js';
-import { S, startCareer, flush, simRegular, playJune, rosterOf } from './support/drive.js';
+import { S, startCareer, flush, simRegular, playJune, rosterOf, fullYear } from './support/drive.js';
+import { prestigeStars } from '../src/engine/program.js';
 
 process.on('unhandledRejection', () => {});
 
@@ -40,6 +41,34 @@ describe('delegated recruiting (C1)', () => {
     expect(stars.length).toBeGreaterThan(0);
     expect(stars.filter((n) => n >= 4).length, `suggested ${stars.join(',')}`).toBeGreaterThanOrEqual(3);
   }, 120_000);
+});
+
+describe('a delegated staff signs a class like its tier (C1, measured)', () => {
+  // Measured 2026-10-06 over two seeds: a delegated five-star staff signed
+  // 8 men at 3.6 stars a man against its peers' 8 at 4.0-4.2. It used to sign
+  // only what nobody else wanted.
+  it('a five-star staff working its suggested list signs a full, strong class', async () => {
+    disk.clear();
+    startCareer(4242, 0, { mode: 'casual' });
+    const top = [...S().season!.teams].sort((a, b) => b.prestige - a.prestige)[2]!.index;
+    startCareer(4242, top, { mode: 'casual' });
+    S().setDepthSystem('recruiting', false);
+    for (let i = 0; i < 80 && S().season!.recruiting.week < 1; i++) S().advanceDay();
+    const st = S();
+    st.setStaffList(suggestedStaffList(st.season, st.userTeam, st.coach, st.economy, st.phase));
+    let mine: number[] = [];
+    let peers = 0;
+    await fullYear((phase) => {
+      if (phase !== 'signing') return;
+      const s = S().season!;
+      const tier = prestigeStars(s.teams[top]!.prestige);
+      mine = s.recruiting.prospects.filter((p) => p.signedBy === top).map((p) => p.stars);
+      const others = s.teams.filter((t) => t.index !== top && prestigeStars(t.prestige) === tier);
+      peers = others.reduce((n, t) => n + s.recruiting.prospects.filter((p) => p.signedBy === t.index).length, 0) / others.length;
+    });
+    expect(mine.length, 'within two of its peers').toBeGreaterThanOrEqual(Math.floor(peers) - 2);
+    expect(mine.reduce((a, b) => a + b, 0) / mine.length, `signed ${mine.join(',')}`).toBeGreaterThanOrEqual(3.3);
+  }, 240_000);
 });
 
 describe('a delegated portal (H1)', () => {
@@ -147,9 +176,11 @@ describe('the switches that did nothing (M72, M35, M33)', () => {
   it('the athletic director leaves room in the budget to build', () => {
     disk.clear();
     startCareer(4242, 5, { mode: 'casual' });
+    // A year's money, less the wages he signed, still pays for a building.
     const eco = S().economy;
     const prestige = S().season!.teams[S().userTeam]!.prestige;
-    expect(wageBill(eco.staff)).toBeLessThanOrEqual(annualBudget(prestige) * 0.55);
-    expect(remaining(eco, prestige)).toBeGreaterThan(0);
+    const cheapest = Math.min(...BUILDINGS.map((b) => facilityUpgradeCost(b.key, 1)));
+    expect(annualBudget(prestige) - wageBill(eco.staff)).toBeGreaterThanOrEqual(cheapest);
+    expect(remaining(eco, prestige)).toBeGreaterThanOrEqual(cheapest);
   });
 });
