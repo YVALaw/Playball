@@ -71,6 +71,8 @@ export function Lineup() {
     rather than accepting edits it will not keep.
   */
   const mine = useDynasty((s) => handles(s.depth, 'lineups'));
+  // The pitching half follows 'Rotation and bullpen', not 'Lineups' (M77).
+  const arms = useDynasty((s) => handles(s.depth, 'bullpen'));
   const swapStarter = useDynasty((s) => s.swapStarter);
   const assignPosition = useDynasty((s) => s.assignPosition);
   const moveRotation = useDynasty((s) => s.moveRotation);
@@ -365,7 +367,7 @@ export function Lineup() {
   const auto = (): void => { autoLineup(); clearPicks(); setDealt(true); setDeal((n) => n + 1); };
 
   const pitchingAlert = team.team.rotation.some((p) => !available(p, clock))
-    || (mine && team.team.bullpen.some((p) => returnPending(p, clock)));
+    || (arms && team.team.bullpen.some((p) => returnPending(p, clock)));
   const benchHurt = team.team.bench.filter((p) => !available(p, clock)).length;
 
   const statCells = (p: Player): Array<{ label: string; value: string; title: string }> => {
@@ -638,17 +640,17 @@ export function Lineup() {
                           : skipped ? <StatusBadge tone="warning" icon="clock">Resting · back in {plural(back, 'day')}</StatusBadge>
                             : undefined}
                       selected={pickedArm === i}
-                      chevron={!mine}
+                      chevron={!arms}
                       className={`${hurt ? 'is-unavailable' : ''}${p.id === flaggedId ? ' is-flagged' : ''}`}
                       elRef={trackRow(p)}
                       buttonProps={holdStats(p.id)}
-                      onClick={() => { if (consumed()) return; if (!mine) { openPlayer(p.id, 'stats'); return; } tapArm(i); }}
+                      onClick={() => { if (consumed()) return; if (!arms) { openPlayer(p.id, 'stats'); return; } tapArm(i); }}
                     />
                   );
                 })}
               </List>
 
-            {mine && team.team.bullpen.filter((p) => returnPending(p, clock)).map((p) => (
+            {arms && team.team.bullpen.filter((p) => returnPending(p, clock)).map((p) => (
               <Callout
                 key={`return-arm-${p.id}`}
                 tone="info"
@@ -681,11 +683,11 @@ export function Lineup() {
                       meta={`Rating ${armValue(p)}${line && line.outs > 0 ? ` · ${era(line).toFixed(2)} ERA · ${Math.round(inningsPitched(line))} innings` : ''}`}
                       flags={outBadge(p)}
                       selected={pickedPen === p.id}
-                      chevron={!mine}
+                      chevron={!arms}
                       className={`${hurt ? 'is-unavailable' : ''}${p.id === flaggedId ? ' is-flagged' : ''}`}
                       elRef={trackRow(p)}
                       buttonProps={{ ...holdStats(p.id), 'aria-disabled': hurt || undefined }}
-                      onClick={() => { if (consumed()) return; if (!mine) { openPlayer(p.id, 'stats'); return; } if (!hurt) tapPen(p.id); }}
+                      onClick={() => { if (consumed()) return; if (!arms) { openPlayer(p.id, 'stats'); return; } if (!hurt) tapPen(p.id); }}
                     />
                   );
                 })}

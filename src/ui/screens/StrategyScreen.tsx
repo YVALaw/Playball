@@ -21,6 +21,7 @@ import {
 } from '../components/ui/index.js';
 import { Crest } from '../Crest.js';
 import { capsWords, conferenceName, recordText } from '../words.js';
+import { SCOUTING } from '../../state/features.js';
 
 interface Group<K extends keyof Strategy> {
   key: K;
@@ -177,11 +178,11 @@ export function StrategyScreen() {
             { value: 'one', label: 'Against one team', badge: books.length },
           ]}
         />
-      ) : (
+      ) : SCOUTING ? (
         <Callout tone="info" title="Plans against one team">
           Scout a program to unlock one.
         </Callout>
-      )}
+      ) : null}
 
       {open && opponent && (
         <Card
@@ -248,7 +249,7 @@ export function StrategyScreen() {
       {picking && (
         <Sheet title="Choose a team" eyebrow="Plans against one team" onClose={() => setPicking(false)}>
           {books.length === 0 ? (
-            <EmptyState icon="target" title="No plans yet" text="Scout a program to start one." />
+            <EmptyState icon="target" title="No plans yet" text={SCOUTING ? 'Scout a program to start one.' : 'None yet.'} />
           ) : (
             <List label="Scouted teams">
               {books.map((abbr) => {

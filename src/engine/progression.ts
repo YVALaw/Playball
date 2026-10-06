@@ -7,12 +7,12 @@
 // stops a dynasty from being the same names forever — and it is the mechanism
 // behind the roadmap's central promise: you never keep your best players.
 
-import { developBadges, type BadgeEvidence, type BadgeId } from './badges.js';
+import { developBadges, growthBonus, type BadgeEvidence, type BadgeId } from './badges.js';
 import {
   AI_KEEP_SHARE, AVERAGE_STAFF,
   draftContext, draftEligible, draftRound, draftStock, makeTheCase, rivalKeeps, sceneFrom,
   visibleValue, yearsOfLeverage,
-  type DraftBoard, type DraftContext, type DraftedMan,
+  type DraftBoard, type DraftContext, type DraftedMan, type KeepScene, type RivalKeep,
 } from './draft.js';
 import { releaseNames, reserveNames } from './players.js';
 import {
@@ -537,9 +537,11 @@ export function departAndDevelop(
       ? 1 + (opts.trainingBat - 20) / 500 : growthMult;
     const armMult = coached && opts.trainingArm !== undefined
       ? 1 + (opts.trainingArm - 20) / 500 : growthMult;
-    const growthFor = (p: Player): number =>
+    // GYM RAT scales the coaching's pull on him. Written and never called,
+    // so the badge's "develops faster between seasons" did nothing (M28).
+    const growthFor = (p: Player): number => growthBonus(p) * (
       (p as { twoWay?: true }).twoWay === true ? (batMult + armMult) / 2
-        : p.type === 'pitcher' ? armMult : batMult;
+        : p.type === 'pitcher' ? armMult : batMult);
     const roster: Player[] = uniquePlayers([
       ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
     ]);
@@ -843,7 +845,7 @@ export function reinstate(
   const next = NEXT_CLASS[p.classYear];
   if (next === null) return 0;
   p.classYear = next;
-  const gained = develop(p, rng, growthMult);
+  const gained = develop(p, rng, growthMult * growthBonus(p));
   const survivors: Player[] = [
     ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen, p,
   ];
@@ -971,4 +973,21 @@ export function advanceOffseason(
   report.signed = filled.signed;
   report.walkOns = filled.walkOns;
   return report;
+}
+
+/**
+ * The cases a coach's own staff makes when he hands draft conversations to
+ * them (the Settings row 'Draft conversations' off, audit 17 M72): the same
+ * decision the other ninety-five make in `departAndDevelop`, on the same bar
+ * and the same share of the window, less whatever June has already spent.
+ */
+export function staffKeeps(
+  men: readonly DraftedMan[], sceneOf: (man: DraftedMan) => KeepScene,
+  survivors: readonly Player[], stars: number, spent: number,
+): RivalKeep[] {
+  const allowance = Math.min(
+    flexibleOffseasonBudget(stars),
+    Math.floor(windowBudget(stars) * AI_KEEP_SHARE),
+  ) - spent;
+  return rivalKeeps(men, sceneOf, allowance, keepBar(survivors));
 }

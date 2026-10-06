@@ -68,7 +68,9 @@ export function Portal() {
 
   const left = pts.left;
   const leavingCount = portal.leaving.length;
-  const list = view === 'leaving' ? portal.leaving : portal.available;
+  // A delegated portal keeps the national pool for the other programs to
+  // shop (H1); it is not this coach's list to show.
+  const list = view === 'leaving' ? portal.leaving : runsPortal ? portal.available : [];
   /*
     Available: the men your points can pay for first, best first within
     each group, under a head that carries the points left.
@@ -107,7 +109,7 @@ export function Portal() {
           trailing={<GodBolt target={{ kind: 'portal' }} label="Sign from the portal for nothing, in god mode" />}
           numbers={[
             { label: 'Leaving you', value: leavingCount, tone: leavingCount > 0 ? 'warning' : undefined },
-            { label: 'Available', value: portal.available.length },
+            { label: 'Available', value: runsPortal ? portal.available.length : 0 },
           ]}
         />
         <OffseasonPointsCard />
@@ -117,7 +119,7 @@ export function Portal() {
           onChange={(v) => { setView(v); setShown(PAGE); }}
           options={[
             { value: 'leaving', label: 'Leaving you', badge: leavingCount || undefined },
-            { value: 'available', label: 'Available', badge: portal.available.length || undefined },
+            { value: 'available', label: 'Available', badge: (runsPortal && portal.available.length) || undefined },
           ]}
         />
 

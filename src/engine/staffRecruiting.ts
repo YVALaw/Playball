@@ -465,8 +465,13 @@ export function suggestStaffList(
   prospects: readonly Prospect[], team: number, pitch: Pitch,
   needs: readonly { pos: string; count: number }[], week: number, size = STAFF_LIST_MAX,
 ): PlayerId[] {
+  // Lost only once this board has something in him, as `givenUp` reads it. A
+  // delegated board starts with nothing anywhere, so applying the cut to every
+  // man somebody else had touched left it the uncontested one- and two-stars,
+  // and the program collapsed (audit 17, C1).
   const pool = prospects.filter((p) =>
-    p.signedBy === null && pursuable(p, pitch) && !lostCause(p, team, pitch.stars, week));
+    p.signedBy === null && pursuable(p, pitch)
+    && !((p.points[team] ?? 0) > 0 && lostCause(p, team, pitch.stars, week)));
   const score = new Map(pool.map((p) => [p.id as string, winScore(p, team, pitch)]));
   const byScore = (a: Prospect, b: Prospect): number =>
     (score.get(b.id)! - score.get(a.id)!) || byRank(a, b);

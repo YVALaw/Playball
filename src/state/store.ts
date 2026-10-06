@@ -59,7 +59,7 @@ function sameGodTarget(a: GodTarget | undefined, b: GodTarget): boolean {
 import { setStarGateOpen, type RecruitingPriorities } from '../engine/recruiting.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
 import {
-  departAndDevelop, fillRosters, holesFor as rosterHoles, reinstate, walkOnShortfall, departureOdds,
+  departAndDevelop, fillRosters, holesFor as rosterHoles, reinstate, walkOnShortfall, departureOdds, staffKeeps,
   type OffseasonReport,
 } from '../engine/progression.js';
 import {
@@ -74,7 +74,7 @@ import {
   leagueShape,
   canBeHired,
   approachSchool, APPROACHES_PER_SEASON, CAUGHT_SECURITY_COST, type ApproachOutcome,
-  prestigeStars, skillPoints, takeChair, bankStint, objectivesFor, resignationCost,
+  prestigeStars, skillPoints, SKILLS, takeChair, bankStint, objectivesFor, resignationCost,
   type CoachState, type CoachSkills, type CoachProfile, type JobOffer, type Review,
   type SeasonOutcome, type Expectation,
 } from '../engine/program.js';
@@ -329,12 +329,23 @@ export const staffListOf = (s: DynastyStore): readonly PlayerId[] =>
  * them to try and hire them"). The same pick the roll makes — the best man the
  * market prices under what is left — signed the way a coach signs one.
  */
+/**
+ * The share of the budget an athletic director will put into wages. He hired
+ * the best man he could afford at every seat, which took 58-89% of the money
+ * and left nothing to build: no facility, so the staff he hired could not do
+ * their season work either (audit 17, M33).
+ */
+const AD_STAFF_SHARE = 0.55;
+const adCanPay = (eco: Economy, prestige: number, wage: number): boolean =>
+  remaining(eco, prestige) >= wage
+  && wageBill(eco.staff) + wage <= annualBudget(prestige) * AD_STAFF_SHARE;
+
 function adFillsSeats(economy: Economy, seed: string, year: number, prestige: number): Economy {
   let eco = economy;
   for (const seat of SEATS) {
     if (eco.staff[seat]) continue;
     const man = marketFor(seed, year, seat)
-      .filter((m) => remaining(eco, prestige) >= m.wage)
+      .filter((m) => adCanPay(eco, prestige, m.wage))
       .sort((a, b) => b.rating - a.rating)[0];
     if (!man) continue;
     const signed: Assistant = { ...man, joinedYear: year, until: year + 2 };
@@ -478,8 +489,16 @@ function returnDecisionOpen(man: Player, day: number): boolean {
  * the engine's own answer to the same question.
  */
 function unresolvedRosterDecision(season: SeasonState, userTeam: number, depth: DepthSettings): Player | null {
+  /*
+    Only a decision the coach has a control for (audit 17, H8). A coach whose
+    bench coach writes the card has no lineup edits, so a hurt starter held
+    his calendar for good; his staff covers the man before the game instead.
+    And a coach who writes his own card but handed injury replacements to the
+    staff is not asked either: the cover is fielded the way `coverFor` fields
+    one, which is what the switch promises.
+  */
   const writesCard = handles(depth, 'lineups');
-  if (!writesCard && !handles(depth, 'depthChart')) return null;
+  if (!writesCard) return null;
   const team = season.teams[userTeam]?.team;
   if (!team) return null;
   const day = injuryClock(season);
@@ -487,7 +506,7 @@ function unresolvedRosterDecision(season: SeasonState, userTeam: number, depth: 
   const spare = (pool: readonly Player[]): boolean =>
     pool.some((p) => !active.has(String(p.id)) && available(p, day));
 
-  const unavailable = [...team.lineup, ...team.rotation].find((p) => {
+  const unavailable = handles(depth, 'depthChart') && [...team.lineup, ...team.rotation].find((p) => {
     if (available(p, day)) return false;
     // A bat is covered from the bench, an arm from the pen. No cover, no ask.
     return team.lineup.includes(p as never)
@@ -502,7 +521,6 @@ function unresolvedRosterDecision(season: SeasonState, userTeam: number, depth: 
     a chart-only coach does not have, so holding him here stopped the day on
     a decision with no button (05 §63.3).
   */
-  if (!writesCard) return null;
   const back = squad(team).find((p) => !active.has(String(p.id)) && returnDecisionOpen(p, day));
   if (back) return back;
   /*
@@ -2526,6 +2544,66 @@ function usableSideShow(
  * say no. The line is written here because this is where both teams are in
  * hand.
  */
+/**
+ * The room names its own captain when the coach has handed captains over, as
+ * the Settings row promises (audit 17, M35). Nothing read the switch, so a
+ * casual career went without a captain for good. Only into an empty chair:
+ * a man the coach named himself before handing it over keeps the C.
+ */
+function roomPicksLeader(get: () => DynastyStore): void {
+  const { season, userTeam, depth } = get();
+  if (!season || handles(depth, 'captains')) return;
+  const team = season.teams[userTeam]?.team;
+  if (!team || captainOf(team)) return;
+  const pick = roomsChoice(team);
+  if (pick) appoint(team, pick);
+}
+
+/**
+ * 'Rotation and bullpen' handed to the pitching coach: the coach's hand-set
+ * order stops binding, so the staff's rest-based order is the one used (M77).
+ */
+function staffTakesThePen(get: () => DynastyStore): void {
+  const team = get().season?.teams[get().userTeam]?.team;
+  if (!team) return;
+  delete team.penByHand;
+  delete team.rotationByHand;
+}
+
+/** The coach's points onto his strongest suit, one at a time (M72). */
+function staffSpendsPoints(get: () => DynastyStore, set: (p: Partial<DynastyStore>) => void): void {
+  const { coach, season, userTeam } = get();
+  if (coach.skillPoints <= 0) return;
+  const skills = { ...coach.skills };
+  let points = coach.skillPoints;
+  while (points > 0) {
+    const open = SKILLS.filter((k) => skills[k] < 99);
+    if (open.length === 0) break;
+    const best = open.reduce((a, b) => (skills[b] > skills[a] ? b : a));
+    skills[best] += 1;
+    points -= 1;
+  }
+  const next = { ...coach, skills, skillPoints: points };
+  if (season) applyCoachMods(season, userTeam, next, get().economy);
+  set({ coach: next, version: get().version + 1 });
+}
+
+/** The staff's cases for the coach's drafted men, the rivals' way (M72). */
+function staffAnswersTheClubs(get: () => DynastyStore): void {
+  const { season, userTeam, coach } = get();
+  const board = season?.draft;
+  const record = season?.teams[userTeam];
+  if (!season || !board || !record) return;
+  const pending = board.men.filter((m) => m.outcome === 'pending');
+  if (pending.length === 0) return;
+  const survivors = [...record.team.lineup, ...record.team.bench, ...record.team.rotation, ...record.team.bullpen];
+  const cases = staffKeeps(
+    pending, (m) => sceneFor(season, userTeam, coach, m.player, m.round),
+    survivors, prestigeStars(record.prestige), board.spent,
+  );
+  for (const c of cases) get().keepPlayer(c.man.player.id, c.kind, c.price);
+}
+
 /** The name each file was saved under, so a save keeps the one it has. */
 const slotNames = new Map<string, string>();
 
@@ -3281,6 +3359,9 @@ function bookTheYear(get: () => DynastyStore): void {
  * ninety-six rosters that had never been emptied — a year of the world frozen,
  * silently, and inherited by whoever coached next.
  */
+/** Training points on the bat side for a Hitting guru: the pitching guru's edge, mirrored. */
+const HITTING_GURU_BAT_TRAINING = 5;
+
 function leagueWinter(get: () => DynastyStore, set: (patch: Partial<DynastyStore>) => void): void {
   const season = get().season;
   if (!season || get().furthestPhase >= PHASES.indexOf('draft')) return;
@@ -3294,7 +3375,10 @@ function leagueWinter(get: () => DynastyStore, set: (patch: Partial<DynastyStore
     userTeam: get().userTeam,
     training: baseTraining + Math.round((facility.bat + facility.arm) / 4),
     // Specialized facilities now matter on their own side of the roster.
-    trainingBat: baseTraining + Math.round(facility.bat) + devBonus(eco.staff).bat,
+    // The Hitting guru's card promises bats develop faster under him; his
+    // background badge is the only trace of it the save keeps (audit 17, L30).
+    trainingBat: baseTraining + Math.round(facility.bat) + devBonus(eco.staff).bat
+      + ((get().coach.badges ?? []).includes('slugger') ? HITTING_GURU_BAT_TRAINING : 0),
     trainingArm: baseTraining + Math.round(facility.arm) + devBonus(eco.staff).arm,
   });
   /*
@@ -4396,6 +4480,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     // And week one's recruiting, where the staff runs it: on the board from the
     // first day, so the points band shows it before a game is played.
     get().staffPlanWeek();
+    roomPicksLeader(get);
     /*
       A file of its own from the first day. This wrote the autosave slot —
       the one slot every career made before it had also been writing — so
@@ -5312,7 +5397,16 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
         }
         // What the staff spent is what the card counts and the keeps are
         // budgeted against: the step's own ledger said nought (M73).
-        set({ portal: { leaving: mine, available: [], spent: season.portalSpend[get().userTeam] ?? 0 } });
+        // The rest of the national pool stays in `available`: it is what
+        // `closePortal` hands the other 95 staffs. Emptied here so the screen
+        // would read "your staff is working it", it shut the market for
+        // everyone (audit 17, H1). The screen reads the switch instead.
+        const signed = new Set(took.map((m) => String(m.player.id)));
+        set({ portal: {
+          leaving: mine,
+          available: theirs.filter((m) => !signed.has(String(m.player.id))),
+          spent: season.portalSpend[get().userTeam] ?? 0,
+        } });
       } else {
         set({ portal: { leaving: mine, available: theirs, spent: 0 } });
       }
@@ -5410,6 +5504,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
         furthestPhase: Math.max(get().furthestPhase, PHASES.indexOf(next)),
         version: get().version + 1,
       });
+      // 'Draft conversations' handed to the staff: they make the cases the
+      // other ninety-five make for their own men (M72).
+      if (!handles(get().depth, 'draftTalk')) staffAnswersTheClubs(get);
       void get().saveNow();
       return;
     }
@@ -5894,6 +5991,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       },
       version: get().version + 1,
     });
+    // 'Coaching points' handed to the staff: they go to his strongest suit,
+    // as the Settings row says. Nothing read the switch (audit 17, M72).
+    if (!handles(get().depth, 'skillPoints')) staffSpendsPoints(get, set);
 
     // The verdict letter retired at the reporter's ask: the board's word is
     // now the season opener the new year begins with — reviewed and
@@ -6077,7 +6177,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
           return { b, level, nextLevel, cost: facilityUpgradeCost(b.key, nextLevel) };
         })
         .filter((x) => x.nextLevel <= FACILITY_MAX_LEVEL)
-        .filter((x) => remaining(rolledEconomy, prestige) >= x.cost + 300)
+        // No standing reserve on top: the wage cap already keeps money
+        // back, and with the staff retained the old +300 could never be met.
+        .filter((x) => remaining(rolledEconomy, prestige) >= x.cost)
         .sort((a, b) => a.level - b.level || a.cost - b.cost);
       const pick = choices[0];
       if (pick) {
@@ -6100,7 +6202,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       for (const seat of SEATS) {
         if (rolledEconomy.staff[seat]) continue;
         const affordable = marketFor(String(season.seed ?? 0), year + 1, seat)
-          .filter((m) => remaining(rolledEconomy, prestige) >= m.wage)
+          .filter((m) => adCanPay(rolledEconomy, prestige, m.wage))
           .sort((a, b) => b.rating - a.rating)[0];
         if (affordable) {
           rolledEconomy.staff = { ...rolledEconomy.staff, [seat]: affordable };
@@ -6550,6 +6652,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       // The new class's first week, on the board before the season's first
       // day, where the staff runs recruiting. Saved with the roll below.
       get().staffPlanWeek();
+      roomPicksLeader(get);
       for (const o of offers) {
         get().post({
           kind: 'offer', year: year + 1,
@@ -6770,6 +6873,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     const { season, userTeam, portal, version } = get();
     const rec = season?.teams[userTeam];
     if (!season || !rec || !portal) return false;
+    // The staff is working the portal; the pool is the other programs' (H1).
+    if (!handles(get().depth, 'portal')) return false;
     const man = portal.available.find((m) => m.player.id === id);
     if (!man) return false;
     const stars = prestigeStars(rec.prestige);
@@ -9004,6 +9109,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
     if (!season || !team || get().busy) return false;
+    // The pitching coach's, when 'Rotation and bullpen' is his (M77).
+    if (!handles(get().depth, 'bullpen')) return false;
     if (slot < 0 || slot >= team.rotation.length) return false;
     const up = team.bullpen.find((p) => p.id === penId);
     const down = team.rotation[slot];
@@ -9049,7 +9156,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   moveRotation: (index, delta) => {
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
-    if (!team || get().busy) return;
+    if (!team || get().busy || !handles(get().depth, 'bullpen')) return;
     const to = index + delta;
     const rot = team.rotation;
     if (to < 0 || to >= rot.length) return;
@@ -9068,7 +9175,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   swapPen: (a, b) => {
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
-    if (!team || get().busy || a === b) return false;
+    if (!team || get().busy || a === b || !handles(get().depth, 'bullpen')) return false;
     const i = team.bullpen.findIndex((p) => p.id === a);
     const j = team.bullpen.findIndex((p) => p.id === b);
     if (i < 0 || j < 0) return false;
@@ -9947,18 +10054,23 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   setDepthMode: (mode) => {
     const before = handles(get().depth, 'recruiting');
+    const armsBefore = handles(get().depth, 'bullpen');
     set({ depth: setMode(get().depth, mode) });
+    if (armsBefore && !handles(get().depth, 'bullpen')) staffTakesThePen(get);
     // No preset hands recruiting over today; checked anyway, so the day one
     // does, the staff is seeded and planned the way the switch below does it.
     if (before && !handles(get().depth, 'recruiting')) staffTakesTheBoard(get);
     // A staff handed to the AD is his to fill, now rather than next winter.
     adStaffsUp(get, set);
+    roomPicksLeader(get);
     void get().saveNow();
   },
 
   setDepthSystem: (key, value) => {
     const before = handles(get().depth, 'recruiting');
+    const armsBefore = handles(get().depth, 'bullpen');
     set({ depth: setSystem(get().depth, key, value) });
+    if (armsBefore && !handles(get().depth, 'bullpen')) staffTakesThePen(get);
     /*
       Handing recruiting to the staff mid-season takes effect now: a cold board
       is seeded and this week is planned, unless the coach had already planned
@@ -9968,6 +10080,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     if (key === 'recruiting' && before && !handles(get().depth, 'recruiting')) staffTakesTheBoard(get);
     // A staff handed to the AD is his to fill, now rather than next winter.
     if (key === 'assistants') adStaffsUp(get, set);
+    if (key === 'captains') roomPicksLeader(get);
     void get().saveNow();
   },
 
@@ -10451,6 +10564,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     */
     adStaffsUp(get, set);
     get().staffPlanWeek();
+    roomPicksLeader(get);
     // A save stood on a portal that had already closed (written by a build
     // that let the rail walk back onto it) moves on rather than reopening it.
     if (get().phase === 'portal' && closedStep(get(), 'portal')) {

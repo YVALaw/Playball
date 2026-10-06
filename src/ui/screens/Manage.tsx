@@ -76,9 +76,12 @@ export function Manage() {
   const version = useDynasty((s) => s.version);
   // Whether the pen and the mound visits are yours tonight: in a casual career
   // they are delegated on purpose, so the controls come off rather than grey.
+  // Read off the game, which fixed them at first pitch: the switch flipped
+  // mid-game took the Bullpen button away from a game that still asked the
+  // coach about every pitch (M34). The switch applies from the next game.
   const depth = useDynasty((s) => s.depth);
-  const myPen = handles(depth, 'bullpen');
-  const myVisits = handles(depth, 'moundVisits');
+  const myPen = live ? !live.autoPitching : handles(depth, 'bullpen');
+  const myVisits = live ? !live.autoVisits : handles(depth, 'moundVisits');
   const submitTactic = useDynasty((s) => s.submitTactic);
   const visitMound = useDynasty((s) => s.visitMound);
   const pinchHitFor = useDynasty((s) => s.pinchHitFor);

@@ -64,6 +64,16 @@ Root cause D — **saves.**
 
 ## Phase 2 — Delegation and the systems that do nothing (1 week)
 
+> **Status: done.** Tests are in `tests/phase2-fixes.test.ts`. They include a check that every live Settings
+> row is read somewhere outside its own Settings render, so a new row with no reader fails the build.
+> Notes:
+> - **C1:** only the suggested list was changed. The stand-in for a lost recruit still skips lost causes, by design.
+> - **H8:** the hold asks only a coach who writes his own card and keeps injury replacements. Otherwise the
+>   cover is fielded the way `coverFor` fields one.
+> - **M34:** the dugout keeps the pen and visit settings the game started with, and a flip applies next game.
+> - **M40:** while `SCOUTING` is off, `handles(…, 'scouting')` is false for every career.
+> - **L30:** the Hitting guru gets +5 bat training. Other coach badges are still unwired (LOW, Phase 7 copy).
+
 Root cause E — **a depth switch that nothing reads.** Add a test that, for every `SYSTEMS` row,
 flipping it changes behaviour; then fix each row.
 

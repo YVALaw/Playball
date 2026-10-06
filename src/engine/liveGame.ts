@@ -136,6 +136,13 @@ export interface LiveGame {
    * own; the calls at the plate are still answered one at a time.
    */
   setBenchCoach: (on: boolean) => void;
+  /**
+   * Whether this game was started with the pen and the mound visits left to
+   * the staff. Fixed at first pitch, so the dugout's buttons follow the game
+   * rather than a switch flipped in Settings mid-game (audit 17, M34).
+   */
+  readonly autoPitching: boolean;
+  readonly autoVisits: boolean;
 }
 
 export interface LiveOptions extends SimOptions {
@@ -429,6 +436,8 @@ export function createLiveGame(
     },
     get bullpenUsed() { return mine.usedPen; },
     get pitcherNow() { return mine.pitcher; },
+    autoPitching: opts.autoPitching === true,
+    autoVisits: opts.autoVisits === true,
 
     setBenchCoach(on) { benchCoach.pitching = on; },
 

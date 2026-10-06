@@ -29,6 +29,8 @@
 // is allowed to be, and switching mode mid-career is safe by construction —
 // there is nothing to migrate, because nothing about the world depended on it.
 
+import { SCOUTING } from './features.js';
+
 /** The two ways to play. */
 export type DepthMode = 'full' | 'casual';
 
@@ -223,6 +225,10 @@ export const DEFAULT_DEPTH: DepthSettings = { mode: 'full', overrides: {} };
 
 /** Whether the player handles this system himself, preset plus any override. */
 export function handles(depth: DepthSettings, key: SystemKey): boolean {
+  // Held back from this build (features.ts): scouting is the staff's for
+  // everyone, so a full career reads rival tendencies the way a casual one
+  // does instead of a locked report it has no way to unlock (audit 17, M40).
+  if (key === 'scouting' && !SCOUTING) return false;
   const override = depth.overrides[key];
   if (override !== undefined) return override;
   const def = SYSTEM_BY_KEY.get(key);
