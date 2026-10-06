@@ -57,19 +57,42 @@ const env = { ...process.env, JAVA_HOME, ANDROID_HOME, ANDROID_SDK_ROOT: ANDROID
 const run = (cmd, args, cwd) =>
   execFileSync(cmd, args, { cwd, env, stdio: 'inherit', shell: true });
 
-// Gradle reads the SDK from here rather than from a wizard it cannot open.
-fs.writeFileSync(
-  path.join(ROOT, 'android', 'local.properties'),
-  `sdk.dir=${ANDROID_HOME.replace(/\\/g, '\\\\')}\n`,
-);
-
 // `--test` builds the APK with the testing shortcuts in it (state/testBuild.ts);
 // a plain `npm run apk` is the store build and carries none.
 if (process.argv.includes('--test')) env.VITE_TEST_SHORTCUTS = '1';
 console.log(`\n— building the web bundle${env.VITE_TEST_SHORTCUTS === '1' ? ' (test shortcuts in)' : ''} —`);
 run('npm', ['run', 'build'], ROOT);
+// A clean checkout has no shell: `android/` is generated and ignored. Create
+// it the first time rather than failing on the first write into it.
+if (!fs.existsSync(path.join(ROOT, 'android'))) {
+  console.log('\n— generating the Android shell (first build on this machine) —');
+  run('npx', ['cap', 'add', 'android'], ROOT);
+}
+// Gradle reads the SDK from here rather than from a wizard it cannot open.
+fs.writeFileSync(
+  path.join(ROOT, 'android', 'local.properties'),
+  `sdk.dir=${ANDROID_HOME.replace(/\\/g, '\\\\')}\n`,
+);
 console.log('\n— copying it into the shell —');
 run('npx', ['cap', 'sync', 'android'], ROOT);
+
+/*
+  Portrait only. The web manifest has always said portrait, but the APK never
+  did: the generated activity has no screenOrientation, so the game rotated
+  into a landscape layout it was never designed for (audit 17, M5). Written
+  into the generated manifest on every build, like versionCode below, so a
+  regenerated shell cannot lose it.
+*/
+{
+  const manifest = path.join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
+  const xml = fs.readFileSync(manifest, 'utf8');
+  if (!/android:screenOrientation=/.test(xml)) {
+    fs.writeFileSync(manifest, xml.replace(
+      /android:name="\.MainActivity"/,
+      'android:name=".MainActivity"\n            android:screenOrientation="portrait"',
+    ));
+  }
+}
 
 // The launcher icon and the splash, regenerated from assets/ every build.
 // The shell is generated and ignored (.gitignore), so its res/ came back as

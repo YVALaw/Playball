@@ -319,9 +319,6 @@ export class StorageUnavailable extends Error {
   }
 }
 
-/** True once an open has failed, so the app can say saving is off. */
-export let storageBlocked = false;
-
 function openDatabase(): Promise<IDBPDatabase<PlayballDB>> {
   const open = openDB<PlayballDB>(DB_NAME, SCHEMA_VERSION, {
     upgrade(database, oldVersion) {
@@ -360,7 +357,7 @@ function openDatabase(): Promise<IDBPDatabase<PlayballDB>> {
      * callback the request stays pending silently, which is the whole bug.
      */
     blocked() {
-      storageBlocked = true;
+      // The timeout below rejects the open; nothing else to record here.
     },
     /**
      * We are the tab in the way. Close, so the other one can get on with it.
@@ -397,7 +394,6 @@ function db(): Promise<IDBPDatabase<PlayballDB>> {
   // tab that was blocking can be closed and the game carries on working.
   dbPromise ??= openDatabase().catch((e) => {
     dbPromise = null;
-    storageBlocked = true;
     throw e;
   });
   return dbPromise;
