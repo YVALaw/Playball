@@ -11,6 +11,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { billingState, onBilling, buyGodMode, restorePurchases } from '../../state/billing.js';
 import { useDynasty } from '../../state/store.js';
+import { SaveAndLeave } from '../components/SaveAndLeave.js';
 import { TEST_SHORTCUTS } from '../../state/testBuild.js';
 import { SCOUTING } from '../../state/features.js';
 import {
@@ -155,15 +156,7 @@ export function Settings() {
         {inCareer && (
           <Card eyebrow="Main menu" title="Leave this career">
             <p className="pb-text-muted">Saves first.</p>
-            <Button
-              variant="secondary"
-              block
-              icon="exit"
-              onClick={() => {
-                const st = useDynasty.getState();
-                void st.saveNow().then(() => useDynasty.getState().backToStart());
-              }}
-            >Save and leave</Button>
+            <SaveAndLeave label="Save and leave" block />
           </Card>
         )}
       </main>

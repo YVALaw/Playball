@@ -32,7 +32,7 @@ import type { LiveGame } from '../src/engine/liveGame.js';
 import { makeRng, rngFromState } from '../src/engine/rng.js';
 import type { Tactic } from '../src/engine/types.js';
 import {
-  readJournal, writeJournal, noteAction, clearJournal, journalMatches, richer,
+  readJournal, writeJournal, noteAction, clearJournal, journalMatches, richer, JOURNAL_BUILD,
   type LiveJournal,
 } from '../src/state/liveJournal.js';
 
@@ -194,9 +194,13 @@ describe('the journal', () => {
       slot: 'auto', year: 2027, rngState: 4242,
       home: 0, away: 1, day: 3,
       homeStarter: 0, awayStarter: 0,
-      managing: 'home' as const, postseason: false, actions: [],
+      managing: 'home' as const, postseason: false, actions: [], build: JOURNAL_BUILD,
     };
     expect(journalMatches(j, 'auto', 2027, 4242)).toBe(true);
+    // Another build may draw the same first pitch into a different game (M25),
+    // and a journal from before the stamp is from another build by definition.
+    expect(journalMatches({ ...j, build: 'older' }, 'auto', 2027, 4242)).toBe(false);
+    expect(journalMatches({ ...j, build: undefined }, 'auto', 2027, 4242)).toBe(false);
     // Another dynasty, another year, or a generator that has moved on: all
     // three are the same answer, because replaying into any of them would
     // invent a game rather than recover one.

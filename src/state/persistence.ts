@@ -238,6 +238,8 @@ export interface SaveSummary {
    * year's, at nought), so a finished career lists his instead.
    */
   retired?: { year: number; coach: string; record: string };
+  /** A god-mode career, so the list can say so whatever it is named (M55). */
+  sandbox?: boolean;
 }
 
 /**
@@ -400,6 +402,14 @@ function db(): Promise<IDBPDatabase<PlayballDB>> {
 }
 
 export interface SaveExtras {
+  /**
+   * The generator position to write instead of the season's own. While a
+   * managed game is unfinished the season's generator belongs to that game;
+   * the file must keep the first-pitch position its crash journal was written
+   * against, or a reload treats the journal as stale and the game is lost
+   * (audit 17, H2).
+   */
+  rngState?: number;
   /** The season's press conferences so far, and the one still open. */
   press?: unknown;
   pendingPress?: unknown;
@@ -497,7 +507,7 @@ export function buildSaveFile(
     savedAt: now,
     year,
     userTeam,
-    rngState: portable.rngState,
+    rngState: extras.rngState ?? portable.rngState,
     season: portable.season,
     history: extras.history ?? [],
     coach: extras.coach,
@@ -581,6 +591,22 @@ export function buildSaveFile(
   };
 }
 
+/*
+  One generation back (audit 17, M41). Every career used to be exactly one
+  record, rewritten in place on every action, so a write that came out wrong
+  left nothing to fall back to. Now, when a save is about to replace a record
+  that has stood for at least BACKUP_AGE_MS, that record is kept first under
+  `<slot>~prev`. The backup is therefore always a state the career sat in for
+  a while, never the write a moment before the bad one, and a burst of saves
+  costs one extra copy rather than one per save.
+*/
+const BACKUP_SUFFIX = '~prev';
+export const BACKUP_AGE_MS = 10 * 60 * 1000;
+export const backupSlotOf = (slot: string): string => `${slot}${BACKUP_SUFFIX}`;
+export const isBackupSlot = (slot: string): boolean => slot.endsWith(BACKUP_SUFFIX);
+/** When each slot was last written by this session, so most saves skip the read. */
+const writtenAt = new Map<string, number>();
+
 export async function saveDynasty(
   slot: string,
   name: string,
@@ -589,7 +615,27 @@ export async function saveDynasty(
   userTeam: number,
   extras: SaveExtras = {},
 ): Promise<void> {
-  await (await db()).put(STORE, buildSaveFile(slot, name, season, year, userTeam, extras));
+  const file = buildSaveFile(slot, name, season, year, userTeam, extras);
+  const store = await db();
+  if (!isBackupSlot(slot)) {
+    const known = writtenAt.get(slot);
+    if (known === undefined || file.savedAt - known >= BACKUP_AGE_MS) {
+      const old = await store.get(STORE, slot);
+      if (old && Number.isFinite(old.savedAt) && file.savedAt - old.savedAt >= BACKUP_AGE_MS
+        && old.schemaVersion <= SCHEMA_VERSION) {
+        await store.put(STORE, { ...old, slot: backupSlotOf(slot) });
+      }
+    }
+  }
+  await store.put(STORE, file);
+  writtenAt.set(slot, file.savedAt);
+}
+
+/** The kept earlier copy of a slot, if there is one: its save time. */
+export async function backupOf(slot: string): Promise<number | null> {
+  if (isBackupSlot(slot)) return null;
+  const raw = await (await db()).get(STORE, backupSlotOf(slot));
+  return raw && Number.isFinite(raw.savedAt) ? raw.savedAt : null;
 }
 
 export interface LoadedDynasty {
@@ -743,6 +789,8 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
 export async function listSaves(): Promise<SaveSummary[]> {
   const files = await (await db()).getAll(STORE);
   return files
+    // A kept earlier copy is part of its career, not a career of its own.
+    .filter((f) => !isBackupSlot(String((f as { slot?: unknown } | null)?.slot ?? '')))
     .map((f): SaveSummary => {
       try {
         const team = f.season.teams[f.userTeam];
@@ -764,6 +812,7 @@ export async function listSaves(): Promise<SaveSummary[]> {
           record: team ? `${team.w}-${team.l}` : '—',
           school: team ? team.def.school : '—',
           ...(retired ? { retired } : {}),
+          ...(f.godMode ? { sandbox: true } : {}),
         };
       } catch {
         // One file that cannot be read is one row that says so, not an empty
@@ -784,5 +833,8 @@ export async function listSaves(): Promise<SaveSummary[]> {
 }
 
 export async function deleteSave(slot: string): Promise<void> {
-  await (await db()).delete(STORE, slot);
+  const store = await db();
+  await store.delete(STORE, slot);
+  if (!isBackupSlot(slot)) await store.delete(STORE, backupSlotOf(slot));
+  writtenAt.delete(slot);
 }

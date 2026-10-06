@@ -29,7 +29,7 @@ import { BigMomentCard } from './BigMoment.js';
 import { teamColour } from './Avatar.js';
 import { Button, Callout, Icon, List, ListRow, ScreenHeader, StatGroup, Stars, type IconName } from './components/ui/index.js';
 import {
-  PHASES, PHASE_LABEL, railSteps, TABS, useDynasty, useUserTeam,
+  PHASES, PHASE_LABEL, railSteps, closedStep, TABS, useDynasty, useUserTeam,
   isRoom,
   type Tab, type Overlay as OverlayName,
 } from '../state/store.js';
@@ -184,7 +184,7 @@ function AppBody() {
   // layer now); the Program tab's dot is the record book's.
   const unseenRecords = useDynasty((s) => s.unseenRecords.length);
   // The board waiting on an answer: a review, an offer, or this year's terms.
-  const boardWaiting = useDynasty((s) => s.lastReview !== null || s.offers.length > 0 || s.seasonOpener !== null);
+  const boardWaiting = useDynasty((s) => (s.lastReview !== null && !s.reviewDismissed) || s.offers.length > 0 || s.seasonOpener !== null);
   const sectionAlert = (t: Tab, id: string): boolean => (
     (t === 'program' && id === 'history' && unseenRecords > 0)
     || (t === 'office' && id === 'board' && boardWaiting)
@@ -207,6 +207,7 @@ function AppBody() {
   // array per read.
   const rail = useDynasty(useShallow(railSteps));
   const loadError = useDynasty((s) => s.loadError);
+  const backupFor = useDynasty((s) => s.backupFor);
   const newDynasty = useDynasty((s) => s.newDynasty);
   const openOverlay = useDynasty((s) => s.openOverlay);
   const refreshSaves = useDynasty((s) => s.refreshSaves);
@@ -477,7 +478,14 @@ function AppBody() {
         <main ref={mainRef} key={phase ?? screen} className="screen-in pb-framemain pb-framemain--stack">
           {loadError && (
             <div className="pb-frameerror">
-              <Callout tone="warning" title="That career would not open">
+              <Callout
+                tone="warning"
+                title="That career would not open"
+                {...(backupFor ? { action: {
+                  label: `Open the copy from ${new Date(backupFor.savedAt).toLocaleString()}`,
+                  onClick: () => { void useDynasty.getState().loadBackup(backupFor.slot); },
+                } } : {})}
+              >
                 {/newer version|schema/i.test(loadError)
                   ? 'Saved by a newer version. Nothing was deleted.' : 'The save could not be read. Nothing was deleted.'}
                 <span className="pb-errdetail">{loadError}</span>
@@ -743,6 +751,7 @@ function AppBody() {
               steps={steps.map((p) => ({ key: p, label: PHASE_LABEL[p] }))}
               at={steps.indexOf(phase)}
               furthest={furthest}
+              locked={steps.filter((p) => closedStep(useDynasty.getState(), p))}
               onGo={(k) => goPhase(k as Exclude<typeof phase, null>)}
             />
           );

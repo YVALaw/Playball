@@ -87,6 +87,7 @@ export function Saves() {
   const saveState = useDynasty((s) => s.saveState);
   const lastSaveError = useDynasty((s) => s.lastSaveError);
   const loadError = useDynasty((s) => s.loadError);
+  const backupFor = useDynasty((s) => s.backupFor);
   const loadedSlot = useDynasty((s) => s.loadedSlot);
   const year = useDynasty((s) => s.year);
   const team = useUserTeam();
@@ -154,8 +155,15 @@ export function Saves() {
       )}
 
       {loadError && (
-        <Callout tone="warning" title="A save would not open">
-          Probably saved by a newer version. Nothing was deleted.
+        <Callout
+          tone="warning"
+          title="A save would not open"
+          {...(backupFor ? { action: {
+            label: `Open the copy from ${new Date(backupFor.savedAt).toLocaleString()}`,
+            onClick: () => { void useDynasty.getState().loadBackup(backupFor.slot); },
+          } } : {})}
+        >
+          {backupFor ? 'An earlier copy of it is kept.' : 'Probably saved by a newer version.'} Nothing was deleted.
           <span className="pb-errdetail">{loadError}</span>
         </Callout>
       )}
@@ -266,7 +274,8 @@ function SaveRow(
           ? <StatusBadge tone="neutral" icon="star">Finished</StatusBadge>
           : playing
             ? <StatusBadge tone="positive">Playing now</StatusBadge>
-            : auto ? <StatusBadge tone="neutral" icon={false}>Autosave</StatusBadge> : undefined}
+            : save.sandbox ? <StatusBadge tone="neutral" icon={false}>Sandbox</StatusBadge>
+              : auto ? <StatusBadge tone="neutral" icon={false}>Autosave</StatusBadge> : undefined}
         onClick={onLoad}
       />
       <IconButton icon="trash" label={`Delete ${save.name}`} tone="quiet" className="pb-saverow__delete" onClick={onDelete} />

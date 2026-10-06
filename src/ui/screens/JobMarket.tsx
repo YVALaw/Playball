@@ -12,7 +12,7 @@
 // my career pointed" and not only "who wants me this week".
 
 import type { ReactNode } from 'react';
-import { useDynasty, useUserTeam } from '../../state/store.js';
+import { useDynasty, useUserTeam, jobOfferBlock } from '../../state/store.js';
 import { useOpenTeam } from './TeamCard.js';
 import { Crest } from '../Crest.js';
 import { prestigeStars, rosterStrength } from '../../engine/program.js';
@@ -30,6 +30,7 @@ export function JobMarket({ lead }: { lead?: ReactNode } = {}) {
   const acceptOffer = useDynasty((s) => s.acceptOffer);
   const fired = useDynasty((s) => s.jobSearch);
   const coach = useDynasty((s) => s.coach);
+  const blocked = useDynasty((s) => jobOfferBlock(s));
   const current = useUserTeam();
   const openTeam = useOpenTeam();
 
@@ -45,8 +46,11 @@ export function JobMarket({ lead }: { lead?: ReactNode } = {}) {
     .map((abbr) => season.teams.find((t) => t.def.abbr === abbr))
     .filter((t): t is NonNullable<typeof t> => !!t);
 
+  // A coach out of work who never coached a game has no last job to compare
+  // against: the chair in the store is one he never sat in (M104).
+  const neverHeld = fired && (coach.careerWins ?? 0) + (coach.careerLosses ?? 0) === 0;
   const currentPrestige = current?.prestige ?? coach.prestige;
-  const currentRoster = current ? rosterStrength(current.team) : null;
+  const currentRoster = current && !neverHeld ? rosterStrength(current.team) : null;
   const here = fired ? 'Last job' : 'Your job';
 
   return (
@@ -95,11 +99,16 @@ export function JobMarket({ lead }: { lead?: ReactNode } = {}) {
               from={here}
               to="This job"
               rows={[
-                { label: 'Prestige', hint: 'Out of 100', now: currentPrestige, next: o.prestige },
+                neverHeld
+                  ? { label: 'Prestige', hint: 'Out of 100', nowText: '—', next: o.prestige }
+                  : { label: 'Prestige', hint: 'Out of 100', now: currentPrestige, next: o.prestige },
                 currentRoster !== null
                   ? { label: 'Roster strength', hint: 'Average starter rating, of 100', now: currentRoster, next: destinationRoster }
                   : { label: 'Roster strength', hint: 'Average starter rating, of 100', nowText: '—', next: destinationRoster },
-                {
+                neverHeld ? {
+                  label: 'Budget a year', nowText: '—', next: annualBudget(o.prestige),
+                  nextText: dollars(annualBudget(o.prestige)),
+                } : {
                   label: 'Budget a year',
                   now: annualBudget(currentPrestige),
                   next: annualBudget(o.prestige),
@@ -128,8 +137,10 @@ export function JobMarket({ lead }: { lead?: ReactNode } = {}) {
               variant="primary"
               idle={`Take the ${o.school} job`}
               armed={current && !fired ? `Tap again: leave ${current.def.school} for good` : 'Tap again to sign'}
+              disabled={blocked !== null}
               onConfirm={() => { void acceptOffer(o.team); }}
             />
+            {blocked && <p className="pb-text-muted">{blocked}</p>}
           </Card>
         );
       })}

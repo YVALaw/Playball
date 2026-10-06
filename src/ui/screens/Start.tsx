@@ -60,7 +60,11 @@ export function Start(
       .then((ok) => { if (!ok) setBusy(false); })
       .catch(() => setBusy(false));
   };
-  const blocked = busy || savesState === 'error';
+  // A store that will not answer is no reason to bar the door: a new career
+  // takes a slot of its own, so it can overwrite nothing, and its saves land
+  // once the device lets them (audit 17, M53). It used to block New career
+  // too, which left a phone with blocked site data no way to play at all.
+  const blocked = busy;
   const startNew = (): void => { leaveStart(); onNew(); };
 
   return (
@@ -85,7 +89,7 @@ export function Start(
             title="Your careers could not be read"
             action={{ label: 'Try again', onClick: () => void refreshSaves() }}
           >
-            {savesError ?? 'The device refused the save store.'} Nothing is lost.
+            {savesError ?? 'The device refused the save store.'} Nothing is lost. You can still start a new career, but it may not be saved until the device lets it.
           </Callout>
         )}
 

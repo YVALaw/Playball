@@ -13,9 +13,9 @@ import { retirementStatus } from '../../engine/retirement.js';
 import { GoalGrid } from './BoardGoals.js';
 import { badgeOf } from '../../data/badges.js';
 import { FirstVisit } from '../Tutorial.js';
-import { rpiOrder, standings, regularRecord } from '../../engine/season.js';
+import { rpiOrder, standings, regularRecord, seasonComplete } from '../../engine/season.js';
 import { objectiveMet, prestigeStars, resignationCost, STAR_MARKS } from '../../engine/program.js';
-import type { Finish } from '../../engine/postseason.js';
+import { ceremonyOf, type Finish } from '../../engine/postseason.js';
 import type { Hitter, PlayerId } from '../../engine/types.js';
 import { Trophy, type TrophyKind } from '../Honours.js';
 import {
@@ -79,10 +79,18 @@ export function SeasonReview() {
   const displayFinish = finish ?? (outcome?.madeConferenceTournament ? 'conference' : undefined);
   const confName = conferenceName(team.conference);
 
+  // The squad as it stood when June ended: by the draft step the rosters have
+  // lost their seniors, and the review named somebody else on a revisit (M93).
+  const squad = seasonComplete(season) ? ceremonyOf(season, team.index, post).squad : null;
+  const hitters: { id: PlayerId; name: string }[] = squad
+    ? squad.filter((m) => !m.pitcher) : [...team.team.lineup, ...team.team.bench] as Hitter[];
+  const pitchers: { id: PlayerId; name: string }[] = squad
+    ? squad.filter((m) => m.pitcher) : [...team.team.rotation, ...team.team.bullpen];
+
   // The player who carried the season, judged on production rather than rating.
   let mvp: { id: PlayerId; name: string; line: string } | null = null;
   let best = -1;
-  for (const p of [...team.team.lineup, ...team.team.bench] as Hitter[]) {
+  for (const p of hitters) {
     const line = season.batting.get(p.id);
     if (!line || line.ab < 30) continue;
     const score = line.h + line.hr * 3 + line.rbi * 0.5 + line.bb * 0.3;
@@ -94,7 +102,7 @@ export function SeasonReview() {
       };
     }
   }
-  for (const p of [...team.team.rotation, ...team.team.bullpen]) {
+  for (const p of pitchers) {
     const line = season.pitching.get(p.id);
     if (!line || line.outs < 90) continue;
     const era = (line.er * 27) / Math.max(1, line.outs);
@@ -110,10 +118,10 @@ export function SeasonReview() {
 
   // The tops of the books, one player per question, on the awards' floors.
   const leaders: { id: PlayerId; name: string; line: string; k: string }[] = [];
-  const bats = ([...team.team.lineup, ...team.team.bench] as Hitter[])
+  const bats = hitters
     .map((p) => ({ p, l: season.batting.get(p.id) }))
-    .filter((x): x is { p: Hitter; l: NonNullable<typeof x.l> } => !!x.l && x.l.ab >= 30);
-  const arms = [...team.team.rotation, ...team.team.bullpen]
+    .filter((x): x is { p: (typeof x)['p']; l: NonNullable<typeof x.l> } => !!x.l && x.l.ab >= 30);
+  const arms = pitchers
     .map((p) => ({ p, l: season.pitching.get(p.id) }))
     .filter((x): x is { p: (typeof x)['p']; l: NonNullable<typeof x.l> } => !!x.l && x.l.outs >= 90);
   const bestBat = [...bats].sort((a, b) => b.l.h / b.l.ab - a.l.h / a.l.ab)[0];

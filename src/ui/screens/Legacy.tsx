@@ -34,6 +34,7 @@ import {
   ActionBar, Button, Callout, Card, List, ListRow, Marquee, Plaque, TileGrid,
 } from '../components/ui/index.js';
 import { cx } from '../components/ui/core.js';
+import { SaveAndLeave } from '../components/SaveAndLeave.js';
 import { burstConfetti } from '../celebrate.js';
 import { sfx, buzz } from '../sound.js';
 import { Identity, BackgroundStep } from './NewGame.js';
@@ -48,8 +49,6 @@ export function Legacy() {
   const season = useDynasty((s) => s.season);
   const year = useDynasty((s) => s.year);
   const startNewCoach = useDynasty((s) => s.startNewCoach);
-  const saveNow = useDynasty((s) => s.saveNow);
-  const backToStart = useDynasty((s) => s.backToStart);
   /*
     A player's card is a full overlay at z-30 and a sheet is at z-60, and the
     two genuinely interleave — the card itself opens sheets — so neither can
@@ -247,13 +246,7 @@ export function Legacy() {
           stay on one line each. The note above carries the meaning. */}
       <ActionBar note="Carry on in this world, or leave it here.">
         <Button variant="primary" iconAfter="arrow-right" onClick={() => setStep('who')}>Another chair</Button>
-        <Button
-          variant="secondary"
-          icon="exit"
-          onClick={() => { void saveNow().then(() => backToStart()); }}
-        >
-          End here
-        </Button>
+        <SaveAndLeave label="End here" />
       </ActionBar>
 
       {top?.kind === 'years' && (

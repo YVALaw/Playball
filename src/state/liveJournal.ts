@@ -85,9 +85,19 @@ export type JournalAction =
   */
   | { k: 'coach'; on: boolean };
 
+declare const __BUILD_ID__: string | undefined;
+/** The build writing journals now. See vite.config.ts `buildId`. */
+export const JOURNAL_BUILD = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
+
 export interface LiveJournal {
   /** The save slot this belongs to. A journal never crosses dynasties. */
   slot: string;
+  /**
+   * The build that wrote it, stamped by `writeJournal`. A different build may
+   * play the same first pitch into a different game, so its journal is stale
+   * (audit 17, M25). Absent on journals from before the stamp: also stale.
+   */
+  build?: string;
   year: number;
   /**
    * The season generator's position at the first pitch.
@@ -164,7 +174,8 @@ export function readJournal(): LiveJournal | null {
   }
 }
 
-export function writeJournal(j: LiveJournal): void {
+export function writeJournal(entry: LiveJournal): void {
+  const j: LiveJournal = { ...entry, build: JOURNAL_BUILD };
   current = j;
   const s = store();
   if (s) {
@@ -205,7 +216,7 @@ export function clearJournal(): void {
 export function journalMatches(
   j: LiveJournal, slot: string, year: number, rngState: number,
 ): boolean {
-  return j.slot === slot && j.year === year && j.rngState === rngState;
+  return j.slot === slot && j.year === year && j.rngState === rngState && j.build === JOURNAL_BUILD;
 }
 
 /** A journal parsed off any store, or null if it is not one. */

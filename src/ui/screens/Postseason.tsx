@@ -126,6 +126,9 @@ export function Postseason() {
   const myBracket = useDynasty((s) => s.myBracket);
   const sideShow = useDynasty((s) => s.sideShow);
   const pendingGame = useDynasty((s) => s.pendingGame);
+  // A game starting (its anchor still writing) or one waiting to be picked
+  // back up holds both June buttons, as the store does (M59, M95).
+  const gameHeld = useDynasty((s) => s.liveStarting || s.pendingGame !== null);
   const resumeGame = useDynasty((s) => s.resumeGame);
   const advance = useDynasty((s) => s.advanceBracket);
   const manage = useDynasty((s) => s.manageBracketGame);
@@ -596,13 +599,13 @@ export function Postseason() {
       {action.secondary && (
         <Button
           variant="secondary"
-          disabled={beat !== null}
+          disabled={beat !== null || gameHeld}
           onClick={withBeat(action.secondary.label, action.secondary.onClick)}
         >{action.secondary.label}</Button>
       )}
       <Button
         variant="primary"
-        disabled={beat !== null}
+        disabled={beat !== null || (gameHeld && reviewing === null)}
         onClick={action.instant ? action.run : withBeat(action.label, action.run)}
       >{beat ?? action.label}</Button>
     </>

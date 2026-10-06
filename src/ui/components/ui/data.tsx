@@ -56,8 +56,10 @@ export function CompareTable({
         return (
           <div key={i} className="pb-compare__row" role="row">
             <span className="pb-compare__label" role="rowheader">{r.label}{r.hint && <small>{r.hint}</small>}</span>
-            <span className="pb-compare__now" role="cell">{showValue(r.nowText ?? r.now, r)}</span>
-            <span className="pb-compare__next" role="cell">{showValue(r.nextText ?? r.next, r)}</span>
+            {/* Money and other long text at a smaller size: "$1.25M" at the
+                numeral size ran over the next column (M103). */}
+            <span className={cx('pb-compare__now', String(r.nowText ?? r.now).length > 4 && 'pb-compare__cell--long')} role="cell">{showValue(r.nowText ?? r.now, r)}</span>
+            <span className={cx('pb-compare__next', String(r.nextText ?? r.next).length > 4 && 'pb-compare__cell--long')} role="cell">{showValue(r.nextText ?? r.next, r)}</span>
             <span className="pb-compare__delta" role="cell">
               {r.changeText != null
                 ? <Delta value={change == null ? 1 : change} text={r.changeText} better={r.better} icon={false} />

@@ -1,6 +1,23 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
+/*
+  Which build this is, for the crash journal (audit 17, M25): a game
+  interrupted under one build is not replayed under another, whose engine may
+  draw the same generator into a different game. Version plus commit, or the
+  build time where there is no git.
+*/
+function buildId(): string {
+  const version = (JSON.parse(readFileSync('package.json', 'utf8')) as { version?: string }).version ?? '0';
+  try {
+    return `${version}+${execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()}`;
+  } catch {
+    return `${version}+${Date.now()}`;
+  }
+}
 
 export default defineConfig(({ command }) => ({
   plugins: [react()],
@@ -8,6 +25,7 @@ export default defineConfig(({ command }) => ({
   // in a production build unless VITE_TEST_SHORTCUTS=1 asks for a test APK.
   define: {
     __TEST_SHORTCUTS__: JSON.stringify(command === 'serve' || process.env['VITE_TEST_SHORTCUTS'] === '1'),
+    __BUILD_ID__: JSON.stringify(buildId()),
   },
   /**
    * Everything except a second copy of ourselves.

@@ -22,6 +22,13 @@ Each phase ends with `npm run check` green and a debug APK on a phone.
 
 ## Phase 1 — Stop dynasty corruption (1 week)
 
+> **Status: done**, apart from the partial items listed here. Regression tests are in `tests/audit-known-bugs.test.ts`
+> (C2, C3, C4, H2, H3, H7) and `tests/phase1-fixes.test.ts` (M41, M55/M37, M93, M74, M71, M105).
+> Partial: M102 only *hides* Retire between jobs and after retirement. "Retire now" from the job
+> market still needs an `endCareer` variant that does not roll the year. M53 unblocks New career on the Start
+> screen when the save store will not answer (a new career takes its own slot, so it can overwrite nothing)
+> rather than adding a separate "play without saving" mode.
+
 Root cause A — **actions not gated by game phase.** Add one guard helper in the store
 (`canMutateWorld(state)` / `phaseAllows(action)`) and use it in every mutating action and every
 button that calls one, with a reason shown on the disabled control.

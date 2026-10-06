@@ -1703,3 +1703,49 @@ export function recordSchoolAnnals(
     });
   }
 }
+
+/** One of the coach's own men, as he stood when June ended. */
+export interface CeremonyMan { id: PlayerId; name: string; pitcher: boolean }
+
+/** The year's honours and the coach's squad, kept from the day June ended. */
+export interface SeasonCeremony {
+  year: number;
+  team: number;
+  awards: Award[];
+  first: AllConferencePick[];
+  coach: CoachAward | null;
+  squad: CeremonyMan[];
+}
+
+/**
+ * The ceremony, stamped once and read back after (audit 17, M93).
+ *
+ * Every award is looked up through the rosters, and the draft step rewrites
+ * them: a senior Player of the Year who has left is on no roster, so the
+ * awards screen revisited after the draft dropped him and named somebody
+ * else. Stamped the first time it is asked for in a complete season — the
+ * store asks the moment June ends — and served from the stamp after that.
+ */
+export function ceremonyOf(
+  season: SeasonState, team: number, post?: PostseasonSummary | null,
+): SeasonCeremony {
+  const kept = season.ceremony;
+  const year = season.year ?? 0;
+  if (kept && kept.year === year && kept.team === team) return kept;
+  const own = season.teams[team]?.team;
+  const fresh: SeasonCeremony = {
+    year,
+    team,
+    awards: seasonAwards(season),
+    first: allConference(season),
+    coach: coachOfTheYear(season, post),
+    squad: own
+      ? [
+        ...[...own.lineup, ...own.bench].map((p) => ({ id: p.id, name: p.name, pitcher: false })),
+        ...[...own.rotation, ...own.bullpen].map((p) => ({ id: p.id, name: p.name, pitcher: true })),
+      ]
+      : [],
+  };
+  season.ceremony = fresh;
+  return fresh;
+}

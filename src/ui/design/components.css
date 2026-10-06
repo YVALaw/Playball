@@ -212,6 +212,7 @@
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .pb-compare__now { color: var(--ink-muted); }
+.pb-compare__cell--long { font-size: calc(14px * var(--pb-ts, 1)); line-height: 20px; white-space: normal; overflow-wrap: anywhere; }
 .pb-compare__next { color: var(--ink); }
 .pb-compare__delta { display: flex; justify-content: flex-end; }
 

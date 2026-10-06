@@ -7,6 +7,7 @@
 // season. Real calendar dates are a presentation concern, and keeping them out
 // of here is what lets a season replay exactly from its seed.
 
+import type { SeasonCeremony } from './postseason.js';
 import {
   largestDeficit, noFeats, noteGame, type SeasonFeats,
 } from './achievements.js';
@@ -850,6 +851,12 @@ export interface PitcherWorkload {
 export interface SeasonState {
   /** Morale and recruiting promises have been judged for this season. */
   moraleSettled?: boolean;
+  /**
+   * The year's awards and the coach's squad as they stood when June ended.
+   * Stamped once by `ceremonyOf`, so a revisit after the draft has emptied
+   * the rosters shows the ceremony that was held (audit 17, M93).
+   */
+  ceremony?: SeasonCeremony;
   config: SeasonConfig;
   /**
    * The rules this world was opened under — see `SeasonRules`.
@@ -955,6 +962,12 @@ export interface SeasonState {
    * spring with them, and never read anywhere else. They age out of the feed
    * as results accumulate and die with the season that carried them.
    */
+  /**
+   * League trades made in god mode after the regular season, waiting for the
+   * spring they were promised for. Applied by `nextSeason` before the new
+   * schedule is built; never touches the season that just ended (audit 17, H3).
+   */
+  pendingSwaps?: Array<{ a: number; b: number }>;
   newsRealign?: {
     school: string; abbr: string; from: string; to: string;
     downSchool: string; downAbbr: string;
@@ -1600,6 +1613,12 @@ export function nextSeason(prev: SeasonState, config: SeasonConfig = prev.config
       resetWorkload(p);
       delete (p as Player & { outUntil?: number }).outUntil;
     }
+  }
+
+  for (const { a, b } of prev.pendingSwaps ?? []) {
+    const ta = teams.find((t) => t.index === a);
+    const tb = teams.find((t) => t.index === b);
+    if (ta && tb && ta.conference !== tb.conference) [ta.conference, tb.conference] = [tb.conference, ta.conference];
   }
 
   const world: WorldShape = { conferences: [] };

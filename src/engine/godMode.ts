@@ -198,10 +198,15 @@ export function swapConferences(season: SeasonState, a: number, b: number): bool
   if (!ta || !tb || a === b || ta.conference === tb.conference) return false;
   const when = conferenceWindow(season);
   if (when === 'closed') return false;
-  applyRealignment(season.teams, { up: a, upTo: tb.conference, down: b, downTo: ta.conference });
-  if (when === 'now') {
-    season.schedule = buildSchedule(season.config, worldFromTeams(season.teams), season.scheduleRotation);
+  // After the regular season the trade waits for the spring it promises: the
+  // conference tournaments, annals and played fixtures belong to the leagues
+  // they were played in (audit 17, H3).
+  if (when === 'next-spring') {
+    season.pendingSwaps = [...(season.pendingSwaps ?? []), { a, b }];
+    return true;
   }
+  applyRealignment(season.teams, { up: a, upTo: tb.conference, down: b, downTo: ta.conference });
+  season.schedule = buildSchedule(season.config, worldFromTeams(season.teams), season.scheduleRotation);
   return true;
 }
 
@@ -319,7 +324,9 @@ export function movePlayer(season: SeasonState, id: PlayerId, toTeam: number): b
   if (!found || !to || found.team.index === toTeam) return false;
   const from = found.team.team;
   if (found.player.type !== 'pitcher' && !canLeave(from, id)) return false;
-  if (found.player.type === 'pitcher' && !canLeaveArm(from, id)) return false;
+  // A two-way man is an arm as well as a bat: he may be the last starter
+  // (audit 17, C3), so he has to pass both checks.
+  if ((found.player.type === 'pitcher' || isTwoWay(found.player)) && !canLeaveArm(from, id)) return false;
   const wasStarter = from.lineup.some((h) => h.id === id);
   const spot = (found.player as Hitter).pos;
   releaseFrom(from, id);
@@ -335,7 +342,9 @@ export function cutPlayer(season: SeasonState, id: PlayerId): boolean {
   if (!found) return false;
   const from = found.team.team;
   if (found.player.type !== 'pitcher' && !canLeave(from, id)) return false;
-  if (found.player.type === 'pitcher' && !canLeaveArm(from, id)) return false;
+  // A two-way man is an arm as well as a bat: he may be the last starter
+  // (audit 17, C3), so he has to pass both checks.
+  if ((found.player.type === 'pitcher' || isTwoWay(found.player)) && !canLeaveArm(from, id)) return false;
   const wasStarter = from.lineup.some((h) => h.id === id);
   const spot = (found.player as Hitter).pos;
   releaseFrom(from, id);
@@ -409,10 +418,13 @@ export function makeTwoWayOf(record: TeamRecord, p: Player, rng: Rng, quality = 
 /** The arm taken back. */
 export function unmakeTwoWay(record: TeamRecord, p: Player): boolean {
   if (!isTwoWay(p)) return false;
+  // Taking the arm back must not empty the rotation (audit 17, C3).
+  if (!canLeaveArm(record.team, p.id)) return false;
   record.team.rotation = record.team.rotation.filter((a) => a.id !== p.id);
   record.team.bullpen = record.team.bullpen.filter((a) => a.id !== p.id);
   const m = p as unknown as Record<string, unknown>;
   for (const k of ['twoWay', 'role', 'homeRole', 'sidearm', 'armPlatoon', ...ARM_RATINGS]) delete m[k];
+  fillRotation(record.team);
   return true;
 }
 

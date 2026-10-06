@@ -118,7 +118,7 @@ import {
   startSeriesBracket, stepBracket, nextGameFor, resultOf, pairKey, hostOfGame,
   REGIONAL_LENGTHS, SERIES, regionOf, deAsResult, roundName,
   protectedTopFour, CONF_ADVANCE,
-  seasonAwards, allConference, coachOfTheYear,
+  seasonAwards, allConference, coachOfTheYear, ceremonyOf,
   conferenceField, conferenceIds, conferenceTournament, singleElimination, REGIONS,
   recordSchoolAnnals,
   selectNationalField, seatProtected, splitShowdown, bestOf, NATIONAL_BIDS,
@@ -503,7 +503,23 @@ function unresolvedRosterDecision(season: SeasonState, userTeam: number, depth: 
     a decision with no button (05 §63.3).
   */
   if (!writesCard) return null;
-  return squad(team).find((p) => !active.has(String(p.id)) && returnDecisionOpen(p, day)) ?? null;
+  const back = squad(team).find((p) => !active.has(String(p.id)) && returnDecisionOpen(p, day));
+  if (back) return back;
+  /*
+    And a card with a hole or a man twice: two catchers and nobody in left.
+    The lineup screen's own guard held it only while the coach stood on that
+    screen, so a relaunch, which lands on Home, simmed and played it as it
+    was (audit 17, M105). Named by the second man wearing the label, or the
+    first of the nine for a plain hole: either is a tap on the card.
+  */
+  const gaps = cardGaps(team.lineup);
+  if (gaps.doubled.length > 0) {
+    const seen = new Set<string>();
+    const twice = team.lineup.find((m) => { if (seen.has(m.pos)) return true; seen.add(m.pos); return false; });
+    if (twice) return twice;
+  }
+  if (gaps.missing.length > 0 && team.lineup.length > 0) return team.lineup[0]!;
+  return null;
 }
 
 /** A roster change worth a card. See `rosterAlert`. */
@@ -583,6 +599,7 @@ import { opponentPlan } from '../engine/counters.js';
 import { HOME_CONFERENCE, CONFERENCES } from '../data/schools.js';
 import {
   saveDynasty, loadDynasty, listSaves, deleteSave, newSlotId, AUTOSAVE_SLOT,
+  backupOf, backupSlotOf, isBackupSlot,
   type SaveSummary,
 } from './persistence.js';
 // Re-exported because the slot is the store's vocabulary as much as the disk's,
@@ -1232,6 +1249,13 @@ export interface DynastyStore {
   acceptOffer: (team: number) => Promise<void>;
   /** Close the board meeting. */
   clearReview: () => void;
+  /**
+   * The review card was dismissed while the winter still needs it: the year's
+   * roll reads the verdict off `lastReview` to write next season's terms, so
+   * in the offseason the card is hidden rather than the review thrown away
+   * (audit 17, M74).
+   */
+  reviewDismissed: boolean;
   season: SeasonState | null;
   /** Index into season.teams. The program you coach. */
   userTeam: number;
@@ -2115,6 +2139,13 @@ export interface DynastyStore {
   simError: string | null;
   /** Why the save on disk could not be opened, if it could not. */
   loadError: string | null;
+  /**
+   * The slot that just refused to open, when an earlier copy of it is kept
+   * (audit 17, M41): the screens that show `loadError` offer that copy.
+   */
+  backupFor: { slot: string; savedAt: number } | null;
+  /** Open the kept earlier copy of a slot, which then carries on as that slot. */
+  loadBackup: (slot: string) => Promise<boolean>;
 
   /**
    * Every dynasty on this device, newest first.
@@ -2495,11 +2526,28 @@ function usableSideShow(
  * say no. The line is written here because this is where both teams are in
  * hand.
  */
+/** The name each file was saved under, so a save keeps the one it has. */
+const slotNames = new Map<string, string>();
+
+/** The earlier copy to offer when `slot` will not open, if one is kept. */
+async function offerBackup(slot: string): Promise<{ slot: string; savedAt: number } | null> {
+  if (isBackupSlot(slot)) return null;
+  try {
+    const savedAt = await backupOf(slot);
+    return savedAt === null ? null : { slot, savedAt };
+  } catch {
+    return null;
+  }
+}
+
 function pendingFromJournal(
   season: SeasonState, year: number, slot: string,
 ): { home: number; away: number; line: string } | null {
   const j = readJournal();
   if (!j) return null;
+  // Another slot's game is not this career's to throw away: opening a
+  // different save must leave it for that save to offer back (audit M54).
+  if (j.slot !== slot) return null;
   if (!journalMatches(j, slot, year, season.rng.state?.() ?? -1)) {
     clearJournal();
     return null;
@@ -2896,6 +2944,42 @@ function careerSeasons(s: { history: SeasonRecord[]; coach: CoachState }): numbe
  * — the year rolls afterwards — so "over at seventy" means he finishes the
  * season he was seventy for.
  */
+/**
+ * Why a standing job offer cannot be taken right now, or null when it can.
+ *
+ * Taking a job swaps `userTeam`, and everything still in flight was the old
+ * chair's: a managed game waiting in the dugout, a June bracket, an offseason
+ * step's draft board or portal. Accepted in the middle of any of them, the
+ * code that finishes the flow ran on the new chair — the waiting game was
+ * recorded twice, a draftee kept by the old school joined the new roster, and
+ * a season half-coached at one school was booked to the other (audit 17, C4).
+ * So the door opens only between seasons: while the coach is out of work, or
+ * before opening day, with nothing of the old chair's still running.
+ */
+/**
+ * The portal without one man. A god move or cut takes a man off his roster,
+ * but the open pool still listed him, and at the close another program signed
+ * him: the same player on two rosters for good, or a cut man back to life
+ * (audit 17, C2).
+ */
+function outOfPortal(portal: DynastyStore['portal'], id: PlayerId): Partial<DynastyStore> {
+  if (!portal) return {};
+  const keep = (m: PortalMan): boolean => m.player.id !== id;
+  if (portal.available.every(keep) && portal.leaving.every(keep)) return {};
+  return { portal: { ...portal, available: portal.available.filter(keep), leaving: portal.leaving.filter(keep) } };
+}
+
+export function jobOfferBlock(s: Pick<DynastyStore,
+  'live' | 'pendingGame' | 'liveStarting' | 'busy' | 'jobSearch' | 'bracket' | 'myBracket' | 'phase' | 'season'>,
+): string | null {
+  if (s.live || s.pendingGame || s.liveStarting) return 'Finish the game in progress first.';
+  if (s.busy) return 'Wait for the sim to finish.';
+  if (s.jobSearch) return null;
+  if (s.bracket || s.myBracket || s.phase !== null) return 'You can change jobs once the winter is over.';
+  if ((s.season?.dayIndex ?? 0) > 0) return 'You can change jobs after this season.';
+  return null;
+}
+
 export function careerFinished(s: {
   history: SeasonRecord[]; coach: CoachState; year: number;
 }): boolean {
@@ -3009,6 +3093,16 @@ export function lineupHolds(s: Pick<DynastyStore, 'screen' | 'depth' | 'season' 
 export function railSteps(s: Pick<DynastyStore, 'season' | 'history' | 'coach' | 'year'>): Exclude<Phase, null>[] {
   const all = stepsFor(rulesOf(s.season));
   return careerFinished(s) || s.coach.resignYear === s.year ? all.slice(0, all.indexOf('review') + 1) : all;
+}
+
+/**
+ * A step that has already happened and cannot be stood on again. Only the
+ * portal: leaving it closes the national window for everybody and drops the
+ * pool, so a walk back used to land on a blank step, and a save taken there
+ * reopened a second window with the budget refilled (audit 17, H7).
+ */
+export function closedStep(s: Pick<DynastyStore, 'furthestPhase' | 'portal'>, step: Exclude<Phase, null>): boolean {
+  return step === 'portal' && s.portal === null && s.furthestPhase > PHASES.indexOf('portal');
 }
 
 /** This era's stops, oldest first. Other eras' stay in the trail and are not walked. */
@@ -4222,6 +4316,10 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     set({
       season,
       userTeam: seat,
+      // A game left waiting in the career before this one is not this one's.
+      live: null,
+      liveMeta: null,
+      pendingGame: null,
       boardAsk: boardAskFor(season, seat),
       // And no letter from the board that hired somebody else. `acceptOffer`
       // has cleared this since the two-number mandate was first reported;
@@ -4390,7 +4488,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     const s = get();
     if (stepStops(s).length === 0 || s.phase === null) return 'none';
     const at = PHASES.indexOf(s.phase);
-    const prev = railSteps(s).filter((p) => PHASES.indexOf(p) < at).at(-1);
+    const prev = railSteps(s).filter((p) => PHASES.indexOf(p) < at && !closedStep(s, p)).at(-1);
     if (!prev) return 'none';
     // Like a rail tap, so Coach points spent on the way out are kept.
     get().goPhase(prev);
@@ -4433,6 +4531,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   startGuide: (g) => set({ guide: g }),
   clearGuide: () => set({ guide: null }),
   keepCover: (id) => {
+    // Not while the season sims in the worker: its copy replaces this one (M71).
+    if (get().busy) return;
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
     if (!team) return;
@@ -5210,7 +5310,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
             ],
           });
         }
-        set({ portal: { leaving: mine, available: [], spent: 0 } });
+        // What the staff spent is what the card counts and the keeps are
+        // budgeted against: the step's own ledger said nought (M73).
+        set({ portal: { leaving: mine, available: [], spent: season.portalSpend[get().userTeam] ?? 0 } });
       } else {
         set({ portal: { leaving: mine, available: theirs, spent: 0 } });
       }
@@ -5486,7 +5588,12 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
    * Computing it at the end would mean the offseason spent itself against last
    * year's numbers.
    */
-  openOffseason: () => { if (get().lastPostseason) set({ phase: 'awards' }); },
+  openOffseason: () => {
+    const { lastPostseason, season, userTeam } = get();
+    if (!lastPostseason) return;
+    if (season) ceremonyOf(season, userTeam, lastPostseason);
+    set({ phase: 'awards' });
+  },
 
   settleSeason: () => {
     const { season, userTeam, coach, lastPostseason: post } = get();
@@ -5763,6 +5870,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
     set({
       lastReview: review,
+      reviewDismissed: false,
       lastOutcome: outcome,
       newBadges: fresh,
       history: record ? [...get().history, record] : get().history,
@@ -6397,6 +6505,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
         // page ever cleared it, so whether a season was graded at all came down
         // to whether the player had tapped a card.
         lastReview: null,
+        reviewDismissed: false,
         lastWeek: null,
         /*
           The resume offer, which does not survive a year.
@@ -6605,6 +6714,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     // A step this world does not run is not reachable, however far the rail
     // has got: skipping it pushes `furthestPhase` past its index.
     if (!liveStep(phase, rulesOf(get().season))) return;
+    if (closedStep(get(), phase)) return;
     navMark(false);
     set({
       phase, overlay: null, overlayStack: [], selectedPlayer: null, coachSeat: null, spentThisStep: {},
@@ -6615,9 +6725,10 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   playerCardSection: 'overview',
   coach: newCoach(),
   lastReview: null,
+  reviewDismissed: false,
   offers: [],
 
-  clearReview: () => set({ lastReview: null }),
+  clearReview: () => set(get().phase !== null ? { reviewDismissed: true } : { lastReview: null }),
   inbox: [],
   post: (item) => set({ inbox: push(get().inbox, newItem(item)) }),
   portal: null,
@@ -6693,6 +6804,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   wordsUsed: 0,
 
   wordWith: (id) => {
+    // Not while the season sims in the worker: its copy replaces this one (M71).
+    if (get().busy) return false;
     const { season, userTeam, coach, wordsUsed, version } = get();
     const rec = season?.teams[userTeam];
     if (!rec || wordsUsed >= WORDS_A_SEASON) return false;
@@ -6717,6 +6830,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   },
 
   nameCaptain: (id) => {
+    // Not while the season sims in the worker: its copy replaces this one (M71).
+    if (get().busy) return false;
     const { season, userTeam, version } = get();
     const rec = season?.teams[userTeam];
     if (!rec) return false;
@@ -6742,6 +6857,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   },
 
   restMan: (id, days) => {
+    // Not while the season sims in the worker: its copy replaces this one (M71).
+    if (get().busy) return false;
     const { season, userTeam, version } = get();
     const rec = season?.teams[userTeam];
     if (!season || !rec) return false;
@@ -6774,6 +6891,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   },
 
   moveDepth: (spot, id, delta) => {
+    // Not while the season sims in the worker: its copy replaces this one (M71).
+    if (get().busy) return;
     const { season, userTeam, version } = get();
     const rec = season?.teams[userTeam];
     if (!rec) return;
@@ -6783,6 +6902,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   },
 
   setRedshirt: (id, on) => {
+    // Not while the season sims in the worker: its copy replaces this one (M71).
+    if (get().busy) return false;
     const { season, userTeam, version } = get();
     const rec = season?.teams[userTeam];
     if (!rec) return false;
@@ -6804,6 +6925,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   },
 
   changePosition: (id, to) => {
+    // Not while the season sims in the worker: its copy replaces this one (M71).
+    if (get().busy) return false;
     const { season, userTeam, version } = get();
     const rec = season?.teams[userTeam];
     if (!rec) return false;
@@ -7097,13 +7220,14 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     // A rivalry belongs to a chair, not a man — the new school has its own,
     // and its ledger opens at nought the day you arrive. The staff stays
     // yours: assistants follow the coach who hired them.
-    set({ rivalry: { w: 0, l: 0 } });
     if (!season) return;
     // Only an offer that is actually on the table. Accepting clears the list in
     // the same breath, so a double-tap's second click — or a tap on a second
     // offer after the first was taken — finds nothing here and does nothing,
     // instead of seating coaches twice and posting duplicate carousel news.
     if (!get().offers.some((o) => o.team === team)) return;
+    if (jobOfferBlock(get()) !== null) return;
+    set({ rivalry: { w: 0, l: 0 } });
     // The new job's games are the ones worth keeping now.
     season.captureBoxFor = team;
     // A new job is a clean slate with a patient board, but your reputation
@@ -7729,6 +7853,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       return;
     }
 
+    // The ceremony as it stands tonight, before the draft rewrites the rosters.
+    ceremonyOf(season, get().userTeam, get().lastPostseason);
     set({ bracket: null, phase: 'awards', version: version + 1 });
     void get().saveNow();
   },
@@ -7756,8 +7882,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     // clears, so opening the card while blocked is not logged as a managed game.
     get().noteHabit('managed');
     // A game is already being managed. Building a second LiveGame would consume
-    // the season's rng again and silently discard the one in progress.
-    if (get().live || get().liveStarting) return;
+    // the season's rng again and silently discard the one in progress. An
+    // interrupted one waiting to be picked up is the same game (M95).
+    if (get().live || get().liveStarting || get().pendingGame) return;
 
     // The host and the arm are worked out exactly as the tournament would:
     // in a series, home alternates from the better seed; in the double
@@ -7779,6 +7906,10 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     const home = season.teams[h];
     const away = season.teams[a];
     if (!home || !away) return;
+    // The staff's card first, so the lineup played, the one the anchor save
+    // holds and the one a resume rebuilds are all the same card (M78). It ran
+    // after the lineups below were captured and before the save.
+    if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, userTeam);
 
     /*
       Each side's rotation slot is its own — a team arriving off a bye and a
@@ -7829,7 +7960,6 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     // the pen's, a coach who kept his bullpen and delegated the conversations
     // had nobody visiting his mound at all (05 §72).
     const autoVisits = !handles(get().depth, 'moundVisits');
-    if (!handles(get().depth, 'lineups')) staffSetsTheCard(season, userTeam);
     set({ liveStarting: true });
     const rngState = season.rng.state?.() ?? 0;
     /*
@@ -7843,6 +7973,13 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       watching, so refusing here explains itself.
     */
     if (!await get().saveNow()) { set({ liveStarting: false }); return; }
+    // Nothing may have moved the tournament while the anchor was writing
+    // (M59): a sim of this very game would otherwise be played twice.
+    if (get().myBracket !== myBracket || get().season !== season || get().live
+      || (season.rng.state?.() ?? 0) !== rngState) {
+      set({ liveStarting: false });
+      return;
+    }
     writeJournal({
       slot: get().loadedSlot ?? AUTOSAVE_SLOT, year: get().year, rngState,
       home: h, away: a, day: season.dayIndex,
@@ -7897,6 +8034,10 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   simBracket: (mode) => {
     const { myBracket, version, season, userTeam } = get();
     if (!myBracket || !season) return;
+    // Not while your game is being played, starting, or waiting to be picked
+    // back up: simming it here recorded it and threw the managed one away
+    // (audit 17, M59, M95).
+    if (get().live || get().liveStarting || get().pendingGame) return;
     const hold = unresolvedRosterDecision(season, userTeam, get().depth);
     if (hold) { set({ lineupGate: get().lineupGate + 1 }); get().go('team', 'lineup', hold.id); return; }
     const { state, preplayed } = myBracket;
@@ -8287,6 +8428,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     const j = readJournal();
     set({ pendingGame: null });
     if (!season || !j) return;
+    if (j.slot !== (get().loadedSlot ?? AUTOSAVE_SLOT)) return;
     if (!journalMatches(j, get().loadedSlot ?? AUTOSAVE_SLOT, get().year, season.rng.state?.() ?? -1)) {
       clearJournal();
       return;
@@ -8712,7 +8854,10 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
     // The rest of the day happens now, with our game held out, then ours is
     // written down through the same path a simulated game takes.
-    simNextDay(season, { hold: userTeam });
+    // Held by the fixture, not by whoever sits in the chair now: the two are
+    // the same team unless the chair changed mid-game, and if it ever did,
+    // holding `userTeam` simulated this game and then recorded it again.
+    simNextDay(season, { hold: liveMeta.home });
     get().syncRecruitingCalendar();
     recordResult(season, liveMeta.home, liveMeta.away, live.result, {
       conference: liveMeta.conference,
@@ -9435,7 +9580,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   // ---------------------------------------------------------------------------
   godEditPlayer: (id, patch) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return false;
+    if (!get().godMode || get().busy || !season) return false;
     const found = findPlayer(season, id);
     if (!found) return false;
     editPlayer(found.player, patch);
@@ -9446,7 +9591,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godAddPlayer: (team, kind, opts = {}) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return null;
+    if (!get().godMode || get().busy || !season) return null;
     const record = season.teams[team];
     if (!record) return null;
     const made = authorPlayer(season.rng, kind, 60, opts);
@@ -9459,7 +9604,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   godSetPrestige: (team, prestige) => {
     const { season, version } = get();
     const record = season?.teams[team];
-    if (!get().godMode || !season || !record) return;
+    if (!get().godMode || get().busy || !season || !record) return;
     setPrestige(record, prestige);
     set({ version: version + 1 });
     void get().saveNow();
@@ -9468,7 +9613,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   godRenameProgram: (team, school, nickname) => {
     const { season, version } = get();
     const record = season?.teams[team];
-    if (!get().godMode || !season || !record) return;
+    if (!get().godMode || get().busy || !season || !record) return;
     renameProgram(record, school, nickname);
     set({ version: version + 1 });
     void get().saveNow();
@@ -9476,7 +9621,11 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godSwapConferences: (a, b) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return false;
+    if (!get().godMode || get().busy || !season) return false;
+    // Not while a game or June is in flight: the managed game was built on the
+    // schedule this would rewrite (audit 17, M68).
+    const s0 = get();
+    if (s0.live || s0.pendingGame || s0.liveStarting || s0.bracket || s0.myBracket) return false;
     if (!swapConferences(season, a, b)) return false;
     set({ version: version + 1 });
     void get().saveNow();
@@ -9485,7 +9634,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godSetCoach: (patch) => {
     const { coach, season, userTeam, version } = get();
-    if (!get().godMode) return;
+    if (!get().godMode || get().busy) return;
     const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, Math.round(v)));
     const skills = { ...coach.skills };
     for (const [k, v] of Object.entries(patch.skills ?? {})) {
@@ -9505,7 +9654,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godSetStaff: (seat, patch) => {
     const { economy, season, userTeam, coach, version } = get();
-    if (!get().godMode) return;
+    if (!get().godMode || get().busy) return;
     const next: Economy = { ...economy, staff: { ...economy.staff } };
     if (!setStaff(next, seat, patch)) return;
     // A rated assistant is a different edge on the field.
@@ -9516,7 +9665,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godGrant: (kind, amount) => {
     const { economy, version } = get();
-    if (!get().godMode) return;
+    if (!get().godMode || get().busy) return;
     const next: Economy = { ...economy };
     if (kind === 'money') grantMoney(next, amount);
     else grantRecruiting(next, amount);
@@ -9526,7 +9675,11 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godReshuffleSchedule: () => {
     const { season, version } = get();
-    if (!get().godMode || !season) return false;
+    if (!get().godMode || get().busy || !season) return false;
+    // Not while a game or June is in flight: the managed game was built on the
+    // schedule this would rewrite (audit 17, M68).
+    const s0 = get();
+    if (s0.live || s0.pendingGame || s0.liveStarting || s0.bracket || s0.myBracket) return false;
     if (!reshuffleSchedule(season)) return false;
     set({ version: version + 1 });
     void get().saveNow();
@@ -9535,7 +9688,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   leagueNames: {},
   godSetLeagueName: (id, name) => {
-    if (!get().godMode) return;
+    if (!get().godMode || get().busy) return;
     const next = { ...get().leagueNames };
     const clean = name.trim().slice(0, 40);
     if (clean.length > 0) next[id] = clean; else delete next[id];
@@ -9546,7 +9699,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godHeal: (id) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return;
+    if (!get().godMode || get().busy || !season) return;
     const found = findPlayer(season, id);
     if (!found) return;
     healPlayer(found.player);
@@ -9556,7 +9709,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godIronMan: (id, on) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return;
+    if (!get().godMode || get().busy || !season) return;
     const found = findPlayer(season, id);
     if (!found) return;
     setIronMan(found.player, on);
@@ -9566,25 +9719,25 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godMovePlayer: (id, team) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return false;
+    if (!get().godMode || get().busy || !season) return false;
     if (!movePlayer(season, id, team)) return false;
-    set({ version: version + 1 });
+    set({ version: version + 1, ...outOfPortal(get().portal, id) });
     void get().saveNow();
     return true;
   },
 
   godCutPlayer: (id) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return false;
+    if (!get().godMode || get().busy || !season) return false;
     if (!cutPlayer(season, id)) return false;
-    set({ version: version + 1, selectedPlayer: null });
+    set({ version: version + 1, selectedPlayer: null, ...outOfPortal(get().portal, id) });
     void get().saveNow();
     return true;
   },
 
   godSignPortal: (id) => {
     const { season, userTeam, portal, version } = get();
-    if (!get().godMode || !season || !portal) return false;
+    if (!get().godMode || get().busy || !season || !portal) return false;
     const man = signPortalMan(season, portal.available, userTeam, id);
     if (!man) return false;
     set({
@@ -9598,7 +9751,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godSetMood: (id, mood) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return;
+    if (!get().godMode || get().busy || !season) return;
     const found = findPlayer(season, id);
     if (!found) return;
     setMoodOf(found.player, mood);
@@ -9608,7 +9761,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godSetRedshirt: (id, on) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return;
+    if (!get().godMode || get().busy || !season) return;
     const found = findPlayer(season, id);
     if (!found) return;
     setRedshirt(found.player, on);
@@ -9618,7 +9771,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godSetAge: (id, age) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return;
+    if (!get().godMode || get().busy || !season) return;
     const found = findPlayer(season, id);
     if (!found) return;
     setAge(found.player, age);
@@ -9628,7 +9781,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godGrantBadge: (id, badge, tier) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return;
+    if (!get().godMode || get().busy || !season) return;
     const found = findPlayer(season, id);
     if (!found) return;
     grantBadge(found.player, badge, tier);
@@ -9638,7 +9791,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godRevokeBadge: (id, badge) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return;
+    if (!get().godMode || get().busy || !season) return;
     const found = findPlayer(season, id);
     if (!found) return;
     revokeBadge(found.player, badge);
@@ -9648,7 +9801,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godTwoWay: (id, on) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return false;
+    if (!get().godMode || get().busy || !season) return false;
     const found = findPlayer(season, id);
     if (!found) return false;
     const done = on ? makeTwoWayOf(found.team, found.player, season.rng) : unmakeTwoWay(found.team, found.player);
@@ -9660,7 +9813,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godAddRecruit: (kind) => {
     const { season, version } = get();
-    if (!get().godMode || !season) return null;
+    if (!get().godMode || get().busy || !season) return null;
     const made = authorProspect(season, kind, 70);
     if (!made) return null;
     set({ version: version + 1 });
@@ -9671,7 +9824,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   godSetRecruitStars: (id, stars) => {
     const { season, version } = get();
     const p = season?.recruiting?.prospects.find((x) => x.id === id);
-    if (!get().godMode || !season || !p) return;
+    if (!get().godMode || get().busy || !season || !p) return;
     setRecruitStars(p, stars);
     set({ version: version + 1 });
     void get().saveNow();
@@ -9680,7 +9833,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   godSetRecruitWants: (id, weights) => {
     const { season, version } = get();
     const p = season?.recruiting?.prospects.find((x) => x.id === id);
-    if (!get().godMode || !season || !p) return;
+    if (!get().godMode || get().busy || !season || !p) return;
     setRecruitWants(p, weights);
     set({ version: version + 1 });
     void get().saveNow();
@@ -9689,7 +9842,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   godCommitRecruit: (id) => {
     const { season, userTeam, version } = get();
     const p = season?.recruiting?.prospects.find((x) => x.id === id);
-    if (!get().godMode || !season?.recruiting || !p) return;
+    if (!get().godMode || get().busy || !season?.recruiting || !p) return;
     commitRecruit(season.recruiting, p, userTeam);
     set({ version: version + 1 });
     void get().saveNow();
@@ -9697,7 +9850,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godSetCoachMore: (patch) => {
     const { coach, season, userTeam, version } = get();
-    if (!get().godMode) return;
+    if (!get().godMode || get().busy) return;
     const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, Math.round(v)));
     const habits: Record<string, number> = { ...(coach.habits ?? {}) };
     for (const [k, v] of Object.entries(patch.habits ?? {})) if (typeof v === 'number') habits[k] = clamp(v, 0, 9999);
@@ -9734,7 +9887,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
   godPreset: (kind) => {
     const { season, userTeam, version } = get();
-    if (!get().godMode || !season) return;
+    if (!get().godMode || get().busy || !season) return;
     if (kind === 'parity') presetParity(season);
     else if (kind === 'chaos') presetChaos(season, ((season.rng.state?.() ?? 0) ^ version) >>> 0);
     else { const me = season.teams[userTeam]; if (me) presetSuperteam(me); }
@@ -9745,7 +9898,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   godStack: [],
   liveStarting: false,
   openGod: (target) => {
-    if (!get().godMode) return;
+    if (!get().godMode || get().busy) return;
     const stack = get().godStack;
     if (sameGodTarget(stack[stack.length - 1], target)) return;
     /*
@@ -9770,7 +9923,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       // The original first, as a named snapshot, so the fork can never cost it.
       // Do not turn the live career into a sandbox unless that protection copy
       // actually reached storage.
-      const protectedOriginal = await get().saveNow(newSlotId(), school);
+      // Into its own file, which the fork leaves alone: a second named copy
+      // of it here only put a third row of the same name on the list (M37).
+      const protectedOriginal = await get().saveNow();
       if (!protectedOriginal) return false;
 
       // Then the copy, flagged, into its own slot — and into the chair.
@@ -9820,6 +9975,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
   lastSaveError: null,
   simError: null,
   loadError: null,
+  backupFor: null,
 
   saveNow: async (slot?: string, name?: string) => {
     const { season, year, userTeam, history, lastPostseason } = get();
@@ -9836,7 +9992,14 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     const ticket = ++saveTicket;
     set({ saveState: 'saving', lastSaveError: null });
     try {
-      await saveDynasty(target, name ?? (team ? team.def.school : 'Dynasty'), season, year, userTeam, {
+      // Mid-game, the file keeps the journal's first-pitch generator (H2).
+      const live = get().live;
+      const anchor = live && !live.over ? readJournal() : null;
+      // A file keeps the name it was given: an autosave used to rename every
+      // copy, and the sandbox, back to the school (audit 17, M55).
+      const label = name ?? slotNames.get(target) ?? (team ? team.def.school : 'Dynasty');
+      await saveDynasty(target, label, season, year, userTeam, {
+        ...(anchor && anchor.slot === target && anchor.year === year ? { rngState: anchor.rngState } : {}),
         history,
         postseason: lastPostseason,
         bracket: get().bracket,
@@ -9887,6 +10050,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
         */
         wordsUsed: get().wordsUsed,
       });
+      slotNames.set(target, label);
       if (ticket === saveTicket) set({ saveState: 'saved' });
       return true;
     } catch (e) {
@@ -9898,6 +10062,16 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       }
       return false;
     }
+  },
+
+  loadBackup: async (slot) => {
+    if (!(await get().loadSlot(backupSlotOf(slot)))) return false;
+    const kept = slotNames.get(backupSlotOf(slot));
+    if (kept !== undefined) slotNames.set(slot, kept);
+    // The copy carries on as the career it was kept for: the next save
+    // writes over the record that would not open.
+    set({ loadedSlot: slot, backupFor: null });
+    return true;
   },
 
   loadSlot: async (slot = AUTOSAVE_SLOT) => {
@@ -9924,16 +10098,18 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       set({
         loadError: e instanceof Error ? e.message : String(e),
         needsTeam: true,
+        backupFor: await offerBackup(slot),
       });
       return false;
     }
     if (!loaded) return false;
+    slotNames.set(slot, loaded.name);
     // A save that would throw on its first game is refused here, where the
     // player is told and can start again, rather than a day into a career
     // that cannot move (05 §62.6).
     const broken = assertSeason(loaded.season, loaded.userTeam);
     if (broken) {
-      set({ loadError: broken, needsTeam: true });
+      set({ loadError: broken, needsTeam: true, backupFor: await offerBackup(slot) });
       return false;
     }
     // Saves written before box scores existed carry none, and would otherwise
@@ -10098,6 +10274,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       // set, a newer-build slot refused once would keep warning about itself
       // over the top of the career that loaded perfectly well afterwards.
       loadError: null,
+      backupFor: null,
       history: (loaded.history ?? []) as SeasonRecord[],
       coach,
       lastPostseason: (loaded.postseason ?? null) as PostseasonSummary | null,
@@ -10176,6 +10353,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
         ? loaded.furthestPhase
         : Math.max(0, PHASES.indexOf((loaded.phase === 'recruiting' ? 'signing' : loaded.phase ?? null) as Exclude<Phase, null>)),
       lastReview: (loaded.review ?? null) as Review | null,
+      reviewDismissed: false,
       lastOutcome: (loaded.outcome ?? null) as SeasonOutcome | null,
       version: get().version + 1,
       tab: 'home', /* nav-write */
@@ -10273,6 +10451,11 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     */
     adStaffsUp(get, set);
     get().staffPlanWeek();
+    // A save stood on a portal that had already closed (written by a build
+    // that let the rail walk back onto it) moves on rather than reopening it.
+    if (get().phase === 'portal' && closedStep(get(), 'portal')) {
+      set({ phase: stepAfter('portal', rulesOf(get().season)), version: get().version + 1 });
+    }
     if (get().phase === 'portal' && get().portal === null) {
       const season = get().season;
       const rec = season?.teams[get().userTeam];
@@ -10311,6 +10494,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       godMode: false,
       leagueNames: {},
       live: null,
+      liveMeta: null,
+      pendingGame: null,
       bracket: null,
       needsTeam: false,
       busy: false,
@@ -10427,6 +10612,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     selectedPlayer: null, coachSeat: null,
     godStack: [],
     loadError: null,
+    backupFor: null,
     replaceLostRecruits: true,
     seasonPlanYear: null,
     });

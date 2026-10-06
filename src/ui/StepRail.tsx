@@ -16,9 +16,11 @@ export interface Step {
 }
 
 export function StepRail(
-  { steps, at, furthest, onGo, style, label = 'Offseason steps' }:
+  { steps, at, furthest, onGo, style, label = 'Offseason steps', locked }:
   {
     steps: readonly Step[];
+    /** Steps that are done for good and cannot be gone back to. */
+    locked?: readonly string[];
     at: number;
     furthest: number;
     onGo?: (key: string) => void;
@@ -45,7 +47,7 @@ export function StepRail(
         steps={steps.map((s, i) => ({
           label: s.label,
           state: i < at ? 'done' : i === at ? 'current' : 'upcoming',
-          onClick: i <= furthest && i !== at && onGo ? () => onGo(s.key) : undefined,
+          onClick: i <= furthest && i !== at && onGo && !locked?.includes(s.key) ? () => onGo(s.key) : undefined,
         }))}
       />
     </div>

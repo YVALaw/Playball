@@ -34,7 +34,11 @@ function useOpen(): (link: InboxLink) => void {
       case 'player': openPlayer(link.id as PlayerId); return;
       case 'team': openTeam(link.index); return;
       // A room over the inbox: the back press returns to the letters.
-      case 'program': openRoom(link.sheet); return;
+      // Between jobs the board room is the old school's, so an offer letter
+      // opens the offers instead (M101).
+      case 'program':
+        if (link.sheet === 'board' && useDynasty.getState().jobSearch) { openOverlay('jobs'); return; }
+        openRoom(link.sheet); return;
       case 'book': openOverlay('book'); return;
       case 'standings': openOverlay('standings'); return;
       case 'rankings': openOverlay('rankings'); return;

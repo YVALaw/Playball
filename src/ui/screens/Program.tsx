@@ -218,7 +218,7 @@ export function BoardRoom({ team }: { team: Owner }) {
   const openRoom = useDynasty((s) => s.openRoom);
   const watch = useDynasty((s) => s.watch);
   const coach = useDynasty((s) => s.coach);
-  const review = useDynasty((s) => s.lastReview);
+  const review = useDynasty((s) => (s.reviewDismissed ? null : s.lastReview));
   const offers = useDynasty((s) => s.offers);
   const clearReview = useDynasty((s) => s.clearReview);
   const post = useDynasty((s) => s.lastPostseason);
@@ -891,6 +891,11 @@ function Retire({ coach, seasons }: { coach: CoachState; seasons: number }) {
   // "0 seasons" is a man who has not finished one yet, which is worth saying
   // in words rather than in a zero.
   const behind = seasons === 0 ? 'first season' : plural(seasons, 'season');
+  const jobSearch = useDynasty((s) => s.jobSearch);
+
+  // Between jobs there is no season to make a farewell of, and once retired
+  // nothing is left to announce: the button did nothing useful in either (M102).
+  if (jobSearch || coach.retiredYear !== undefined) return null;
 
   if (coach.farewellYear !== undefined) {
     return (

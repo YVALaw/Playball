@@ -18,7 +18,7 @@ import { Crest } from '../Crest.js';
 import { AwardEmblem } from '../Honours.js';
 import { seasonComplete } from '../../engine/season.js';
 import {
-  seasonAwards, allConference, coachOfTheYear, type CoachAwardReason,
+  ceremonyOf, type CoachAwardReason,
 } from '../../engine/postseason.js';
 import { sfx, buzz } from '../sound.js';
 import { burstConfetti } from '../celebrate.js';
@@ -128,9 +128,12 @@ export function Awards() {
   const [shown, setShown] = useState<Set<string>>(() => new Set());
   const reveal = (id: string): void => setShown((prev) => new Set(prev).add(id));
   const ready = !!season && !!team && seasonComplete(season);
-  const awards = ready ? seasonAwards(season!) : [];
-  const first = ready ? allConference(season!) : [];
-  const coach = ready ? coachOfTheYear(season!, lastPostseason) : null;
+  // From the stamp taken when June ended, so a revisit after the draft names
+  // the same winners the ceremony did (M93).
+  const held = ready ? ceremonyOf(season!, team!.index, lastPostseason) : null;
+  const awards = held?.awards ?? [];
+  const first = held?.first ?? [];
+  const coach = held?.coach ?? null;
   const allIds = [...awards.map((a) => `a:${a.title}`), 'first-team', ...(coach ? ['coach'] : [])];
   const done = !ceremony || allIds.every((id) => shown.has(id));
   const summaryRef = useRef<HTMLDivElement>(null);
