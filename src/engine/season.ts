@@ -8,6 +8,7 @@
 // of here is what lets a season replay exactly from its seed.
 
 import type { SeasonCeremony } from './postseason.js';
+import type { CoachMods } from './coachEdges.js';
 import {
   largestDeficit, noFeats, noteGame, type SeasonFeats,
 } from './achievements.js';
@@ -688,7 +689,7 @@ export interface TeamRecord {
    * point is spent or the coach changes jobs. Absent everywhere else, so the
    * other ninety five programs play at their raw ratings.
    */
-  coachMods?: { offense: number; defense: number };
+  coachMods?: CoachMods;
   /**
    * Stage 22: the pitching coach's workload care and the facilities'
    * injury guard, stamped by the store on the user's record only. One

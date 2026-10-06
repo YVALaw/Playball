@@ -278,6 +278,8 @@ export function createLiveGame(
   if (opts.homeShortRest) home.shortRest = true;
   if (opts.awayShortRest) away.shortRest = true;
   const mine = opts.managing === 'home' ? home : away;
+  // NEVER A NIGHT OFF: the edge for a game the coach takes personally.
+  mine.managedTonight = true;
   // June, stamped the way simGame stamps it, so the badge layer's BIG STAGE
   // fires in the one bracket game a coach ever manages — his own (05 §62.1).
   if (opts.postseason) { home.postseason = true; away.postseason = true; }
@@ -493,7 +495,7 @@ export function createLiveGame(
       mine.timesThrough.clear();
       // A new man, a new outing. Defensive conferences are a team resource and
       // therefore do not reset with a pitching change.
-      mine.pitcherConfidence = CONFIDENCE.relief;
+      mine.pitcherConfidence = Math.min(CONFIDENCE.ceiling, CONFIDENCE.relief + (mine.edges.pen ?? 0));
       say(`   Pitching change: ${arm.name} (${arm.throws}HP) enters.`);
       return true;
     },

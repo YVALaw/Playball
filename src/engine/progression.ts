@@ -180,7 +180,7 @@ export function departureOdds(p: Player, season?: SeasonState | null, ctx?: Draf
  * `stock` is his `draftStock`: his rating moved by his season, and a two-way
  * man's better half.
  */
-function departure(p: Player, rng: Rng, stock: number): DepartureReason | null {
+function departure(p: Player, rng: Rng, stock: number, exitMult = 1): DepartureReason | null {
   const leverage = yearsOfLeverage(p.classYear);
   const chance = draftChance(stock) * (LEVERAGE_DISCOUNT[leverage] ?? 1);
 
@@ -194,7 +194,9 @@ function departure(p: Player, rng: Rng, stock: number): DepartureReason | null {
   // sophomore are safe and the cliff arrives on schedule. The exception is the
   // man who arrived at nineteen or twenty and is already twenty one.
   if (!draftEligible(p)) return null;
-  return rng() < chance ? 'drafted' : null;
+  // FOUR-YEAR MAN: an underclassman of his is likelier to come back. The same
+  // single draw either way, so nobody else's winter moves (coachEdges.ts).
+  return rng() < chance * exitMult ? 'drafted' : null;
 }
 
 
@@ -353,6 +355,10 @@ export interface OffseasonOpts {
   trainingBat?: number;
   /** And the pitching coach's, arms only. A two-way man reads the mean. */
   trainingArm?: number;
+  /** PLAYS THE KIDS: a multiplier on his freshmen's and sophomores' growth. */
+  youngGrowth?: number;
+  /** FOUR-YEAR MAN: a multiplier on his underclassmen's draft chance. */
+  draftExit?: number;
 }
 
 const emptyReport = (): OffseasonReport => ({
@@ -539,9 +545,11 @@ export function departAndDevelop(
       ? 1 + (opts.trainingArm - 20) / 500 : growthMult;
     // GYM RAT scales the coaching's pull on him. Written and never called,
     // so the badge's "develops faster between seasons" did nothing (M28).
-    const growthFor = (p: Player): number => growthBonus(p) * (
-      (p as { twoWay?: true }).twoWay === true ? (batMult + armMult) / 2
-        : p.type === 'pitcher' ? armMult : batMult);
+    const young = coached && opts.youngGrowth !== undefined ? opts.youngGrowth : 1;
+    const growthFor = (p: Player): number => growthBonus(p)
+      * (p.classYear === 'FR' || p.classYear === 'SO' ? young : 1) * (
+        (p as { twoWay?: true }).twoWay === true ? (batMult + armMult) / 2
+          : p.type === 'pitcher' ? armMult : batMult);
     const roster: Player[] = uniquePlayers([
       ...team.lineup, ...team.bench, ...team.rotation, ...team.bullpen,
     ]);
@@ -576,7 +584,8 @@ export function departAndDevelop(
        * three more. Asking first also costs no rng draw, so nothing about who
        * else leaves depends on how many walk-ons a program is carrying.
        */
-      const reason = p.walkOn ? 'walk-on' as const : departure(p, rng, draftStock(p, season, ctx));
+      const reason = p.walkOn ? 'walk-on' as const
+        : departure(p, rng, draftStock(p, season, ctx), record.index === mine ? (opts.draftExit ?? 1) : 1);
       if (reason) {
         const row: Departure = {
           id: p.id,

@@ -46,6 +46,7 @@
 // same rule the draft was built to: the AI is allowed to be competent and is not
 // allowed to be right.
 
+import type { CoachEdges } from './coachEdges.js';
 import { FIRST, LAST } from '../data/names.js';
 import {
   ROOKIE_PRESTIGE, canBeHired, contractFor, leagueShape, reviewSeason,
@@ -335,11 +336,16 @@ export function syncCoachMods(
   season: SeasonState, userTeam: number, userSkills: CoachSkills | null,
   /** Stage 22: the money's two body channels, stamped beside the mods. */
   care?: { armCare: number; injuryGuard: number },
+  /** The coach's badges as in-game edges (coachEdges.ts). Only his bench carries them. */
+  edges?: CoachEdges,
 ): void {
   for (const record of season.teams) {
     if (record.index === userTeam) {
       if (userSkills) {
-        record.coachMods = { offense: userSkills.offense, defense: userSkills.defense };
+        record.coachMods = {
+          offense: userSkills.offense, defense: userSkills.defense,
+          ...(edges ? { edges } : {}),
+        };
       } else delete record.coachMods;
       if (care) {
         record.armCare = care.armCare;

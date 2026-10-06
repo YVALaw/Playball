@@ -668,10 +668,12 @@ export interface DraftBoard {
  */
 export function makeTheCase(
   man: DraftedMan, kind: KeepPitch, offer: number, scene: KeepScene, budgetLeft: number,
+  /** THE PERSUADER: a multiplier on what his case is worth (coachEdges.ts). */
+  worthMult = 1,
 ): { spent: number; kept: boolean } {
   if (man.outcome !== 'pending') return { spent: 0, kept: false };
   const spend = Math.max(0, Math.min(Math.round(offer), Math.floor(budgetLeft)));
-  const made = offerWorth(kind, man.player, scene, spend);
+  const made = offerWorth(kind, man.player, scene, spend) * worthMult;
   const needed = keepPoints(man.round);
   man.pitch = kind;
   man.offered = spend;

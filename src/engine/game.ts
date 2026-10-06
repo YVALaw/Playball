@@ -5,6 +5,7 @@
 import {
   badgeSize, extraBaseBonus, fatigueBonus, gloveBonus, holdBonus, stealBonus, throwBonus,
 } from './badges.js';
+import type { CoachEdges, CoachMods } from './coachEdges.js';
 import { ENGINES } from './engines.js';
 import { fieldingAt, positionPenalty } from './positions.js';
 import { armMultiplier, legMultiplier } from './workload.js';
@@ -168,8 +169,8 @@ export interface SimOptions {
    * because a skill tree that decides games replaces the roster as the thing
    * that matters. Absent for every computer program.
    */
-  homeCoachMods?: { offense: number; defense: number };
-  awayCoachMods?: { offense: number; defense: number };
+  homeCoachMods?: CoachMods;
+  awayCoachMods?: CoachMods;
   /**
    * A bracket game rather than a Tuesday in April.
    *
@@ -311,6 +312,10 @@ export class TeamState {
    */
   readonly coachOffMult: number;
   readonly coachDefMult: number;
+  /** The coach's badges, as situational edges (coachEdges.ts). Empty for nobody's. */
+  readonly edges: CoachEdges;
+  /** Whether a person is managing this side tonight (NEVER A NIGHT OFF). Set by the live game. */
+  managedTonight = false;
   /** Stage 13: who ended a walk-off win, for the card that remembers it. */
   walkOffBy: PlayerId | null = null;
   /**
@@ -347,13 +352,14 @@ export class TeamState {
     relief: readonly Arm[] = team.bullpen,
     lineup: readonly Hitter[] = team.lineup,
     strategy: Strategy = DEFAULT_STRATEGY,
-    coachMods?: { offense: number; defense: number },
+    coachMods?: CoachMods,
     bench: readonly Hitter[] = team.bench,
     closer?: Arm,
   ) {
     this.strategy = strategy;
     this.coachOffMult = 1 + ((coachMods?.offense ?? 20) - 20) * 0.0001;
     this.coachDefMult = 1 - ((coachMods?.defense ?? 20) - 20) * 0.0001;
+    this.edges = coachMods?.edges ?? {};
     this.team = team;
     this.benchTonight = [...bench];
     this.isHome = isHome;
@@ -1182,7 +1188,9 @@ export function createHalfInning(
       pitcher. Multiplied rather than added so neither can cancel the other out:
       a settled man who is out of pitches is still out of pitches.
     */
-    const fatigueMult = fatigueMultiplier(pitcher, fld.pitcherPitches, fatigueBonus(pitcher))
+    // BY THE BOOK: his arms lose less past their budget (coachEdges.ts).
+    const fatigueMult = fatigueMultiplier(pitcher, fld.pitcherPitches,
+      fatigueBonus(pitcher) * (1 - (fld.edges.workload ?? 0)))
       * confidenceMultiplier(fld.pitcherConfidence)
       /*
         And the season in his arm, which is a different tiredness from the one
@@ -1214,7 +1222,10 @@ export function createHalfInning(
       timesThrough: tto,
       fatigueMult,
       // The fielding coach's skill rides on the same lever team defence uses.
-      defenseMult: mult(fld.defense, -0.12) * fld.coachDefMult,
+      // And the badges' situational edges: a bench that is better late, close,
+      // behind, on the road, or making the aggressive call (coachEdges.ts).
+      defenseMult: mult(fld.defense, -0.12) * fld.coachDefMult
+        * (1 - edgeBoost(fld, inning, fld.runs - bat.runs, false, false)),
       /*
         The hitting coach's, on the batting side's whole event distribution --
         and with it the two things stage 9 added to the man himself: what a
@@ -1226,7 +1237,8 @@ export function createHalfInning(
         here. Multiplied so a tired *and* unhappy man is both, which is worse
         than either and still under six percent.
       */
-      offenseMult: bat.coachOffMult * legMultiplier(batter) * moodMultiplier(batter),
+      offenseMult: bat.coachOffMult * legMultiplier(batter) * moodMultiplier(batter)
+        * (1 + edgeBoost(bat, inning, bat.runs - fld.runs, true, tactic === 'hitrun')),
       // A shift is a bet on this hitter, not a flat upgrade — and a hitter who
       // pulls everything is a better bet than his power rating alone says.
       // Stage 22: the whole defensive positioning, one computed answer.
@@ -2431,6 +2443,28 @@ export function stealTarget(bases: Bases): 2 | 3 | null {
   return null;
 }
 
+/**
+ * What a side's coaching badges add in this situation, as a fraction: on the
+ * hitting side it raises the offense multiplier, on the fielding side it
+ * lowers the defense one (lower is better there). Zero for a bench with no
+ * edges, which is every bench but the coached program's.
+ */
+export function edgeBoost(
+  t: TeamState, inning: number, margin: number, batting: boolean, aggressiveCall: boolean,
+): number {
+  const e = t.edges;
+  let b = 0;
+  if (inning >= 7) {
+    b += e.late ?? 0;
+    if (Math.abs(margin) <= 1) b += e.close ?? 0;
+    if (batting && margin < 0) b += e.trailing ?? 0;
+  }
+  if (!t.isHome) b += e.road ?? 0;
+  if (t.managedTonight) b += e.managed ?? 0;
+  if (batting && aggressiveCall) b += e.calls ?? 0;
+  return b;
+}
+
 function attemptSteal(
   bases: Bases, bat: TeamState, fld: TeamState, rng: Rng, say: Say, forced: boolean,
   events: PlayEvent[] | null = null,
@@ -2476,7 +2510,9 @@ function attemptSteal(
     profile.base * mult(runner.speed, profile.speed) * mult(runner.steal, profile.jump)
       * mult(fld.pitcher.holdRunners, profile.hold)
       * catcherArm(fld.catcher, profile.arm)
-      * stealBonus(runner) * (1 - badgeSize(fld.catcher, 'cannon')),
+      * stealBonus(runner) * (1 - badgeSize(fld.catcher, 'cannon'))
+      // SMALL BALL: his runners get the better jump (coachEdges.ts).
+      * (1 + (bat.edges.steal ?? 0)),
     0.25, 0.90,
   );
   const line = bat.hitLine(runner);
@@ -2705,7 +2741,8 @@ function maybeChangePitcher(fld: TeamState, bat: TeamState, bases: Bases, say: S
     fld.noteReliefEntry(closer, fld.runs - bat.runs, bases.filter(Boolean).length);
     fld.coverPitcher(closer);
     fld.pitcherPitches = 0;
-    fld.pitcherConfidence = CONFIDENCE.relief;
+    // THE PEN: his relievers come in settled (coachEdges.ts).
+    fld.pitcherConfidence = Math.min(CONFIDENCE.ceiling, CONFIDENCE.relief + (fld.edges.pen ?? 0));
     fld.timesThrough.clear();
     say(`   Pitching change: ${closer.name} (${closer.throws}HP) enters.`);
     return;
@@ -2739,7 +2776,8 @@ function maybeChangePitcher(fld: TeamState, bat: TeamState, bases: Bases, say: S
   // on the batter alone, so a reliever's first hitter was hit as if it were
   // the starter's fourth pass (05 §62.2). Team mound-visit usage does not
   // reset with a new pitcher.
-  fld.pitcherConfidence = CONFIDENCE.relief;
+  // THE PEN: his relievers come in settled (coachEdges.ts).
+  fld.pitcherConfidence = Math.min(CONFIDENCE.ceiling, CONFIDENCE.relief + (fld.edges.pen ?? 0));
   fld.timesThrough.clear();
   say(`   Pitching change: ${next.name} (${next.throws}HP) enters.`);
 }

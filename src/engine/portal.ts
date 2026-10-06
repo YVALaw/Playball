@@ -133,7 +133,7 @@ export function portalMarket(year: number, seed: number): number {
  * cannot re-roll who left, and reading the screen costs no draw.
  */
 export function entersPortal(
-  p: Player, opts: { squadRank: number; starts: number; games: number; year: number; seed: number } & PromiseParticipation,
+  p: Player, opts: { squadRank: number; starts: number; games: number; year: number; seed: number; exitMult?: number } & PromiseParticipation,
 ): boolean {
   const port = p as Player & Portable;
   // One move a career, and a senior is graduating rather than transferring.
@@ -171,11 +171,14 @@ export function entersPortal(
     ? Math.min(0.9, (Math.max(risk * 0.55, STAR_WANDER) + promiseRisk) * market)
     : Math.min(0.9, (risk * 0.55 + buried * 0.4 + promiseRisk) * market);
   if (chance <= 0) return false;
+  // THE KEEPER: fewer of his men walk (coachEdges.ts). Hashed, so the scale
+  // moves nobody else's decision.
+  const odds = chance * (opts.exitMult ?? 1);
 
   let h = ((opts.year * 2654435761) ^ (opts.seed * 40503)) >>> 0;
   const s = String(p.id);
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
-  return (h % 10000) / 10000 < chance;
+  return (h % 10000) / 10000 < odds;
 }
 
 /** Why he went, in his own terms rather than in the model's. */
@@ -219,6 +222,8 @@ export function openPortal(
     year: number; seed: number; games?: number;
     batting?: ReadonlyMap<PlayerId, { g: number }>;
     pitching?: ReadonlyMap<PlayerId, { g: number }>;
+    /** A program's multiplier on its men's chance of entering (THE KEEPER). */
+    exitFor?: (team: number) => number;
   },
 ): PortalMan[] {
   const out: PortalMan[] = [];
@@ -251,7 +256,7 @@ export function openPortal(
         battingGames: opts.batting ? opts.batting.get(p.id)?.g ?? 0 : undefined,
         pitchingGames: opts.pitching ? opts.pitching.get(p.id)?.g ?? 0 : undefined,
       };
-      if (!entersPortal(p, { ...at, year: opts.year, seed: opts.seed })) continue;
+      if (!entersPortal(p, { ...at, year: opts.year, seed: opts.seed, exitMult: opts.exitFor?.(rec.index) ?? 1 })) continue;
       (p as Player & Portable).inPortal = true;
       out.push({
         player: p,

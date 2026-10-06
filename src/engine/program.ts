@@ -25,6 +25,14 @@ import { FIRST, LAST } from '../data/names.js';
 import { ALL_STATES } from '../data/schools.js';
 import { DEFAULT_PHILOSOPHY, isPhilosophyId, type PhilosophyId } from './strategy.js';
 import { cultureFor, type CultureEdge } from '../data/cultures.js';
+import { badgeOf } from '../data/badges.js';
+
+/**
+ * How much further a school reaches for a coach whose badge is the thing its
+ * culture prizes (`Badge.prized`): a developer is worth more at a school that
+ * develops. Prestige points on the hiring ladder.
+ */
+const PRIZED_REACH = 5;
 import type { CoachHabits } from './habits.js';
 import type { TeamRecord } from './season.js';
 import type { Finish } from './postseason.js';
@@ -2458,14 +2466,20 @@ export function jobOffers(
    */
   isOpen: (t: TeamRecord) => boolean = () => true,
 ): JobOffer[] {
+  const prizedEdges = new Set((coach.badges ?? []).map((id) => badgeOf(id)?.prized).filter((e) => e !== undefined));
+  const prizes = (t: TeamRecord): boolean => {
+    const edge = cultureFor(t)?.edge;
+    return edge !== undefined && prizedEdges.has(edge);
+  };
   const candidates = teams
     .filter((t) => t.index !== currentTeam && isOpen(t))
     .map((t) => ({ t, prestige: prestigeOf(t) }))
     // Same ladder the opening board uses, so the two can never disagree about
     // who would hire you. The lower bound is not a rule about them, it is about
     // you: a job far beneath where you already are is not an offer worth showing.
+    // A school that prizes what he is known for reaches a step further.
     .filter(({ t, prestige }) =>
-      canBeHired(coach.prestige, prestige, t.team.quality)
+      canBeHired(coach.prestige + (prizes(t) ? PRIZED_REACH : 0), prestige, t.team.quality)
       && prestige >= coach.prestige - 22)
     .sort((a, b) => b.prestige - a.prestige)
     .slice(0, limit);
@@ -2491,7 +2505,9 @@ export function jobOffers(
     school: t.def.school,
     conference: t.conference,
     prestige,
-    pitch: prestige > coach.prestige
+    pitch: prizes(t) && prestige > coach.prestige
+      ? 'A step up, and they want what you are known for.'
+      : prestige > coach.prestige
       ? 'A step up. They think you are ready.'
       : prestige > coach.prestige - 8
         ? 'A job at your level, with a board that will be patient.'

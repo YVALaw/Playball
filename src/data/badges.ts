@@ -30,16 +30,17 @@
 // Five carried at most, and permanent once earned.
 //
 // ---------------------------------------------------------------------------
-// Why none of them do anything yet
+// Where the effects live
 // ---------------------------------------------------------------------------
 //
-// Every effect here is a modifier on a calibrated engine, and stage 6 was the
+// Every effect is a modifier on a calibrated engine, and stage 6 was the
 // expensive lesson in what happens when new modifiers arrive alongside a new
 // system: a five percent league-wide inflation that took two measured sweeps to
-// attribute. So badges are defined and awarded now, and their effects land in
-// one measured pass with the rest of the engine-touching work. A badge that
-// silently did nothing forever would be theatre; a badge whose effect is
-// scheduled and written down is a promise with a date on it.
+// attribute. So the effects landed in one measured pass, in
+// `src/engine/coachEdges.ts`, and only the coached program carries them, so
+// none can inflate the league. `effect` below says in words what that file does
+// in numbers; `tests/coach-badges.test.ts` holds every badge to having one.
+// READS THE ROOM is the exception while scouting is held back from the build.
 
 import type { CultureEdge } from './cultures.js';
 
@@ -54,8 +55,8 @@ export interface Badge {
   readonly line: string;
   readonly source: BadgeSource;
   /**
-   * The one channel this moves. Not printed anywhere — see the note above.
-   * Unwired until the measured pass; see `07-v1-plan.md` piece 7.
+   * The one channel this moves, in words. Not printed anywhere; the numbers
+   * are in `src/engine/coachEdges.ts`.
    */
   readonly effect: string;
   /**

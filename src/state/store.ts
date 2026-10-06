@@ -58,6 +58,7 @@ function sameGodTarget(a: GodTarget | undefined, b: GodTarget): boolean {
 }
 import { setStarGateOpen, type RecruitingPriorities } from '../engine/recruiting.js';
 import { createLiveGame, type LiveGame } from '../engine/liveGame.js';
+import { edgesFor, leversFor } from '../engine/coachEdges.js';
 import {
   departAndDevelop, fillRosters, holesFor as rosterHoles, reinstate, walkOnShortfall, departureOdds, staffKeeps,
   type OffseasonReport,
@@ -594,7 +595,7 @@ const holesFor = (record: { team: { lineup: unknown[]; bench: unknown[]; rotatio
   return Math.max(3, roster.filter((p) => p.classYear === 'SR' || p.classYear === 'JR').length);
 };
 import type { Region } from '../data/schools.js';
-import type { CultureEdge } from '../data/cultures.js';
+import { cultureFor, type CultureEdge } from '../data/cultures.js';
 import { note, earnedBadges, type HabitKey } from '../engine/habits.js';
 import {
   openPortal, makeTheCase as portalCase, releaseFrom, signFromPortal, staffWorksPortal, rivalHolds, STAR_LINE,
@@ -2299,7 +2300,7 @@ type StoredMyBracket = {
  * The coached program's men are read against the promise and the room; the
  * ninety-five against playing time and winning, the way they always were.
  */
-function settleTheMoods(season: SeasonState, userTeam: number): void {
+function settleTheMoods(season: SeasonState, userTeam: number, swing = 1): void {
   if (season.moraleSettled === true) return;
   for (const rec of season.teams) {
     const played = (rec.w ?? 0) + (rec.l ?? 0);
@@ -2317,7 +2318,8 @@ function settleTheMoods(season: SeasonState, userTeam: number): void {
       // him before this season is judged, so a one-year word is not held
       // against a junior.
       if (mine && promiseSpent(p.recruitPromise)) delete p.recruitPromise;
-      setMood(p, settleMood(p, {
+      const before = moodOf(p);
+      const settled = settleMood(p, {
         starts: arm ? arm.starts : (p as Player & { starts?: number }).starts ?? 0,
         games: arm ? arm.games : played,
         squadRank: ranks.get(p.id) ?? 20,
@@ -2330,7 +2332,9 @@ function settleTheMoods(season: SeasonState, userTeam: number): void {
           }),
           damped: leader !== null,
         } : {}),
-      }));
+      });
+      // PLAYERS' COACH: his room moves less of the way, good or bad (coachEdges.ts).
+      setMood(p, mine && swing !== 1 ? before + (settled - before) * swing : settled);
       if (mine && p.recruitPromise) p.recruitPromise.judged = (p.recruitPromise.judged ?? 0) + 1;
     }
   }
@@ -3372,9 +3376,6 @@ function bookTheYear(get: () => DynastyStore): void {
  * ninety-six rosters that had never been emptied — a year of the world frozen,
  * silently, and inherited by whoever coached next.
  */
-/** Training points on the bat side for a Hitting guru: the pitching guru's edge, mirrored. */
-const HITTING_GURU_BAT_TRAINING = 5;
-
 function leagueWinter(get: () => DynastyStore, set: (patch: Partial<DynastyStore>) => void): void {
   const season = get().season;
   if (!season || get().furthestPhase >= PHASES.indexOf('draft')) return;
@@ -3384,15 +3385,17 @@ function leagueWinter(get: () => DynastyStore, set: (patch: Partial<DynastyStore
   const facility = facilityEffects(eco);
   const baseTraining = get().coach.skills.training
     + (FACILITIES[eco.facilities]?.trainBump ?? 0);
+  const levers = leversFor(get().coach.badges);
   const report = departAndDevelop(season, season.rng, {
     userTeam: get().userTeam,
     training: baseTraining + Math.round((facility.bat + facility.arm) / 4),
     // Specialized facilities now matter on their own side of the roster.
-    // The Hitting guru's card promises bats develop faster under him; his
-    // background badge is the only trace of it the save keeps (audit 17, L30).
-    trainingBat: baseTraining + Math.round(facility.bat) + devBonus(eco.staff).bat
-      + ((get().coach.badges ?? []).includes('slugger') ? HITTING_GURU_BAT_TRAINING : 0),
-    trainingArm: baseTraining + Math.round(facility.arm) + devBonus(eco.staff).arm,
+    // The coach's development badges: SWING AWAY (the Hitting guru's card,
+    // audit 17 L30), ARMS MAN, DEVELOPER and PLAYS THE KIDS (coachEdges.ts).
+    trainingBat: baseTraining + Math.round(facility.bat) + devBonus(eco.staff).bat + levers.trainBat,
+    trainingArm: baseTraining + Math.round(facility.arm) + devBonus(eco.staff).arm + levers.trainArm,
+    youngGrowth: levers.youngGrowth,
+    draftExit: levers.draftExit,
   });
   /*
     The alumni book — stage 13. One durable note per man who left YOUR
@@ -3805,7 +3808,7 @@ function applyCoachMods(
   syncCoachMods(season, userTeam, withStaff(coach.skills, economy.staff), {
     armCare: armCareFor(economy.staff),
     injuryGuard: (FACILITIES[economy.facilities]?.injuryGuard ?? 1) * fx.guard * staffProjectInjuryGuard(economy, season.recruiting.week <= RECRUITING_WEEKS),
-  });
+  }, edgesFor(coach.badges));
 }
 
 /**
@@ -5061,8 +5064,11 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
             ...record.team.lineup, ...record.team.bench, ...record.team.rotation, ...record.team.bullpen,
           ] } : {}),
         });
+        // THE CLOSER: his hours on a man count for more; a hollow pitch's
+        // cost is not scaled (coachEdges.ts).
+        const worth = mine && gained > 0 ? gained * leversFor(coach.badges).recruitPoints : gained;
         // A hollow pitch costs interest; it cannot take him below nothing.
-        prospect.points[record.index] = Math.max(0, (prospect.points[record.index] ?? 0) + gained);
+        prospect.points[record.index] = Math.max(0, (prospect.points[record.index] ?? 0) + worth);
       }
     }
 
@@ -5156,7 +5162,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     const stars = prestigeStars(season.teams[userTeam]?.prestige ?? 50);
     const left = flexibleOffseasonBudget(stars) - board.spent;
     const scene = sceneFor(season, userTeam, coach, man.player, man.round);
-    const { spent, kept } = makeTheCase(man, pitch, offer, scene, left);
+    const { spent, kept } = makeTheCase(man, pitch, offer, scene, left, leversFor(coach.badges).caseWorth);
     board.spent += spent;
 
     if (kept) {
@@ -5333,8 +5339,12 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     if (next === 'portal' && get().furthestPhase < PHASES.indexOf('portal')) {
       const rec = season.teams[get().userTeam];
       // The season's verdict on every man, before the portal asks him.
-      settleTheMoods(season, get().userTeam);
-      const pool = openPortal(season.teams, { year: get().year, seed: season.seed ?? 0, batting: season.batting, pitching: season.pitching });
+      settleTheMoods(season, get().userTeam, leversFor(get().coach.badges).moodSwing);
+      const pool = openPortal(season.teams, {
+        year: get().year, seed: season.seed ?? 0, batting: season.batting, pitching: season.pitching,
+        // THE KEEPER, on the coached program only (coachEdges.ts).
+        exitFor: (team) => (team === get().userTeam ? leversFor(get().coach.badges).portalExit : 1),
+      });
       /*
         And the other ninety-five ring their own men before anybody else does.
 
@@ -5803,6 +5813,22 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       }
     }
 
+    /*
+      MORE THAN HE HAD and TRADITIONALIST (coachEdges.ts): a good year's gain
+      goes further under the first, and any gain at a school that prizes its
+      history goes further under the second. Only a gain; a fall is a fall.
+      Written onto the review so the meeting shows the number that lands.
+    */
+    {
+      const gain = review.prestigeAfter - review.prestigeBefore;
+      if (gain > 0) {
+        const lv = leversFor(coach.badges);
+        const goodYear = review.verdict === 'exceeded' || review.verdict === 'met';
+        const prized = cultureFor(me)?.edge === 'tradition';
+        const mult = (goodYear ? lv.goodYearPrestige : 1) * (prized ? lv.traditionPrestige : 1);
+        if (mult !== 1) review.prestigeAfter = Math.min(100, review.prestigeBefore + Math.round(gain * mult));
+      }
+    }
     // Prestige belongs to the school and survives a coaching change.
     me.prestige = review.prestigeAfter;
     /*
@@ -10588,8 +10614,12 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       const rec = season?.teams[get().userTeam];
       if (season && rec) {
         // A save from before the settle moved to this step has not had one.
-        settleTheMoods(season, get().userTeam);
-        const pool = openPortal(season.teams, { year: get().year, seed: season.seed ?? 0, batting: season.batting, pitching: season.pitching });
+        settleTheMoods(season, get().userTeam, leversFor(get().coach.badges).moodSwing);
+        const pool = openPortal(season.teams, {
+        year: get().year, seed: season.seed ?? 0, batting: season.batting, pitching: season.pitching,
+        // THE KEEPER, on the coached program only (coachEdges.ts).
+        exitFor: (team) => (team === get().userTeam ? leversFor(get().coach.badges).portalExit : 1),
+      });
         const mine = pool.filter((m) => m.from === get().userTeam);
         const theirs = pool
           .filter((m) => m.from !== get().userTeam)
