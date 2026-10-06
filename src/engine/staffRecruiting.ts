@@ -387,7 +387,17 @@ export function tendStaffList(
       dropped.push(id);
       continue;
     }
-    if (p.signedBy !== null) {
+    /*
+      Lost: signed somewhere else, or clearly being lost (interest banked and
+      somebody well clear by the cut every board lets go at). The second used
+      to hold its slot on a single point until he signed elsewhere, often too
+      late in the window to find anybody; with full programs off the board
+      the bottom of the class is a real race, and a slot held for a lost man
+      was a scholarship gone (audit 17, H6 follow-up).
+    */
+    const losing = p.signedBy !== null
+      || (replace && (p.points[team] ?? 0) > 0 && lostCause(p, team, pitch.stars, recruits.week));
+    if (losing) {
       const by = replace
         ? staffReplacement(p, recruits.prospects, team, pitch, recruits.week, exclude)
         : null;

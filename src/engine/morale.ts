@@ -168,7 +168,7 @@ export function explicitRecruitPromiseBroken(
     const home = (p as Player & { homePos?: Position }).homePos ?? p.pos;
     return promise.promisedPos !== undefined && home !== promise.promisedPos;
   }
-  if (promise.kind === 'noRedshirt') return (p as Player & { redshirt?: boolean }).redshirt === true;
+  if (promise.kind === 'noRedshirt') return promise.broken === true || (p as Player & { redshirt?: boolean }).redshirt === true;
   if (promise.kind === 'twoWayOpportunity') {
     // Unknown participation is not evidence of a broken promise. Season callers
     // pass explicit zeroes when a player really has no appearances.

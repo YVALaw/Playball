@@ -143,7 +143,8 @@ export function entersPortal(
   const risk = flightRisk(p);
   const expected = expectationOf(p, opts.squadRank);
   const got = opts.games > 0 ? opts.starts / opts.games : 0;
-  const buried = Math.max(0, expected - got);
+  // A season he sat on purpose is not a season he was buried (M30).
+  const buried = satThisSeason(p) ? 0 : Math.max(0, expected - got);
   const market = portalMarket(opts.year, opts.seed);
   const brokenPromise = explicitRecruitPromiseBroken(p, opts);
 
@@ -181,6 +182,18 @@ export function entersPortal(
   return (h % 10000) / 10000 < odds;
 }
 
+/**
+ * Whether he spent this season as a redshirt. The flag is banked at the draft
+ * step, before the portal opens, but a man who sat is still a freshman with a
+ * redshirt used: anybody who sat an earlier year has moved past freshman since.
+ * Redshirted freshmen used to walk saying they were told they would play, six
+ * in eighteen against one in thirty of their class (audit 17, M30).
+ */
+function satThisSeason(p: Player): boolean {
+  const r = p as Player & { redshirt?: boolean; redshirtsUsed?: number };
+  return r.redshirt === true || (p.classYear === 'FR' && (r.redshirtsUsed ?? 0) > 0);
+}
+
 /** Why he went, in his own terms rather than in the model's. */
 export function reasonFor(
   p: Player, opts: { squadRank: number; starts: number; games: number } & PromiseParticipation,
@@ -204,7 +217,7 @@ export function reasonFor(
   if (promise?.kind === 'immediateRole' && expected - got > 0.18) {
     return 'He was promised an immediate role.';
   }
-  if (expected - got > 0.25) return 'He was told he would play.';
+  if (expected - got > 0.25 && !satThisSeason(p)) return 'He was told he would play.';
   if (moodOf(p) < UNHAPPY) return 'He was not happy here.';
   return 'He wants a fresh start.';
 }

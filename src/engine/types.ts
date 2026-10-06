@@ -118,6 +118,13 @@ export interface RecruitPromise {
    * is taken off the man — see `promiseHorizon` in morale.ts.
    */
   judged?: number;
+  /**
+   * Broken on a fact the save no longer shows. The redshirt flag a NO
+   * REDSHIRT promise is judged on is cleared when the year is banked, one
+   * step before the judge reads it, so the promise could never be broken
+   * (audit 17, M64). `bankRedshirt` writes this first.
+   */
+  broken?: boolean;
 }
 
 // ---------------------------------------------------------------------------

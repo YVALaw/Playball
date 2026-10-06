@@ -145,7 +145,11 @@ export const PROMISE_LABEL: Record<RecruitPromiseKind, string> = {
 
 /** Promise choices shared by the recruiting screen, store validation, and rivals. */
 export function availableRecruitPromises(player: Player): RecruitPromiseKind[] {
-  const promises: RecruitPromiseKind[] = ['immediateRole', 'noRedshirt', 'keepPosition'];
+  // A pitcher's position is 'P' for life, so STAY AT YOUR POSITION could never
+  // be broken for him and still paid the promise's premium (audit 17, M62).
+  const promises: RecruitPromiseKind[] = player.type === 'pitcher'
+    ? ['immediateRole', 'noRedshirt']
+    : ['immediateRole', 'noRedshirt', 'keepPosition'];
   if (isTwoWay(player)) promises.push('twoWayOpportunity');
   return promises;
 }
@@ -2092,6 +2096,22 @@ export const ASK_COOLDOWN = 2;
  * and not a refusal inside the cooldown. Read by the store's guard and by the
  * screen, so the button's reason and the refusal are one rule.
  */
+/**
+ * Scholarships this program has given out: men signed, and men who said yes
+ * to an ask this week and sign when it closes. The staff's planner counted
+ * the yeses; the coach's Ask to commit did not, so a second yes for the last
+ * scholarship was accepted and then never honoured (audit 17, M88).
+ */
+export function scholarshipsPledged(prospects: readonly Prospect[], team: number): number {
+  let n = 0;
+  for (const p of prospects) {
+    if (p.signedBy === team) { n += 1; continue; }
+    const m = p.weekActions?.[team]?.major;
+    if (p.signedBy === null && m?.kind === 'ask' && m.success) n += 1;
+  }
+  return n;
+}
+
 export function askBlocked(
   prospect: Prospect, team: number, week: number, classFull = false,
 ): string | null {
@@ -2243,7 +2263,37 @@ export function closeWeek(
     });
   }
 
+  withdrawFullClasses(recruits, taken);
   return commits;
+}
+
+/**
+ * A program with every scholarship spent walks away from the rest of the board.
+ *
+ * The room rule used to live only in the loop above, while every other reader
+ * of the board (`leadersAtWeekStart`, `lostCause`, `winScore`, `askBlocked`,
+ * the race shown on a recruit) read raw points. So a full blue blood's interest
+ * stood as the lead everybody else had to beat: about seventy prospects a year
+ * went unsigned, and a coach's Ask to commit was refused because of a school
+ * that could not take the man (audit 17, H6). Taking the points off the board
+ * makes every one of those readers right at once.
+ */
+export function withdrawFullClasses(
+  recruits: RecruitClass, taken?: ReadonlyMap<number, number>,
+): void {
+  const count = taken ?? (() => {
+    const m = new Map<number, number>();
+    for (const p of recruits.prospects) {
+      if (p.signedBy !== null) m.set(p.signedBy, (m.get(p.signedBy) ?? 0) + 1);
+    }
+    return m;
+  })();
+  const full = [...count].filter(([, n]) => n >= SCHOLARSHIPS).map(([t]) => t);
+  if (full.length === 0) return;
+  for (const p of recruits.prospects) {
+    if (p.signedBy !== null) continue;
+    for (const t of full) delete p.points[t];
+  }
 }
 
 /**

@@ -326,7 +326,9 @@ export function useNeeds(): Need[] {
     Only for a coach working his own board; a coordinator spends his.
   */
   if (phase === null && handles(depth, 'recruiting') && !seasonComplete(season)
-    && season.recruiting.week >= 1 && season.recruiting.week <= RECRUITING_WEEKS) {
+    && season.recruiting.week >= 1 && season.recruiting.week <= RECRUITING_WEEKS
+    // A full class has nothing left to spend on, so nothing to nag about (M91).
+    && season.recruiting.prospects.filter((p) => p.signedBy === team.index).length < SCHOLARSHIPS) {
     const budget = boardBudget(season, team.index, economy.recruitingGrant);
     const left = Math.max(0, budget - totalWeekSpend(season.recruiting.prospects, team.index));
     if (left > 0) {

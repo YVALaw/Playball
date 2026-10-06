@@ -139,7 +139,7 @@ import {
   aiTargets, weeklyPoints, closeWeek, resetWeeklySpend, canPursue, inPipeline,
   leadersAtWeekStart, totalWeekSpend, weekActionCost, majorActionCost,
   hasRecruitingRelationship, swayRecruit, planAiRecruitActions, availableRecruitPromises,
-  askBlocked, askForCommitment,
+  askBlocked, askForCommitment, scholarshipsPledged,
   type RecruitingFactor, type RecruitMajorAction, type RecruitMajorInput, type Pitch,
   boardsByTier,
 } from '../engine/recruiting.js';
@@ -4792,7 +4792,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     if (input && (week < 2 || !hasRecruitingRelationship(prospect, userTeam))) return false;
     if (input?.kind === 'sway' && prospect.swayedBy?.[userTeam]) return false;
     if (input?.kind === 'ask') {
-      const full = season.recruiting.prospects.filter((p) => p.signedBy === userTeam).length >= SCHOLARSHIPS;
+      const full = scholarshipsPledged(season.recruiting.prospects, userTeam) >= SCHOLARSHIPS;
       if (askBlocked(prospect, userTeam, week, full) !== null) return false;
     }
     if (input?.kind === 'promise' && !availableRecruitPromises(prospect.player).includes(input.promise)) return false;
@@ -5010,7 +5010,14 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     const worksOwnBoard = handles(get().depth, 'recruiting');
     if (!worksOwnBoard) get().staffPlanWeek();
 
+    // A program with no scholarship left stops recruiting: its points would
+    // only stand in front of programs that can still sign the man (H6).
+    const signedBy = new Map<number, number>();
+    for (const p of recruits.prospects) {
+      if (p.signedBy !== null) signedBy.set(p.signedBy, (signedBy.get(p.signedBy) ?? 0) + 1);
+    }
     for (const record of season.teams) {
+      if ((signedBy.get(record.index) ?? 0) >= SCHOLARSHIPS) continue;
       const mine = record.index === userTeam;
       // The coached programme's week is always the one on its board, whoever
       // planned it: the coach himself, or his staff at the week's open.

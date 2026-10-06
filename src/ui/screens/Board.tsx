@@ -21,7 +21,7 @@ import {
 } from '../../state/store.js';
 import {
   fit, canPursue, inPipeline, byRank, weekActionCost, totalWeekSpend, weeklyBudget,
-  SCHOLARSHIPS, RECRUITING_WEEKS, reportedOverall, reportedPotential,
+  SCHOLARSHIPS, RECRUITING_WEEKS, reportedOverall, reportedPotential, scholarshipsPledged,
   type Prospect,
 } from '../../engine/recruiting.js';
 import { STAFF_LIST_MAX } from '../../engine/staffRecruiting.js';
@@ -403,7 +403,8 @@ export function Board() {
     ? held.ids.map(byId).filter((p): p is Prospect => !!p && p.signedBy !== userTeam)
     : targets;
   const seasonMode = phase === null;
-  const full = commits.length >= SCHOLARSHIPS;
+  // A yes this week holds a scholarship as surely as a signature (M88).
+  const full = season ? scholarshipsPledged(season.recruiting.prospects, userTeam) >= SCHOLARSHIPS : commits.length >= SCHOLARSHIPS;
   const activeFilters = anyFilter(filters);
   const pinned = pinnedAction({
     filtersOpen: false, live: live && !seasonMode, week, matches, shown: list.length,

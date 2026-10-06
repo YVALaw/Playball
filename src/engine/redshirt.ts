@@ -98,6 +98,9 @@ export const REDSHIRT_GROWTH = 0.85;
 
 export function bankRedshirt(p: Player): number {
   const r = p as Player & Redshirtable;
+  // He sat. A NO REDSHIRT promise is broken by it, and the flag that says so
+  // is about to go (M64).
+  if (r.redshirt === true && p.recruitPromise?.kind === 'noRedshirt') p.recruitPromise.broken = true;
   r.redshirtsUsed = (r.redshirtsUsed ?? 0) + 1;
   delete r.redshirt;
   return REDSHIRT_GROWTH;
@@ -110,10 +113,18 @@ export function bankRedshirt(p: Player): number {
  * first or second choice is a freshman spending a season on the bench, and
  * spending it in the weight room instead is what a real staff does with him.
  */
+const PLAY_PROMISES = new Set(['noRedshirt', 'immediateRole', 'twoWayOpportunity']);
+function promisedToPlay(p: Player): boolean {
+  const promise = p.recruitPromise;
+  return promise !== undefined && promise.broken !== true && PLAY_PROMISES.has(promise.kind);
+}
+
 export function staffRedshirts(team: Team, depthRank: (p: Player) => number): Player[] {
   const out: Player[] = [];
   const candidates = uniquePlayers([...squad(team), ...team.rotation, ...team.bullpen])
-    .filter((p) => canRedshirt(p) && p.classYear === 'FR')
+    // Never a man he was promised would play this year: NO REDSHIRT, an
+    // immediate role or a two-way chance, while the promise stands (M61).
+    .filter((p) => canRedshirt(p) && p.classYear === 'FR' && !promisedToPlay(p))
     .sort((a, b) => depthRank(b) - depthRank(a));
   for (const p of candidates) {
     if (out.length >= MAX_REDSHIRTS) break;
