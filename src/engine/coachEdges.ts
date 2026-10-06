@@ -64,16 +64,24 @@ export interface CoachLevers {
   traditionPrestige: number;
 }
 
+/*
+  Sized by measurement, not by feel. The first pass (late 0.02, close 0.025,
+  trailing 0.03, road 0.015, steal 0.06, pen 0.06, workload 0.15) was played
+  out over 6,000 games between even sides: one badge moved the win rate by
+  2-5 points and all seven together by 7, against a coaching skill that is
+  worth under one percent at 99. The badges promise a small edge, so every
+  value here is two fifths of that pass.
+*/
 const EDGE: Readonly<Record<string, CoachEdges>> = {
-  hardnosed: { late: 0.02 },
-  grinder: { close: 0.025 },
-  comeback: { trailing: 0.03 },
-  roadman: { road: 0.015 },
-  ironman: { managed: 0.01 },
-  smallball: { steal: 0.06 },
-  gambler: { calls: 0.04 },
-  penhand: { pen: 0.06 },
-  methodical: { workload: 0.15 },
+  hardnosed: { late: 0.008 },
+  grinder: { close: 0.01 },
+  comeback: { trailing: 0.012 },
+  roadman: { road: 0.006 },
+  ironman: { managed: 0.005 },
+  smallball: { steal: 0.025 },
+  gambler: { calls: 0.016 },
+  penhand: { pen: 0.025 },
+  methodical: { workload: 0.06 },
 };
 
 /** The in-game edges a set of badges adds up to, or undefined for none. */

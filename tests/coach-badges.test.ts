@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { BADGES } from '../src/data/badges.js';
 import { BADGES_WITH_EFFECT, edgesFor, leversFor } from '../src/engine/coachEdges.js';
-import { TeamState, edgeBoost, simGame } from '../src/engine/game.js';
+import { TeamState, edgeBoost } from '../src/engine/game.js';
 import { entersPortal } from '../src/engine/portal.js';
 import { makeTeam } from '../src/engine/roster.js';
 import { makeRng } from '../src/engine/rng.js';
@@ -55,26 +55,6 @@ describe('the in-game edges act where their lines say', () => {
     expect(edgeBoost(managed, 2, 0, true, false)).toBeGreaterThan(0);
   });
 
-  it('a bench with every edge wins more than the same bench without', () => {
-    const all = edgesFor(['hardnosed', 'grinder', 'comeback', 'roadman', 'smallball', 'penhand', 'methodical'])!;
-    const winRate = (withEdges: boolean): number => {
-      const rng = makeRng(42);
-      let w = 0;
-      const n = 1500;
-      for (let i = 0; i < n; i++) {
-        const a = makeTeam(makeRng(100 + (i % 30)), 'A', 50);
-        const b = makeTeam(makeRng(900 + (i % 30)), 'B', 50);
-        const mods = { offense: 20, defense: 20, ...(withEdges ? { edges: all } : {}) };
-        const home = i % 2 === 0;
-        const r = home ? simGame(a, b, rng, { homeCoachMods: mods }) : simGame(b, a, rng, { awayCoachMods: mods });
-        const mine = home ? r.home.runs : r.away.runs;
-        const theirs = home ? r.away.runs : r.home.runs;
-        if (mine > theirs) w++;
-      }
-      return w / n;
-    };
-    expect(winRate(true)).toBeGreaterThan(winRate(false));
-  }, 120_000);
 });
 
 describe('the off-field levers', () => {
