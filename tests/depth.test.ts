@@ -9,6 +9,7 @@
 // added later, and old saves being handed a career they did not choose.
 
 import { describe, it, expect } from 'vitest';
+import { SCOUTING } from '../src/state/features.js';
 import {
   SYSTEMS, DEFAULT_DEPTH, handles, presetSays, setSystem, setMode,
   normalizeDepth, type DepthSettings,
@@ -19,7 +20,9 @@ const fresh = (mode: 'full' | 'casual'): DepthSettings => ({ mode, overrides: {}
 describe('the two presets', () => {
   it('gives a full career every decision', () => {
     const d = fresh('full');
-    for (const s of SYSTEMS) expect(handles(d, s.key)).toBe(true);
+    // Every decision but one held back from this build: scouting is the
+    // staff's for everyone while SCOUTING is off (audit 17, M40).
+    for (const s of SYSTEMS) expect(handles(d, s.key)).toBe(s.key === 'scouting' ? SCOUTING : true);
   });
 
   it('hands a casual career exactly the routine, and nothing else', () => {
