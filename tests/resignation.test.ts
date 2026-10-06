@@ -271,7 +271,9 @@ describe('leaving the meeting', () => {
     await noticeAndMeeting();
     // The Board room's Continue on the review card, during the step.
     state().clearReview();
-    expect(state().lastReview).toBeNull();
+    // Hidden, not thrown away: the roll still needs it for next season's
+    // terms (audit 17, M74).
+    expect(state().reviewDismissed).toBe(true);
     // What the review screen prints, read off the coach.
     const shown = resignationCost(state().coach.contractYears);
     expect(shown).toBe(4);
