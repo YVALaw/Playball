@@ -32,7 +32,7 @@ export interface MarqueeProps {
   subtitle?: ReactNode;
   /** A crest, a portrait, a monogram, at the right of the header. */
   mark?: ReactNode;
-  back?: { label: string; onClick?: () => void; guide?: string };
+  back?: { label: string; onClick?: () => void };
   trailing?: ReactNode;
   /** The screen's numbers, in the same tiles StatGroup draws everywhere. */
   numbers?: MarqueeNumber[];
@@ -105,13 +105,12 @@ export interface RoomTileProps {
   /** Draws the school colour down the tile's edge: this is where to go next. */
   flagged?: boolean;
   onClick?: () => void;
-  guide?: string;
   className?: string;
 }
 
 /** A place in the program, as a tile you press rather than a row you read. */
 export function RoomTile({
-  icon, name, value, unit, status, statusTone, badge, footer, flagged, onClick, guide, className,
+  icon, name, value, unit, status, statusTone, badge, footer, flagged, onClick, className,
 }: RoomTileProps) {
   const inner = (
     <>
@@ -128,8 +127,8 @@ export function RoomTile({
     </>
   );
   const cls = cx('pb-tile', flagged && 'is-flagged', onClick && 'is-interactive', className);
-  if (!onClick) return <div className={cls} data-guide={guide}>{inner}</div>;
-  return <button type="button" className={cls} data-guide={guide} onClick={onClick}>{inner}</button>;
+  if (!onClick) return <div className={cls}>{inner}</div>;
+  return <button type="button" className={cls} onClick={onClick}>{inner}</button>;
 }
 
 /* --------------------------------------------------------------- SpendTile */
@@ -216,13 +215,12 @@ export interface PlaqueProps {
   meta?: ReactNode;
   selected?: boolean;
   onClick?: () => void;
-  guide?: string;
   className?: string;
 }
 
 /** A compact thing on a wall: a building on the campus row, a state, a seat. */
 export function Plaque({
-  art, icon, label, value, unit, note, tone, meta, selected, onClick, guide, className,
+  art, icon, label, value, unit, note, tone, meta, selected, onClick, className,
 }: PlaqueProps) {
   const inner = (
     <>
@@ -234,9 +232,9 @@ export function Plaque({
     </>
   );
   const cls = cx('pb-plaque', selected && 'is-selected', onClick && 'is-interactive', className);
-  if (!onClick) return <div className={cls} data-guide={guide}>{inner}</div>;
+  if (!onClick) return <div className={cls}>{inner}</div>;
   return (
-    <button type="button" className={cls} data-guide={guide} aria-pressed={selected != null ? !!selected : undefined} onClick={onClick}>
+    <button type="button" className={cls} aria-pressed={selected != null ? !!selected : undefined} onClick={onClick}>
       {inner}
     </button>
   );
@@ -255,13 +253,12 @@ export interface NamePlateProps {
   badge?: ReactNode;
   vacant?: boolean;
   onClick?: () => void;
-  guide?: string;
   className?: string;
 }
 
 /** A person's plate on a door: who they are, what they run, how good they are. */
 export function NamePlate({
-  mark, name, role, value, unit, badge, vacant, onClick, guide, className,
+  mark, name, role, value, unit, badge, vacant, onClick, className,
 }: NamePlateProps) {
   const inner = (
     <>
@@ -276,6 +273,6 @@ export function NamePlate({
     </>
   );
   const cls = cx('pb-plate', vacant && 'is-vacant', onClick && 'is-interactive', className);
-  if (!onClick) return <div className={cls} data-guide={guide}>{inner}</div>;
-  return <button type="button" className={cls} data-guide={guide} onClick={onClick}>{inner}</button>;
+  if (!onClick) return <div className={cls}>{inner}</div>;
+  return <button type="button" className={cls} onClick={onClick}>{inner}</button>;
 }

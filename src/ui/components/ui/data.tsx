@@ -178,7 +178,6 @@ export interface PlayerRowProps {
   chevron?: boolean;
   onClick?: () => void;
   className?: string;
-  guide?: string;
   disabled?: boolean;
   /** The row's element, for a screen that measures or scrolls to it. */
   elRef?: (el: HTMLElement | null) => void;
@@ -189,7 +188,7 @@ export interface PlayerRowProps {
 /** A player in a list: face, name, what he is, and the one number that matters here. */
 export function PlayerRow({
   name, avatar, tags, meta, mark, lead, flags, warning, stats, value, valueLabel, trailing, selected, chevron,
-  onClick, className, guide, disabled, elRef, buttonProps,
+  onClick, className, disabled, elRef, buttonProps,
 }: PlayerRowProps) {
   const clickable = !!onClick;
   const inner = (
@@ -229,14 +228,13 @@ export function PlayerRow({
     'pb-prow', clickable && 'is-interactive', selected && 'is-selected', warning ? 'has-warning' : null,
     lead != null && 'has-lead', avatar ? 'has-avatar' : null, className,
   );
-  if (!clickable) return <div ref={elRef} className={cls} data-guide={guide}>{inner}</div>;
+  if (!clickable) return <div ref={elRef} className={cls}>{inner}</div>;
   return (
     <button
       {...buttonProps}
       ref={elRef}
       type="button"
       className={cls}
-      data-guide={guide}
       disabled={disabled}
       aria-pressed={selected != null ? !!selected : undefined}
       onClick={onClick}

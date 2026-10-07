@@ -48,11 +48,6 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
   const version = useDynasty((s) => s.version);
   // A career that asked its staff to decide who sits does not get these buttons.
   const mine = useDynasty((s) => handles(s.depth, 'redshirts'));
-  // The first-season errand for a failing man: the tour lights Have a word,
-  // and the press itself stamps the lesson as learned.
-  const guiding = useDynasty((s) => s.guide === 'word');
-  const clearGuide = useDynasty((s) => s.clearGuide);
-  const markTutorialSeen = useDynasty((s) => s.markTutorialSeen);
   const [retrainOpen, setRetrainOpen] = useState(false);
   void version;
 
@@ -161,19 +156,11 @@ export function RosterMoves({ p, isOurs }: { p: AnyPlayer; isOurs: boolean }) {
               size="sm"
               variant="secondary"
               icon="chat"
-              guide="have-a-word"
               idle="Have a word"
               armed="Tap again to talk to him"
               armedMeta={`${wordsLeft - 1} of ${WORDS_A_SEASON} left after`}
               done="You talked to him"
-              onConfirm={() => {
-                const ok = wordWith(p.id);
-                if (ok && guiding) {
-                  markTutorialSeen('guide:word');
-                  clearGuide();
-                }
-                return ok;
-              }}
+              onConfirm={() => wordWith(p.id)}
             />
           )}
         </ListRow>

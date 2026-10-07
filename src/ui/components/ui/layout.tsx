@@ -52,9 +52,9 @@ export function Card({
 /* ------------------------------------------------------------ List, ListRow */
 
 export function List(
-  { children, label, role, className, guide }: { children: ReactNode; label?: string; role?: string; className?: string; guide?: string },
+  { children, label, role, className }: { children: ReactNode; label?: string; role?: string; className?: string },
 ) {
-  return <div className={cx('pb-list', className)} role={role} aria-label={label} data-guide={guide}>{children}</div>;
+  return <div className={cx('pb-list', className)} role={role} aria-label={label}>{children}</div>;
 }
 
 export interface ListRowProps {
@@ -72,14 +72,12 @@ export interface ListRowProps {
   onClick?: () => void;
   children?: ReactNode;
   className?: string;
-  /** The guided tour's name for this row. */
-  guide?: string;
   disabled?: boolean;
 }
 
 /** One thing in a list: what it is, its state, its number, and where it goes. */
 export function ListRow({
-  title, subtitle, icon, markTone, lead, value, unit, status, selected, chevron, onClick, children, className, guide, disabled,
+  title, subtitle, icon, markTone, lead, value, unit, status, selected, chevron, onClick, children, className, disabled,
 }: ListRowProps) {
   const clickable = !!onClick;
   const body = (
@@ -98,12 +96,11 @@ export function ListRow({
     </>
   );
   const cls = cx('pb-row', clickable && 'is-interactive', selected && 'is-selected', className);
-  if (!clickable) return <div className={cls} data-guide={guide}>{body}</div>;
+  if (!clickable) return <div className={cls}>{body}</div>;
   return (
     <button
       type="button"
       className={cls}
-      data-guide={guide}
       disabled={disabled}
       aria-pressed={selected != null ? !!selected : undefined}
       onClick={onClick}
@@ -129,12 +126,11 @@ export interface CalloutProps {
   onClick?: () => void;
   role?: string;
   className?: string;
-  guide?: string;
 }
 
 /** Something the player should know now: a warning, a result, what is next. */
 export function Callout({
-  tone = 'info', icon, eyebrow, title, children, action, onClick, role, className, guide,
+  tone = 'info', icon, eyebrow, title, children, action, onClick, role, className,
 }: CalloutProps) {
   const glyph = icon === false ? null : (icon ?? CALLOUT_ICON[tone]!);
   const clickable = !!onClick;
@@ -155,8 +151,8 @@ export function Callout({
     </>
   );
   const cls = cx('pb-callout', `pb-callout--${tone}`, clickable && 'is-interactive', className);
-  if (clickable) return <button type="button" className={cls} onClick={onClick} data-guide={guide}>{inner}</button>;
-  return <div className={cls} role={role ?? 'status'} data-guide={guide}>{inner}</div>;
+  if (clickable) return <button type="button" className={cls} onClick={onClick}>{inner}</button>;
+  return <div className={cls} role={role ?? 'status'}>{inner}</div>;
 }
 
 /* ----------------------------------------------------------- SectionHeader */
@@ -191,13 +187,13 @@ export function ScreenHeader({
   title, eyebrow, description, back, trailing, className,
 }: {
   title: ReactNode; eyebrow?: ReactNode; description?: ReactNode;
-  back?: { label: string; onClick?: () => void; guide?: string };
+  back?: { label: string; onClick?: () => void };
   trailing?: ReactNode; className?: string;
 }) {
   return (
     <header className={cx('pb-screen-head', className)}>
       {back && (
-        <button type="button" className="pb-back" onClick={back.onClick} data-guide={back.guide}>
+        <button type="button" className="pb-back" onClick={back.onClick}>
           <Icon name="arrow-left" size={16} />{back.label}
         </button>
       )}
@@ -323,12 +319,8 @@ export interface SheetProps {
    * spends its own history entry.
    */
   layer?: boolean;
-  /** The guided tour's name for the whole sheet. */
-  guide?: string;
   /** Tall sheets fill the frame; short ones sit at the bottom. */
   tall?: boolean;
-  /** The guided tour's name for the close button. */
-  closeGuide?: string;
   /**
    * Laid under a room it opened: kept mounted, so its back layer and history
    * entry stay where they are in the stack, but not shown and not reachable.
@@ -343,7 +335,7 @@ export interface SheetProps {
  * closed by the scrim, the close button, Escape or the back gesture.
  */
 export function Sheet({
-  title, eyebrow, subtitle, lead, onClose, closeLabel = 'Close', footer, children, className, layer = true, guide, tall, closeGuide,
+  title, eyebrow, subtitle, lead, onClose, closeLabel = 'Close', footer, children, className, layer = true, tall,
   covered = false,
 }: SheetProps) {
   const ref = useRef<HTMLElement | null>(null);
@@ -400,7 +392,6 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        data-guide={guide}
         onClick={(e) => e.stopPropagation()}
       >
         <div
@@ -418,7 +409,7 @@ export function Sheet({
               <h2 id={titleId} className="pb-sheet__title">{title}</h2>
               {subtitle && <span className="pb-sheet__subtitle">{subtitle}</span>}
             </div>
-            <button type="button" className="pb-icon-btn" aria-label={closeLabel} onClick={onClose} data-guide={closeGuide}>
+            <button type="button" className="pb-icon-btn" aria-label={closeLabel} onClick={onClose}>
               <Icon name="cross" size={20} />
             </button>
           </header>

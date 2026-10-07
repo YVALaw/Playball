@@ -7,9 +7,6 @@
 // anywhere), and your portrait, which opens the coach menu. The top tabs are
 // the sections of the area you are in; the bottom nav is the four areas and
 // reports nothing but a dot.
-//
-// Every control keeps the `data-guide` name the first-season tour looks for:
-// `tab-<area>`, `screen-<section>`, `coach-menu`, `coach-profile`.
 
 import { useState, type ReactNode } from 'react';
 import { CoachPortrait } from './CoachPortrait.js';
@@ -71,7 +68,6 @@ export function InboxBell() {
       label="Inbox"
       tone="quiet"
       badge={unread > 0 ? unread : undefined}
-      data-guide="inbox"
       onClick={() => openOverlay('inbox')}
     />
   );
@@ -108,7 +104,6 @@ export function CoachMenuButton() {
       <button
         type="button"
         className="pb-coachmenu__btn"
-        data-guide="coach-menu"
         aria-label={trophyDot ? 'Coach menu, new achievement' : 'Coach menu'}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -125,7 +120,6 @@ export function CoachMenuButton() {
               type="button"
               role="menuitem"
               className="pb-menu__profile"
-              data-guide="coach-profile"
               onClick={() => go(() => openOverlay('coach'))}
             >
               <span className="pb-menu__face"><CoachPortrait look={coach.look} size={40} /></span>
@@ -151,7 +145,7 @@ export function SectionTabs<T extends string>(
   { label, items, active, onSelect }:
   { label: string; items: ReadonlyArray<{ id: T; label: string; alert?: boolean }>; active: T; onSelect: (id: T) => void },
 ) {
-  const tabs: NavItem<T>[] = items.map((it) => ({ value: it.id, label: it.label, alert: it.alert, guide: `screen-${it.id}` }));
+  const tabs: NavItem<T>[] = items.map((it) => ({ value: it.id, label: it.label, alert: it.alert }));
   return <TopTabs label={label} items={tabs} value={active} onChange={onSelect} />;
 }
 
@@ -161,7 +155,7 @@ export function AreaNav<T extends string>(
   { tabs: ReadonlyArray<{ id: T; label: string; alert?: boolean }>; active: T; onSelect: (id: T) => void },
 ) {
   const items = tabs.map((t) => ({
-    value: t.id, label: t.label, alert: t.alert, icon: AREA_ICON[t.id] ?? 'dot', guide: `tab-${t.id}`,
+    value: t.id, label: t.label, alert: t.alert, icon: AREA_ICON[t.id] ?? 'dot',
   }));
   return <BottomNav label="Career areas" items={items} value={active} onChange={onSelect} />;
 }

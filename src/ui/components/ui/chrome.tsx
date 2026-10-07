@@ -58,8 +58,6 @@ export interface NavItem<T extends string> {
   label: string;
   icon?: IconName;
   alert?: boolean;
-  /** The guided tour's name for this tab. */
-  guide?: string;
 }
 
 /** The sections of an area. Scrolls rather than squeezes, and brings the current one into view. */
@@ -103,7 +101,6 @@ export function TopTabs<T extends string>({
             type="button"
             className={on ? 'is-active' : undefined}
             aria-current={on ? 'page' : undefined}
-            data-guide={it.guide}
             onClick={() => onChange?.(it.value)}
           >
             {it.label}
@@ -137,7 +134,6 @@ export function BottomNav<T extends string>({
             type="button"
             className={on ? 'is-active' : undefined}
             aria-current={on ? 'page' : undefined}
-            data-guide={it.guide}
             onClick={() => onChange?.(it.value)}
           >
             <Icon name={it.icon} size={20} />

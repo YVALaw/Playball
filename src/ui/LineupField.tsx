@@ -147,7 +147,6 @@ export interface FieldMan {
   out?: boolean;
   /** Playing somewhere he is not at home: out of position, still settling, or never took to it. */
   offPos?: boolean;
-  guide?: string;
   /** A long press, for his stats. */
   hold?: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'className' | 'type'>;
 }
@@ -214,7 +213,6 @@ export function LineupField({
             {...m.hold}
             className={cx('pb-park__man', isSpot && 'is-spot', isPicked && 'is-picked', m.out && 'is-out', warn && 'is-warn')}
             style={place(m.pos, stack)}
-            data-guide={m.guide}
             data-pos={m.pos}
             aria-pressed={interactive ? isSpot || isPicked : undefined}
             aria-haspopup={interactive ? 'dialog' : undefined}

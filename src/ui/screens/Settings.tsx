@@ -127,7 +127,7 @@ export function Settings() {
         <section>
           <SectionHeader title="This device" />
           <List label="Device settings">
-            <ListRow icon="text-size" title="Display" subtitle="Text size, theme, the field, motion and tutorials" onClick={() => setPage('display')} />
+            <ListRow icon="text-size" title="Display" subtitle="Text size, theme, the field, motion and tips" onClick={() => setPage('display')} />
             <ListRow icon="speaker" title="Sound" subtitle="Bat, glove, the crowd, and haptics" onClick={() => setPage('sound')} />
             <ListRow
               icon="lightning"
@@ -223,11 +223,11 @@ export function Settings() {
               : 'Follows your phone’s reduce-motion setting.'}
         />
         <section>
-          <SectionHeader title="Teaching" />
-          <List label="Teaching">
+          <SectionHeader title="Help" />
+          <List label="Help">
             <Switch
-              label="Automatic tutorials"
-              description="The tour and first-visit tips"
+              label="Tips"
+              description="A short card the first time you open each screen"
               checked={prefs.tutorials}
               onChange={() => put({ tutorials: !prefs.tutorials })}
             />
@@ -241,8 +241,8 @@ export function Settings() {
             <Callout
               tone={taught ? 'positive' : 'neutral'}
               icon={taught ? undefined : 'reset'}
-              title={taught ? 'Tutorials are ready to replay' : 'Replay the help'}
-              action={taught ? undefined : { label: 'Replay tutorials', onClick: () => { resetTutorials(); setTaught(true); } }} />
+              title={taught ? 'Every screen will show its tip again' : 'See the tips again'}
+              action={taught ? undefined : { label: 'Show tips again', onClick: () => { resetTutorials(); setTaught(true); } }} />
           )}
         </section>
       </main>

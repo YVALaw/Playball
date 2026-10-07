@@ -415,7 +415,6 @@ export function Lineup() {
       line: offPos ? String(f.plays) : bat && bat.ab > 0 ? pct(battingAverage(bat)) : '—',
       out: !available(p, clock),
       offPos,
-      guide: choosing === null && p.pos === 'CF' ? 'lineup-spot' : undefined,
       hold: holdStats(p.id),
     };
   });
@@ -457,7 +456,7 @@ export function Lineup() {
   return (
     <>
       <main className="pb-page" ref={pageEl}>
-        <FirstVisit id="lineup" />
+        <FirstVisit id={mine ? 'lineup' : 'lineup-staff'} />
         <Marquee
           eyebrow="Tonight's card"
           title="Lineup"
@@ -507,11 +506,6 @@ export function Lineup() {
               <List label="Batting order" key={`order-${deal}`}>
                 {order.map((p, i) => {
                   const on = picked === i;
-                  // The tour teaches the two-tap grammar by hand. Its position
-                  // lesson lights a man inside the picker instead (lineup-assign).
-                  const guide = picked === null
-                    ? (i === 0 ? 'lineup-first' : undefined)
-                    : (i === (picked === 0 ? 1 : 0) ? 'lineup-second' : undefined);
                   const { tier, stuck, settling, plays } = fit(p);
                   // One short line, so the row stays the height of its neighbours:
                   // the state and what he is worth where he stands.
@@ -535,7 +529,6 @@ export function Lineup() {
                       stats={statCells(p)}
                       selected={on}
                       chevron={!mine}
-                      guide={guide}
                       className={`${p.id === flaggedId ? 'is-flagged' : ''}${held(p.id)}`.trim() || undefined}
                       elRef={trackRow(p)}
                       buttonProps={holdStats(p.id)}
@@ -641,7 +634,7 @@ export function Lineup() {
                             : undefined}
                       selected={pickedArm === i}
                       chevron={!arms}
-                      className={`${hurt ? 'is-unavailable' : ''}${p.id === flaggedId ? ' is-flagged' : ''}`}
+                      className={`${hurt ? 'is-unavailable' : ''}${p.id === flaggedId ? ' is-flagged' : ''}${held(p.id)}`}
                       elRef={trackRow(p)}
                       buttonProps={holdStats(p.id)}
                       onClick={() => { if (consumed()) return; if (!arms) { openPlayer(p.id, 'stats'); return; } tapArm(i); }}
@@ -684,7 +677,7 @@ export function Lineup() {
                       flags={outBadge(p)}
                       selected={pickedPen === p.id}
                       chevron={!arms}
-                      className={`${hurt ? 'is-unavailable' : ''}${p.id === flaggedId ? ' is-flagged' : ''}`}
+                      className={`${hurt ? 'is-unavailable' : ''}${p.id === flaggedId ? ' is-flagged' : ''}${held(p.id)}`}
                       elRef={trackRow(p)}
                       buttonProps={{ ...holdStats(p.id), 'aria-disabled': hurt || undefined }}
                       onClick={() => { if (consumed()) return; if (!arms) { openPlayer(p.id, 'stats'); return; } if (!hurt) tapPen(p.id); }}

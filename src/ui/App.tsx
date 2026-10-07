@@ -80,7 +80,6 @@ import { RecordBook } from './screens/RecordBook.js';
 import { unreadCount } from '../engine/inbox.js';
 import { Saves } from './screens/Saves.js';
 import { OpenTeam, TeamCard } from './screens/TeamCard.js';
-import { GuidedStretch } from './GuidedStretch.js';
 import { Colleges } from './screens/Colleges.js';
 import { Settings } from './screens/Settings.js';
 import { Start } from './screens/Start.js';
@@ -168,9 +167,6 @@ export function App() {
   return (
     <OpenTeam.Provider value={openTeamCard}>
       <AppBody />
-      {/* The first season's tour. Beside the body rather than inside a
-          screen, because it follows the player from screen to screen. */}
-      <GuidedStretch />
     </OpenTeam.Provider>
   );
 }

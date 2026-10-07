@@ -100,8 +100,8 @@ export function seasonWorkOpens(seat: StaffSeat, level: number, weeksAvailable: 
 /**
  * The same status on the staff card and in the coach's sheet.
  *
- * `label` and `detail` are the legacy words, still read by the needs list and
- * the tour; `state` is the design system's. A coach's season work opens only
+ * `label` and `detail` are the legacy words, still read by the needs list;
+ * `state` is the design system's. A coach's season work opens only
  * while enough of the season is left to be worth a point.
  */
 export function staffWorkStatus(economy: Economy, seat: StaffSeat, weeksAvailable: number) {
@@ -336,7 +336,6 @@ export function useStaffWork({ team, seat, initialState, onFacility }: {
         value={plan.directive}
         options={FOCUSES[seat].map((f) => ({ value: f, label: DIRECTIVE_LABEL[f] }))}
         disabled={!canManage}
-        guide={seat === 'hitting' && canManage ? 'directive' : undefined}
         onChange={(f) => setFocus(seat, f)}
       />
       <p className={cx('pb-work__hint', seat === 'recruiting' && 'is-two')}>{FOCUS_HINT[plan.directive]}</p>

@@ -266,13 +266,13 @@ export function Player() {
   const alumni = useDynasty((s) => s.alumni);
   const version = useDynasty((s) => s.version);
   const team = useUserTeam();
-  // Where the card opens: at its top, or on his season for the lineup's
-  // hold-for-stats, which asks for the old Stats tab by name.
-  const [section, setSection] = useState<Section | null>(playerCardSection === 'stats' ? 'season' : null);
-  // The page the card was opened on, if it was opened on one. Back from there
-  // closes the card in one press, the way the old Stats tab did: the user's
-  // call (2026-09-25), "one back", over walking out through his card's top.
-  const [entry] = useState<Section | null>(section);
+  // The card always opens at its top: the whole profile. The lineup's hold
+  // asks for his stats as well, and gets them at the top of that profile
+  // rather than a stats page on its own (reported 2026-10-07: "it only shows
+  // a bit of the player's card"). Back from the top closes the card, so the
+  // hold is one back from the lineup, as it was.
+  const [section, setSection] = useState<Section | null>(null);
+  const [withStats] = useState(playerCardSection === 'stats');
   const [half, setHalf] = useState<'bat' | 'arm'>('bat');
   const [returnsTo] = useState(screenUnderneath);
   const pageRef = useRef<HTMLElement | null>(null);
@@ -290,11 +290,11 @@ export function Player() {
     ? section : null;
 
   // One level down from his card's top, the bar names him and goes back up to
-  // it; at the top, or on the page the card was opened on, it closes the card,
+  // it; at the top it closes the card,
   // named for the screen it returns to when known.
-  const fromTop = deeper !== null && deeper !== entry;
+  const fromTop = deeper !== null;
   useOverlayBack(found && fromTop
-    ? { label: found.p.name, onBack: () => setSection(null), guide: 'player-actions' }
+    ? { label: found.p.name, onBack: () => setSection(null) }
     : returnsTo ? { label: returnsTo } : null);
   // The back gesture takes the same step: a page first, then the card.
   useBackLayer(fromTop, () => setSection(null));
@@ -357,6 +357,17 @@ export function Player() {
             <Callout tone="info" icon="enter" title={`In the transfer portal, from ${portalEntry.fromName}`}>
               {portalEntry.reason}
             </Callout>
+          )}
+          {withStats && (
+            <>
+              {twoWay && (
+                <Chips label="Which half of his game">
+                  <Chip selected={half === 'bat'} onClick={() => setHalf('bat')}>Batting</Chip>
+                  <Chip selected={half === 'arm'} onClick={() => setHalf('arm')}>Pitching</Chip>
+                </Chips>
+              )}
+              <ThisSeason p={p} half={half} />
+            </>
           )}
           <Glance p={p} owner={owner} isOurs={isOurs} portalReason={isOurs ? portalEntry?.reason : undefined} />
           {!isOurs && (

@@ -36,7 +36,6 @@ import {
 } from '../components/ui/index.js';
 import { GodBolt } from '../god/GodBolt.js';
 import { FirstVisit } from '../Tutorial.js';
-import { activeGuideStep } from '../guide.js';
 import {
   canAssignProject, projectOutlook, recruitingWeeksLeft, staffWorkStatus, useStaffWork,
 } from '../StaffWorkPanel.js';
@@ -175,9 +174,8 @@ export function BudgetRoom({ team }: { team: Owner }) {
       <FirstVisit id="budget" />
       {/*
         The two claims on the money are also the doors to the rooms that
-        spend it (and keep the tour's money-staff and money-facilities names
-        that the old plaques carried). The year roll clears the ledger before
-        each season opens in February.
+        spend it. The year roll clears the ledger before each season opens in
+        February.
       */}
       <BudgetLedger
         total={total}
@@ -191,7 +189,6 @@ export function BudgetRoom({ team }: { team: Owner }) {
             value: wages,
             tone: 'ink',
             onClick: () => openRoom('staff'),
-            guide: 'money-staff',
           },
           {
             key: 'spent',
@@ -200,7 +197,6 @@ export function BudgetRoom({ team }: { team: Owner }) {
             value: economy.spent,
             tone: 'info',
             onClick: () => openRoom('facilities'),
-            guide: 'money-facilities',
           },
           left < 0
             ? { key: 'left', label: 'Over budget', sub: 'Wages above what the budget pays. A new budget arrives next season', value: -left, tone: 'track' }
@@ -318,7 +314,6 @@ export function StaffRoom({ team }: { team: Owner }) {
 
   const seatCard = (seat: StaffSeat): ReactNode => {
     const man = economy.staff[seat];
-    const guide = seat === 'hitting' ? 'seat-hitting' : undefined;
     if (!man) {
       return (
         <StaffCard
@@ -327,7 +322,6 @@ export function StaffRoom({ team }: { team: Owner }) {
           roleLabel={SEAT_LABEL[seat]}
           pitch={SEAT_PITCH(seat, home)}
           onOpen={() => openSeat(seat)}
-          guide={guide}
         />
       );
     }
@@ -366,7 +360,6 @@ export function StaffRoom({ team }: { team: Owner }) {
           ? { text: 'Contract ends this season', ending: true }
           : { text: `Signed through ${man.until ?? year + 1}` }}
         onOpen={() => openSeat(seat)}
-        guide={guide}
       />
     );
   };
@@ -388,7 +381,7 @@ export function StaffRoom({ team }: { team: Owner }) {
       />
       <FirstVisit id="staff" />
       {!runsStaff && (
-        <Callout tone="info" title="Your athletic director runs the staff" guide="staff-delegated" />
+        <Callout tone="info" title="Your athletic director runs the staff" />
       )}
       <HowCoachHelps />
       <NeedsList items={needs} />
@@ -488,14 +481,13 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
     <section className="pb-stack">
       {man && <SubHead title="Available replacements" />}
       {runsStaff && !man && market.every((c) => c.wage > left) && (
-        <Callout tone="warning" title="No coach fits your budget" guide={seat === 'hitting' ? 'hire-blocked' : undefined}>
+        <Callout tone="warning" title="No coach fits your budget">
           {left < 0 ? `${dollars(-left)} over budget this season.` : `${dollars(left)} left this season.`}
         </Callout>
       )}
       <CandidateList
         label={`${SEAT_LABEL[seat]} candidates`}
         head={seat === 'recruiting' ? 'Candidate · wage · state he knows' : 'Candidate · wage'}
-        guide={seat === 'hitting' && !man && runsStaff ? 'hire-options' : undefined}
         items={market.map((c) => ({
           id: c.id,
           name: c.name,
@@ -544,7 +536,6 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
           subtitle="Choose a coach for this role"
           lead={<Monogram vacant size={44} />}
           onClose={closeCoach}
-          closeGuide="overlay-back"
           layer={false}
           tall
           className="pb-coachsheet"
@@ -589,7 +580,6 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
         subtitle={specOf(man, year)}
         lead={<Monogram name={man.name} size={44} />}
         onClose={closeCoach}
-        closeGuide="overlay-back"
         layer={false}
         tall
         className="pb-coachsheet"
@@ -728,17 +718,6 @@ export function FacilitiesRoom({ team }: { team: Owner }) {
   });
   const [open, setOpen] = useState<ReadonlySet<Building>>(() => {
     if (arrival) return new Set([arrival]);
-    /*
-      Except during the tour, whose building lesson is the Hitting Barn: it
-      waits for the barn's build button (`facility-cta`), and the cheapest
-      row on a new campus is the clubhouse, so the barn is the row that
-      opens. The old room had the same gap and simply left the tour silent.
-    */
-    const s = useDynasty.getState();
-    const step = activeGuideStep(s.seenTutorials, s.season !== null && s.phase === null && s.history.length === 0, readPrefs().tutorials);
-    if ((step?.id === 'facilities' || step?.id === 'build') && facilityLevel(economy, 'cage') < FACILITY_MAX_LEVEL) {
-      return new Set<Building>(['cage']);
-    }
     const cheapest = BUILDINGS
       .map((b) => ({ key: b.key, level: facilityLevel(economy, b.key) }))
       .filter((b) => b.level < FACILITY_MAX_LEVEL)
@@ -772,7 +751,7 @@ export function FacilitiesRoom({ team }: { team: Owner }) {
       />
       <FirstVisit id="facilities" />
       {!runsFacilities && (
-        <Callout tone="info" title="Your athletic director runs the building projects" guide="facility-delegated" />
+        <Callout tone="info" title="Your athletic director runs the building projects" />
       )}
       <BudgetSummary
         total={total}
@@ -800,7 +779,6 @@ export function FacilitiesRoom({ team }: { team: Owner }) {
             onToggle={() => toggle(b.key)}
             delegated={!runsFacilities}
             onUpgrade={() => (level === 0 ? build(b.key) : upgradeFacility(b.key))}
-            guide={b.key === 'cage' ? { head: 'facility-cage', cta: 'facility-cta', blocked: 'facility-blocked' } : undefined}
           />
         );
       })}

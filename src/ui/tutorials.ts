@@ -1,7 +1,8 @@
-// One short explanation and one action per tip.
-import { CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS, PROTECTED_BIDS, SERIES } from '../engine/postseason.js';
+// The card each screen shows the first time it opens: what the screen is,
+// in one line, and the one thing to do on it. One card per screen, in the
+// screen's own words — every name below is a label the screen shows.
+import { CONF_FIELD } from '../engine/postseason.js';
 import { RECRUITING_WEEKS } from '../engine/recruiting.js';
-import { SCOUTING } from '../state/features.js';
 
 export interface TutorialPage {
   title: string;
@@ -9,206 +10,128 @@ export interface TutorialPage {
   action: string;
 }
 
-export const TUTORIALS: Record<string, readonly TutorialPage[]> = {
-  "today": [
-    {
-      title: "Your next game",
-      body: "The wheel is your schedule, the list is this week\u2019s to-do.",
-      action: "Settle anything highlighted in the list, then tap Play ball.",
-    },
-  ],
-  "wire": [
-    {
-      title: "Around the country",
-      body: "Results, standout players and news from other programs, with yours first.",
-      action: "Tap a story to open that program.",
-    },
-  ],
-  "roster": [
-    {
-      title: "Meet your team",
-      body: "Each player’s rating is how good he is now, out of 100. His ceiling is how good he can become.",
-      action: "Tap a player for ratings, health, and stats.",
-    },
-  ],
-  "lineup": [
-    {
-      title: "Set your order",
-      body: "Lineup changes save immediately. Delegated lineups remain your bench coach’s call.",
-      action: "Tap two players to swap them. Hold for stats.",
-    },
-    {
-      title: "Positions and pitchers",
-      body: "Position buttons assign fielders. Rotation sets starters; bullpen holds relievers.",
-      action: "Check player health and pitcher readiness.",
-    },
-  ],
-  "stats": [
-    {
-      title: "Read the numbers",
-      body: "Ratings show ability; stats show results. A few games can mislead.",
-      action: "Compare batting, pitching, or fielding before changing roles.",
-    },
-  ],
-  "season": [
-    {
-      title: "Follow the season",
-      body: `The top ${CONF_FIELD} teams in each conference reach its tournament.`,
-      action: "Tap a played game for its box score, or a game to come to see the opponent.",
-    },
-  ],
-  "program": [
-    {
-      title: "The board’s goals",
-      body: "At the end of the season the board checks these goals and decides your job’s future.",
-      action: "Required goals are the job. Stretch goals are a bonus.",
-    },
-  ],
-  "program-overview": [
-    {
-      title: "Your program",
-      body: "The trophies, the Hall of Fame and the players who went on.",
-      action: "Tap a trophy or a door to see it in full.",
-    },
-  ],
-  "budget": [
-    {
-      title: "Your budget",
-      // Scouting reports are held back (features.ts), and a tip should not
-      // promise a purchase no screen offers.
-      body: `Money pays for staff${SCOUTING ? ', buildings and scouting reports' : ' and buildings'}. Recruiting uses its own weekly points.`,
-      action: "Every price shows what you would have left after.",
-    },
-  ],
-  "staff": [
-    {
-      title: "Your coaching staff",
-      body: "Each coach has a focus that is always on, and one assignment a season.",
-      action: "Tap a coach to set the focus or the season’s work.",
-    },
-  ],
-  "facilities": [
-    {
-      title: "Your buildings",
-      body: "Each building makes players better and sizes one coach’s season work.",
-      action: "Each card shows what the next level adds, and its price.",
-    },
-  ],
-  "coach": [
-    {
-      title: "Your career",
-      body: "Your record, skills and prestige follow you from school to school.",
-      action: "Skills grow with points you earn each June.",
-    },
-  ],
-  "network": [
-    {
-      title: "Recruiting pipelines",
-      body: "A pipeline is a state where recruits already know you. Signings and your coordinator’s pipeline work make it stronger.",
-      action: "Tap a state to see what its strength does.",
-    },
-    // Held back with the feature (state/features.ts): a tip must not sell a report nobody can buy.
-    ...(SCOUTING ? [{
-      title: "Scouting reports",
-      body: "A report shows an opponent’s habits for a few days, and your playbook counters them.",
-      action: "Buy one from a college’s profile.",
-    }] : []),
-  ],
-  "manage": [
-    {
-      title: "Your call",
-      body: "Swing away and Pitch are the standard calls. A call you can\u2019t make right now says why.",
-      action: "Choose a call, then read what happened.",
-    },
-    {
-      title: "The dugout",
-      body: "Dugout, at the bottom, has pinch hitters, the bullpen, mound visits and the bench coach.",
-      action: "After the last out, tap Record the game.",
-    },
-  ],
-  "postseason": [
-    {
-      title: "1. Conference tournament",
-      body: `Top ${CONF_FIELD} qualify. Two losses end your conference run.`,
-      action: `Finish in the top ${CONF_ADVANCE} to reach regionals.`,
-    },
-    {
-      title: "2. Regional series",
-      body: `Best of ${SERIES.regional}. The ${NATIONAL_BIDS - PROTECTED_BIDS} series winners reach the national tournament.`,
-      action: "Win two games to advance.",
-    },
-    {
-      title: "3. National tournament",
-      body: `${NATIONAL_BIDS} teams, two double-elimination brackets. Each bracket sends one finalist.`,
-      action: `Win the best-of-${SERIES.final} final to become champion.`,
-    },
-    {
-      title: "Guaranteed a place",
-      body: `The regular season’s top ${PROTECTED_BIDS} are guaranteed a place in the national tournament. The rest of the field is picked from the best teams still in it.`,
-      action: "Check where you stand after each round.",
-    },
-  ],
-  "awards": [
-    {
-      title: "Season awards",
-      body: "The year’s standout players and coaches.",
-      action: "Tap a winner to see their season.",
-    },
-  ],
-  "review": [
-    {
-      title: "Your season review",
-      body: "See your results, board goals, prestige changes, and job decision.",
-      action: "Review the outcome, then continue.",
-    },
-  ],
-  "coachpoints": [
-    {
-      title: "Improve your skills",
-      body: "Unspent points carry forward. New allocations can be undone until you continue.",
-      action: "Choose a skill or save your points.",
-    },
-  ],
-  "draftphase": [
-    {
-      title: "Keep a drafted player?",
-      body: "Retention pitches cost offseason points, even if they fail. Transfers use this fund too.",
-      action: "Try to keep players before continuing; unresolved draftees leave.",
-    },
-  ],
-  "portal": [
-    {
-      title: "Manage transfers",
-      body: "Retention and signings share your remaining offseason points.",
-      action: "Try to keep departing players before continuing; unresolved players leave.",
-    },
-  ],
-  "recruiting": [
-    {
-      title: "Recruit for next season",
-      body: `Recruiting lasts ${RECRUITING_WEEKS} weeks. Your points refresh every week, and points you leave unspent are lost.`,
-      action: "Check Positions needed, then plan a week on the prospects you want.",
-    },
-    {
-      title: "Make your pitch",
-      body: "Pitch what a prospect cares about most, where your program backs it up. A promise becomes a duty if he signs.",
-      action: "Compare the point costs, and only promise what you can keep.",
-    },
-  ],
+export const TUTORIALS: Record<string, TutorialPage> = {
+  today: {
+    title: 'Today',
+    body: 'Your schedule on the wheel, and what needs you this week below it.',
+    action: 'Settle anything highlighted, then tap Play ball or Sim game.',
+  },
+  wire: {
+    title: 'News',
+    body: 'Results and stories from around the country, yours first.',
+    action: 'Tap a story to open that program.',
+  },
+  roster: {
+    title: 'Roster',
+    body: 'Now is how good a player is today, out of 100. Pot. is how good he can get.',
+    action: 'Tap a player to open his card.',
+  },
+  lineup: {
+    title: 'Lineup',
+    body: 'The batting order, the positions and the pitching staff. Changes save as you make them.',
+    action: 'Tap two players to swap them. Hold one to open his card.',
+  },
+  // A career whose staff sets the lineup: nothing here is the coach's to move.
+  'lineup-staff': {
+    title: 'Lineup',
+    body: 'Your staff sets the order, the positions and the pitching.',
+    action: 'Tap a player to open his card.',
+  },
+  stats: {
+    title: 'Stats',
+    body: 'What every player has done this season. Early on, a few games can mislead.',
+    action: 'Switch between Your team, National and Fielding.',
+  },
+  season: {
+    title: 'Schedule',
+    body: `Every game this season. The top ${CONF_FIELD} in each conference play its tournament.`,
+    action: 'Tap a result for the box score.',
+  },
+  program: {
+    title: 'Board',
+    body: 'At the end of the season the board checks these goals and decides your future.',
+    action: 'Required goals keep the job. Bonus goals earn extra credit.',
+  },
+  'program-overview': {
+    title: 'Program',
+    body: 'The trophy case, the hall of fame and the players who went on.',
+    action: 'Tap any of them to see it in full.',
+  },
+  budget: {
+    title: 'Budget',
+    body: 'Money pays for staff and buildings. Recruiting runs on its own weekly points.',
+    action: 'Every price shows what you would have left.',
+  },
+  staff: {
+    title: 'Coaching staff',
+    body: 'Each coach has a focus that is always on, and season work on up to three players.',
+    action: 'Tap a coach to set both.',
+  },
+  facilities: {
+    title: 'Facilities',
+    body: 'Buildings develop your players and open up your coaches’ season work.',
+    action: 'Open a building to see what the next level adds and costs.',
+  },
+  coach: {
+    title: 'Your career',
+    body: 'Your record, skills and prestige go with you from school to school.',
+    action: 'You earn coach points to spend on skills every June.',
+  },
+  network: {
+    title: 'Recruiting network',
+    body: 'In a pipeline state, recruits already know your program. Signings make it stronger.',
+    action: 'Tap a state to see what its pipeline does.',
+  },
+  manage: {
+    title: 'Your call',
+    body: 'Pick a call for every batter. A call you cannot make says why.',
+    action: 'Dugout has subs and the bullpen. Bench coach calls it for you.',
+  },
+  postseason: {
+    title: 'June',
+    body: 'Three stages: the conference tournament, the regionals and the national tournament.',
+    action: 'Play or sim your next game. Bracket shows the whole field.',
+  },
+  awards: {
+    title: 'Awards',
+    body: 'The season’s best players and coaches.',
+    action: 'Turn the cards one by one, or tap Turn them all.',
+  },
+  review: {
+    title: 'Season review',
+    body: 'How the year ended: your record, the board’s goals and what it means for your job.',
+    action: 'Read it, then continue.',
+  },
+  coachpoints: {
+    title: 'Coach points',
+    body: 'Spend points on your skills. Points you keep carry over to next year.',
+    action: 'You can take a point back until you continue.',
+  },
+  draftphase: {
+    title: 'Draft',
+    body: 'Pro teams took some of your players. Anyone you do not keep leaves.',
+    action: 'Choose a pitch and make the offer. It costs offseason points, win or lose.',
+  },
+  portal: {
+    title: 'Transfer portal',
+    body: 'Players leaving you, and players looking for a school. Both draw on your offseason points.',
+    action: 'Settle who you can before you continue. The rest go.',
+  },
+  recruiting: {
+    title: 'Recruiting',
+    body: `${RECRUITING_WEEKS} weeks to sign next year’s class. Your points reset each week, and unspent points are lost.`,
+    action: 'Open a prospect to spend points on him. Only promise what you can keep.',
+  },
   // The same board while the staff runs recruiting (2026-09-28): the coach
   // chooses who, the staff spends the points.
-  "recruiting-staff": [
-    {
-      title: "Your staff recruits",
-      body: "Your staff works only the recruits you star, up to 8.",
-      action: "Tap a recruit’s star to add him to the list.",
-    },
-  ],
-  "signing": [
-    {
-      title: "Meet your new class",
-      body: "Committed recruits join your roster for next season.",
-      action: "Review the class, then continue.",
-    },
-  ],
+  'recruiting-staff': {
+    title: 'Recruiting',
+    body: 'Your staff works only the recruits you star, up to 8.',
+    action: 'Tap a recruit’s star to add him to the list.',
+  },
+  signing: {
+    title: 'Signing day',
+    body: 'Everyone who committed joins your roster next season.',
+    action: 'Look over the class, then continue.',
+  },
 };

@@ -1609,17 +1609,6 @@ export interface DynastyStore {
   focusPlayer: string | null;
   clearFocusPlayer: () => void;
   /**
-   * A first-time errand being taught, by lighting the path rather than
-   * writing a paragraph. Designed by the reporter for the failing-man card:
-   * "the action button should be glowing red in the borders, then school tab
-   * should be glowing red, then have a word should be glowing." Transient
-   * like focusPlayer; the once-ness lives in seenTutorials ('guide:word'),
-   * stamped only when the word is actually had.
-   */
-  guide: 'word' | null;
-  startGuide: (g: 'word') => void;
-  clearGuide: () => void;
-  /**
    * The other answer to "is he going back in?" — keep the cover, on purpose.
    * The first answer is putting him back, which every route into the nine
    * stamps by itself. See Unavailable.returnDecided.
@@ -1864,7 +1853,7 @@ export interface DynastyStore {
 
   /** Whose card is open. Cleared when you navigate away. */
   selectedPlayer: PlayerId | null;
-  /** The room a contextual shortcut wants the card to open on. */
+  /** 'stats' adds his season's numbers to the top of the card (the lineup's hold). */
   playerCardSection: 'overview' | 'stats';
   openPlayer: (id: PlayerId, section?: 'overview' | 'stats') => void;
   /** Close the card and return to whatever was underneath it. */
@@ -2097,8 +2086,6 @@ export interface DynastyStore {
   playbookFocus: string | null;
   setPlaybookFocus: (abbr: string | null) => void;
   markTutorialSeen: (id: string) => void;
-  /** Several at once — a tour step and the cards it stood in for — under one save. */
-  markTutorialsSeen: (ids: readonly string[]) => void;
   /** Forget every tutorial, so the next visit to each screen teaches again. */
   resetTutorials: () => void;
 
@@ -4699,9 +4686,6 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     set({ unseenTrophies: [] });
   },
   clearFocusPlayer: () => set({ focusPlayer: null }),
-  guide: null,
-  startGuide: (g) => set({ guide: g }),
-  clearGuide: () => set({ guide: null }),
   keepCover: (id) => {
     // Not while the season sims in the worker: its copy replaces this one (M71).
     if (get().busy) return;
@@ -7761,11 +7745,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     set({ selectedPlayer: id, playerCardSection: section });
   },
 
-  // The guide dies with the card: a glow that survived onto some OTHER
-  // player's card would be teaching the wrong errand. A coach's sheet under
-  // the card stays: one close, one level (PF, 2026-09-30).
+  // A coach's sheet under the card stays: one close, one level (PF, 2026-09-30).
   closePlayer: () => {
-    set({ selectedPlayer: null, playerCardSection: 'overview', guide: null });
+    set({ selectedPlayer: null, playerCardSection: 'overview' });
   },
 
   openCoach: (seat) => set({ coachSeat: seat }),
@@ -9951,13 +9933,6 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     get().autosave();
   },
 
-  markTutorialsSeen: (ids) => {
-    const seen = get().seenTutorials;
-    const add = ids.filter((id, i) => !seen.includes(id) && ids.indexOf(id) === i);
-    if (add.length === 0) return;
-    set({ seenTutorials: [...seen, ...add] });
-    get().autosave();
-  },
 
   resetTutorials: () => {
     set({ seenTutorials: [] });

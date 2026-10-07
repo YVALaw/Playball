@@ -187,7 +187,6 @@ button { border-radius: var(--radius-control); }
 /* -------------------------------------------------------------------------
    Team / roster / lineup
    ------------------------------------------------------------------------- */
-.screen-tools { grid-template-columns: minmax(0,1fr) 50px; gap: 8px; }
 .order { color: var(--ink); font: 800 calc(17px * var(--ts))/1 var(--body); }
 
 /* -------------------------------------------------------------------------

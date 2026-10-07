@@ -148,9 +148,6 @@ export function PositionPicker({
   const showOthers = more || plays.length + covers.length === 0;
   const dh = pos === 'DH';
   const unit = dh ? 'bat' : 'glove';
-  // The tour's second step lights the first man it could send there.
-  const firstChoice = [...plays, ...covers, ...(showOthers ? [...stretches, ...deep] : [])]
-    .find((m) => !m.here && !m.out);
 
   const row = (m: PickerMan) => (
     <button
@@ -159,7 +156,6 @@ export function PositionPicker({
       className={cx('pb-picker__man', m.here && 'is-here', m.out && 'is-out')}
       disabled={!!m.out}
       aria-current={m.here ? 'true' : undefined}
-      data-guide={m === firstChoice ? 'lineup-assign' : undefined}
       onClick={() => pick(m)}
     >
       <Face id={m.id} team={m.team} size={34} />

@@ -33,8 +33,6 @@ export interface OverlayBack {
   label: string;
   /** Where it goes instead of closing the page. Left out, it still closes. */
   onBack?: () => void;
-  /** The guided tour's name for the control while it goes somewhere else. */
-  guide?: string;
 }
 
 const BackContext = createContext<((back: OverlayBack | null) => void) | null>(null);
@@ -48,13 +46,12 @@ export function useOverlayBack(back: OverlayBack | null): void {
   const onBack = useRef(back?.onBack);
   onBack.current = back?.onBack;
   const label = back?.label;
-  const guide = back?.guide;
   const goes = back?.onBack !== undefined;
   useLayoutEffect(() => {
     if (!lend || label === undefined) return undefined;
-    lend({ label, guide, onBack: goes ? () => onBack.current?.() : undefined });
+    lend({ label, onBack: goes ? () => onBack.current?.() : undefined });
     return () => lend(null);
-  }, [lend, label, guide, goes]);
+  }, [lend, label, goes]);
 }
 
 export function Overlay(
@@ -105,7 +102,6 @@ export function Overlay(
         <button
           type="button"
           className="pb-back"
-          data-guide={inner?.onBack ? (inner.guide ?? 'overlay-back') : 'overlay-back'}
           onClick={back}
         >
           <Icon name="arrow-left" size={16} />{inner?.label ?? backLabel}

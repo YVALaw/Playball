@@ -110,9 +110,3 @@ describe('TableOverlay draws the whole stack', () => {
     expect(takeCoachView(overlayOwner(2))).toBe('work');
   });
 });
-
-describe('the guided stretch never lights a control under the top overlay', () => {
-  it('skips a target inside an inert slot', () => {
-    expect(readFileSync('src/ui/GuidedStretch.tsx', 'utf8')).toContain("if (el.closest('[inert]')) continue;");
-  });
-});

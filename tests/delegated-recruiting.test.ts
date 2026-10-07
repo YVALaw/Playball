@@ -881,8 +881,8 @@ describe('the board a staff runs says so', () => {
     const board = readFileSync('src/ui/screens/Board.tsx', 'utf8');
     expect(board).toContain("worksBoard ? 'recruiting' : 'recruiting-staff'");
     const tip = TUTORIALS['recruiting-staff'];
-    expect(tip?.length).toBe(1);
-    const words = `${tip![0]!.body} ${tip![0]!.action}`;
+    expect(tip).toBeDefined();
+    const words = `${tip!.body} ${tip!.action}`;
     expect(words).toMatch(/star/i);
     expect(words).not.toMatch(/points|pitch|promise/i);
   });

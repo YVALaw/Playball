@@ -13,7 +13,6 @@ export interface SegmentedOption<T extends string> {
   label: string;
   /** A count, or true for a dot. */
   badge?: number | string | true;
-  guide?: string;
 }
 
 /** Two to four views of one thing, or one value out of a few. */
@@ -41,7 +40,6 @@ export function SegmentedControl<T extends string>({
             role={radio ? 'radio' : 'tab'}
             aria-checked={radio ? on : undefined}
             aria-selected={radio ? undefined : on}
-            data-guide={o.guide}
             onClick={() => onChange(o.value)}
           >
             {o.label}
@@ -88,14 +86,13 @@ export function OptionCard({
 }
 
 export function OptionGroup({
-  label, columns, children, className, guide,
-}: { label: string; columns?: 1 | 2 | 3; children: ReactNode; className?: string; guide?: string }) {
+  label, columns, children, className,
+}: { label: string; columns?: 1 | 2 | 3; children: ReactNode; className?: string }) {
   return (
     <div
       className={cx('pb-options', columns && columns > 1 ? `pb-options--${columns}` : null, className)}
       role="radiogroup"
       aria-label={label}
-      data-guide={guide}
     >{children}</div>
   );
 }

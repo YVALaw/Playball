@@ -417,17 +417,7 @@ export function useNeeds(): Need[] {
       icon: 'reader',
       must: wordsLeft > 0,
       cta: 'Talk to him',
-      go: () => {
-        openPlayer(man.id);
-        // First time only, and only while there is a word to have: light the
-        // path (action button, SCHOOL, HAVE A WORD) instead of leaving the
-        // player on a card with no idea what to do. The stamp is written when
-        // the word lands, not here — abandoning the errand keeps the lesson.
-        const st = useDynasty.getState();
-        if (wordsLeft > 0 && !st.seenTutorials.includes('guide:word')) {
-          st.startGuide('word');
-        }
-      },
+      go: () => openPlayer(man.id),
     });
   }
 
@@ -460,7 +450,6 @@ export function NeedsYou({ blocks = "tonight's game" }: { blocks?: string }) {
             status={n.must
               ? <StatusBadge tone="warning" icon="lock">Blocks {blocks}</StatusBadge>
               : n.badge ? <StatusBadge tone="neutral" icon={false}>{n.badge}</StatusBadge> : undefined}
-            guide={n.must ? 'need-must' : undefined}
             onClick={n.go}
           />
         ))}

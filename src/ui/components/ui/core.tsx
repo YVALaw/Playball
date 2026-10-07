@@ -103,8 +103,6 @@ export interface ConfirmButtonProps {
   /** Return false when the attempt did not come off. */
   onConfirm: () => boolean | void;
   className?: string;
-  /** Forwarded, so the guided tour can light the control. */
-  guide?: string;
 }
 
 /**
@@ -115,7 +113,7 @@ export interface ConfirmButtonProps {
  */
 export function ConfirmButton({
   idle, armed, done, failed, meta, armedMeta, icon, variant = 'primary', size = 'md', block,
-  disabled, onConfirm, className, guide,
+  disabled, onConfirm, className,
 }: ConfirmButtonProps) {
   const [state, setState] = useState<'idle' | 'armed' | 'done' | 'failed'>('idle');
   const me = useRef(Symbol('confirm'));
@@ -163,7 +161,6 @@ export function ConfirmButton({
     <button
       ref={btn}
       type="button"
-      data-guide={guide}
       disabled={disabled || state === 'done'}
       aria-live={state === 'armed' ? 'polite' : undefined}
       onClick={press}

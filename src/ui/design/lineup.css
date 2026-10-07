@@ -216,8 +216,7 @@
 /* ------------------------------------------------------ the position picker */
 /* Who can play the spot that was tapped (PositionPicker.tsx). It grows out of
    the name on the field and shrinks back into it; the motion is driven from
-   script, so the panel carries no transition of its own. Under the guided
-   tour's mask (46) so the tour can light a man inside it; over the cards (30). */
+   script, so the panel carries no transition of its own. Over the cards (30). */
 .pb-picker-host {
   position: absolute; inset: 0; z-index: 36;
   display: flex; align-items: center; justify-content: center;

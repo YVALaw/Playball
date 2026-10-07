@@ -216,10 +216,19 @@ flipping it changes behaviour; then fix each row.
 
 ## Phase 6 — Onboarding, UX and accessibility (1 week)
 
+> **2026-10-07, ahead of the phase:** the guided first-season tour is removed. It was the reporter's call: "simply
+> keep the screen cards so we don't make a super overwhelming tutorial". That retires H9, M79 and M80, and the tour
+> half of M44. Removed with it: the spotlight, the "Have a word" errand, the tour's CSS, and the `guide` / `data-guide`
+> hooks it used to find controls. Each screen now has one short card in its own words (`src/ui/tutorials.ts`, held
+> to length by `tests/tips.test.ts`). The board card now says "Bonus" goals, as the board does, not "Stretch". A
+> lineup the staff sets gets its own card. The tips still opt out of the back layer, so that half of M44 stands.
+> Also done the same day: holding a man on the Lineup opens his whole profile with his season on top, and back
+> returns to the lineup. The pitching side now shows the hold line too.
+
 | Task | Findings |
 |---|---|
-| Tour layer above design-system sheets; the two lineup lessons completable | H9, M79, M80 |
-| Back gesture sees the tour/tips; bounded route trail | M44, M45 |
+| ~~Tour layer above design-system sheets; the two lineup lessons completable~~ (tour removed) | H9, M79, M80 |
+| Back gesture sees the tips; bounded route trail | M44, M45 |
 | Overlays make content beneath inert; Larger text clipping on 360 dp; 48 dp tap targets | M18, M19 |
 | Job offers previewed on the career's real season length; offer sheet layout at 360/320 | M81, M82, M103 |
 | Remaining MEDIUM UX items (gate modal discarding the order, pick bar, fielding table, sway default, "Use these" without undo, empty June bracket) | M106–M108, M89, M90, M97 |

@@ -95,15 +95,13 @@ button.pb-appbar__id { cursor: pointer; }
 .pb-head--today .pb-screen-head__title { white-space: nowrap; }
 .pb-page .pb-section-head { margin-bottom: var(--space-3); }
 
-/* ------------------------------------------------------- tips and the tour */
-/* One help layer: a card over a dimmed screen, with one next action. */
+/* ------------------------------------------------------------------- tips */
+/* The first visit to a screen: a card over a dimmed screen, with one next action. */
 .pb-tip-host {
   position: absolute; inset: 0; z-index: 38; display: flex; flex-direction: column; justify-content: flex-end;
   padding: calc(env(safe-area-inset-top) + var(--space-6)) var(--space-3) calc(env(safe-area-inset-bottom) + var(--space-3));
   background: var(--scrim); animation: pb-fade var(--duration-base) var(--ease-standard);
 }
-.pb-tip-host--tour { justify-content: center; }
-.pb-tip-host.leaving { opacity: 0; transition: opacity 200ms ease; }
 .pb-tip {
   display: flex; flex-direction: column; gap: var(--space-3); max-height: 100%; overflow: auto;
   padding: var(--space-4); border-radius: var(--radius-dialog); background: var(--surface-raised);
@@ -121,24 +119,9 @@ button.pb-appbar__id { cursor: pointer; }
   font: 600 calc(15px * var(--pb-ts, 1))/22px var(--font-sans);
 }
 .pb-tip__action .pb-icon { margin-top: 3px; color: var(--accent); }
-.pb-tip__byline { margin: 0; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
 .pb-tip__foot { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); }
-.pb-tip__progress { display: block; height: var(--size-bar-sm); overflow: hidden; border-radius: var(--radius-pill); background: var(--track); }
-.pb-tip__progress i { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .pb-tip-host, .pb-tip { animation: none; } }
 :root[data-motion='reduced'] :is(.pb-tip-host, .pb-tip) { animation: none; }
-
-/* The tour's caption beside the lit control. */
-.guide-caption.pb-tour-caption {
-  display: flex; flex-direction: column; gap: var(--space-1);
-  padding: var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-card);
-  background: var(--surface-raised); color: var(--ink); box-shadow: var(--shadow-float);
-}
-.pb-tour-caption__text { margin: 0; font: 600 calc(15px * var(--pb-ts, 1))/22px var(--font-sans); color: var(--ink); }
-.pb-tour-caption__controls { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0 calc(var(--space-2) * -1) calc(var(--space-2) * -1); }
-/* A lit sheet stays above the caption, so its footer button can be reached. */
-.app-frame:has(.guide-mask[data-lit='hire-detail']) .pb-sheet-host:last-of-type { padding-bottom: 146px; }
-.guide-caption > .pb-tour-caption__text { margin: 0; }
 
 /* A screen that scrolls itself inside an overlay's fixed frame. */
 .pb-scroll { height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; background: var(--bg); }

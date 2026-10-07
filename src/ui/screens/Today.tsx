@@ -411,7 +411,7 @@ export function Today() {
   const left3 = next && !done
     ? games.filter((g) => g.week === next.week && !g.result).length : 0;
 
-  type Btn = { label: ReactNode; sub?: string; onClick?: () => void; disabled?: boolean; icon?: IconName; guide?: string; tone?: 'warn' };
+  type Btn = { label: ReactNode; sub?: string; onClick?: () => void; disabled?: boolean; icon?: IconName; tone?: 'warn' };
   let leftBtn: Btn, midBtn: Btn, rightBtn: Btn;
   if (done) {
     leftBtn = { label: 'Standings', onClick: () => go('team', 'stand') };
@@ -435,7 +435,6 @@ export function Today() {
         label: live ? 'Back to game' : 'Play ball',
         sub: live ? 'In progress' : !todayGame ? 'No game today' : held ? 'Settle the list' : 'Coach it live',
         icon: held && !live ? 'lock' : 'play',
-        guide: 'play-ball',
         disabled: live ? false : busyNow || thinking !== null || held || !todayGame,
         // Looking at another game: roll to tonight's first, then go, holding
         // the same lock the sims hold so neither can fire in the gap (M84).
@@ -508,7 +507,6 @@ export function Today() {
                   <button
                     type="button"
                     className="pb-todo__btn"
-                    data-guide={t.id === firstMustId ? 'need-must' : undefined}
                     onClick={t.action.onClick}
                   >{t.action.label}</button>
                 )}
@@ -525,7 +523,6 @@ export function Today() {
               type="button"
               className={`pb-home__act${i === 1 ? ' is-main' : ''}${b.tone === 'warn' ? ' is-warn' : ''}`}
               disabled={b.disabled}
-              data-guide={b.guide}
               onClick={() => { rollHome(); b.onClick?.(); }}
             >
               <span className="pb-home__actlabel">{b.icon && <Icon name={b.icon} size={i === 1 ? 15 : 13} />}{b.label}</span>

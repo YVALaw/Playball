@@ -131,8 +131,6 @@ export interface StaffCardProps {
   pitch?: ReactNode;
   ctaLabel?: string;
   onOpen?: () => void;
-  /** The guided tour's name: on the head of a filled seat, on the button of an open one. */
-  guide?: string;
   className?: string;
 }
 
@@ -144,7 +142,7 @@ export interface StaffCardProps {
  */
 export function StaffCard({
   roleLabel, name, spec, rating, focus, project, progress, wage, contract, vacant, pitch, ctaLabel,
-  onOpen, guide, className,
+  onOpen, className,
 }: StaffCardProps) {
   if (vacant) {
     return (
@@ -159,7 +157,7 @@ export function StaffCard({
         </button>
         {pitch && <p className="pb-seat__pitch">{pitch}</p>}
         <div className="pb-seat__cta">
-          <Button variant="tonal" block onClick={onOpen} data-guide={guide}>{ctaLabel ?? 'See candidates'}</Button>
+          <Button variant="tonal" block onClick={onOpen}>{ctaLabel ?? 'See candidates'}</Button>
         </div>
       </article>
     );
@@ -167,7 +165,7 @@ export function StaffCard({
 
   return (
     <article className={cx('pb-seat', className)} aria-label={`${roleLabel}, ${name ?? ''}`}>
-      <button type="button" className="pb-seat__head" onClick={onOpen} data-guide={guide} aria-haspopup="dialog">
+      <button type="button" className="pb-seat__head" onClick={onOpen} aria-haspopup="dialog">
         <Monogram name={name} size={44} />
         <span className="pb-seat__who">
           <span className="pb-seat__role">{roleLabel}</span>
@@ -265,18 +263,17 @@ export function ProjectProgress({
 
 /** One standing choice out of a few, as a wrap of pills. */
 export function FocusChips<T extends string>({
-  label, value, options, onChange, disabled, guide, className,
+  label, value, options, onChange, disabled, className,
 }: {
   label: string;
   value: T;
   options: ReadonlyArray<{ value: T; label: string }>;
   onChange: (value: T) => void;
   disabled?: boolean;
-  guide?: string;
   className?: string;
 }) {
   return (
-    <div className={cx('pb-focus', className)} role="radiogroup" aria-label={label} data-guide={guide}>
+    <div className={cx('pb-focus', className)} role="radiogroup" aria-label={label}>
       {options.map((o) => {
         const on = o.value === value;
         return (
@@ -417,10 +414,10 @@ export interface CandidateItem {
 
 /** The men on the market for a seat, headed by what each line says. */
 export function CandidateList({
-  label, head, items, guide, className,
-}: { label: string; head: string; items: CandidateItem[]; guide?: string; className?: string }) {
+  label, head, items, className,
+}: { label: string; head: string; items: CandidateItem[]; className?: string }) {
   return (
-    <div className={cx('pb-cands', className)} role="group" aria-label={label} data-guide={guide}>
+    <div className={cx('pb-cands', className)} role="group" aria-label={label}>
       <div className="pb-cands__head" aria-hidden><span>{head}</span><span>Rating</span></div>
       {items.map((c) => (
         <button key={c.id} type="button" className="pb-cands__row" onClick={c.onClick} aria-haspopup="dialog">
@@ -454,8 +451,6 @@ export interface FacilityCardProps {
   delegated?: boolean;
   onUpgrade?: () => boolean | void;
   className?: string;
-  /** The guided tour's names: the row, its build button, its blocked button. */
-  guide?: { head?: string; cta?: string; blocked?: string };
 }
 
 /**
@@ -466,7 +461,7 @@ export interface FacilityCardProps {
  */
 export function FacilityCard({
   kind, name, helps, level, max = 3, cost, budgetLeft, rows = [], open, onToggle, delegated, onUpgrade,
-  className, guide = {},
+  className,
 }: FacilityCardProps) {
   const panel = useId();
   const maxed = level >= max;
@@ -481,7 +476,7 @@ export function FacilityCard({
       action = <p className="pb-fac__note">Your athletic director decides when to build.</p>;
     } else if (!fits) {
       action = (
-        <Button variant="primary" block disabled meta={`${dollars(price - left)} short`} data-guide={guide.blocked}>
+        <Button variant="primary" block disabled meta={`${dollars(price - left)} short`}>
           Not enough budget
         </Button>
       );
@@ -492,7 +487,6 @@ export function FacilityCard({
         <ConfirmButton
           key={level}
           block
-          guide={guide.cta}
           idle={level === 0 ? `Build the ${name}` : `Upgrade to level ${next}`}
           meta={dollars(price)}
           armed="Tap again to spend it"
@@ -516,7 +510,6 @@ export function FacilityCard({
         onClick={onToggle}
         aria-expanded={open}
         aria-controls={open ? panel : undefined}
-        data-guide={guide.head}
       >
         <span className="pb-fac__art"><FacilityArt kind={kind} /></span>
         <span className="pb-fac__text">
@@ -627,7 +620,6 @@ export interface LedgerRow {
   tone: 'ink' | 'info' | 'track';
   /** The room this money is spent in. */
   onClick?: () => void;
-  guide?: string;
 }
 
 /** The budget room's card: what is left, the bar, and each claim on its own line. */
@@ -660,8 +652,8 @@ export function BudgetLedger({
           </>
         );
         return r.onClick
-          ? <button key={r.key} type="button" className="pb-ledger__row" onClick={r.onClick} data-guide={r.guide}>{inner}</button>
-          : <div key={r.key} className="pb-ledger__row" data-guide={r.guide}>{inner}</div>;
+          ? <button key={r.key} type="button" className="pb-ledger__row" onClick={r.onClick}>{inner}</button>
+          : <div key={r.key} className="pb-ledger__row">{inner}</div>;
       })}
     </section>
   );

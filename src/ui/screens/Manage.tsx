@@ -122,7 +122,7 @@ export function Manage() {
     nudgedAt.current = nudge;
     const s = useDynasty.getState();
     if (s.bracket === null || s.live === null || blockingCardUp(s)) return;
-    const el = liveEl.current?.querySelector<HTMLElement>('.pb-live__bar :is([data-guide="dugout"], [data-guide="record-game"])');
+    const el = liveEl.current?.querySelector<HTMLElement>('.pb-live__bar [data-nudge]');
     if (!el) return;
     el.classList.remove('is-nudged');
     void el.offsetWidth;
@@ -598,7 +598,6 @@ export function Manage() {
                   role="radio"
                   aria-checked={false}
                   className={cx('pb-callbtn', i === 0 && 'is-default')}
-                  data-guide={i === 0 ? 'call-default' : undefined}
                   disabled={!ready}
                   title={note}
                   onClick={once(() => ready && submitTactic(o.tactic))}
@@ -620,7 +619,7 @@ export function Manage() {
       <ActionBar className="pb-live__bar">
         {d ? (
           <>
-            <Button variant="secondary" icon="dots" data-guide="dugout" onClick={() => setModal('dugout')}>Dugout</Button>
+            <Button variant="secondary" icon="dots" data-nudge onClick={() => setModal('dugout')}>Dugout</Button>
             {auto === null ? (
               <Button variant="secondary" icon="wand" disabled={playing || changingSides} onClick={coachOn}>Bench coach</Button>
             ) : (
@@ -628,7 +627,7 @@ export function Manage() {
             )}
           </>
         ) : (
-          <Button variant="primary" data-guide="record-game" onClick={() => void endManagedGame()}>Record the game</Button>
+          <Button variant="primary" data-nudge onClick={() => void endManagedGame()}>Record the game</Button>
         )}
       </ActionBar>
 
@@ -694,7 +693,6 @@ export function Manage() {
             <ConfirmButton
               variant="secondary"
               block
-              guide="sim-rest"
               idle="Sim the rest"
               meta="Can’t be undone"
               armed="Tap again to sim the rest"

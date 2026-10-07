@@ -119,7 +119,6 @@ export function StaffCandidateDialog({
       subtitle={`${shapeOf(candidate)} · Age ${candidate.age}`}
       lead={<Monogram name={candidate.name} size={44} />}
       onClose={onClose}
-      guide={candidate.seat === 'hitting' && !incumbent && canManage ? 'hire-detail' : undefined}
       footer={footer}
     >
       <StatGroup
