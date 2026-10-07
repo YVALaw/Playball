@@ -25,7 +25,7 @@ build shows the entitlement's state and no way to flip it.
 | Build | Free god-mode unlock |
 |---|---|
 | `npm run dev`, `npm run preview` of a dev build | in |
-| `npm run build`, `npm run apk` (the store build) | out |
+| `npm run build`, `npm run apk` (debug APK, no shortcuts), `npm run aab` (the store build) | out |
 | `npm run apk:test` (`VITE_TEST_SHORTCUTS=1`) | in — a test APK for the emulator |
 | Vitest | never, so fresh-world assertions stay honest |
 | `tsx` scripts (sim.ts, the probes) | never |

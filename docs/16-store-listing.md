@@ -42,7 +42,7 @@ Rewrite the world: edit any player, program, coach, staff, budget, league or sch
 • Injuries, morale, redshirts, academic eligibility, two-way players
 • Double-elimination conference tournaments, regionals, and the national championship
 • Sound, haptics, and ninety-six procedurally generated crests
-• Works completely offline. Your saves never leave your phone.
+• Works completely offline. No account, no ads, no tracking: your saves stay on your phone.
 ```
 
 ## Category and tags

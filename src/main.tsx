@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { App } from './ui/App.js';
 import { Boundary } from './ui/Boundary.js';
 import { useDynasty } from './state/store.js';
-import { readPrefs, applyPrefs } from './state/devicePrefs.js';
+import { readPrefs, applyPrefs, seedTextScaleFromPhone } from './state/devicePrefs.js';
+import './ui/fonts.css';
 import './ui/tokens.css';
 // The design of record, then the dozen rules that hang it off a flex column
 // instead of a simulated phone. Order matters: the frame file overrides.
@@ -40,6 +41,8 @@ import './ui/design/terms.css';
   sees the small version flash past.
 */
 applyPrefs(readPrefs());
+// Android: the phone's font size becomes the app's Text size, once (L59).
+void seedTextScaleFromPhone();
 
 // The store on the console, dev server only. Costs nothing in a build and
 // makes 'drive the season to recruiting and poke the board' a one-liner

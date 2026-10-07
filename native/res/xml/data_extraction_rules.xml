@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+: what goes into the player's own Google backup and a phone-to-
+  phone transfer (audit 17, L4). The WebView's storage only: the careers
+  (IndexedDB) and the device preferences (Local Storage). Its caches are
+  rebuilt on demand and stay behind. Copied into the generated shell by
+  scripts/apk.cjs.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="root" path="app_webview/" />
+        <exclude domain="root" path="app_webview/Default/Cache/" />
+        <exclude domain="root" path="app_webview/Default/Code Cache/" />
+        <exclude domain="root" path="app_webview/Default/GPUCache/" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="root" path="app_webview/" />
+        <exclude domain="root" path="app_webview/Default/Cache/" />
+        <exclude domain="root" path="app_webview/Default/Code Cache/" />
+        <exclude domain="root" path="app_webview/Default/GPUCache/" />
+    </device-transfer>
+</data-extraction-rules>

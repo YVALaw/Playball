@@ -19,6 +19,8 @@
 // nothing is more irritating than a text size that does not stick.
 
 /** Where the field is drawn as a diamond rather than a 3D scene. */
+import { Capacitor, SystemBars, SystemBarsStyle, registerPlugin } from '@capacitor/core';
+
 export type FieldMode = '3d' | '2d';
 
 /** Following the OS, or overriding it in either direction. */
@@ -84,6 +86,11 @@ export interface DevicePrefs {
    * the absence of this marker means "take the new defaults".
    */
   bcast?: boolean;
+  /**
+   * Stamped once the phone's font size has been folded into `textScale`
+   * (Android only, audit 17, L59). See `seedTextScaleFromPhone`.
+   */
+  tzs?: boolean;
 }
 
 export const TEXT_SCALES: readonly { value: number; label: string }[] = [
@@ -184,7 +191,40 @@ export function readPrefs(): DevicePrefs {
     // their tutorials off would be a change they never asked for.
     tutorials: o.tutorials !== false,
     godMode: o.godMode === true,
+    ...(o.tzs === true ? { tzs: true } : {}),
   };
+}
+
+const Device = registerPlugin<{ fontScale(): Promise<{ scale: number }> }>('Device');
+
+/**
+ * The phone's font size, folded into the app's Text size once.
+ *
+ * The APK turns the WebView's text zoom off (MainActivity), because it
+ * multiplied fonts but not the boxes they sit in. Somebody who set a large
+ * font on their phone still gets one: on first launch — and once on the
+ * first launch of this build, for a device that was being zoomed until now —
+ * the stored size times the phone's is rounded to the nearest of the app's
+ * four steps.
+ */
+export async function seedTextScaleFromPhone(): Promise<void> {
+  if (Capacitor.getPlatform() !== 'android') return;
+  const prefs = readPrefs();
+  if (prefs.tzs) return;
+  let scale = 1;
+  try {
+    const got = await Device.fontScale();
+    if (Number.isFinite(got.scale) && got.scale > 0) scale = got.scale;
+  } catch {
+    // An older shell without the plugin: it still zooms, so leave the size be.
+    return;
+  }
+  const want = prefs.textScale * scale;
+  const nearest = TEXT_SCALES.reduce((best, t) =>
+    (Math.abs(t.value - want) < Math.abs(best.value - want) ? t : best));
+  const next = { ...readPrefs(), textScale: nearest.value, tzs: true };
+  writePrefs(next);
+  applyPrefs(next);
 }
 
 export function writePrefs(prefs: DevicePrefs): void {
@@ -229,4 +269,16 @@ export function applyPrefs(prefs: DevicePrefs): void {
   // tokens.css is what interprets the OS's answer.
   if (prefs.theme === 'system') root.removeAttribute('data-theme');
   else root.setAttribute('data-theme', prefs.theme);
+  /*
+    And the phone's own bars. On Android 15+ the page draws under the status
+    and gesture bars, whose icons follow the SYSTEM theme unless told
+    otherwise — so a dark app on a light phone put dark clock and battery
+    icons on the dark top bar, and they vanished (audit 17, M1). `Default`
+    for `system`, which is the phone's answer and therefore the app's.
+  */
+  if (Capacitor.getPlatform() === 'android') {
+    const style = prefs.theme === 'dark' ? SystemBarsStyle.Dark
+      : prefs.theme === 'light' ? SystemBarsStyle.Light : SystemBarsStyle.Default;
+    void SystemBars.setStyle({ style }).catch(() => undefined);
+  }
 }

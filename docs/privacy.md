@@ -6,8 +6,10 @@
 
 ## The short version
 
-Playball does not collect, store, transmit or sell any personal information.
-Everything the game knows lives on your device and never leaves it.
+Playball does not collect, transmit or sell any personal information.
+Everything the game knows lives on your device. Nothing is ever sent to the
+developer or to anyone else. The only copy that can leave the phone is your
+own Android device backup, if you have it turned on (see below).
 
 ## What the app stores, and where
 
@@ -18,8 +20,12 @@ Playball is a single-player game that runs entirely on your phone. It keeps:
 - **Your device preferences.** Theme, text size, sound, haptics and the
   God Mode entitlement, stored locally on the device.
 
-If you uninstall the app, this data is deleted with it. The app has no
-account system, no login, and no cloud sync.
+If you uninstall the app, this data is deleted from the device. If Android
+backup is turned on, your careers and preferences can be included in your own
+Google account backup, and restored when you reinstall the app or set up a
+new phone. That backup is Android's and belongs to your Google account; the
+developer cannot see it. You can turn it off in Android Settings → System →
+Backup. The app has no account system, no login, and no cloud sync of its own.
 
 ## What the app does not do
 
@@ -47,9 +53,11 @@ children. It contains no user-generated content, chat, or social features.
 
 ## Permissions
 
-The app requests no runtime permissions. The Google Play Billing permission
-(`com.android.vending.BILLING`) exists only to support the optional purchase
-described above.
+The app requests no runtime permissions, so it never asks you for anything.
+It declares two install-time permissions: Google Play Billing
+(`com.android.vending.BILLING`), only to support the optional purchase
+described above, and vibration (`android.permission.VIBRATE`), only for the
+Haptics setting.
 
 ## Changes to this policy
 

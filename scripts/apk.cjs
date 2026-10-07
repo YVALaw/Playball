@@ -77,6 +77,8 @@ console.log('\n— copying it into the shell —');
 run('npx', ['cap', 'sync', 'android'], ROOT);
 
 /*
+  The manifest, patched on every build.
+
   Portrait only. The web manifest has always said portrait, but the APK never
   did: the generated activity has no screenOrientation, so the game rotated
   into a landscape layout it was never designed for (audit 17, M5). Written
@@ -86,12 +88,44 @@ run('npx', ['cap', 'sync', 'android'], ROOT);
 {
   const manifest = path.join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
   const xml = fs.readFileSync(manifest, 'utf8');
-  if (!/android:screenOrientation=/.test(xml)) {
-    fs.writeFileSync(manifest, xml.replace(
+  let next = xml;
+  if (!/android:screenOrientation=/.test(next)) {
+    next = next.replace(
       /android:name="\.MainActivity"/,
       'android:name=".MainActivity"\n            android:screenOrientation="portrait"',
-    ));
+    );
   }
+  /*
+    Haptics. Every buzz goes through navigator.vibrate, which the WebView
+    drops without a word unless the app holds VIBRATE (audit 17, M24). A
+    normal install-time permission: no prompt.
+  */
+  if (!next.includes('android.permission.VIBRATE')) {
+    next = next.replace(
+      /(<uses-permission android:name="android\.permission\.INTERNET" \/>)/,
+      '$1\n    <uses-permission android:name="android.permission.VIBRATE" />',
+    );
+    if (!next.includes('android.permission.VIBRATE')) {
+      next = next.replace(/<\/manifest>\s*$/, '    <uses-permission android:name="android.permission.VIBRATE" />\n</manifest>\n');
+    }
+  }
+  /*
+    Backup, scoped (audit 17, L4). Kept on — a player who changes phones keeps
+    their careers — but limited to the WebView's storage, without its caches.
+    The rules are tracked under native/res/xml and copied in below.
+  */
+  if (!next.includes('android:dataExtractionRules=')) {
+    next = next.replace(
+      /<application\b/,
+      '<application\n        android:dataExtractionRules="@xml/data_extraction_rules"\n        android:fullBackupContent="@xml/backup_rules"',
+    );
+  }
+  if (next !== xml) fs.writeFileSync(manifest, next);
+  fs.cpSync(
+    path.join(ROOT, 'native', 'res'),
+    path.join(ROOT, 'android', 'app', 'src', 'main', 'res'),
+    { recursive: true },
+  );
 }
 
 // The launcher icon and the splash, regenerated from assets/ every build.
