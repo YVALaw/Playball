@@ -246,7 +246,11 @@ describe('which story a career tells', () => {
   });
 
   it('gives Omaha without a title its own name', () => {
-    expect(endingOf(career({ regionalTitles: 2 })).id).toBe('nearly');
+    // Counted off the seasons, as the plaque and its list are (M98).
+    const omaha = (year: number) => ({ year, school: 'X', w: 40, l: 20, finish: 'omaha' as const, wonConference: false });
+    expect(endingOf(career({ regionalTitles: 2, years: [omaha(2030), omaha(2031)] })).id).toBe('nearly');
+    // A rival's career kept before seasons were: the running total stands in.
+    expect(endingOf(career({ regionalTitles: 2, years: undefined })).id).toBe('nearly');
   });
 
   it('tells a quiet career plainly, and never as a failure', () => {

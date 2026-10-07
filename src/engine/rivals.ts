@@ -683,6 +683,14 @@ export function runRivalYear(
   // the same league rather than against a number that shifts as the loop runs.
   const league = leagueShape(season.teams);
 
+  // Who coached each program this season, before the carousel moves anybody:
+  // the school's yearbook is written at the year roll, after it, and used to
+  // credit the season to the man hired to replace him (audit 17, M10).
+  for (const record of season.teams) {
+    if (record.coach) record.seasonCoach = record.coach.name;
+    else delete record.seasonCoach;
+  }
+
   for (const record of season.teams) {
     const coach = record.coach;
     if (record.index === userTeam || !coach) continue;

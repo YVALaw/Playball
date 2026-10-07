@@ -39,7 +39,7 @@ import { burstConfetti } from '../celebrate.js';
 import { sfx, buzz } from '../sound.js';
 import { Identity, BackgroundStep } from './NewGame.js';
 import {
-  AllTimeSheet, ProsSheet, SchoolSheet, SeasonSheet, YearsSheet, useLegendPros,
+  AllTimeSheet, ProsSheet, SchoolSheet, SeasonSheet, YearsSheet, useLegendPros, yearCount,
   type LegacySheet,
 } from './LegacySheets.js';
 import { plural, recordText } from '../words.js';
@@ -187,7 +187,7 @@ export function Legacy() {
         <Plaque
           art={<Trophy kind="regional" size={26} />}
           label="Omaha"
-          value={legend.regionalTitles}
+          value={yearCount(legend, 'omaha', legend.regionalTitles)}
           onClick={() => open({ kind: 'years', title: 'Trips to Omaha', filter: 'omaha' })}
         />
         <Plaque
@@ -199,7 +199,7 @@ export function Legacy() {
         <Plaque
           icon="calendar"
           label="Bids"
-          value={legend.tournaments}
+          value={yearCount(legend, 'bids', legend.tournaments)}
           onClick={() => open({ kind: 'years', title: 'Tournament bids', filter: 'bids' })}
         />
         <Plaque

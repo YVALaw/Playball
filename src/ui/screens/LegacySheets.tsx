@@ -52,6 +52,17 @@ const KEEPS: Record<YearFilter, (y: LegendYear) => boolean> = {
   all: () => true,
 };
 
+/**
+ * How many of a career's seasons a plaque counts, by the same rule as the list
+ * it opens. The plaques read the coach's running totals, and 'Omaha' was his
+ * regional titles, which stopped being the same thing once the national field
+ * took at-large and protected bids (audit 17, M98). A career written down
+ * before its seasons were kept falls back to the total it has.
+ */
+export function yearCount(legend: Legend, filter: YearFilter, fallback: number): number {
+  return legend.years ? legend.years.filter(KEEPS[filter]).length : fallback;
+}
+
 /** A finish, in the words a season's page leads with. */
 function finishWords(y: LegendYear): string {
   return y.finish === 'champion' ? 'National champions' : sentence(FINISH_LABEL[y.finish] ?? y.finish);

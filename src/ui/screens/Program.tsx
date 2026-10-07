@@ -817,7 +817,9 @@ export function CoachProfile({ team }: { team: Owner }) {
             <List label="Trophy case">
               {([
                 { name: 'National titles', n: coach.titles, years: history.filter((r) => r.finish === 'champion'), trophy: 'national' as const },
-                { name: 'Trips to Omaha', n: coach.regionalTitles, years: history.filter((r) => r.finish === 'omaha' || r.finish === 'runner-up' || r.finish === 'champion'), trophy: 'regional' as const },
+                // Counted off the list it opens; regional titles stopped
+                // meaning Omaha when the field took at-large bids (M98).
+                { name: 'Trips to Omaha', n: history.filter((r) => r.finish === 'omaha' || r.finish === 'runner-up' || r.finish === 'champion').length, years: history.filter((r) => r.finish === 'omaha' || r.finish === 'runner-up' || r.finish === 'champion'), trophy: 'regional' as const },
                 { name: 'Conference titles', n: coach.conferenceTitles, years: history.filter((r) => r.wonConference), trophy: 'conference' as const },
               ]).map((shelf) => (
                 <ListRow

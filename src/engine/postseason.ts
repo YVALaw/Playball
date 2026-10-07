@@ -1699,8 +1699,9 @@ export function recordSchoolAnnals(
       finish: post?.finish[t.index] ?? (madeConferenceTournament ? 'conference' : 'missed'),
       ...(t.index === userTeam
         ? (userCoach ? { coach: userCoach } : {})
-        : (t.coach ? { coach: t.coach.name } : {})),
+        : (t.seasonCoach ?? t.coach?.name) !== undefined ? { coach: (t.seasonCoach ?? t.coach!.name) } : {}),
     });
+    delete t.seasonCoach;
   }
 }
 

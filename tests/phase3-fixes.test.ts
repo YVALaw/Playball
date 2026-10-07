@@ -93,8 +93,10 @@ describe('recruiting promises (M61, M62, M64, M30)', () => {
   });
 });
 
-import { S, startCareer, simRegular, playJune } from './support/drive.js';
-import { currentDay, firstPostseasonDay } from '../src/engine/season.js';
+import { S, startCareer, simRegular, playJune, fullYear } from './support/drive.js';
+import { currentDay, firstPostseasonDay, createSeason, configForRules, DEFAULT_RULES } from '../src/engine/season.js';
+import { recordSchoolAnnals } from '../src/engine/postseason.js';
+import { CONFERENCES } from '../src/data/schools.js';
 
 describe('June on one calendar (H5, M76)', () => {
   it('a June played through the store, with the coach in it, takes about a month', async () => {
@@ -108,4 +110,32 @@ describe('June on one calendar (H5, M76)', () => {
     expect(currentDay(S().season!) - first).toBeLessThanOrEqual(35);
     expect(S().lastPostseason?.finish[0]).toBeDefined();
   }, 240_000);
+});
+
+describe('records agree with themselves (M60, M10)', () => {
+  it('the career total is the sum of its seasons, and a yearbook names the coach who coached', async () => {
+    disk.clear();
+    startCareer(4242, 5);
+    const before = new Map(S().season!.teams.map((t) => [t.index, t.coach?.name]));
+    await fullYear();
+    const rows = S().history;
+    expect(rows.reduce((n, r) => n + r.w, 0)).toBe(S().coach.careerWins);
+    expect(rows.reduce((n, r) => n + r.l, 0)).toBe(S().coach.careerLosses);
+    const year = rows[rows.length - 1]!.year;
+    const moved = S().season!.teams.filter((t) => t.index !== S().userTeam && before.get(t.index) !== t.coach?.name);
+    for (const t of moved) {
+      const entry = (t.annals ?? []).find((a) => a.year === year);
+      if (entry && before.get(t.index)) expect(entry.coach, t.def.abbr).toBe(before.get(t.index));
+    }
+  }, 240_000);
+
+  it('the yearbook credits the coach stamped before the carousel, not his successor (M10)', () => {
+    const season = createSeason(makeRng(8), configForRules(DEFAULT_RULES), CONFERENCES);
+    const t = season.teams[3]!;
+    t.seasonCoach = 'The Man Who Coached';
+    t.coach = { ...(t.coach ?? {}), name: 'The Man Hired In June' } as never;
+    recordSchoolAnnals(season, 2031, null, 0, 'You');
+    expect(t.annals!.find((a) => a.year === 2031)!.coach).toBe('The Man Who Coached');
+    expect(t.seasonCoach).toBeUndefined();
+  });
 });

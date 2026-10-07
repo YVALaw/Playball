@@ -3016,7 +3016,11 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
 
   return {
     year,
-    w: me.w, l: me.l, cw: me.cw, cl: me.cl,
+    // The regular season, as the career total, the school's annals and every
+    // rival coach's record count it; June is the finish beside it. The row
+    // used to count June and the header did not, so the Career page never
+    // added up (audit 17, M60).
+    w: regularRecord(me).w, l: regularRecord(me).l, cw: me.cw, cl: me.cl,
     confPlace: table.findIndex((t) => t.index === me.index) + 1,
     rpi: rpi(season, me.index),
     wonConference: champions.includes(me.index),

@@ -334,12 +334,17 @@ export function endingOf(l: Legend): Ending {
       line: 'You took a program nobody wanted and left one everybody does.',
     };
   }
-  if (l.regionalTitles > 0) {
+  // Trips to Omaha off the seasons themselves, the way the plaque and its
+  // list count them (M98); the running total for a career kept before them.
+  const omaha = l.years
+    ? l.years.filter((y) => y.finish === 'omaha' || y.finish === 'runner-up' || y.finish === 'champion').length
+    : l.regionalTitles;
+  if (omaha > 0) {
     return {
       id: 'nearly', tone: 'quiet', title: 'The nearly man',
-      line: l.regionalTitles === 1
+      line: omaha === 1
         ? 'Omaha once. The last step was the one that never came.'
-        : `Omaha ${l.regionalTitles} times. The last step was the one that never came.`,
+        : `Omaha ${omaha} times. The last step was the one that never came.`,
     };
   }
   return {

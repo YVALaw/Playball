@@ -690,6 +690,8 @@ export interface TeamRecord {
    * other ninety five programs play at their raw ratings.
    */
   coachMods?: CoachMods;
+  /** Who coached this season, stamped before June's carousel (see runRivalYear). */
+  seasonCoach?: string;
   /**
    * Stage 22: the pitching coach's workload care and the facilities'
    * injury guard, stamped by the store on the user's record only. One
