@@ -328,6 +328,13 @@ export function planStaffWeek(recruits: RecruitClass, w: StaffWeek): StaffWeekRe
 export function staffReplacement(
   lost: Prospect, prospects: readonly Prospect[], team: number, pitch: Pitch, week: number,
   exclude: ReadonlySet<string>,
+  /**
+   * A man still in play, merely being lost: only a stand-in within a star of
+   * him will do, winnable or the closest race at that level, or the staff
+   * keeps working him. Trading a five-star race for a one-star certainty took
+   * a delegated five-star staff's class from 3.6 stars a man to 2.5.
+   */
+  nearOnly = false,
 ): Prospect | null {
   const pool = prospects.filter((c) =>
     c.signedBy === null && !exclude.has(c.id) && pursuable(c, pitch)
@@ -336,8 +343,10 @@ export function staffReplacement(
   for (const same of [samePosition, sameGroup]) {
     for (const d of [0, -1, 1]) tiers.push((c) => same(c, lost) && c.stars === lost.stars + d);
   }
-  for (const d of [-2, -3, -4]) {
-    for (const same of [samePosition, sameGroup]) tiers.push((c) => same(c, lost) && c.stars === lost.stars + d);
+  if (!nearOnly) {
+    for (const d of [-2, -3, -4]) {
+      for (const same of [samePosition, sameGroup]) tiers.push((c) => same(c, lost) && c.stars === lost.stars + d);
+    }
   }
   for (const tier of tiers) {
     const hits = pool.filter(tier);
@@ -357,7 +366,8 @@ export function staffReplacement(
   for (const same of [samePosition, sameGroup]) {
     const hits = open.filter((c) => same(c, lost));
     const near = hits.filter((c) => Math.abs(c.stars - lost.stars) <= 1);
-    const best = (near.length > 0 ? near : hits)
+    // A man still in play is only swapped for a race at his own level.
+    const best = (near.length > 0 || nearOnly ? near : hits)
       .sort((a, b) => short(a) - short(b) || byRank(a, b))[0];
     if (best) return best;
   }
@@ -371,6 +381,9 @@ export function staffReplacement(
  * The list is assigned a new array whenever it changes, never edited in place,
  * so a screen holding the old one sees the change.
  */
+/** The highest program tier whose staff swaps a man it is clearly losing. */
+const LOSING_SWAP_MAX_STARS = 2;
+
 export function tendStaffList(
   recruits: RecruitClass, team: number, pitch: Pitch, replace: boolean,
 ): { replaced: { lost: PlayerId; by: PlayerId }[]; dropped: PlayerId[] } {
@@ -395,12 +408,19 @@ export function tendStaffList(
       the bottom of the class is a real race, and a slot held for a lost man
       was a scholarship gone (audit 17, H6 follow-up).
     */
+    // Only at the bottom of the country (two stars and under). A top staff
+    // that swapped a lost five-star for the next contested race churned
+    // through them and ended on last-week leftovers: measured, a five-star
+    // class fell from 3.6 stars a man to 2.9 with the rule and held without it.
     const losing = p.signedBy !== null
-      || (replace && (p.points[team] ?? 0) > 0 && lostCause(p, team, pitch.stars, recruits.week));
+      || (replace && pitch.stars <= LOSING_SWAP_MAX_STARS
+        && (p.points[team] ?? 0) > 0 && lostCause(p, team, pitch.stars, recruits.week));
     if (losing) {
       const by = replace
-        ? staffReplacement(p, recruits.prospects, team, pitch, recruits.week, exclude)
+        ? staffReplacement(p, recruits.prospects, team, pitch, recruits.week, exclude, p.signedBy === null)
         : null;
+      // A man still in play with no stand-in near his level stays on the list.
+      if (!by && p.signedBy === null) { next.push(id); continue; }
       if (by) {
         next.push(by.id);
         exclude.add(by.id);

@@ -48,9 +48,10 @@ describe('staff market variety', () => {
 describe('recruit promise eligibility', () => {
   it('omits a two-way promise for ordinary hitters and pitchers', () => {
     const rng = makeRng(512);
-    for (const player of [makeHitter(rng), makePitcher(rng)]) {
-      expect(availableRecruitPromises(player)).toEqual(['immediateRole', 'noRedshirt', 'keepPosition']);
-    }
+    expect(availableRecruitPromises(makeHitter(rng))).toEqual(['immediateRole', 'noRedshirt', 'keepPosition']);
+    // A pitcher's position is 'P' for life, so STAY AT YOUR POSITION could
+    // never be broken for him (audit 17, M62).
+    expect(availableRecruitPromises(makePitcher(rng))).toEqual(['immediateRole', 'noRedshirt']);
   });
 
   it('offers the two-way promise to an actual two-way recruit', () => {
