@@ -4,7 +4,7 @@
 // to-do list (what blocks play, then what is worth doing this week, each with
 // its fix), and three buttons: sim a game, play it, sim the week.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { FINISH_LABEL, conferenceField } from '../../engine/postseason.js';
 import { RECRUITING_WEEKS, totalWeekSpend } from '../../engine/recruiting.js';
 import { boardBudget, useConferenceTable, useDynasty, useUserTeam } from '../../state/store.js';
@@ -113,18 +113,26 @@ export function Today() {
     lands the frame the thumb does reads as though nothing was played. It
     doubles as the double-tap guard for these two controls.
   */
-  const [thinking, setThinking] = useState<'game' | 'week' | null>(null);
-  const thinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const think = (which: 'game' | 'week', run: () => void): void => {
-    if (thinking !== null) return;
+  /*
+    One lock for the three delayed presses (audit 17, M46, M83, M84). It is
+    held until the run has finished, not released just before it: a second
+    tap during the sim used to queue and play a second week. And it is not a
+    cleanup: under keep-alive the screen's effects are torn down every time it
+    is hidden, which cancelled the tapped sim and left the row on a spinner.
+    A press made is a press that happens, wherever the coach has gone.
+  */
+  const [thinking, setThinking] = useState<'game' | 'week' | 'play' | null>(null);
+  const thinkLock = useRef(false);
+  const think = (which: 'game' | 'week' | 'play', run: () => unknown, delay = 800): void => {
+    if (thinkLock.current) return;
+    thinkLock.current = true;
     setThinking(which);
-    thinkTimer.current = setTimeout(() => {
-      thinkTimer.current = null;
-      setThinking(null);
-      run();
-    }, 800);
+    setTimeout(() => {
+      void Promise.resolve()
+        .then(run)
+        .finally(() => { thinkLock.current = false; setThinking(null); });
+    }, delay);
   };
-  useEffect(() => () => { if (thinkTimer.current) clearTimeout(thinkTimer.current); }, []);
 
   const [openGame, setOpenGame] = useState<GameSummary | null>(null);
   const [focus, setFocus] = useState(0);
@@ -417,7 +425,7 @@ export function Today() {
       : {
         label: thinking === 'game' ? spinner : tonight ? 'Sim game' : 'Next day',
         sub: tonight ? `${shortDate(year, tonight.day.day).weekday} ${tonight.home ? 'vs' : 'at'} ${tonight.opponent.def.abbr}` : 'Off day',
-        disabled: blocked || thinking === 'week',
+        disabled: blocked || thinking !== null,
         onClick: () => think('game', advanceDay),
       };
     midBtn = pendingGame
@@ -428,13 +436,14 @@ export function Today() {
         icon: held && !live ? 'lock' : 'play',
         guide: 'play-ball',
         disabled: live ? false : busyNow || thinking !== null || held || !todayGame,
-        // Looking at another game: roll to tonight's first, then go.
-        onClick: () => { if (focus !== nextIdx && !live) setTimeout(() => void startManagedGame(), 650); else void startManagedGame(); },
+        // Looking at another game: roll to tonight's first, then go, holding
+        // the same lock the sims hold so neither can fire in the gap (M84).
+        onClick: () => { if (focus !== nextIdx && !live) think('play', startManagedGame, 650); else void startManagedGame(); },
       };
     rightBtn = {
       label: thinking === 'week' ? spinner : 'Sim week',
       sub: busy && progress ? `Day ${progress.day} of ${progress.totalDays}` : plural(left3, 'game') + ' left',
-      disabled: blocked || thinking === 'game',
+      disabled: blocked || thinking !== null,
       onClick: () => think('week', simWeek),
     };
   }

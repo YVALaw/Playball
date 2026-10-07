@@ -104,13 +104,19 @@ export function Postseason() {
     A beat on the pinned button. `simBracket` is synchronous, so without it a
     spectator's simulation is instant and reads as if nothing was played.
   */
+  // Held until the run is done, and never cancelled by the screen hiding:
+  // the same lock as Today's sims (audit 17, M46, M83).
   const [beat, setBeat] = useState<string | null>(null);
-  const beatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (beatTimer.current) clearTimeout(beatTimer.current); }, []);
-  const withBeat = (label: string, run: () => void) => (): void => {
-    if (beat !== null) return;
+  const beatLock = useRef(false);
+  const withBeat = (label: string, run: () => unknown) => (): void => {
+    if (beatLock.current) return;
+    beatLock.current = true;
     setBeat(label.startsWith('Sim') ? 'Simulating…' : 'Playing it out…');
-    beatTimer.current = setTimeout(() => { beatTimer.current = null; setBeat(null); run(); }, 700);
+    setTimeout(() => {
+      void Promise.resolve()
+        .then(run)
+        .finally(() => { beatLock.current = false; setBeat(null); });
+    }, 700);
   };
   // The June lineup card and a stage under review are layers the back
   // gesture peels, like every sheet.
@@ -542,14 +548,14 @@ export function Postseason() {
           // Short enough for one line each: the notes under them say the rest.
           // "Simulate to the Pacific Coast championship" ran to three.
           label: iAmOut ? 'Sim to the final' : 'Sim to my game',
-          run: () => sim(iAmOut ? 'rest' : 'mine'),
+          run: () => sim(iAmOut ? 'rest' : 'mine', true),
           // One line each, for a bar that keeps one height.
           note: iAmOut ? 'Plays the rest of the tournament.' : 'Plays every game before yours.',
           // One short line whatever the round is called: "Sim the elimination
           // round 1" wrapped and made the bar a line taller (2026-09-24).
           secondary: {
             label: 'Sim this round',
-            onClick: () => sim('round'),
+            onClick: () => sim('round', true),
           },
         }
       : stagePlayed

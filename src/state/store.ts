@@ -1700,7 +1700,11 @@ export interface DynastyStore {
    * the unit when none of them are: a knocked-out coach should not have to
    * press twenty times to watch a best of seven he is not in.
    */
-  simBracket: (mode: 'game' | 'round' | 'mine' | 'rest') => void;
+  /**
+   * Plays June forward. Synchronous by default; `paced` plays a night per
+   * frame under `busy` and resolves when done (the screen's path).
+   */
+  simBracket: (mode: 'game' | 'round' | 'mine' | 'rest', paced?: boolean) => void | Promise<void>;
   /** Fold a finished run into the stage results and move on. Internal. */
   closeMyBracket: () => void;
   /** How your June ended, once it has. Null while you are still alive in it. */
@@ -1977,7 +1981,8 @@ export interface DynastyStore {
    * calendar actually thinks in (a midweek game, then the Friday–Sunday
    * series), so it is the unit a casual session advances by.
    */
-  simWeek: () => void;
+  /** A week of days, a day at a time with the screen let through between (H4). */
+  simWeek: () => Promise<void>;
   /**
    * The man whose injury cut a simulated week short, if one did.
    *
@@ -2627,6 +2632,9 @@ function wagesEarned(season: SeasonState, phase: Phase, wage: number): number {
   const played = season.schedule.length > 0 ? season.dayIndex / season.schedule.length : 0;
   return Math.round(wage * Math.max(0, Math.min(1, played)));
 }
+
+/** One turn of the event loop: lets the screen paint and taps land between chunks of a sim (H4). */
+const breathe = (): Promise<void> => new Promise((resolve) => { setTimeout(resolve, 0); });
 
 /** The coach's points onto his strongest suit, one at a time (M72). */
 function staffSpendsPoints(get: () => DynastyStore, set: (p: Partial<DynastyStore>) => void): void {
@@ -5659,7 +5667,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     // season is a day simmed into an object the worker's result will replace;
     // `live` because tonight's game is still being played and the day it
     // belongs to must not pass underneath it.
-    if (!season || busy || get().live || seasonComplete(season)) return;
+    // And not while a managed game is starting: its day must not be simmed
+    // out from under it (audit 17, M84).
+    if (!season || busy || get().live || get().liveStarting || seasonComplete(season)) return;
     const hold = unresolvedRosterDecision(season, get().userTeam, get().depth);
     if (hold) {
       set({ lineupGate: get().lineupGate + 1 });
@@ -6797,6 +6807,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     // Departures and development already ran, on the way into the draft step.
     // What is left is the half that needed a signed class to exist: the recruits
     // go on the roster, and walk-ons fill whatever the class did not.
+    await breathe();
     const filled = fillRosters(season, season.rng, {
       userTeam: get().userTeam,
     });
@@ -6847,6 +6858,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       }
       // The roll is finished and committed here, so everything the opener
       // reads below — the ask, the year — is the new season's.
+      // A frame first: `done` builds next spring (audit 17, H4).
+      await breathe();
       done(season, report);
       /*
         The season opener — the reporter's design, from the phone: "the
@@ -8319,9 +8332,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     });
   },
 
-  simBracket: (mode) => {
-    const { myBracket, version, season, userTeam } = get();
-    if (!myBracket || !season) return;
+  simBracket: (mode, paced = false) => {
+    const { myBracket, season, userTeam, busy } = get();
+    if (!myBracket || !season || busy) return;
     // Not while your game is being played, starting, or waiting to be picked
     // back up: simming it here recorded it and threw the managed one away
     // (audit 17, M59, M95).
@@ -8345,19 +8358,45 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       get().stepSideShow(night);
     };
 
+    const finish = (): void => {
+      set({ version: get().version + 1 });
+      get().noteRoster('report');
+      // Before the close, which is what takes the bracket away: a round that ends
+      // your run without ending the tournament is still the end of your run.
+      get().noteKnockout();
+      if (state.done) get().closeMyBracket();
+      /*
+        And written down.
+
+        Reported: simmed the play-in and the opening round, left the screen, came
+        back and the tournament was at the play-in again. It was — nothing here
+        ever reached the disk. Every other thing that moves the game forward saves
+        on its way out and this did not, so an entire evening of June lived in
+        memory until some unrelated action happened to write it.
+
+        It also cost more than the bracket. The postseason statistics are folded
+        in as games are played, so an unsaved June took those with it too, and
+        the leaderboard came back empty for a tournament that had been played.
+      */
+      void get().saveNow();
+    };
+
+    // Each mode is a "keep going" test, checked before every night.
+    let more: () => boolean;
     if (mode === 'game') {
-      both();
+      let once = true;
+      more = () => { const go = once; once = false; return go; };
     } else if (mode === 'round') {
       if (myBracket.format === 'series') {
         // To the end of this round, however many nights that takes.
         const from = myBracket.state.roundIndex;
         let guard = 0;
-        while (!myBracket.state.done && myBracket.state.roundIndex === from
-          && guard++ < 40) both();
+        more = () => !myBracket.state.done && myBracket.state.roundIndex === from && guard++ < 40;
       } else {
         // A double elimination has no single round index: one night is the
         // honest unit, every playable game played.
-        both();
+        let once = true;
+        more = () => { const go = once; once = false; return go; };
       }
     } else if (mode === 'mine') {
       /*
@@ -8379,32 +8418,35 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
         return liveSlotFor(myBracket.state, userTeam) !== null;
       };
       let guard = 0;
-      while (!state.done && !mineIsUp() && guard++ < 200) both();
+      more = () => !state.done && !mineIsUp() && guard++ < 200;
     } else {
       let guard = 0;
-      while (!state.done && guard++ < 200) both();
+      more = () => !state.done && guard++ < 200;
     }
 
-    set({ version: version + 1 });
-    get().noteRoster('report');
-    // Before the close, which is what takes the bracket away: a round that ends
-    // your run without ending the tournament is still the end of your run.
-    get().noteKnockout();
-    if (state.done) get().closeMyBracket();
+    if (!paced) {
+      while (more()) both();
+      finish();
+      return;
+    }
     /*
-      And written down.
-
-      Reported: simmed the play-in and the opening round, left the screen, came
-      back and the tournament was at the play-in again. It was — nothing here
-      ever reached the disk. Every other thing that moves the game forward saves
-      on its way out and this did not, so an entire evening of June lived in
-      memory until some unrelated action happened to write it.
-
-      It also cost more than the bracket. The postseason statistics are folded
-      in as games are played, so an unsaved June took those with it too, and
-      the leaderboard came back empty for a tournament that had been played.
+      Paced for the screen: a night at a time, with a frame between, so the
+      rest of a June does not hold the tap for two seconds, and `busy` keeps a
+      second press out until it is done (audit 17, H4, M46).
     */
-    void get().saveNow();
+    set({ busy: true });
+    return (async () => {
+      try {
+        while (more()) {
+          both();
+          await breathe();
+          if (get().season !== season || get().myBracket !== myBracket) return;
+        }
+      } finally {
+        set({ busy: false });
+      }
+      finish();
+    })();
   },
 
   knockout: null,
@@ -9390,11 +9432,12 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     void get().saveNow();
   },
 
-  simWeek: () => {
+  simWeek: async () => {
     const { season } = get();
     // Same doors `advanceDay` guards, for the same reasons — plus `live`,
-    // because a week cannot pass while tonight's game is still being managed.
-    if (!season || get().busy || get().live || seasonComplete(season)) return;
+    // because a week cannot pass while tonight's game is still being managed,
+    // and a game that is starting (M84).
+    if (!season || get().busy || get().live || get().liveStarting || seasonComplete(season)) return;
     const hold = unresolvedRosterDecision(season, get().userTeam, get().depth);
     if (hold) { set({ lineupGate: get().lineupGate + 1 }); get().go('team', 'lineup', hold.id); return; }
     const start = season.schedule[season.dayIndex]?.week;
@@ -9425,18 +9468,34 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     let struck: string | null = null;
     get().noteRoster('prime');
 
-    while (!seasonComplete(season)
-      && season.schedule[season.dayIndex]?.week === start
-      && guard++ < 10) {
-      if (auto) staffSetsTheCard(season, mine);
-      simNextDay(season);
-      const now = walkingWounded();
-      const fresh = [...now].filter((id) => !hurt.has(id));
-      hurt = now;
-      if (fresh.length > 0 && !auto) {
-        struck = fresh[0] ?? null;
-        break;
+    /*
+      A day at a time, with the screen let through between them (audit 17,
+      H4). The week ran as one block of 500-700 ms on a desktop, two to three
+      seconds on a phone, with the spinner frozen and every tap queued behind
+      it; a second tap on SIM WEEK then played a second week (M46). \`busy\`
+      holds the door for the length of it, which every action that edits the
+      season already respects.
+    */
+    set({ busy: true });
+    try {
+      while (!seasonComplete(season)
+        && season.schedule[season.dayIndex]?.week === start
+        && guard++ < 10) {
+        if (auto) staffSetsTheCard(season, mine);
+        simNextDay(season);
+        const now = walkingWounded();
+        const fresh = [...now].filter((id) => !hurt.has(id));
+        hurt = now;
+        if (fresh.length > 0 && !auto) {
+          struck = fresh[0] ?? null;
+          break;
+        }
+        await breathe();
+        // The career may have been left mid-week (Leave to the front door).
+        if (get().season !== season) return;
       }
+    } finally {
+      set({ busy: false });
     }
     get().syncRecruitingCalendar();
     if (struck !== null) {

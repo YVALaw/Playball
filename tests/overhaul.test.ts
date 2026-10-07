@@ -189,13 +189,13 @@ describe('AUTO deals a valid card', () => {
 });
 
 describe('SIM WEEK plays out the week and stops', () => {
-  it('advances to the next week boundary exactly once', () => {
+  it('advances to the next week boundary exactly once', async () => {
     useDynasty.getState().start(4242, 0);
     const s = useDynasty.getState();
     const season = s.season!;
     const startWeek = season.schedule[season.dayIndex]!.week;
 
-    s.simWeek();
+    await s.simWeek();
 
     expect(season.dayIndex).toBeGreaterThan(0);
     // A week stops early when it costs the coach somebody (`weekStoppedBy`),
@@ -204,7 +204,7 @@ describe('SIM WEEK plays out the week and stops', () => {
     for (let presses = 0; useDynasty.getState().weekStoppedBy !== null && presses < 6; presses++) {
       useDynasty.getState().clearWeekStop();
       useDynasty.getState().autoLineup();
-      useDynasty.getState().simWeek();
+      await useDynasty.getState().simWeek();
     }
     const now = season.schedule[season.dayIndex];
     // Either the season ended or the calendar sits on a new week.
