@@ -929,3 +929,20 @@ button.pb-pitch:focus-visible { outline: 2px solid var(--accent); outline-offset
 .pb-legacy__names { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .pb-legacy__names span { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pb-case__item:focus-visible, .pb-case--empty:focus-visible, .pb-legacy__door:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/*
+  Short windows: split-screen, a pop-up window, a phone on its side on a
+  tablet that ignores the portrait lock (audit 17, M23). Home is a fixed
+  column that never scrolls, so under about 480 px the to-do list shrank to
+  nothing and then the Sim game / Play ball / Sim week row was clipped out of
+  reach. Here the page scrolls instead, the to-do list takes its natural
+  height, and the action row sticks to the bottom so it is always in reach.
+  The live game gives the park less of the height so the calls keep theirs.
+*/
+@media (max-height: 560px) {
+  .pb-page.pb-home { overflow-y: auto; overscroll-behavior: contain; }
+  .pb-wheel { height: 190px; }
+  .pb-home__todo, .pb-home__todolist { flex: none; overflow: visible; }
+  .pb-home__actions { position: sticky; bottom: 0; z-index: 3; }
+  .pb-live__scene.ballpark-scene { height: 28vh; min-height: 96px; }
+}

@@ -1660,7 +1660,17 @@ export function Diamond3D({
       {ok && (
         <FieldBoundary onFail={() => setOk(false)}>
         <Canvas
-          gl={{ antialias: false, alpha: true, powerPreference: 'low-power' }}
+          // Built here so a renderer that cannot start falls back to the 2D
+          // diamond instead of leaving an empty box (audit 17, M3): that throw
+          // never reached FieldBoundary.
+          gl={(defaults) => {
+            try {
+              return new THREE.WebGLRenderer({ ...defaults, antialias: false, alpha: true, powerPreference: 'low-power' });
+            } catch (e) {
+              queueMicrotask(() => setOk(false));
+              throw e;
+            }
+          }}
           dpr={[1, 1.6]}
           camera={{ fov: 42, near: 0.1, far: 60 }}
           style={{ touchAction: 'pan-y' }}

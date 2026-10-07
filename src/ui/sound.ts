@@ -122,7 +122,7 @@ export function preloadSfx(): void {
  * twice); `gain` is linear.
  */
 export function sfx(name: SfxName, opts: { gain?: number; rate?: number } = {}): void {
-  if (!readPrefs().sound) return;
+  if (!readPrefs().sound || (typeof document !== 'undefined' && document.hidden)) return;
   const a = audio();
   if (!a) return;
   /*
@@ -156,8 +156,16 @@ let bedGain: GainNode | null = null;
 /** Where the bed sits when nothing is happening. Leverage moves it. */
 let bedFloor = 0.12;
 
+/**
+ * Whether a live game wants the bed, whatever the mute says. Turning Sound on
+ * mid-game starts it then; turning it off stops it without forgetting the
+ * game is still on (audit 17, L61).
+ */
+let bedWanted = false;
+
 /** Start the ambience loop under a live game. Idempotent. */
 export function crowdStart(): void {
+  bedWanted = true;
   if (!readPrefs().sound) return;
   const a = audio();
   if (!a || bedSrc) return;
@@ -175,8 +183,13 @@ export function crowdStart(): void {
   });
 }
 
-/** Fade the bed out and stop it. The game is over or backgrounded. */
+/** Fade the bed out and stop it. The game is over. */
 export function crowdStop(): void {
+  bedWanted = false;
+  stopBed();
+}
+
+function stopBed(): void {
   const a = audio();
   if (!a || !bedSrc || !bedGain) return;
   const src = bedSrc;
@@ -207,6 +220,30 @@ export function crowdSwell(intensity: number): void {
   bedGain.gain.setValueAtTime(bedGain.gain.value, t);
   bedGain.gain.linearRampToValueAtTime(peak, t + 0.25);
   bedGain.gain.linearRampToValueAtTime(bedFloor, t + 2.6 + intensity * 2);
+}
+
+/**
+ * The Sound switch, flipped. Off stops the bed now rather than at the end of
+ * the game; on warms the samples and brings the crowd back if a game is on.
+ */
+export function setSoundEnabled(on: boolean): void {
+  if (!on) { stopBed(); return; }
+  preloadSfx();
+  if (bedWanted) crowdStart();
+}
+
+/*
+  The app in the background goes quiet (audit 17, M39). The context is
+  suspended rather than the bed stopped, so the crowd comes back where it was;
+  Capacitor's `pause` and `resume` events cover a shell that does not report
+  visibility. One-shots check `document.hidden` themselves.
+*/
+if (typeof document !== 'undefined') {
+  const quiet = (): void => { if (ctx && ctx.state === 'running') void ctx.suspend(); };
+  const back = (): void => { if (ctx && ctx.state === 'suspended' && readPrefs().sound) void ctx.resume(); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) quiet(); else back(); });
+  document.addEventListener('pause', quiet);
+  document.addEventListener('resume', back);
 }
 
 // ---------------------------------------------------------------------------

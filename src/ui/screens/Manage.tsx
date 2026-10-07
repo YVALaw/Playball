@@ -8,7 +8,7 @@
 // mound) sits behind one button at the bottom, beside the bench coach, who
 // calls the game until you take it back.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { teamColour } from '../Avatar.js';
 import { FirstVisit } from '../Tutorial.js';
 import { overallOf } from '../../engine/ratings.js';
@@ -36,7 +36,7 @@ import type { BallHit } from '../Diamond3D.js';
 import { appliedStrategy, currentDay, injuryClock, recoveryGap } from '../../engine/season.js';
 import { available as fitToPlay } from '../../engine/depthChart.js';
 import { whyOut } from '../Needs.js';
-import { usePark } from '../park.js';
+import { flatFieldHere, usePark } from '../park.js';
 import { Diamond } from '../Diamond.js';
 import { Boundary } from '../Boundary.js';
 import { readPrefs } from '../../state/devicePrefs.js';
@@ -69,6 +69,12 @@ const sentence = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice
 export { cleanPlay } from '../format.js';
 import { groupPlays, lastStep } from '../format.js';
 
+
+/** Subscribes to the page going to and from the background. */
+function onVisibility(notify: () => void): () => void {
+  document.addEventListener('visibilitychange', notify);
+  return () => document.removeEventListener('visibilitychange', notify);
+}
 export function Manage() {
   const live = useDynasty((s) => s.live);
   const meta = useDynasty((s) => s.liveMeta);
@@ -130,7 +136,7 @@ export function Manage() {
   */
   const [splash, setSplash] = useState<{ tick: number; text: string } | null>(null);
   // The 2D diamond, chosen in Settings; read once, on the way in.
-  const [flatField] = useState(() => readPrefs().field === '2d');
+  const [flatField] = useState(flatFieldHere);
   const userTeam = useDynasty((s) => s.userTeam);
   /** The pen arms the dugout cannot call on tonight, and why. */
   const restingPen = (): { id: string; name: string; note: string; rating: number; disabled: true }[] => {
@@ -238,6 +244,7 @@ export function Manage() {
     at a hundred and forty pitches.
   */
   const [auto, setAuto] = useState<null | 'watch'>(null);
+  const hidden = useSyncExternalStore(onVisibility, () => document.hidden, () => false);
   const setBenchCoach = useDynasty((s) => s.setBenchCoach);
   const coachOn = (): void => { setAuto('watch'); setBenchCoach(true); };
   const coachOff = (): void => { setAuto(null); setBenchCoach(false); };
@@ -344,7 +351,9 @@ export function Manage() {
   /* The bench coach calling: one call per tick, waiting out each play, until
      the game ends or you take it back. */
   useEffect(() => {
-    if (auto === null || !live || live.over || playing || changingSides) return undefined;
+    // Not in the background: the bench coach waits for you to come back
+    // rather than playing the game unseen (audit 17, M39).
+    if (auto === null || !live || live.over || playing || changingSides || hidden) return undefined;
     const t = setTimeout(() => {
       const cur = useDynasty.getState().live;
       if (!cur || cur.over) { setAuto(null); return; }
@@ -353,7 +362,7 @@ export function Manage() {
       else setAuto(null);
     }, 900);
     return () => clearTimeout(t);
-  }, [auto, playing, changingSides, version, live?.over]);
+  }, [auto, playing, changingSides, version, live?.over, hidden]);
   useEffect(() => { if (live?.over) setAuto(null); }, [live?.over]);
 
   /*

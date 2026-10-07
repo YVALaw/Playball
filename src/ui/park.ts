@@ -38,9 +38,29 @@ export function loadPark(): Promise<ParkModule> {
   return arriving;
 }
 
+let gl2: boolean | null = null;
+/**
+ * Whether this device can draw the park at all. three.js needs WebGL2, and
+ * plenty of the old phones the app installs on have none; without this they
+ * got an empty green box in every game (audit 17, M3). Asked once.
+ */
+export function canDrawPark(): boolean {
+  if (gl2 === null) {
+    try {
+      gl2 = typeof document !== 'undefined' && !!document.createElement('canvas').getContext('webgl2');
+    } catch {
+      gl2 = false;
+    }
+  }
+  return gl2;
+}
+
+/** The 2D diamond: chosen in Settings, or the only field this device can draw. */
+export const flatFieldHere = (): boolean => readPrefs().field === '2d' || !canDrawPark();
+
 /** A game is on its way: start the fetch now, unless the field is the 2D diamond. */
 export function warmPark(): void {
-  if (readPrefs().field === '2d') return;
+  if (flatFieldHere()) return;
   loadPark().catch(() => undefined);
 }
 

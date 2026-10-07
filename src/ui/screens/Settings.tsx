@@ -8,6 +8,7 @@
 // screen there is no career to write it to, and anything set there would be
 // thrown away the moment one began. A new career chooses it on its own step.
 
+import { setSoundEnabled } from '../sound.js';
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { billingState, onBilling, buyGodMode, restorePurchases } from '../../state/billing.js';
 import { useDynasty } from '../../state/store.js';
@@ -244,7 +245,7 @@ export function Settings() {
             label="Sound"
             description="Bat, glove and crowd"
             checked={prefs.sound}
-            onChange={() => put({ sound: !prefs.sound })}
+            onChange={() => { put({ sound: !prefs.sound }); setSoundEnabled(!prefs.sound); }}
           />
           <Switch
             label="Haptics"
