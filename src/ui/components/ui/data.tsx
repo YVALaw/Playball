@@ -39,6 +39,13 @@ export function showValue(v: number | string | undefined | null, row: { signed?:
 }
 
 /** What you have, what you would have, and the change, row by row. */
+/**
+ * A cell that is words rather than a figure, set small and allowed to wrap.
+ * Money ('$1.61M') is a figure: it used to count as words for being over four
+ * characters, and wrapped mid-number into its neighbour (audit 17, M103).
+ */
+const wordy = (v: unknown): boolean => /\s/.test(String(v ?? '').trim());
+
 export function CompareTable({
   rows, from = 'Now', to = 'Next', labelHeader = 'Effect', label, className,
 }: { rows: CompareRow[]; from?: string; to?: string; labelHeader?: string; label?: string; className?: string }) {
@@ -58,8 +65,8 @@ export function CompareTable({
             <span className="pb-compare__label" role="rowheader">{r.label}{r.hint && <small>{r.hint}</small>}</span>
             {/* Money and other long text at a smaller size: "$1.25M" at the
                 numeral size ran over the next column (M103). */}
-            <span className={cx('pb-compare__now', String(r.nowText ?? r.now).length > 4 && 'pb-compare__cell--long')} role="cell">{showValue(r.nowText ?? r.now, r)}</span>
-            <span className={cx('pb-compare__next', String(r.nextText ?? r.next).length > 4 && 'pb-compare__cell--long')} role="cell">{showValue(r.nextText ?? r.next, r)}</span>
+            <span className={cx('pb-compare__now', wordy(r.nowText ?? r.now) && 'pb-compare__cell--long')} role="cell">{showValue(r.nowText ?? r.now, r)}</span>
+            <span className={cx('pb-compare__next', wordy(r.nextText ?? r.next) && 'pb-compare__cell--long')} role="cell">{showValue(r.nextText ?? r.next, r)}</span>
             <span className="pb-compare__delta" role="cell">
               {r.changeText != null
                 ? <Delta value={change == null ? 1 : change} text={r.changeText} better={r.better} icon={false} />

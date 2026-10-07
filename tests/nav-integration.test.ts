@@ -331,7 +331,7 @@ describe.each(ENGINES)('the switch on %s', (engine) => {
     expect(p.i()).toBe(2);
     const pushes = p.b.pushes;
     const gos = p.b.goCalls;
-    p.b.tap(() => S().go('program'));
+    p.b.tap(() => S().go('team', 'stats'));
     p.aligned();
     expect(p.i()).toBe(2);
     expect(p.b.pushes).toBe(pushes);
@@ -365,27 +365,29 @@ describe.each(ENGINES)('the switch on %s', (engine) => {
   it('takes a season game back to Today, and the game waits', async () => {
     career();
     const p = page(engine);
+    // Team, then the Home tab: a bottom-tab tap back to Home empties the trail
+    // (M45), so Today is the root under the game.
     p.b.tap(() => S().go('team'));
     p.b.tap(() => S().go('home'));
     p.aligned();
-    expect(p.i()).toBe(2);
+    expect(p.i()).toBe(0);
     // PLAY BALL: the game is a level over the route, not a stop.
     await tapAsync(p, () => S().startManagedGame());
     p.aligned();
     expect(S().screen).toBe('box');
     expect(S().live).not.toBeNull();
     expect(newest()?.id).toBe('game');
-    expect(p.i()).toBe(3);
+    expect(p.i()).toBe(1);
     p.b.swipeBack();
     p.aligned();
     expect(route()).toBe('home|today');
     expect(S().live).not.toBeNull();
-    expect(p.i()).toBe(2);
+    expect(p.i()).toBe(0);
     // PLAY BALL again is the way back to the game in progress.
     await tapAsync(p, () => S().startManagedGame());
     p.aligned();
     expect(S().screen).toBe('box');
-    expect(p.i()).toBe(3);
+    expect(p.i()).toBe(1);
     // Recorded: the game goes, and its entry with it.
     S().live!.finish();
     await tapAsync(p, () => S().endManagedGame());
@@ -398,11 +400,9 @@ describe.each(ENGINES)('the switch on %s', (engine) => {
       p.b.tap(() => S().clearBigMoment());
       p.aligned();
     }
-    expect(p.i()).toBe(2);
-    // The routes before the game are still there to walk.
-    p.b.swipeBack();
-    p.aligned();
-    expect(route()).toBe('team|roster');
+    expect(p.i()).toBe(0);
+    // Nothing under Today: back from the root is the app's to take.
+    expect(levels()).toEqual([]);
   });
 
   it('June: the seed dialog, the tab stops, and the game held under the dugout sheets', () => {

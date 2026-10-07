@@ -34,6 +34,7 @@ import { BoxScoreSheet } from './Schedule.js';
 import {
   conferenceField, liveSeries, nextGameFor, hostOfGame, clincher,
   regionOf, REGIONS, CONF_FIELD, CONF_ADVANCE, NATIONAL_BIDS, protectedTopFour, splitShowdown, nationalBidReason,
+  regionalPairing,
   type NationalBidReason,
 } from '../../engine/postseason.js';
 import type {
@@ -826,6 +827,7 @@ export function Postseason() {
                 {shown === 1 && (
                   <RegionalStage
                     regionals={bracket.regionals}
+                    pending={bracket.regionals.length === 0 ? regionalPreview(bracket.cups, regionOf(team.conference)) : []}
                     onOpen={openGame}
                     mine={myBracket?.kind === 'regional' && myBracket.format === 'series'
                       ? { state: myBracket.state, meta: myBracket.meta ?? null }
@@ -879,6 +881,27 @@ interface SpotlightGame {
   b: number | null;
   game: BracketGame | null;
   note: string;
+  /** The badge, when the default (Final, Set, Still forming) would mislead. */
+  state?: string;
+}
+
+/**
+ * The regional series a finished conference stage has already decided (M97):
+ * every pairing, your region's first. `regionalPairing` knows them the moment
+ * the last conference tournament ends; the screen used to say the field was
+ * "filling" until one press played every series at once.
+ */
+export function regionalPreview(
+  cups: readonly ConferenceTournament[], myRegion: string,
+): ReturnType<typeof regionalPairing> {
+  const pairs = regionalPairing(null as never, cups);
+  return [...pairs.filter((p) => p.id === myRegion), ...pairs.filter((p) => p.id !== myRegion)];
+}
+
+/** One national half's seeded field, before a game of it is played (M97). */
+export function nationalHalfField(seeds: readonly number[], half: 'A' | 'B'): number[] {
+  const { bracketA, bracketB } = splitShowdown(seeds);
+  return half === 'A' ? bracketA : bracketB;
 }
 
 /** The deciding game if it exists, otherwise the first championship game. */
@@ -948,10 +971,13 @@ function ImportantGames(
       ));
     }
     if (games.length === 0) {
-      games.push(gameSpotlight(
-        'regional-forming', 'Regionals', 'Regional championships', null, null, null,
-        'The conference tournaments are filling the regional field now.',
-      ));
+      // Nothing played yet: the series are set, so show them as set.
+      regionalPreview(bracket.cups, region).slice(0, 3).forEach((p, i) => {
+        games.push(gameSpotlight(
+          `regional-set-${p.id}-${i}`, 'Regionals', `${p.name} regional`, p.a, p.b, null,
+          `${p.aLabel} against ${p.bLabel}, best of 3.`,
+        ));
+      });
     }
   } else {
     const nat = bracket.national;
@@ -987,7 +1013,19 @@ function ImportantGames(
         const state = myBracket?.kind === 'national' && myBracket.format === 'double'
           && myBracket.half === which ? myBracket.state
           : sideShow?.half === which ? sideShow.state : null;
-        if (!state) return null;
+        if (!state) {
+          // Seeded and waiting: its top two, and how many are in it.
+          const field = nat ? nationalHalfField(nat.field.seeds, which) : [];
+          if (field.length < 2) return null;
+          return {
+            ...gameSpotlight(
+              `national-${which}`, `National bracket ${which}`, `Bracket ${which}`,
+              field[0]!, field[1]!, null,
+              `${field.length} teams, double elimination. ${name(field[0]!)} and ${name(field[1]!)} are the top seeds.`,
+            ),
+            state: 'Seeded',
+          };
+        }
         const slot = spotlightFinal(state.final);
         return gameSpotlight(
           `national-${which}`, `National bracket ${which}`, `Bracket ${which} championship`,
@@ -1017,11 +1055,12 @@ function ImportantGames(
       <SectionHeader
         title="Games to watch"
       />
+      {games.length === 0 && <p className="pb-text-muted">The next round is being set. Its games show here as soon as they are.</p>}
       {games.slice(0, 3).map((item) => {
         const away = item.game?.away ?? item.a;
         const home = item.game?.home ?? item.b;
         const winner = item.game?.winner;
-        const state = item.game ? 'Final' : away !== null && home !== null ? 'Set' : 'Still forming';
+        const state = item.state ?? (item.game ? 'Final' : away !== null && home !== null ? 'Set' : 'Still forming');
         return (
           <Card
             key={item.key}
@@ -1343,9 +1382,11 @@ function ConferenceStage(
 }
 
 function RegionalStage(
-  { regionals, mine, myRegion, name, abbr, userTeam, onOpen }:
+  { regionals, pending = [], mine, myRegion, name, abbr, userTeam, onOpen }:
   {
     regionals: RegionalSeries[];
+    /** The series already set and not yet played (M97). */
+    pending?: ReturnType<typeof regionalPairing>;
     onOpen: (g: BracketGame) => void;
     mine: {
       state: SeriesBracket;
@@ -1369,7 +1410,8 @@ function RegionalStage(
       {order.map((region) => {
         const list = byRegion.get(region.id) ?? [];
         const mineHere = mine && (mine.meta?.region ?? myRegion) === region.id ? mine : null;
-        if (list.length === 0 && !mineHere) return null;
+        const waiting = list.length === 0 && !mineHere ? pending.filter((p) => p.id === region.id) : [];
+        if (list.length === 0 && !mineHere && waiting.length === 0) return null;
         return (
           <section key={region.id} className="pb-stack">
             <SectionHeader
@@ -1381,6 +1423,17 @@ function RegionalStage(
             )}
             {list.map((r, i) => (
               <SeriesResultCard key={i} r={r} name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpen} />
+            ))}
+            {waiting.map((p, i) => (
+              <BracketMatch
+                key={`set-${i}`}
+                status="Set"
+                label={`${name(p.a)} against ${name(p.b)}`}
+                teams={[
+                  { abbr: abbr(p.a), name: `${name(p.a)} · ${p.aLabel}`, you: p.a === userTeam },
+                  { abbr: abbr(p.b), name: `${name(p.b)} · ${p.bLabel}`, you: p.b === userTeam },
+                ]}
+              />
             ))}
           </section>
         );
@@ -1534,7 +1587,19 @@ function NationalStage(
         </div>
         {shownHalf
           ? <OneMap de={shownHalf.de} name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpen} mine={iPlayHere} />
-          : <p className="pb-text-muted">This bracket is being drawn.</p>}
+          : (
+            /* Seeded and waiting: the field in seed order, not "being drawn" (M97). */
+            <>
+              <StatusBadge tone="neutral" icon={false}>Seeded · not started</StatusBadge>
+              {nationalHalfField(nat.field.seeds, half).map((t, i) => (
+                <BracketMatch
+                  key={t}
+                  label={`Seed ${i + 1}: ${name(t)}`}
+                  teams={[{ abbr: abbr(t), name: name(t), seed: i + 1, you: t === userTeam }]}
+                />
+              ))}
+            </>
+          )}
       </section>
     </>
   );

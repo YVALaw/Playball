@@ -221,9 +221,46 @@ flipping it changes behaviour; then fix each row.
 > half of M44. Removed with it: the spotlight, the "Have a word" errand, the tour's CSS, and the `guide` / `data-guide`
 > hooks it used to find controls. Each screen now has one short card in its own words (`src/ui/tutorials.ts`, held
 > to length by `tests/tips.test.ts`). The board card now says "Bonus" goals, as the board does, not "Stretch". A
-> lineup the staff sets gets its own card. The tips still opt out of the back layer, so that half of M44 stands.
-> Also done the same day: holding a man on the Lineup opens his whole profile with his season on top, and back
-> returns to the lineup. The pitching side now shows the hold line too.
+> lineup the staff sets gets its own card. The tips still opted out of the back layer then; that half of M44 is
+> fixed below. Also done the same day: holding a man on the Lineup opens his whole profile with his season on top,
+> and back returns to the lineup. The pitching side now shows the hold line too.
+>
+> **Status: done.** Tests are in `tests/phase6-fixes.test.ts`, `tests/inert-under.test.ts` and the navigation suites
+> (`nav-trail`, `nav-levels`, `backNav`, `nav-integration`, `kept-alive`). Checked in Chromium at 360 px with Normal
+> and Larger text.
+> - **M44:** a screen card is a back layer like any other. Back closes the card, never the screen under it.
+> - **M45:** back now follows the Android standard (the reporter's choice):
+>   - A bottom tab resets the trail to Home, and back from Home exits.
+>   - Inside an area, back walks the sub-tabs you opened.
+>   - Returning to a screen already in the trail jumps back to it, so no loop builds up.
+>   - The trail is capped at 20 stops, and a live game adds none.
+> - **M18:** while a sheet, dialog, picker or table overlay is up, everything beside it is `inert`
+>   (`src/ui/inertUnder.ts`), so it cannot take focus, taps or a screen reader. Table overlays are now dialogs:
+>   they take focus and close on Escape and back. A sweep of 18 screens and the live game found nothing left inert
+>   by mistake.
+> - **M19:** larger text and tap targets.
+>   - All 372 fixed line heights scale with the text size. A computed-style diff shows Normal is unchanged.
+>   - Home's action labels wrap to two centred lines instead of clipping.
+>   - At Larger, the game card's crest shrinks and school names stop breaking mid-word.
+>   - Chips, segments, recruiting views and filters, to-do buttons, Home labels, the wheel rail and the men on the
+>     park have a 48 px hit area.
+>   - The phone's font size is no longer applied on top, since L59 in Phase 5 turned the WebView zoom off.
+>   - Left as is: two recruiting rows sit 40 px apart, so a tap near the edge between them lands on the
+>     neighbouring row.
+> - **M81:** the offer screen builds its world from the chosen season length, so the board ask, the roster and the
+>   goal shown are the ones the job gives. Tested for the short, standard and long seasons.
+> - **M82/M103:** the offer's stat strip is two by two. Money in the comparison stays one figure, and its columns
+>   grow with the text size.
+> - **M106:** the gap modal's button is now "Cover the positions". The man you sent in takes the open spot, and
+>   the batting order stays as you set it.
+> - **M107:** the pick bar shows who is picked on one line and what the next tap does below it, with short names.
+> - **M108:** the Fielding table is Player, Pct and Plays. Position, chances and errors sit under the name.
+> - **M89:** "Sway him" presses the want that raises your fit the most, says which one and by how much, and is off
+>   when no want would help.
+> - **M90:** "Use these" asks before it replaces a list that has people on it. "Fill the open slots" adds the
+>   suggestions after them.
+> - **M97:** before the regionals are played, Games to watch and the Bracket show every pairing as "Set", your region
+>   first. A national half not yet started lists its seeds. The "still filling" note is gone.
 
 | Task | Findings |
 |---|---|

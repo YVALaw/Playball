@@ -14,13 +14,12 @@ import {
   leaders, leagueFieldingRate, fieldingPct, paePer100, rankableChances, qualifiers,
   type LeaderRow, type FieldingSeason,
 } from '../../engine/season.js';
-import { pct } from '../format.js';
+import { pct, shortName } from '../format.js';
 import { uniquePlayers } from '../../engine/types.js';
 import type { Player, PlayerId } from '../../engine/types.js';
 import {
   Card, EmptyState, Face, Marquee, SegmentedControl, StatGroup, Table, Tag, type TableColumn,
 } from '../components/ui/index.js';
-import { POSITION_NAME } from '../words.js';
 
 type Scope = 'team' | 'national' | 'june' | 'fielding';
 
@@ -119,24 +118,31 @@ export function Stats() {
             <Table
               dense
               label="Your fielders"
+              /*
+                Two figures as columns, and his chances and errors under his
+                name: four fixed columns beside a face left the name 42px on a
+                360dp phone ('Ta…', 'Seco…'; audit 17, M108).
+              */
               columns={[
                 { label: 'Player', grow: true },
-                { label: 'Ch', title: 'Chances', width: '36px', align: 'right' },
-                { label: 'E', title: 'Errors', width: '28px', align: 'right' },
-                { label: 'Pct', title: 'Fielding percentage', width: '48px', align: 'right' },
-                { label: 'Plays', title: 'Plays above average per 100 chances', width: '52px', align: 'right', strong: true },
+                { label: 'Pct', title: 'Fielding percentage', width: '52px', align: 'right' },
+                { label: 'Plays', title: 'Plays above average per 100 chances', width: '56px', align: 'right', strong: true },
               ]}
               empty="Nothing has been hit at anybody yet."
               rows={gloveRows.map(({ p, line }) => ({
                 key: p.id,
                 onClick: () => openPlayer(p.id as PlayerId),
                 cells: [
-                  <PlayerCell key="p" id={p.id} team={team.def.abbr} name={p.name} sub={p.type === 'pitcher' ? 'Pitcher' : POSITION_NAME[p.pos] ?? p.pos} />,
-                  line.chances, line.errors, pct(fieldingPct(line)),
+                  <PlayerCell
+                    key="p" id={p.id} team={team.def.abbr} name={shortName(p.name)}
+                    // The table's own abbreviations, as its columns had them.
+                    sub={`${p.type === 'pitcher' ? 'P' : p.pos} · ${line.chances} ch · ${line.errors} E`}
+                  />,
+                  pct(fieldingPct(line)),
                   line.chances >= bar ? fmtRate(paePer100(line)) : '—',
                 ],
               }))}
-              caption={`The league sits at ${fmtRate(leagueFieldingRate(season))}, not zero: an error is a play nobody made. A dash means fewer than ${bar} chances.`}
+              caption={`Ch is chances, E is errors. The league sits at ${fmtRate(leagueFieldingRate(season))}, not zero: an error is a play nobody made. A dash means fewer than ${bar} chances.`}
             />
           </Card>
         </>

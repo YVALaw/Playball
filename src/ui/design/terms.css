@@ -37,7 +37,7 @@
 .pb-terms__rail button {
   display: flex; flex-direction: column; gap: 5px; min-width: 0;
   padding: 10px 0; border: 0; border-radius: var(--radius-inner); background: none;
-  color: var(--ink-muted); font: 600 calc(11.5px * var(--pb-ts, 1))/14px var(--font-sans);
+  color: var(--ink-muted); font: 600 calc(11.5px * var(--pb-ts, 1))/calc(14px * var(--pb-ts, 1)) var(--font-sans);
   text-align: left; cursor: pointer;
 }
 .pb-terms__rail i {
@@ -72,7 +72,7 @@
   flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--radius-pill);
   background: var(--ink); color: var(--bg); font: 700 calc(13px * var(--pb-ts, 1))/1 var(--font-sans);
 }
-.pb-terms__parthead h2 { margin: 0; font: 600 calc(17px * var(--pb-ts, 1))/24px var(--font-sans); color: var(--ink); }
+.pb-terms__parthead h2 { margin: 0; font: 600 calc(17px * var(--pb-ts, 1))/calc(24px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink); }
 
 /* 1 · Your winter */
 .pb-terms__line { margin: 0; font: 400 calc(14px * var(--pb-ts, 1))/1.43 var(--font-sans); color: var(--ink); }
@@ -86,7 +86,7 @@
 .pb-terms__target { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 82px; }
 .pb-terms__target b { font: 700 calc(52px * var(--pb-ts, 1))/1 var(--font-numeral); font-variant-numeric: tabular-nums; }
 .pb-terms__target small {
-  font: 600 calc(11px * var(--pb-ts, 1))/14px var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase;
+  font: 600 calc(11px * var(--pb-ts, 1))/calc(14px * var(--pb-ts, 1)) var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase;
   white-space: nowrap; opacity: 0.8;
 }
 .pb-terms__ask { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
@@ -95,8 +95,8 @@
 
 .pb-terms__group { display: flex; flex-direction: column; gap: var(--space-2); }
 .pb-terms__subhead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
-.pb-terms__subhead span { min-width: 0; font: 600 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink); }
-.pb-terms__subhead small { flex: none; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-terms__subhead span { min-width: 0; font: 600 calc(13px * var(--pb-ts, 1))/calc(18px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink); }
+.pb-terms__subhead small { flex: none; font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 .pb-terms__label { min-width: 0; color: var(--ink); }
 
 .pb-terms__must {
@@ -126,8 +126,8 @@
   border-radius: var(--radius-control); overflow: hidden; background: var(--line);
 }
 .pb-terms__stakes > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 12px; background: var(--surface-sunken); }
-.pb-terms__stakes small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
-.pb-terms__stakes b { font: 600 calc(14px * var(--pb-ts, 1))/20px var(--font-sans); }
+.pb-terms__stakes small { font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
+.pb-terms__stakes b { font: 600 calc(14px * var(--pb-ts, 1))/calc(20px * var(--pb-ts, 1)) var(--font-sans); }
 .pb-terms__fine { margin: 0; font: 400 calc(13px * var(--pb-ts, 1))/1.4 var(--font-sans); color: var(--ink-muted); }
 
 /* ------------------------------------------------------------------- the bar */

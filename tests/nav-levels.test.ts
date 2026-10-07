@@ -153,7 +153,7 @@ describe('the order a back press sees', () => {
 
   it('keeps route stops at the bottom and the game above them', () => {
     S().go('team');
-    S().go('program');
+    S().setScreen('stats');
     const [a, b] = S().navTrail;
     useDynasty.setState({ live: {} as never, tab: 'home', screen: 'box' });
     S().openPlayer('p1' as never);
@@ -203,7 +203,7 @@ describe('what each level does when peeled', () => {
 
   it("does not count another era's stops", () => {
     S().go('team');
-    S().go('program');
+    S().setScreen('stats');
     expect(depth()).toBe(2);
     useDynasty.setState({ year: S().year + 1 });
     expect(levels()).toEqual([]);

@@ -525,7 +525,10 @@ export function Today() {
               disabled={b.disabled}
               onClick={() => { rollHome(); b.onClick?.(); }}
             >
-              <span className="pb-home__actlabel">{b.icon && <Icon name={b.icon} size={i === 1 ? 15 : 13} />}{b.label}</span>
+              {/* The words in a span of their own: a flex row's text cannot
+                  end in an ellipsis, so at Larger text on a 360dp phone they
+                  were cut off mid-letter (audit 17, M19). */}
+              <span className="pb-home__actlabel">{b.icon && <Icon name={b.icon} size={i === 1 ? 15 : 13} />}<span className="pb-home__acttext">{b.label}</span></span>
               {b.sub && <small>{b.sub}</small>}
             </button>
           ))}

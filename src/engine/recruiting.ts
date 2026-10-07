@@ -1585,13 +1585,40 @@ export function swayRecruit(
   ));
   const success = rng() < chance;
   if (!success) return false;
+  prospect.recruitingPriorities = swayedPriorities(prospect, factor);
+  return true;
+}
+
+/** His priorities as a sway on `factor` that lands would leave them. */
+export function swayedPriorities(prospect: Prospect, factor: RecruitingFactor): RecruitingPriorities {
   const next = { ...recruitingPrioritiesOf(prospect) };
   next[factor] *= 1.6;
   let total = 0;
   for (const k of RECRUITING_FACTORS) total += next[k];
   for (const k of RECRUITING_FACTORS) next[k] /= total;
-  prospect.recruitingPriorities = next;
-  return true;
+  return next;
+}
+
+/** What a sway on `factor` that lands does to his fit with this program. */
+export function swayFitGain(prospect: Prospect, pitch: Pitch, factor: RecruitingFactor): number {
+  const after = fit({ ...prospect, recruitingPriorities: swayedPriorities(prospect, factor) }, pitch);
+  return after - fit(prospect, pitch);
+}
+
+/**
+ * The want a sway should press on: the one whose weight, raised, makes the
+ * program the better fit (audit 17, M89). A sway on his top want, whatever
+ * the program's grade there, raised what he expects where the program was
+ * weak and lowered the weight of where it was strong, and the fit fell.
+ * Ties go to the earlier factor, so the answer is stable.
+ */
+export function bestSwayFactor(prospect: Prospect, pitch: Pitch): { factor: RecruitingFactor; gain: number } {
+  let best: { factor: RecruitingFactor; gain: number } = { factor: RECRUITING_FACTORS[0]!, gain: -Infinity };
+  for (const factor of RECRUITING_FACTORS) {
+    const gain = swayFitGain(prospect, pitch, factor);
+    if (gain > best.gain + 1e-9) best = { factor, gain };
+  }
+  return best;
 }
 
 /**

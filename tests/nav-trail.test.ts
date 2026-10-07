@@ -167,7 +167,7 @@ describe('goBack', () => {
   it("takes this era's newest stop and marks the visit it restores", () => {
     S().go('team');
     const teamVisit = S().routeVisit;
-    S().go('program');
+    S().setScreen('stats');
     const epoch = S().navEpoch;
     useDynasty.setState({ selectedPlayer: 'p1' as never, focusPlayer: 'p1' as never });
     expect(S().goBack()).toBe('peeled');
@@ -188,18 +188,18 @@ describe('goBack', () => {
 
   it('walks only the era it is in', () => {
     S().go('team');
-    S().go('program');
+    S().setScreen('stats');
     const year = S().year;
     useDynasty.setState({ year: year + 1 });
     expect(eraStops(S())).toEqual([]);
     expect(S().goBack()).toBe('none');
-    expect(route()).toBe('program|records');
-    // Old stops stay in the trail, unwalked: there is no cap to trim them.
+    expect(route()).toBe('team|stats');
+    // Old stops stay in the trail, unwalked; the cap is per era.
     expect(S().navTrail).toHaveLength(2);
-    S().go('office');
-    expect(eraStops(S()).map((x) => x.tab)).toEqual(['program']);
+    S().setScreen('lineup');
+    expect(eraStops(S()).map((x) => `${x.tab}|${x.screen}`)).toEqual(['team|stats']);
     expect(S().goBack()).toBe('peeled');
-    expect(route()).toBe('program|records');
+    expect(route()).toBe('team|stats');
     expect(S().navTrail).toHaveLength(2);
   });
 
@@ -337,5 +337,59 @@ describe('the save file', () => {
     for (const k of ['navTrail', 'routeVisit', 'restoringVisit', 'stepBase', 'teamCard']) {
       expect(k in file, k).toBe(false);
     }
+  });
+});
+
+describe('the trail is bounded, the Android way (audit 17, M45)', () => {
+  it('a bottom-tab tap leaves only Home under the area, and Home under nothing', () => {
+    S().go('team');
+    S().setScreen('stats');
+    S().setScreen('lineup');
+    expect(trail()).toEqual(['home|today', 'team|roster', 'team|stats']);
+    S().go('office');
+    expect(trail()).toEqual(['home|today']);
+    S().go('program');
+    expect(trail()).toEqual(['home|today']);
+    expect(S().goBack()).toBe('peeled');
+    expect(route()).toBe('home|today');
+    expect(S().goBack()).toBe('none');
+    S().go('team');
+    S().go('home');
+    expect(trail()).toEqual([]);
+  });
+
+  it('back from Home exits after any amount of wandering', () => {
+    for (let i = 0; i < 30; i++) { S().go('team'); S().go('office'); S().go('home'); }
+    expect(trail()).toEqual([]);
+    expect(S().goBack()).toBe('none');
+  });
+
+  it('a screen visited again is the visit already in the trail, with no loop added', () => {
+    S().go('team');
+    S().setScreen('stats');
+    const statsVisit = S().routeVisit;
+    S().setScreen('lineup');
+    S().setScreen('stats');
+    expect(trail()).toEqual(['home|today', 'team|roster']);
+    expect(S().routeVisit).toBe(statsVisit);
+    expect(S().restoringVisit).toBe(statsVisit);
+  });
+
+  it('never holds more than TRAIL_CAP stops in an era', async () => {
+    const { TRAIL_CAP } = await import('../src/state/store.js');
+    expect(TRAIL_CAP).toBe(20);
+    S().go('team');
+    const screens = ['stats', 'lineup', 'stand', 'strategy'];
+    for (let i = 0; i < 50; i++) S().setScreen(screens[i % screens.length]!);
+    expect(eraStops(S()).length).toBeLessThanOrEqual(TRAIL_CAP);
+  });
+});
+
+describe('a first-visit tip is a back layer (audit 17, M44)', () => {
+  it('registers with the back gesture, so back closes the tip and not the screen', async () => {
+    const { readFileSync } = await import('node:fs');
+    const tip = readFileSync('src/ui/Tutorial.tsx', 'utf8');
+    expect(tip).toContain('useDialogFocus(dialog, close, { initial: primary, active: show && frame !== null });');
+    expect(tip).not.toContain('layer: false');
   });
 });

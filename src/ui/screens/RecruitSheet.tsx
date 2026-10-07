@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PROMISE_DETAIL } from '../../engine/morale.js';
 import { recruitingPlan } from '../../engine/recruitingPlan.js';
 import {
-  actionInterest, askBlocked, availableRecruitPromises, decisionStyle, factorGrade, factorScore, fit,
+  actionInterest, askBlocked, availableRecruitPromises, bestSwayFactor, decisionStyle, factorGrade, factorScore, fit,
   hasRecruitingRelationship, hintsFor, majorActionCost, pitchVerdict, recruitingPrioritiesOf,
   reportedOverall, reportedPotential, reportedTool, wantedScore, weekActionCost,
   ASK_COOLDOWN, ASK_COST, HARD_SELL_COST, MAX_PER_RECRUIT, PITCH_COST, PROMISE_COST, PROMISE_LABEL,
@@ -412,8 +412,12 @@ function WeekPlan({
   const action = prospect.weekActions?.[userTeam];
   const major = action?.major;
   const pick = action?.pitch ?? null;
-  // What a sway or a hard sell presses on: the pitch, or his top want.
+  // What a hard sell presses on: the pitch, or his top want.
   const focus = pick ?? ranked[0]!;
+  // What a sway presses on: the want whose weight, raised, helps the program
+  // most, and by how much (M89). His top want could make the fit worse.
+  const sway = bestSwayFactor(prospect, pitch);
+  const swayHelps = sway.gain > 0.0005;
   const bound = prospect.promiseBy?.[userTeam];
   const promiseLocked = !!bound && major?.kind !== 'promise';
   // Big moves are relationship moves: from week 2, on a man with interest banked.
@@ -551,11 +555,13 @@ function WeekPlan({
             confirm
             title="Sway him"
             cost={String(SWAY_COST)}
-            sub={swayUsed ? 'Used this season' : `Makes him care about ${FACTOR_SHORT[focus].toLowerCase()}`}
-            effect="Once a season · happens now"
+            sub={swayUsed ? 'Used this season'
+              : swayHelps ? `Makes him care more about ${FACTOR_SHORT[sway.factor].toLowerCase()} (you: ${factorGrade(factorScore(prospect, pitch, sway.factor))})`
+                : 'Nothing he could care more about would help you'}
+            effect={swayHelps ? `Fit +${Math.max(1, Math.round(sway.gain * 100))} if it lands · once a season` : 'Once a season · happens now'}
             selected={swayRolled}
-            disabled={swayUsed || rolled || !movesOpen || SWAY_COST > moveRoom}
-            onSelect={() => onMajor({ kind: 'sway', factor: focus })}
+            disabled={swayUsed || rolled || !movesOpen || SWAY_COST > moveRoom || (!swayHelps && !swayRolled)}
+            onSelect={() => onMajor({ kind: 'sway', factor: sway.factor })}
           />
           <MoveTile
             bolt

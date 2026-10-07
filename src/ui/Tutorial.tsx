@@ -22,7 +22,8 @@ export function FirstVisit({ id }: { id: string }) {
   const dialog = useRef<HTMLDivElement | null>(null);
   const owner = useScreenOwner();
   const close = (): void => markSeen(id);
-  useDialogFocus(dialog, close, { initial: primary, active: show && frame !== null, layer: false });
+  // A back layer like any other card: back closes the tip, never the screen under it (M44).
+  useDialogFocus(dialog, close, { initial: primary, active: show && frame !== null });
 
   if (!card || !show || !frame) return null;
   return createPortal(

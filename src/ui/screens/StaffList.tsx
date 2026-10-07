@@ -12,7 +12,7 @@
 import type { Prospect } from '../../engine/recruiting.js';
 import { STAFF_LIST_MAX } from '../../engine/staffRecruiting.js';
 import type { PlayerId } from '../../engine/types.js';
-import { Button, IconButton, List, ListRow, Switch } from '../components/ui/index.js';
+import { Button, ConfirmButton, IconButton, List, ListRow, Switch } from '../components/ui/index.js';
 import { shortName } from '../format.js';
 import { StarRow } from './RecruitRow.js';
 import { slotCode, staffLine, standing } from './recruitRace.js';
@@ -32,7 +32,8 @@ export interface StaffListProps {
   suggestion: readonly PlayerId[];
   /** False outside the window; the suggestion's button stays, disabled. */
   canSuggest?: boolean;
-  onUseSuggestion: () => void;
+  /** Set the list to these: the suggestion whole, or the list with its open slots filled. */
+  onUseSuggestion: (ids: readonly PlayerId[], fill: boolean) => void;
   onMove: (id: PlayerId, by: -1 | 1) => void;
   onUnstar: (id: PlayerId) => void;
   replaceLost: boolean;
@@ -48,10 +49,16 @@ export function StaffList({
   const n = list.length;
   const inUse = suggestion.length > 0 && suggestion.length === n
     && suggestion.every((id, i) => list[i]?.id === id);
+  // Whom the coach would be taking, by name: the codes alone were all the row
+  // said (audit 17, M90).
+  const named = (p: Prospect): string => `${slotCode(p)} ${shortName(p.player.name)}`;
   const suggested = suggestion
     .map((id) => byId(id))
     .filter((p): p is Prospect => !!p)
-    .map(slotCode);
+    .map(named);
+  // The suggestion's men not on the list yet, as many as there are open slots.
+  const extra = suggestion.filter((id) => !list.some((p) => p.id === id)).slice(0, Math.max(0, STAFF_LIST_MAX - n));
+  const extraNames = extra.map((id) => byId(id)).filter((p): p is Prospect => !!p).map(named);
 
   return (
     <section className="pb-rc-staff" aria-label="Staff list">
@@ -115,16 +122,43 @@ export function StaffList({
           className="pb-rc-suggestrow"
           title="Suggested"
           subtitle={suggested.length > 0 ? suggested.join(' · ') : 'None in reach'}
-          value={(
+          value={n === 0 || inUse ? (
             <Button
               size="sm"
               variant="tonal"
               className="pb-rc-suggest"
               disabled={inUse || !canSuggest || suggestion.length === 0}
-              onClick={onUseSuggestion}
+              onClick={() => onUseSuggestion(suggestion, false)}
             >{inUse ? 'In use' : 'Use these'}</Button>
+          ) : (
+            /* A list the coach built is not thrown away on one tap (M90). */
+            <ConfirmButton
+              size="sm"
+              variant="tonal"
+              className="pb-rc-suggest"
+              idle="Use these"
+              armed={`Replace your ${n}?`}
+              disabled={!canSuggest || suggestion.length === 0}
+              onConfirm={() => onUseSuggestion(suggestion, false)}
+            />
           )}
         />
+        {n > 0 && !inUse && extra.length > 0 && (
+          <ListRow
+            icon="plus"
+            className="pb-rc-suggestrow"
+            title="Fill the open slots"
+            subtitle={extraNames.join(' · ')}
+            value={(
+              <Button
+                size="sm"
+                variant="tonal"
+                disabled={!canSuggest}
+                onClick={() => onUseSuggestion([...list.map((p) => p.id), ...extra], true)}
+              >Add {extra.length}</Button>
+            )}
+          />
+        )}
         <Switch label="Replace lost recruits" checked={replaceLost} onChange={onReplaceLost} />
       </List>
     </section>

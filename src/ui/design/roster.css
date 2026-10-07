@@ -22,7 +22,7 @@
 .pb-roster__flag-count { display: flex; align-items: center; gap: 6px; }
 .pb-roster__flag-count b { font: 700 calc(22px * var(--pb-ts, 1))/1 var(--font-numeral); font-variant-numeric: tabular-nums; }
 .pb-roster__flag small {
-  max-width: 100%; overflow: hidden; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans);
+  max-width: 100%; overflow: hidden; font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans);
   color: var(--ink-muted); text-overflow: ellipsis; white-space: nowrap;
 }
 .pb-roster__flag.is-negative .pb-roster__flag-count { color: var(--negative); }
@@ -36,9 +36,9 @@
 /* A group: its name and count, the columns' names on the right, its rows. */
 .pb-roster__group { display: flex; flex-direction: column; gap: var(--space-2); }
 .pb-roster__grouphead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
-.pb-roster__grouphead h2 { margin: 0; font: 600 calc(15px * var(--pb-ts, 1))/22px var(--font-sans); color: var(--ink); }
+.pb-roster__grouphead h2 { margin: 0; font: 600 calc(15px * var(--pb-ts, 1))/calc(22px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink); }
 .pb-roster__grouphead h2 span { margin-left: 6px; font-weight: 500; color: var(--ink-muted); }
-.pb-roster__grouphead small { flex: none; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-roster__grouphead small { flex: none; font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 
 /* The rows: the design system's PlayerRow, a little tighter, with the
    potential set as a small grade over its caption beside the rating. */
@@ -50,7 +50,7 @@
 .pb-roster .pb-prow__stats { gap: 0; }
 .pb-roster .pb-prow__stat { flex-direction: column-reverse; align-items: center; gap: 0; min-width: 30px; }
 .pb-roster .pb-prow__stat b { font: 700 calc(17px * var(--pb-ts, 1))/1 var(--font-numeral); color: var(--ink-muted); }
-.pb-roster .pb-prow__stat small { font: 500 calc(10.5px * var(--pb-ts, 1))/14px var(--font-sans); }
+.pb-roster .pb-prow__stat small { font: 500 calc(10.5px * var(--pb-ts, 1))/calc(14px * var(--pb-ts, 1)) var(--font-sans); }
 
 /* A status on a row: what keeps him out, the draft, his mood. */
 .pb-roster__chip {
@@ -65,13 +65,13 @@
 
 .pb-pcard__head { display: flex; align-items: center; gap: 14px; }
 .pb-pcard__who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.pb-pcard__eyebrow { display: flex; align-items: center; gap: 6px; min-width: 0; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__eyebrow { display: flex; align-items: center; gap: 6px; min-width: 0; font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 .pb-pcard__eyebrow > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pb-pcard__name {
   margin: 0; font: 700 calc(24px * var(--pb-ts, 1))/1.25 var(--font-sans); letter-spacing: -0.01em;
   color: var(--ink); overflow-wrap: anywhere;
 }
-.pb-pcard__meta { font: 400 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__meta { font: 400 calc(13px * var(--pb-ts, 1))/calc(18px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 .pb-pcard__tags { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* Rating and potential, side by side, the two numbers every page is read against. */
@@ -81,7 +81,7 @@
 }
 .pb-pcard__number { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: var(--space-3) var(--space-4); }
 .pb-pcard__number + .pb-pcard__number { border-left: 1px solid var(--line); }
-.pb-pcard__number > span { font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__number > span { font: 500 calc(13px * var(--pb-ts, 1))/calc(18px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 .pb-pcard__number > b {
   display: flex; align-items: center; min-height: calc(32px * var(--pb-ts, 1));
   font: 700 calc(32px * var(--pb-ts, 1))/1 var(--font-numeral); color: var(--ink); font-variant-numeric: tabular-nums;
@@ -91,7 +91,7 @@
 /* A labelled part of the card's top: At a glance, What you owe him, More about him. */
 .pb-pcard__section { display: flex; flex-direction: column; gap: var(--space-2); }
 .pb-pcard__kicker {
-  font: 600 calc(10.5px * var(--pb-ts, 1))/14px var(--font-sans); letter-spacing: 0.08em;
+  font: 600 calc(10.5px * var(--pb-ts, 1))/calc(14px * var(--pb-ts, 1)) var(--font-sans); letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--ink-muted);
 }
 
@@ -101,10 +101,10 @@
   display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px var(--space-3);
   border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface);
 }
-.pb-pcard__tile-label { display: flex; align-items: center; gap: 6px; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__tile-label { display: flex; align-items: center; gap: 6px; font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 .pb-pcard__tile-label > i { flex: none; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--line-strong); }
-.pb-pcard__tile > b { font: 600 calc(15.5px * var(--pb-ts, 1))/20px var(--font-sans); color: var(--ink); }
-.pb-pcard__tile > small { font: 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__tile > b { font: 600 calc(15.5px * var(--pb-ts, 1))/calc(20px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink); }
+.pb-pcard__tile > small { font: 400 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 .pb-pcard__tile.is-ok .pb-pcard__tile-label > i { background: var(--positive); }
 .pb-pcard__tile.is-warn { background: var(--warning-soft); border-color: color-mix(in srgb, var(--warning) 30%, var(--line)); }
 .pb-pcard__tile.is-warn .pb-pcard__tile-label > i { background: var(--warning); }
@@ -119,9 +119,9 @@
   border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-card);
 }
 .pb-pcard__promise-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
-.pb-pcard__promise-head b { min-width: 0; font: 600 calc(14.5px * var(--pb-ts, 1))/20px var(--font-sans); color: var(--ink); }
-.pb-pcard__promise-head span { flex: none; font: 600 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); white-space: nowrap; }
-.pb-pcard__promise p { margin: 0; font: 400 calc(12.5px * var(--pb-ts, 1))/17px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__promise-head b { min-width: 0; font: 600 calc(14.5px * var(--pb-ts, 1))/calc(20px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink); }
+.pb-pcard__promise-head span { flex: none; font: 600 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); white-space: nowrap; }
+.pb-pcard__promise p { margin: 0; font: 400 calc(12.5px * var(--pb-ts, 1))/calc(17px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 .pb-pcard__bar { position: relative; display: block; height: var(--size-bar); border-radius: var(--radius-pill); background: var(--track); }
 .pb-pcard__bar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--radius-pill); background: var(--positive); }
 .pb-pcard__bar-fill.is-warning { background: var(--warning); }
@@ -130,7 +130,7 @@
 .pb-pcard__bar-target { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); }
 /* The two-way chance: one bar for each count. */
 .pb-pcard__half { display: grid; grid-template-columns: 64px minmax(0, 1fr) 40px; align-items: center; gap: var(--space-2); }
-.pb-pcard__half small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-pcard__half small { font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 .pb-pcard__half b { font: 700 calc(15px * var(--pb-ts, 1))/1 var(--font-numeral); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
 
 /* More about him: one row a part, its summary on one line. */
@@ -162,12 +162,12 @@
 /* Ratings, one level down: the scale in each card's corner, and each rating's
    bar with the room his potential leaves striped past it and the league's
    middle marked at 50. */
-.pb-pcard__scale { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); white-space: nowrap; }
+.pb-pcard__scale { font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); white-space: nowrap; }
 .pb-pcard__room {
   display: grid; grid-template-columns: minmax(96px, 36%) minmax(0, 1fr) 64px; align-items: center;
   gap: var(--space-3); min-height: 30px;
 }
-.pb-pcard__room-label { font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink); }
+.pb-pcard__room-label { font: 500 calc(13px * var(--pb-ts, 1))/calc(18px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink); }
 .pb-pcard__room-bar { position: relative; display: block; height: var(--size-bar); border-radius: var(--radius-pill); background: var(--track); }
 .pb-pcard__room-bar > i { position: absolute; top: 0; bottom: 0; }
 .pb-pcard__room-bar > .pb-pcard__room-fill { left: 0; border-radius: var(--radius-pill); background: var(--accent); }

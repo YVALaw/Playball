@@ -13,7 +13,7 @@
 /* The points card's note, at the right of its head. */
 .pb-draft-poolnote {
   display: block; text-align: right;
-  font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted);
+  font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted);
 }
 
 /* The continue bar's note holds two lines whatever it says, so the button
@@ -49,12 +49,12 @@
 .pb-dcard__who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .pb-dcard__name {
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-  font: 700 calc(17px * var(--pb-ts, 1))/22px var(--font-sans); color: var(--ink);
+  font: 700 calc(17px * var(--pb-ts, 1))/calc(22px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink);
 }
-.pb-dcard__role { font: 400 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-dcard__role { font: 400 calc(13px * var(--pb-ts, 1))/calc(18px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 .pb-dcard__rating { flex: none; display: flex; flex-direction: column; align-items: flex-end; }
 .pb-dcard__rating b { font: 700 calc(28px * var(--pb-ts, 1))/1 var(--font-numeral); color: var(--ink); font-variant-numeric: tabular-nums; }
-.pb-dcard__rating small { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-dcard__rating small { font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 
 /* Drafted in · Usual price · If he signs. The last cell is words, so it gets
    the room, and wraps to a second line rather than losing any of them. */
@@ -65,13 +65,13 @@
 .pb-dcard__facts > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--space-2) 10px; background: var(--surface-sunken); }
 .pb-dcard__dt {
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-  font: 500 calc(11.5px * var(--pb-ts, 1))/14px var(--font-sans); color: var(--ink-muted);
+  font: 500 calc(11.5px * var(--pb-ts, 1))/calc(14px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted);
 }
 .pb-dcard__dd {
   margin: 0; white-space: nowrap;
-  font: 700 calc(19px * var(--pb-ts, 1))/22px var(--font-numeral); color: var(--ink); font-variant-numeric: tabular-nums;
+  font: 700 calc(19px * var(--pb-ts, 1))/calc(22px * var(--pb-ts, 1)) var(--font-numeral); color: var(--ink); font-variant-numeric: tabular-nums;
 }
-.pb-dcard__dd.is-words { padding: 2px 0; white-space: normal; font: 600 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); }
+.pb-dcard__dd.is-words { padding: 2px 0; white-space: normal; font: 600 calc(13px * var(--pb-ts, 1))/calc(18px * var(--pb-ts, 1)) var(--font-sans); }
 .pb-dcard__dd.pb-tone--warning { color: var(--warning); }
 .pb-dcard__dd.pb-tone--positive { color: var(--positive); }
 
@@ -93,7 +93,7 @@
 
 /* The small capitals over a quote and under a pitch. */
 .pb-keep-label {
-  font: 600 calc(11px * var(--pb-ts, 1))/14px var(--font-sans); letter-spacing: 0.06em;
+  font: 600 calc(11px * var(--pb-ts, 1))/calc(14px * var(--pb-ts, 1)) var(--font-sans); letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--ink-muted);
 }
 
@@ -101,13 +101,13 @@
 .pb-keep-hear { display: flex; gap: 10px; padding: 10px var(--space-3); border-radius: var(--radius-control); background: var(--surface-sunken); }
 .pb-keep-hear > .pb-icon { margin-top: 2px; color: var(--ink-muted); }
 .pb-keep-hear__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.pb-keep-hear__quotes { font: italic 500 calc(14px * var(--pb-ts, 1))/20px var(--font-sans); color: var(--ink); }
+.pb-keep-hear__quotes { font: italic 500 calc(14px * var(--pb-ts, 1))/calc(20px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink); }
 
 /* A numbered part of the call, with its caption at the right. */
 .pb-keep-part { display: flex; flex-direction: column; gap: var(--space-2); }
 .pb-keep-part__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
-.pb-keep-part__title { margin: 0; font: 600 calc(15px * var(--pb-ts, 1))/22px var(--font-sans); color: var(--ink); }
-.pb-keep-part__caption { flex: none; font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-keep-part__title { margin: 0; font: 600 calc(15px * var(--pb-ts, 1))/calc(22px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink); }
+.pb-keep-part__caption { flex: none; font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 
 /* The four pitches, two by two: what it says, and when it holds. */
 .pb-keep-pitch {
@@ -119,16 +119,16 @@
 .pb-keep-pitch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pb-keep-pitch.is-selected { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 .pb-keep-pitch__top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.pb-keep-pitch__title { min-width: 0; font: 600 calc(14.5px * var(--pb-ts, 1))/18px var(--font-sans); }
+.pb-keep-pitch__title { min-width: 0; font: 600 calc(14.5px * var(--pb-ts, 1))/calc(18px * var(--pb-ts, 1)) var(--font-sans); }
 .pb-keep-pitch__dot {
   flex: none; box-sizing: border-box; width: 18px; height: 18px;
   border: 2px solid var(--line-strong); border-radius: var(--radius-pill);
 }
 .pb-keep-pitch.is-selected .pb-keep-pitch__dot { border-color: var(--command); background: var(--command); }
-.pb-keep-pitch__case { font: italic 400 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted); }
+.pb-keep-pitch__case { font: italic 400 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 .pb-keep-pitch__when { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding-top: 6px; border-top: 1px solid var(--line); }
 .pb-keep-pitch__when .pb-keep-label { font-size: calc(10.5px * var(--pb-ts, 1)); }
-.pb-keep-pitch__whentext { font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink); }
+.pb-keep-pitch__whentext { font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink); }
 
 /* Back it with points: the stepper, the offer against his price, the quick
    amounts, and one line on where the offer stands. */
@@ -155,7 +155,7 @@
 .pb-keep-offer__tick { position: absolute; top: -2px; width: 2px; height: 18px; margin-left: -1px; border-radius: 2px; background: var(--ink); }
 .pb-keep-offer__labels {
   position: relative; height: 16px; white-space: nowrap;
-  font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted);
+  font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted);
 }
 .pb-keep-offer__labels b { font-weight: 600; color: var(--ink); }
 .pb-keep-offer__mid { position: absolute; top: 0; transform: translateX(-50%); }
@@ -171,14 +171,14 @@
 .pb-keep-offer__quick > button:disabled { border-color: transparent; background: var(--surface-sunken); color: var(--ink-disabled); cursor: not-allowed; }
 .pb-keep-offer__quick > button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Two lines held for the longest read, so the box never grows under a tap. */
-.pb-keep-offer__read { margin: 0; min-height: 36px; font: 500 calc(13px * var(--pb-ts, 1))/18px var(--font-sans); color: var(--ink-muted); }
+.pb-keep-offer__read { margin: 0; min-height: 36px; font: 500 calc(13px * var(--pb-ts, 1))/calc(18px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted); }
 .pb-keep-offer__read.is-warning { color: var(--warning); }
 
 /* The pinned footer: what you are about to say and what it leaves, then the
    two answers. Fixed shares, so an armed label never moves the other. */
 .pb-keep-foot__line {
   display: flex; justify-content: space-between; gap: var(--space-3);
-  font: 500 calc(12px * var(--pb-ts, 1))/16px var(--font-sans); color: var(--ink-muted);
+  font: 500 calc(12px * var(--pb-ts, 1))/calc(16px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink-muted);
 }
 .pb-keep-foot__line > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .pb-keep-foot__buttons { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr); gap: var(--space-2); }

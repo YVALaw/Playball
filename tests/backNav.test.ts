@@ -437,7 +437,8 @@ describe('one visible layer, one history entry', () => {
     expect(id).toBeDefined();
     const added = levelsAdded(() => {
       useDynasty.getState().openPlayer(id!);
-      useDynasty.getState().go('home');
+      // Within the area: a bottom-tab tap now resets the trail instead (M45).
+      useDynasty.getState().go('team', 'stats');
     });
     /*
       One entry, handed over, since 2026-09-16 (05 §90.6): the card's level

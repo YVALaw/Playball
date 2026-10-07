@@ -1899,7 +1899,8 @@ export interface DynastyStore {
   /** Move a starred recruit one place up (-1) or down (1) the list. */
   moveStaffRecruit: (id: PlayerId, by: -1 | 1) => void;
   /** Replace the whole list: open, reachable men only, at most eight, in this order. */
-  setStaffList: (ids: readonly PlayerId[]) => void;
+  /** `keep` holds on to the stand-in record for men who stay on the list: a fill, not a new list. */
+  setStaffList: (ids: readonly PlayerId[], keep?: boolean) => void;
   /** Close any recruiting weeks the regular-season calendar has passed. */
   syncRecruitingCalendar: () => void;
   /**
@@ -1962,6 +1963,14 @@ export interface DynastyStore {
    * not a lock.
    */
   autoLineup: () => void;
+  /**
+   * Cover every position on the card as it stands: nobody in or out, the
+   * batting order untouched (audit 17, M106). `newcomer` — the man just sent
+   * in — takes the open spot first; anyone else doubled up is relabelled in
+   * card order. The gap warning's repair, which used to re-deal the whole card
+   * and threw away the substitution it was answering.
+   */
+  coverPositions: (newcomer?: PlayerId) => void;
   /**
    * Play out the rest of the current week — today through the weekend series.
    *
@@ -3262,20 +3271,52 @@ export function stepStops(s: DynastyStore): Exclude<Phase, null>[] {
   return rail.filter((p) => PHASES.indexOf(p) > base && PHASES.indexOf(p) <= at);
 }
 
-/** Where a move lands the trail: the stop it leaves and a fresh visit, or nothing. */
-function trailStep(s: DynastyStore, tab: Tab, screen: string): Partial<DynastyStore> {
+/** The most stops back can walk in one era (audit 17, M45). */
+export const TRAIL_CAP = 20;
+
+/**
+ * Where a move lands the trail: the stop it leaves and a fresh visit, or nothing.
+ *
+ * Bounded, the way Android's bottom navigation is (audit 17, M45). The trail
+ * used to keep every route left all season, repeats and all, so back from
+ * Home walked Home, Team, Home, Team... before the app would exit. Now:
+ *   - a move to a route already in this era's trail goes back to that visit,
+ *     and drops everything after it, rather than adding a loop;
+ *   - a bottom-tab tap (`topLevel`) is a switch between areas: the trail is
+ *     Home and nothing else, or empty when Home is where it lands, so back
+ *     from an area goes Home and back from Home exits;
+ *   - and no era keeps more than TRAIL_CAP stops.
+ */
+function trailStep(s: DynastyStore, tab: Tab, screen: string, topLevel = false): Partial<DynastyStore> {
   const frame = frameOf(s);
   if (frame !== 'season' && frame !== 'june') return {};
   // June Home ignores `screen`: all of it is one route.
   const key = (t: Tab, sc: string): string => (frame === 'june' && t === 'home' ? 'home' : `${t}|${sc}`);
   if (key(s.tab, s.screen) === key(tab, screen)) return {};
+  const fresh = { routeVisit: nextVisit(), restoringVisit: null };
   // The game is a level over the route, never a stop, going in or coming out.
-  const box = s.screen === 'box' || screen === 'box';
-  return {
-    navTrail: box ? s.navTrail : [...s.navTrail, { tab: s.tab, screen: s.screen, visit: s.routeVisit, era: eraKey(s) }],
-    routeVisit: nextVisit(),
-    restoringVisit: null,
-  };
+  if (s.screen === 'box' || screen === 'box') return fresh;
+  const era = eraKey(s);
+  const others = s.navTrail.filter((x) => x.era !== era);
+  let mine = s.navTrail.filter((x) => x.era === era);
+  const here: NavStop = { tab: s.tab, screen: s.screen, visit: s.routeVisit, era };
+  const dest = key(tab, screen);
+  const root = key('home', 'today');
+  const at = mine.findIndex((x) => key(x.tab, x.screen) === dest);
+  if (at >= 0) {
+    // Back to the visit already in the trail, as it was left: its own
+    // kept-alive page and scroll, the way a back press would restore it.
+    const stop = mine[at]!;
+    return { navTrail: [...others, ...mine.slice(0, at)], routeVisit: stop.visit, restoringVisit: stop.visit };
+  }
+  if (topLevel) {
+    const home = key(here.tab, here.screen) === root ? here : mine.find((x) => key(x.tab, x.screen) === root);
+    mine = dest === root ? [] : [home ?? { tab: 'home', screen: 'today', visit: nextVisit(), era }];
+  } else {
+    mine = [...mine, here];
+  }
+  if (mine.length > TRAIL_CAP) mine = mine.slice(mine.length - TRAIL_CAP);
+  return { navTrail: [...others, ...mine], ...fresh };
 }
 
 /**
@@ -4412,8 +4453,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     get().flushAutosave();
     const depth = normalizeDepth({ mode, overrides: overrides ?? {} });
     // The schedule is part of the world, so the config has to be right before a
-    // single fixture is laid out. Nothing above this draws, so the ninety-six
-    // rosters are the rosters the offer screen previewed whatever the rules say.
+    // single fixture is laid out. The offer screen builds its preview the same
+    // way (NewGame.tsx, `configForRules`), so the ninety-six rosters and the
+    // board's ask are the ones it showed, whatever the season length (M81).
     const season = createSeason(makeRng(seed), configForRules(rules), CONFERENCES);
     season.rules = rules;
     // Whose games to keep box scores for. A season is built before anybody has
@@ -4586,7 +4628,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     // transition leaves no stop behind (T, 2026-09-30). The pages over the
     // route go with it (PF); a caller's own closeOverlay() first is harmless.
     crossfade(() => set({
-      ...trailStep(get(), tab, nextScreen),
+      // No screen named is a tap on the bottom nav: a switch between areas.
+      ...trailStep(get(), tab, nextScreen, screen === undefined),
       ...overlaysShut(get()),
       tab, /* nav-write */
       screen: nextScreen, /* nav-write */
@@ -4993,7 +5036,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     get().autosave();
   },
 
-  setStaffList: (ids) => {
+  setStaffList: (ids, keep = false) => {
     const s = get();
     const season = s.season;
     if (!season || s.busy) return;
@@ -5010,7 +5053,11 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       next.push(id);
     }
     recruits.staffList = next;
-    delete recruits.staffStandIns;
+    const held = keep && recruits.staffStandIns
+      ? Object.fromEntries(Object.entries(recruits.staffStandIns).filter(([standIn]) => next.includes(standIn as PlayerId)))
+      : {};
+    if (Object.keys(held).length > 0) recruits.staffStandIns = held;
+    else delete recruits.staffStandIns;
     get().staffPlanWeek(true);
     set({ version: get().version + 1 });
     get().autosave();
@@ -9428,6 +9475,18 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     set({ version: version + 1 });
     get().autosave();
     return true;
+  },
+
+  coverPositions: (newcomer) => {
+    const { season, userTeam, version } = get();
+    const team = season?.teams[userTeam]?.team;
+    if (!team || !season || get().busy) return;
+    const { missing, doubled } = cardGaps(team.lineup);
+    const man = newcomer ? team.lineup.find((p) => p.id === newcomer) : undefined;
+    if (man && missing[0] && doubled.includes(man.pos)) adoptSpot(man, missing[0]);
+    healPositions(team.lineup);
+    set({ version: version + 1 });
+    get().autosave();
   },
 
   autoLineup: () => {

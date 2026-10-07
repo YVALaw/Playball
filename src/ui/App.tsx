@@ -35,6 +35,8 @@ import {
 } from '../state/store.js';
 import { Back, isNativeShell } from './backNav.js';
 import { initBilling } from '../state/billing.js';
+import { watchInert } from './inertUnder.js';
+import { useDialogFocus } from './dialogFocus.js';
 import { TEST_SHORTCUTS } from '../state/testBuild.js';
 import { eraKey, frameOf } from '../state/era.js';
 import { readPrefs, writePrefs, applyPrefs } from '../state/devicePrefs.js';
@@ -117,6 +119,8 @@ function notOwnedRuns(set?: number): number {
   }
 }
 export function App() {
+  // Whatever a layer covers is out of reach while it is up (M18).
+  useEffect(() => watchInert(document.getElementById('root') ?? document.body), []);
   /*
     Your school's colours, worn by the whole app.
 
@@ -1076,6 +1080,14 @@ export function TableOverlay() {
   );
 }
 
+/** What a screen reader calls each page laid over the frame. */
+const OVERLAY_LABEL: Partial<Record<OverlayName, string>> = {
+  schedule: 'Schedule', standings: 'Standings', rankings: 'Rankings', saves: 'Saved careers',
+  inbox: 'Inbox', book: 'Record book', settings: 'Settings', captain: 'Team captain', jobs: 'Job offers',
+  staff: 'Coaching staff', facilities: 'Facilities', budget: 'Budget', board: 'Board', network: 'Recruiting network',
+  watchlist: 'Watch list', hall: 'Hall of fame', coach: 'Your career',
+};
+
 function TableSlot({ overlay, top }: { overlay: OverlayName; top: boolean }) {
   const close = useDynasty((s) => s.closeOverlay);
   /*
@@ -1099,8 +1111,23 @@ function TableSlot({ overlay, top }: { overlay: OverlayName; top: boolean }) {
     if (overlay === 'settings' && settingsPage !== 'index') setSettingsPage('index');
     else close();
   };
+  /*
+    A page laid over the frame is a dialog (M18): focus moves into it, Tab
+    stays in it and Escape is its Back. Not a back layer of its own: the
+    store already holds it as one (era.ts).
+  */
+  const ref = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(ref, back, { active: top, layer: false });
   return (
-    <div className="pb-tableoverlay" inert={!top || undefined} aria-hidden={!top || undefined}>
+    <div
+      ref={ref}
+      className="pb-tableoverlay"
+      role="dialog"
+      aria-modal={top || undefined}
+      aria-label={OVERLAY_LABEL[overlay] ?? 'Page'}
+      inert={!top || undefined}
+      aria-hidden={!top || undefined}
+    >
       <BackBar onBack={back} />
       {/* Hidden, not auto. Every screen in here brings its own scroller, so a
           scroller here would be a scroller around a scroller. */}

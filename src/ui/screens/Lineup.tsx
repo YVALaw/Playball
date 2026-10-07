@@ -189,13 +189,27 @@ export function Lineup() {
   */
   const [gapWarn, setGapWarn] = useState<{ missing: string[]; doubled: string[] } | null>(null);
   const gateTick = useDynasty((s) => s.lineupGate);
-  const warnIfBroken = (): void => {
+  // The man the last substitution sent in: the repair hands him the open spot.
+  const newcomer = useRef<PlayerId | undefined>(undefined);
+  const coverPositions = useDynasty((s) => s.coverPositions);
+  const warnIfBroken = (sentIn?: PlayerId): void => {
     const t = useDynasty.getState().season?.teams[useDynasty.getState().userTeam]?.team;
     if (!t) return;
+    if (sentIn) newcomer.current = sentIn;
     const gaps = cardGaps(t.lineup);
     if (gaps.missing.length > 0 || gaps.doubled.length > 0) {
       setGapWarn({ missing: gaps.missing, doubled: [...new Set(gaps.doubled)] });
     }
+  };
+  /*
+    Fix the card as it stands (M106): the substitution and the batting order
+    stay, and only the labels move. "Let auto fix it" used to re-deal the
+    whole card through AUTO, which undid the move it was answering.
+  */
+  const cover = (): void => {
+    coverPositions(newcomer.current);
+    newcomer.current = undefined;
+    setGapWarn(null);
   };
   useEffect(() => {
     if (!focus) return;
@@ -263,7 +277,7 @@ export function Lineup() {
     setPickedArm(null); setPickedPen(null);
     if (pickedBench !== null) {
       swapStarter(i, pickedBench);
-      warnIfBroken();
+      warnIfBroken(pickedBench);
       setPickedBench(null); setPicked(null);
       return;
     }
@@ -277,7 +291,7 @@ export function Lineup() {
     setPickedArm(null); setPickedPen(null);
     if (picked !== null) {
       swapStarter(picked, id);
-      warnIfBroken();
+      warnIfBroken(id);
       setPicked(null); setPickedBench(null);
       return;
     }
@@ -349,9 +363,11 @@ export function Lineup() {
   /* What the next tap does, said in the pinned bar. */
   const selection = (() => {
     if (!pickedMan) return null;
-    if (pickedBench !== null) return { title: `Starting ${pickedMan.name}`, text: 'tap a batter or a position' };
-    if (picked !== null) return { title: `Moving ${pickedMan.name}`, text: 'tap a batter, a position or the bench' };
-    return { title: `Moving ${pickedMan.name}`, text: 'tap a day or a reliever' };
+    // The short name, so the line is about him and still fits (M107).
+    const who = shortName(pickedMan.name);
+    if (pickedBench !== null) return { title: `Starting ${who}`, text: 'Tap a batter or a position.' };
+    if (picked !== null) return { title: `Moving ${who}`, text: 'Tap a batter, a position or the bench.' };
+    return { title: `Moving ${who}`, text: 'Tap a day or a reliever.' };
   })();
   /* Pinned to the foot of the screen, over the lists. It sat in the bar above
      the order first, and appearing there pushed every row down by its own
@@ -359,7 +375,10 @@ export function Lineup() {
   const hint = selection && (
     <div className="pb-pickhint" role="status">
       <Icon name="swap" size={16} />
-      <span className="pb-pickhint__text"><b>{selection.title}</b>: {selection.text}</span>
+      {/* Two lines: who, then what the next tap does. The instruction is the
+          only explanation of the tap grammar on the screen, and on one line
+          it was the part cut off (M107). */}
+      <span className="pb-pickhint__text"><b>{selection.title}</b><span>{selection.text}</span></span>
       {pickedMan && <Button size="sm" variant="quiet" onClick={() => openPlayer(pickedMan.id, 'stats')}>Card</Button>}
       <Button size="sm" variant="quiet" onClick={clearPicks}>Cancel</Button>
     </div>
@@ -590,7 +609,7 @@ export function Lineup() {
                       title={gaps.missing.length > 0
                         ? `Nobody at ${gaps.missing.map((p) => posName(p).toLowerCase()).join(', ')}`
                         : `Two players at ${[...new Set(gaps.doubled)].map((p) => posName(p).toLowerCase()).join(', ')}`}
-                      action={{ label: 'Let auto fix it', variant: 'secondary', onClick: auto }}
+                      action={{ label: 'Cover the positions', variant: 'secondary', onClick: cover }}
                     >
                       The game can&rsquo;t start until every position is covered.
                     </Callout>
@@ -737,16 +756,10 @@ export function Lineup() {
               : gapWarn.missing.length > 0
                 ? `Tonight's lineup covers eight positions; ${gapWarn.missing.map((p) => posName(p).toLowerCase()).join(' and ')} ${gapWarn.missing.length === 1 ? 'is' : 'are'} open.`
                 : `Two players are playing ${gapWarn.doubled.map((p) => posName(p).toLowerCase()).join(' and ')}.`,
-            'The game can’t start until every position is covered.',
+            'The game can’t start until every position is covered. Covering keeps your batting order and the man you sent in; only who plays where moves.',
           ]}
-          action="Let auto fix it"
-          onClose={() => {
-            autoLineup();
-            clearPicks();
-            setDealt(true);
-            setDeal((n) => n + 1);
-            setGapWarn(null);
-          }}
+          action="Cover the positions"
+          onClose={cover}
           cancel={{ label: 'I’ll fix it', onClick: () => setGapWarn(null) }}
         />
       )}

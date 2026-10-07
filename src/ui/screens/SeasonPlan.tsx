@@ -246,7 +246,7 @@ function PlanSheet({ covered }: { covered: boolean }) {
           schoolOf={schoolOf}
           suggestion={suggestion}
           canSuggest={live}
-          onUseSuggestion={() => setStaffList(suggestion)}
+          onUseSuggestion={(ids, fill) => setStaffList([...ids], fill)}
           onMove={moveStaffRecruit}
           onUnstar={(id) => { starRecruit(id); }}
           replaceLost={replaceLost}

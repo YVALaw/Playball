@@ -44,7 +44,7 @@ import {
   CoachPortrait, COACH_SKIN, COACH_HAIR, CUT_LABEL, BEARD_LABEL,
 } from '../CoachPortrait.js';
 import {
-  createSeason, seasonLength, DEFAULT_RULES, SEASON_SPANS, type SeasonRules,
+  createSeason, seasonLength, configForRules, DEFAULT_RULES, SEASON_SPANS, type SeasonRules,
 } from '../../engine/season.js';
 import { makeRng } from '../../engine/rng.js';
 import { cultureOf, CULTURE_LABEL } from '../../data/cultures.js';
@@ -140,7 +140,14 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
   // Build the actual world, not an estimate of it. Generation is deterministic
   // from the seed and cheap, so the screen reads the rosters the player gets:
   // an estimate once advertised a job as Compete that signed as Contend.
-  const world = useMemo(() => createSeason(makeRng(seed), undefined, CONFERENCES), [seed]);
+  // Built on the season length chosen, as `start` builds it: the board's ask
+  // is a number of wins out of that many games, and a 56-game world deals
+  // five-man rotations, so every roster differs from the 45-game one the
+  // preview used to show (audit 17, M81).
+  const world = useMemo(
+    () => createSeason(makeRng(seed), configForRules(rules), CONFERENCES),
+    [seed, rules.length],
+  );
 
   const rosters = useMemo(() => {
     const map = new Map<string, number>();
@@ -382,6 +389,7 @@ export function NewGame({ onExit }: { onExit?: () => void } = {}) {
         >
           <StatGroup
             size="sm"
+            className="pb-stats--grid2"
             items={[
               { label: 'Prestige', value: <Stars value={detail.stars} label="Program prestige" />, note: `${picked.prestige} of 100` },
               { label: 'Roster', value: detail.roster, unit: '/100', note: 'Average starter rating' },

@@ -119,7 +119,9 @@ describe('with the store: probe S13 by hand', () => {
   });
   afterEach(() => setEraReset(false));
 
-  it('Colleges, Alumni, Colleges, Hall, then back x3 lands on each visit\'s own instance', () => {
+  // Since M45 (2026-10-07) a screen visited again is the visit already in the
+  // trail, not a second copy of it: Colleges twice is one Colleges.
+  it('Colleges, Alumni, Colleges, Hall, then back x3: Colleges as left, the area, Home', () => {
     const ref = fresh();
     const render = (): number => {
       const s = S();
@@ -130,15 +132,16 @@ describe('with the store: probe S13 by hand', () => {
     S().go('program'); render();
     S().setScreen('colleges'); const desert = render();
     S().setScreen('alumni'); const alumni = render();
-    S().setScreen('colleges'); const mountain = render();
+    S().setScreen('colleges'); expect(render()).toBe(desert);
+    void alumni;
     S().setScreen('hall'); render();
-    expect(S().goBack()).toBe('peeled'); expect(render()).toBe(mountain);
-    expect(S().goBack()).toBe('peeled'); expect(render()).toBe(alumni);
-    expect(S().goBack()).toBe('peeled'); expect(S().screen).toBe('colleges');
-    expect(render()).toBe(desert);
+    expect(S().goBack()).toBe('peeled'); expect(render()).toBe(desert);
+    expect(S().goBack()).toBe('peeled'); expect(S().screen).toBe('records');
+    expect(S().goBack()).toBe('peeled'); expect(S().screen).toBe('today');
+    expect(S().goBack()).toBe('none');
   });
 
-  it('the same trail, back x3: each visit gets back its own height', () => {
+  it('the same trail, back x2: Colleges gets back the height it was left at', () => {
     // App's subscription, with the height the page sat at when each move left it.
     const memory = new Map<string, number>();
     let height = 0;
@@ -154,9 +157,9 @@ describe('with the store: probe S13 by hand', () => {
       S().setScreen('colleges'); height = 120;
       S().setScreen('hall'); height = 40;
       expect(back()).toBe(120);
-      height = 0; expect(back()).toBe(300);
-      height = 0; expect(back()).toBe(900);
       expect(S().screen).toBe('colleges');
+      height = 0; back();
+      expect(S().screen).toBe('records');
     } finally { stop(); }
   });
 });
