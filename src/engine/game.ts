@@ -92,7 +92,16 @@ const EXTRA_INNINGS_TIEBREAK = 10;
  */
 const LOOSE_PITCH_RATE = 0.030;
 
-const ORD = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th','12th','13th','14th','15th'];
+/**
+ * '1st', '2nd', '11th', '21st'. One spelling for both engines' inning headers:
+ * the replay reads them, and the live game used to write a bare number it
+ * could not parse (audit 17, H10). A table stopped at the fifteenth.
+ */
+export function inningOrdinal(n: number): string {
+  const teen = n % 100 >= 11 && n % 100 <= 13;
+  const suffix = teen ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th';
+  return `${n}${suffix}`;
+}
 
 const blankHit = (): HitLine =>
   ({ ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, hbp: 0, sb: 0, cs: 0, sf: 0, sh: 0 });
@@ -457,13 +466,13 @@ export class TeamState {
 
   /** Recompute every team-level defensive input from who is standing there now. */
   private recalculateDefense(): void {
-    const afield = [...this.byPosition.entries()]
-      .filter(([spot]) => spot !== 'DH')
-      .map(([, man]) => man);
-    const gloves: Player[] = [...afield, this.pitcher];
+    // Weighted by the spot each man is standing at, not the label on his
+    // card: a left fielder covering third does third's share (audit 17, M22).
+    const afield = [...this.byPosition.entries()].filter(([spot]) => spot !== 'DH');
+    const gloves: [Position, Player][] = [...afield, ['P', this.pitcher]];
     let weighted = 0, weight = 0;
-    for (const p of gloves) {
-      const w = p === this.pitcher ? (FIELDING_SHARE['P'] ?? 0.11) : (FIELDING_SHARE[p.pos] ?? 0.11);
+    for (const [spot, p] of gloves) {
+      const w = FIELDING_SHARE[spot] ?? 0.11;
       weighted += p.range * w;
       weight += w;
     }
@@ -722,7 +731,11 @@ export function simGame(
   let creditTo: Arm | null = null;
   let blameTo: Arm | null = null;
   const onScore = (bat: TeamState, fld: TeamState, goAheadPitcher?: Arm): void => {
-    if (bat.runs <= fld.runs) return;          // scored but did not take the lead
+    // A tie gives the lead back to nobody, so whoever takes it next takes it
+    // fresh: a team that retook a lead it had blown kept the old pitcher of
+    // record and the wrong man took the loss (audit 17, M20).
+    if (bat.runs === fld.runs) { leadHolder = null; return; }
+    if (bat.runs < fld.runs) return;           // scored but did not take the lead
     if (leadHolder === bat) return;            // already ahead; not a lead change
     leadHolder = bat;
     creditTo = bat.pitcher;                    // his team went ahead while he was in
@@ -740,7 +753,7 @@ export function simGame(
       const bat = half === 'top' ? away : home;
       const fld = half === 'top' ? home : away;
 
-      say(`\n--- ${half === 'top' ? 'Top' : 'Bottom'} ${ORD[inning - 1]} --- (${away.runs}-${home.runs})`);
+      say(`\n--- ${half === 'top' ? 'Top' : 'Bottom'} ${inningOrdinal(inning)} --- (${away.runs}-${home.runs})`);
       const before = bat.runs;
       playHalfInning(
         bat, fld, inning, engine, rng, say,
@@ -1302,7 +1315,7 @@ export function createHalfInning(
       // throw into the camera well is a runner on first and everybody else up a
       // base. Only a ground ball involves a throw at all.
       else if (pa.kind === 'ground') {
-        const risk = throwRisk(fielder, fld.pitcher);
+        const risk = throwRisk(fielder, fld.pitcher, fld.playedAt.get(String(fielder.id)));
         if (risk > 0 && rng() < risk) { event = 'throwing'; errored = true; }
       }
     }
@@ -1383,8 +1396,9 @@ export function createHalfInning(
         {
           // Where it actually left the yard — the spray model already chose
           // the lane, and every homer was announced "to deep left".
-          const dir = fielder?.pos === 'RF' ? 'right'
-            : fielder?.pos === 'CF' ? 'center' : 'left';
+          const where = fielder ? (fld.playedAt.get(String(fielder.id)) ?? fielder.pos) : undefined;
+          const dir = where === 'RF' ? 'right'
+            : where === 'CF' ? 'center' : 'left';
           say(`${cnt} ${batter.name} HOMERS to deep ${dir}${scored.length > 1 ? `, ${scored.length} run shot` : ''}. (${hand})`);
         }
         break;
@@ -1426,7 +1440,8 @@ export function createHalfInning(
     if (events) {
       for (const p of pa.pitches) events.push({ kind: 'pitch', pitch: p });
       if (BATTED_KINDS.has(pa.kind)) {
-        const landing = landingFor(fielder, pa.kind, event, pa.pitches.length);
+        const landing = landingFor(fielder, pa.kind, event, pa.pitches.length,
+          fielder ? fld.playedAt.get(String(fielder.id)) : undefined);
         events.push({
           kind: 'contact',
           battedBall: pa.kind as BattedBall,
@@ -1930,10 +1945,12 @@ const POSITION_SPOT: Record<Position, { x: number; y: number }> = {
  */
 export function landingFor(
   fielder: Player | null, kind: PAKind, event: string, salt: number,
+  /** Where he is standing tonight, when it is not his label (M22). */
+  at?: string,
 ): { x: number; y: number } | undefined {
   if (!fielder || !BATTED_KINDS.has(kind)) return undefined;
 
-  const spot = POSITION_SPOT[fielder.pos] ?? POSITION_SPOT.CF;
+  const spot = POSITION_SPOT[(at ?? fielder.pos) as Position] ?? POSITION_SPOT.CF;
 
   // A cheap stable hash of the man and the count. Two balls hit at the same
   // fielder on different counts land slightly differently; the same play
@@ -2140,17 +2157,25 @@ const COVER_FIRST_SHARE = 0.50;
  * one is the pitcher's — and the engine keeps a single culprit rather than
  * pretending to know which end of a play it resolved in one roll failed.
  */
-export function throwRisk(fielder: Player, covering: Arm): number {
-  const pos = fielder.pos;
-  if (pos === 'LF' || pos === 'CF' || pos === 'RF' || pos === 'DH') return 0;
+export function throwRisk(fielder: Player, covering: Arm, at?: string): number {
+  // The spot he is standing at, not the label on his card: an outfielder
+  // covering third made no throwing errors at all (audit 17, M22).
+  const pos = at ?? fielder.pos;
+  if (pos === 'LF' || pos === 'CF' || pos === 'RF' || pos === 'DH' || pos === 'PH') return 0;
   // ON A LINE, which is the badge that names exactly this roll and nothing else.
   const badge = throwBonus(fielder);
+  // A man throwing from a spot that is not his own does it worse.
+  const home = (fielder as Player & { homePos?: string }).homePos ?? fielder.pos;
+  const strange = pos !== home ? OUT_OF_POSITION_THROW : 1;
   if (pos === '1B') {
-    return COVER_FIRST_SHARE * THROW_ERROR_BASE * badge
+    return COVER_FIRST_SHARE * THROW_ERROR_BASE * badge * strange
       * mult(fielder.armAccuracy, -0.55) * mult(covering.hands, -0.35);
   }
-  return THROW_ERROR_BASE * badge * mult(fielder.armAccuracy, -0.55);
+  return THROW_ERROR_BASE * badge * strange * mult(fielder.armAccuracy, -0.55);
 }
+
+/** How much worse a throw from a spot that is not his own goes. */
+const OUT_OF_POSITION_THROW = 1.4;
 
 /**
  * Divisor holding the league error total where it was once the risks above are

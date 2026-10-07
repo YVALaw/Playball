@@ -13,7 +13,7 @@
 
 import {
   createHalfInning, TeamState, RULES, type SimOptions, moundVisit,
-  winningPitcherFor, savingPitcherFor,
+  winningPitcherFor, savingPitcherFor, inningOrdinal,
 } from './game.js';
 import { pitchBudget, CONFIDENCE } from './ratings.js';
 import type { GameResult } from './game.js';
@@ -290,7 +290,9 @@ export function createLiveGame(
   let creditTo: Arm | null = null;
   let blameTo: Arm | null = null;
   const onScore = (bat: TeamState, fld: TeamState, goAheadPitcher?: Arm): void => {
-    if (bat.runs <= fld.runs) return;
+    // A tie resets the lead, as in the fast path (M20).
+    if (bat.runs === fld.runs) { leadHolder = null; return; }
+    if (bat.runs < fld.runs) return;
     if (leadHolder === bat) return;
     leadHolder = bat;
     creditTo = bat.pitcher;
@@ -316,7 +318,7 @@ export function createLiveGame(
   const fld = (): TeamState => (half === 'top' ? home : away);
 
   const openHalf = (): void => {
-    say(`\n--- ${half === 'top' ? 'Top' : 'Bottom'} ${inning} --- (${away.runs}-${home.runs})`);
+    say(`\n--- ${half === 'top' ? 'Top' : 'Bottom'} ${inningOrdinal(inning)} --- (${away.runs}-${home.runs})`);
     // Only the human dugout is manual. The computer opponent keeps its whole
     // automatic game — steals, pinch hitters, the bullpen — or a managed game
     // is nine innings against a team with no coach. Once the game is handed

@@ -2135,8 +2135,7 @@ export function closerFrom(pen: readonly Arm[], byHand = false): Arm | undefined
   return [...pen].sort((a, b) => armValue(b) - armValue(a))[0];
 }
 
-export function restedFirst(season: SeasonState, team: TeamRecord): Arm[] {
-  const day = currentDay(season);
+export function restedFirst(season: SeasonState, team: TeamRecord, day = currentDay(season)): Arm[] {
   const clock = injuryClock(season);
   const ready = [...team.team.bullpen].filter((p) => pitcherReady(season, p, day, clock));
   // A pen with nobody on his full rest still has to answer the phone. The
@@ -2257,22 +2256,30 @@ export function playGame(
 
   // One pass each. The closer is read off the same rested list, so the two
   // cannot disagree about who is even available tonight.
-  const homePen = restedFirst(season, home);
-  const awayPen = restedFirst(season, away);
+  /*
+    Rest judged on the night the game is played. \`simNextDay\` moves the
+    schedule index on before it plays the day, so \`currentDay\` here read the
+    next date on the calendar: an arm owed a day off read as rested, and a
+    short-rest start was never priced as one (audit 17, M21). The game's own
+    date comes in as \`opts.day\`; a caller with none plays on today.
+  */
+  const today = opts.day ?? currentDay(season);
+  const homePen = restedFirst(season, home, today);
+  const awayPen = restedFirst(season, away, today);
   const homeClose = closerFrom(homePen, home.team.penByHand);
   const awayClose = closerFrom(awayPen, away.team.penByHand);
 
   const keepReplay = opts.capture === true
     || season.captureBoxFor === homeIndex || season.captureBoxFor === awayIndex;
-  const homeStart = startableSlot(season, home.team, opts.homeSlot ?? slot, currentDay(season), injuryClock(season));
-  const awayStart = startableSlot(season, away.team, opts.awaySlot ?? slot, currentDay(season), injuryClock(season));
+  const homeStart = startableSlot(season, home.team, opts.homeSlot ?? slot, today, injuryClock(season));
+  const awayStart = startableSlot(season, away.team, opts.awaySlot ?? slot, today, injuryClock(season));
   const result = simGame(home.team, away.team, season.rng, {
     engine: season.config.engine,
     homeStarter: homeStart,
     awayStarter: awayStart,
     // A by-hand starter on short rest tires sooner; the walk never sends one.
-    homeShortRest: shortRest(season, home.team.rotation[homeStart], currentDay(season)),
-    awayShortRest: shortRest(season, away.team.rotation[awayStart], currentDay(season)),
+    homeShortRest: shortRest(season, home.team.rotation[homeStart], today),
+    awayShortRest: shortRest(season, away.team.rotation[awayStart], today),
     ...(homeLineup ? { homeLineup } : {}),
     ...(awayLineup ? { awayLineup } : {}),
     homeBench: fitBench(home.team, injuryClock(season)),

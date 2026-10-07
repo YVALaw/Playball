@@ -49,8 +49,11 @@ type Owner = SeasonState['teams'][number];
 /** What is left to spend this season, on every room that spends it. */
 export function BudgetChip({ team }: { team: Owner }) {
   const economy = useDynasty((s) => s.economy);
-  const left = Math.max(0, remaining(economy, team.prestige));
-  return <StatusBadge tone="neutral" size="lg" icon={false} className="pb-money-pill">{dollars(left)} left</StatusBadge>;
+  const left = remaining(economy, team.prestige);
+  // A deficit is said, not shown as nothing left (audit 17, M9).
+  return left < 0
+    ? <StatusBadge tone="negative" size="lg" icon={false} className="pb-money-pill">{dollars(-left)} over</StatusBadge>
+    : <StatusBadge tone="neutral" size="lg" icon={false} className="pb-money-pill">{dollars(left)} left</StatusBadge>;
 }
 
 /** The facility a coach's sheet asked to see, opened when the room opens. */
@@ -199,7 +202,9 @@ export function BudgetRoom({ team }: { team: Owner }) {
             onClick: () => openRoom('facilities'),
             guide: 'money-facilities',
           },
-          { key: 'left', label: 'Left', sub: 'A new budget arrives next season', value: Math.max(0, left), tone: 'track' },
+          left < 0
+            ? { key: 'left', label: 'Over budget', sub: 'Wages above what the budget pays. A new budget arrives next season', value: -left, tone: 'track' }
+            : { key: 'left', label: 'Left', sub: 'A new budget arrives next season', value: left, tone: 'track' },
         ]}
       />
       {buys.length > 0 && (
@@ -484,7 +489,7 @@ function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSe
       {man && <SubHead title="Available replacements" />}
       {runsStaff && !man && market.every((c) => c.wage > left) && (
         <Callout tone="warning" title="No coach fits your budget" guide={seat === 'hitting' ? 'hire-blocked' : undefined}>
-          {dollars(Math.max(0, left))} left this season.
+          {left < 0 ? `${dollars(-left)} over budget this season.` : `${dollars(left)} left this season.`}
         </Callout>
       )}
       <CandidateList

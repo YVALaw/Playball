@@ -2617,6 +2617,17 @@ function staffTakesThePen(get: () => DynastyStore): void {
   delete team.rotationByHand;
 }
 
+/**
+ * What a man on a wage has earned so far this year: the share of the regular
+ * season played, and all of it once the season is over. Booked into `spent`
+ * when he leaves, so the year's money is not paid twice (audit 17, M8).
+ */
+function wagesEarned(season: SeasonState, phase: Phase, wage: number): number {
+  if (phase !== null || seasonComplete(season)) return wage;
+  const played = season.schedule.length > 0 ? season.dayIndex / season.schedule.length : 0;
+  return Math.round(wage * Math.max(0, Math.min(1, played)));
+}
+
 /** The coach's points onto his strongest suit, one at a time (M72). */
 function staffSpendsPoints(get: () => DynastyStore, set: (p: Partial<DynastyStore>) => void): void {
   const { coach, season, userTeam } = get();
@@ -7444,6 +7455,38 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       staffPlans: Object.fromEntries(SEATS.map((seat) => [seat, { directive: staffPlan(oldEconomy, seat).directive }])),
       tree: [...(oldEconomy.tree ?? [])],
     };
+    /*
+      A poorer school cannot carry a richer one's wage bill. Whoever the new
+      budget cannot pay does not make the move, dearest first, and the coach is
+      told; before, the ledger simply went negative and the Budget room showed
+      it as $0k left (audit 17, M9).
+    */
+    {
+      const prestige = season.teams[team]?.prestige ?? 50;
+      const leftBehind: string[] = [];
+      while (remaining(carried, prestige) < 0) {
+        const dearest = SEATS
+          .filter((seat) => carried.staff[seat])
+          .sort((a, b) => carried.staff[b]!.wage - carried.staff[a]!.wage)[0];
+        if (!dearest) break;
+        leftBehind.push(carried.staff[dearest]!.name);
+        const staff = { ...carried.staff };
+        delete staff[dearest];
+        carried.staff = staff;
+        if (carried.staffPlans) {
+          const plans = { ...carried.staffPlans };
+          delete plans[dearest];
+          carried.staffPlans = plans;
+        }
+      }
+      if (leftBehind.length > 0) {
+        get().post({
+          kind: 'board', year,
+          title: leftBehind.length === 1 ? `${leftBehind[0]} stays behind` : 'Some of your staff stay behind',
+          body: `The new budget cannot carry ${leftBehind.join(' and ')}. ${leftBehind.length === 1 ? 'He stays' : 'They stay'} where ${leftBehind.length === 1 ? 'he was' : 'they were'}.`,
+        });
+      }
+    }
     // A staff left to its athletic director has its holes filled the day the
     // new chair is taken, not at the next winter (`adFillsSeats`).
     const nextEconomy: Economy = handles(get().depth, 'assistants')
@@ -9534,9 +9577,11 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     // room the new man has to fit is what is left plus the wage freed.
     const without = { ...economy.staff };
     delete without[seat];
+    // What the man going has already earned this year stays spent (M8).
+    const owed = wagesEarned(season, get().phase, economy.staff[seat]?.wage ?? 0);
     // The wage has to fit what is left this year — a hire the ledger cannot
     // carry would be a negative number the screen has to explain.
-    if (remaining({ ...economy, staff: without }, me.prestige) < man.wage) return;
+    if (remaining({ ...economy, staff: without, spent: economy.spent + owed }, me.prestige) < man.wage) return;
     // A contract, not a standing arrangement (2026-09-10: "staff we hire
     // should have an expiring contract, right now it is easy to forget they
     // are even there"). The dear man signs for three years, the rest for two;
@@ -9545,7 +9590,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     const staff = { ...without, [seat]: signed };
     const plans = { ...(economy.staffPlans ?? {}) };
     plans[seat] = { directive: staffPlan(economy, seat).directive };
-    const nextEconomy: Economy = { ...economy, staff, staffPlans: plans };
+    const nextEconomy: Economy = { ...economy, staff, staffPlans: plans, spent: economy.spent + owed };
     applyCoachMods(season, userTeam, get().coach, nextEconomy);
     set({ economy: nextEconomy, version: get().version + 1 });
     void get().saveNow();
@@ -9559,7 +9604,11 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     delete staff[seat];
     const plans = { ...(economy.staffPlans ?? {}) };
     delete plans[seat];
-    const nextEconomy: Economy = { ...economy, staff, staffPlans: plans };
+    // His wage stops, but what he has earned this year stays spent: firing a
+    // man after the season's work handed the whole wage back to build with
+    // (audit 17, M8).
+    const owed = wagesEarned(season, get().phase, economy.staff[seat]!.wage);
+    const nextEconomy: Economy = { ...economy, staff, staffPlans: plans, spent: economy.spent + owed };
     applyCoachMods(season, userTeam, get().coach, nextEconomy);
     set({ economy: nextEconomy, version: get().version + 1 });
     void get().saveNow();

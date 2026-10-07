@@ -34,7 +34,9 @@ export interface Frame {
   scored: boolean;
 }
 
-const HEADER = /--- (Top|Bottom) (\d+)\w+ --- \((\d+)-(\d+)\)/;
+// The ordinal suffix is optional: managed games written before H10 carry a
+// bare inning number ("Top 1"), and their replays should still play.
+const HEADER = /--- (Top|Bottom) (\d+)\w* --- \((\d+)-(\d+)\)/;
 
 /** A plate appearance line starts with its count, e.g. "[1-2 5p] ...". */
 const isPlay = (line: string): boolean => line.startsWith('[');

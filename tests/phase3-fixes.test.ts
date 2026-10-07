@@ -139,3 +139,61 @@ describe('records agree with themselves (M60, M10)', () => {
     expect(t.seasonCoach).toBeUndefined();
   });
 });
+
+import { createLiveGame } from '../src/engine/liveGame.js';
+import { simGame, inningOrdinal } from '../src/engine/game.js';
+import { buildFrames } from '../src/ui/replay.js';
+
+describe('the game sim (M20, H10)', () => {
+  it('a managed game replays like a simulated one: innings move, outs stop at three, the score lands (H10)', () => {
+    const home = makeTeam(makeRng(21), 'H', 50);
+    const away = makeTeam(makeRng(22), 'A', 50);
+    const live = createLiveGame(home, away, makeRng(23), { managing: 'home', playEvents: true, verbose: true } as never);
+    live.finish();
+    const r = live.result;
+    const frames = buildFrames({ log: r.log, playEvents: r.playEvents ?? [] });
+    expect(Math.max(...frames.map((f) => f.inning))).toBeGreaterThanOrEqual(9);
+    expect(Math.max(...frames.map((f) => f.outs))).toBeLessThanOrEqual(3);
+    const last = frames[frames.length - 1]!;
+    expect([last.awayRuns, last.homeRuns]).toEqual([r.away.runs, r.home.runs]);
+  });
+
+  it('inning headers spell every ordinal, past the fifteenth (H10)', () => {
+    expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101].map(inningOrdinal))
+      .toEqual(['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd', '23rd', '101st']);
+  });
+
+  it('a winning pitcher is always on the winning side (M20)', () => {
+    for (let i = 0; i < 300; i++) {
+      const h = makeTeam(makeRng(1000 + i), 'H', 50);
+      const a = makeTeam(makeRng(5000 + i), 'A', 50);
+      const r = simGame(h, a, makeRng(9000 + i));
+      const winner = r.home.runs > r.away.runs ? h : a;
+      const loser = winner === h ? a : h;
+      const ids = (t: typeof h) => new Set([...t.rotation, ...t.bullpen, ...t.lineup, ...t.bench].map((p) => String(p.id)));
+      if (r.winningPitcher) expect(ids(winner).has(String(r.winningPitcher.id))).toBe(true);
+      if (r.losingPitcher) expect(ids(loser).has(String(r.losingPitcher.id))).toBe(true);
+    }
+  });
+});
+
+import { remaining as moneyLeft, SEATS } from '../src/engine/economy.js';
+
+describe('the staff ledger (M8)', () => {
+  it('firing a man after the season refunds nothing; halfway, about half', async () => {
+    disk.clear();
+    startCareer(4242, 30, { mode: 'casual' });
+    const seat = SEATS.find((x) => S().economy.staff[x])!;
+    expect(seat, 'the athletic director hired somebody').toBeDefined();
+    const prestige = () => S().season!.teams[S().userTeam]!.prestige;
+    const half = Math.floor(S().season!.schedule.length / 2);
+    while (S().season!.dayIndex < half) S().advanceDay();
+    S().setDepthSystem('assistants', true);
+    const wage = S().economy.staff[seat]!.wage;
+    const before = moneyLeft(S().economy, prestige());
+    S().fireAssistant(seat);
+    const back = moneyLeft(S().economy, prestige()) - before;
+    expect(back).toBeLessThan(wage * 0.75);
+    expect(back).toBeGreaterThan(wage * 0.25);
+  }, 120_000);
+});
