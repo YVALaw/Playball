@@ -2,7 +2,18 @@
 // Regression tests for docs/18-fix-plan.md Phase 3: recruiting, June and
 // game-sim correctness (IDs refer to docs/17-pre-release-audit.md).
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+const disk = vi.hoisted(() => new Map<string, unknown>());
+vi.mock('idb', () => ({
+  openDB: async () => ({
+    put: async (_s: string, v: { slot: string }) => { disk.set(v.slot, structuredClone(v)); },
+    get: async (_s: string, k: string) => { const f = disk.get(k); return f === undefined ? undefined : structuredClone(f); },
+    getAll: async () => [...disk.values()].map((v) => structuredClone(v)),
+    delete: async (_s: string, k: string) => { disk.delete(k); },
+  }),
+}));
+process.on('unhandledRejection', () => {});
 import {
   generateClass, closeWeek, scholarshipsPledged, askBlocked, SCHOLARSHIPS,
 } from '../src/engine/recruiting.js';
@@ -80,4 +91,21 @@ describe('recruiting promises (M61, M62, M64, M30)', () => {
     const after = men.filter((p) => entersPortal(p, at)).length;
     expect(after).toBeLessThanOrEqual(buriedBefore);
   });
+});
+
+import { S, startCareer, simRegular, playJune } from './support/drive.js';
+import { currentDay, firstPostseasonDay } from '../src/engine/season.js';
+
+describe('June on one calendar (H5, M76)', () => {
+  it('a June played through the store, with the coach in it, takes about a month', async () => {
+    disk.clear();
+    startCareer(9001, 0);
+    await simRegular();
+    const first = firstPostseasonDay(S().season!);
+    await playJune();
+    // It used to run 109 nights: seven conference tournaments one after
+    // another before yours, the regionals in sequence, no breaks.
+    expect(currentDay(S().season!) - first).toBeLessThanOrEqual(35);
+    expect(S().lastPostseason?.finish[0]).toBeDefined();
+  }, 240_000);
 });

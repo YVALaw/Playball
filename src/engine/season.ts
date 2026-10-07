@@ -2781,12 +2781,21 @@ export function simNextDay(season: SeasonState, opts: DayOptions = {}): GameSumm
   // from the same league in an order their own table disagrees with. The
   // tournament a program is seeded into must match the standings it has been
   // reading all season.
+  //
+  // Not while a game is held: the coach's managed game is recorded after this
+  // returns, and freezing first seeded the tournament off standings that were
+  // missing its result (audit 17, M67). The caller freezes once it is in.
+  if (opts.hold === undefined) freezeFinalOrder(season);
+
+  return summaries;
+}
+
+/** Take the regular season's conference order, once the last game is in. */
+export function freezeFinalOrder(season: SeasonState): void {
   if (seasonComplete(season) && season.finalOrder === null) {
     season.finalOrder = conferenceIds(season)
       .flatMap((id) => standings(season, id).map((t) => t.index));
   }
-
-  return summaries;
 }
 
 export function seasonComplete(season: SeasonState): boolean {

@@ -608,11 +608,11 @@ export const STAGE_BREAK = 5;
  * `currentDay` already sits on the night after the stage's last game, so this
  * adds the days off rather than the gap.
  */
-function afterTheBreak(season: SeasonState): void {
+export function afterTheBreak(season: SeasonState): void {
   season.postseasonDay = currentDay(season) + STAGE_BREAK;
 }
 
-function onTheSameNights<T>(season: SeasonState, run: readonly (() => T)[]): T[] {
+export function onTheSameNights<T>(season: SeasonState, run: readonly (() => T)[]): T[] {
   const open = currentDay(season);
   let last = open;
   const out = run.map((one) => {

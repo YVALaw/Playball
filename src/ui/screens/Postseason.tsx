@@ -23,7 +23,7 @@ import { Modal } from '../Modal.js';
 import { Lineup } from './Lineup.js';
 import { Crest } from '../Crest.js';
 import { ConferenceBanner, hasBanner } from '../ConferenceBanner.js';
-import { era, injuryClock, startableSlot } from '../../engine/season.js';
+import { currentDay, era, injuryClock, startableSlot } from '../../engine/season.js';
 import type { SeasonState, BoxScore } from '../../engine/season.js';
 import type { Hitter } from '../../engine/types.js';
 import { available } from '../../engine/depthChart.js';
@@ -1141,7 +1141,9 @@ function NextGame(
   // keeps its height.
   const armFor = (side: number): { value: string; note: string } => {
     const rec = season.teams[side];
-    const at = rec ? startableSlot(season, rec.team, used(side), season.dayIndex, injuryClock(season)) : 0;
+    // The calendar day, which outings are written on; in June the schedule
+    // index has stopped and every arm read as owed rest (M57).
+    const at = rec ? startableSlot(season, rec.team, used(side), currentDay(season), injuryClock(season)) : 0;
     const arm = rec?.team.rotation[at] ?? rec?.team.rotation[0];
     if (!arm) return { value: '—', note: '—' };
     const line = season.pitching.get(arm.id);

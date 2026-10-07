@@ -16,7 +16,7 @@ import { create } from 'zustand';
 import {
   appliedStrategy,
   injuryClock, currentDay, startableSlot, shortRest, dayInTheLegs, seasonInTheArm, fitBench,
-  createSeason, simNextDay, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
+  createSeason, simNextDay, freezeFinalOrder, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
   seasonLength, regularRecord, archiveSeason, recordSeasonMarks, nationalRank, onBase, slugging,
   recordCareerMarks, recordResult, restedFirst, closerFrom, seedTeams,
   rulesOf, configForRules, DEFAULT_RULES,
@@ -115,7 +115,7 @@ import {
 } from './depth.js';
 import {
   runPostseason, freezeRegularSeason, stageConferenceTournaments,
-  stageRegionals, regionalPairing, summarize,
+  stageRegionals, regionalPairing, summarize, onTheSameNights, STAGE_BREAK,
   startSeriesBracket, stepBracket, nextGameFor, resultOf, pairKey, hostOfGame,
   REGIONAL_LENGTHS, SERIES, regionOf, deAsResult, roundName,
   protectedTopFour, CONF_ADVANCE,
@@ -1095,6 +1095,15 @@ export interface PostseasonProgress {
   regionals: RegionalSeries[];
   /** The whole national stage, from field selection to the trophy. */
   national: NationalProgress | null;
+  /**
+   * June's calendar, kept beside the results (audit 17, H5, M76). The night
+   * each stage opened, set once so a reload or a second visit cannot move it,
+   * and the latest night any tournament you are not in reached, so the next
+   * stage waits the break after the last of them rather than after yours.
+   * Absent on saves from before: the stage then opens off today.
+   */
+  openNights?: Partial<Record<'conference' | 'regional' | 'national', number>>;
+  lastNight?: number;
 }
 
 /**
@@ -1654,8 +1663,12 @@ export interface DynastyStore {
   openNationalStep: (advance?: boolean) => void;
   /** The half of the showdown you are not in, played alongside yours. */
   sideShow: { half: 'A' | 'B'; state: DoubleElim } | null;
-  /** One night of it, filed into the results when it finishes. */
-  stepSideShow: () => void;
+  /**
+   * One night of it, filed into the results when it finishes. `night` is the
+   * night your own half just played, so the two halves share it rather than
+   * each moving the calendar a day (audit 17, H5).
+   */
+  stepSideShow: (night?: number) => void;
   /**
    * The furthest step of the offseason you have reached this year.
    *
@@ -2254,7 +2267,24 @@ function usableBracket(saved: unknown): PostseasonProgress | null {
   return {
     stage: b.stage, cups: b.cups, regionals: b.regionals as RegionalSeries[],
     national: (b.national as NationalProgress | undefined) ?? null,
+    ...(b.openNights && typeof b.openNights === 'object' ? { openNights: b.openNights } : {}),
+    ...(typeof b.lastNight === 'number' ? { lastNight: b.lastNight } : {}),
   };
+}
+
+/**
+ * The night a June stage opens. The conference stage opens on the first
+ * night of June; each later stage opens STAGE_BREAK nights after the last game
+ * anybody played in the one before, the coach's or anyone else's. Set once,
+ * then read back.
+ */
+function openNightFor(
+  season: SeasonState, bracket: PostseasonProgress, stage: 'conference' | 'regional' | 'national',
+): number {
+  const fixed = bracket.openNights?.[stage];
+  if (fixed !== undefined) return fixed;
+  const after = Math.max(currentDay(season), bracket.lastNight ?? 0);
+  return stage === 'conference' ? after : after + STAGE_BREAK;
 }
 
 /**
@@ -3776,7 +3806,8 @@ function staffSetsTheCard(season: SeasonState, userTeam: number): void {
   // The staff field the best nine they have, the unfit benched — a casual
   // career was the one place nobody was ever told and nobody ever moved. The
   // same call AUTO makes (`bestNine`), so the two cards stay one card.
-  const best = bestNine(team, season.dayIndex, battingForm(season));
+  // The injury clock, which runs on through June; the schedule index stops (M58).
+  const best = bestNine(team, injuryClock(season), battingForm(season));
   team.lineup.splice(0, team.lineup.length, ...best.lineup);
   team.bench.splice(0, team.bench.length, ...best.bench);
   const dealt = autoBattingOrder(team.lineup);
@@ -7026,7 +7057,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     if (!man) return false;
     // Never over a man who is already out; resting the injured is not a
     // decision, it is a no-op wearing one's clothes.
-    if (!available(man, season.dayIndex)) return false;
+    // The injury clock, which keeps running in June; the schedule index stops (M75).
+    if (!available(man, injuryClock(season))) return false;
     /*
       A day off is not an injury, so it is written the same way and read the
       same way and says something else. The depth chart promotes behind him
@@ -7034,7 +7066,7 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       the chart first.
     */
     const m = man as Player & { outUntil?: number; why?: 'academic' | 'injury' };
-    m.outUntil = season.dayIndex + days;
+    m.outUntil = injuryClock(season) + days;
     delete m.why;
     set({ version: version + 1 });
     void get().saveNow();
@@ -7657,6 +7689,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     // tournaments, and replay the whole of June on top of itself — sixty extra
     // days on the calendar from one double-tap.
     if (get().bracket) return;
+    // The regular season's order, if nothing took it yet (a held game whose
+    // result came in some other way). A no-op once frozen.
+    freezeFinalOrder(season);
 
     // Freeze the regular season before a single bracket game moves a record.
     // This is the one unambiguous boundary, which is why it happens here rather
@@ -7724,11 +7759,22 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       if (mine.field.includes(userTeam)) {
         // Kept if a reload already carries them: replaying the other seven
         // would roll fresh dice and quietly change who you are about to face.
-        const cups = bracket.cups.length > 0 ? bracket.cups : conferenceIds(season)
+        // All eight on the same nights: the other seven used to be played one
+        // after another on the shared calendar, so yours opened some forty
+        // nights into June (audit 17, M76).
+        const open = openNightFor(season, bracket, 'conference');
+        season.postseasonDay = open;
+        const cups = bracket.cups.length > 0 ? bracket.cups : onTheSameNights(season, conferenceIds(season)
           .filter((id) => id !== me.conference)
-          .map((id) => conferenceTournament(season, id));
+          .map((id) => () => conferenceTournament(season, id)));
+        const othersEnd = currentDay(season);
+        season.postseasonDay = open;
         set({
-          bracket: { ...bracket, cups },
+          bracket: {
+            ...bracket, cups,
+            openNights: { ...bracket.openNights, conference: open },
+            lastNight: Math.max(bracket.lastNight ?? 0, othersEnd),
+          },
           myBracket: {
             kind: 'conference', format: 'double',
             state: startDoubleElim(season, mine.field),
@@ -7740,8 +7786,10 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       }
       // Nothing of his is in it, so it plays on a press and not on arrival.
       if (!advance) return;
+      season.postseasonDay = openNightFor(season, bracket, 'conference');
+      const cups = stageConferenceTournaments(season);
       set({
-        bracket: { ...bracket, cups: stageConferenceTournaments(season) },
+        bracket: { ...bracket, cups, lastNight: Math.max(bracket.lastNight ?? 0, currentDay(season)) },
         version: version + 1,
       });
       return;
@@ -7757,23 +7805,34 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
         // Every other series is decided now; yours is played a game at a
         // time. Already-decided ones are kept, for the same reason the cups
         // are.
+        // Sixteen series on one opening night, after the break that follows
+        // the last cup game anywhere (H5). They used to open off wherever
+        // your own cup had left the calendar, one after another.
+        const open = openNightFor(season, bracket, 'regional');
+        season.postseasonDay = open;
         const others = bracket.regionals.length > 0 ? bracket.regionals
-          : pairings
+          : onTheSameNights(season, pairings
             .filter((p) => p !== mine)
-            .map((p) => ({
+            .map((p) => () => ({
               ...singleElimination(
                 season, seedTeams(season,
                   [p.a, p.b].map((i) => season.teams[i]!),
                   (t) => regularRecord(t).w,
                 ).map((t) => t.index), REGIONAL_LENGTHS),
               region: p.id, name: p.name, aLabel: p.aLabel, bLabel: p.bLabel,
-            }));
+            })));
+        const othersEnd = currentDay(season);
+        season.postseasonDay = open;
         const seeds = seedTeams(season,
           [mine.a, mine.b].map((i) => season.teams[i]!),
           (t) => regularRecord(t).w,
         ).map((t) => t.index);
         set({
-          bracket: { ...bracket, regionals: others },
+          bracket: {
+            ...bracket, regionals: others,
+            openNights: { ...bracket.openNights, regional: open },
+            lastNight: Math.max(bracket.lastNight ?? 0, othersEnd),
+          },
           myBracket: {
             kind: 'regional', format: 'series',
             state: startSeriesBracket(season, seeds, REGIONAL_LENGTHS),
@@ -7790,8 +7849,17 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       if (bracket.regionals.length < pairings.length) {
         // Same as the conference tier above: a press, not an arrival.
         if (!advance) return;
+        // `stageRegionals` adds the break itself, so it starts from the last
+        // night of the cups rather than from wherever yours ended.
+        const open = openNightFor(season, bracket, 'regional');
+        season.postseasonDay = open - STAGE_BREAK;
+        const regionals = stageRegionals(season, bracket.cups);
         set({
-          bracket: { ...bracket, regionals: stageRegionals(season, bracket.cups) },
+          bracket: {
+            ...bracket, regionals,
+            openNights: { ...bracket.openNights, regional: open },
+            lastNight: Math.max(bracket.lastNight ?? 0, currentDay(season)),
+          },
           version: version + 1,
         });
       }
@@ -7858,10 +7926,20 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
         beside yours by `simBracket`, and folded into the results when it
         finishes.
       */
+      // Both halves open on one night, the break after the last regional
+      // game anywhere (H5). The spectator path ran one half to its end and
+      // then the other, and nothing waited the break.
+      const open = openNightFor(season, b2, 'national');
+      const nights = {
+        openNights: { ...b2.openNights, national: open },
+        lastNight: Math.max(b2.lastNight ?? 0, currentDay(season)),
+      };
       if (mineIsA || mineIsB) {
+        season.postseasonDay = open;
         const otherHalf = mineIsA ? 'B' : 'A';
         const otherDone = mineIsA ? nat2.bracketB : nat2.bracketA;
         set({
+          bracket: { ...b2, ...nights },
           myBracket: {
             kind: 'national', format: 'double',
             state: startDoubleElim(season, mineIsA ? bracketA : bracketB),
@@ -7879,10 +7957,13 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       }
 
       if (!advance) return;                 // the twenty are on screen, waiting
+      season.postseasonDay = open;
       const next: NationalProgress = { ...nat2 };
-      if (nat2.bracketA === null) next.bracketA = resultOfDE(runDoubleElim(season, bracketA));
-      if (nat2.bracketB === null) next.bracketB = resultOfDE(runDoubleElim(season, bracketB));
-      set({ bracket: { ...b2, national: next }, version: get().version + 1 });
+      onTheSameNights(season, [
+        () => { if (nat2.bracketA === null) next.bracketA = resultOfDE(runDoubleElim(season, bracketA)); },
+        () => { if (nat2.bracketB === null) next.bracketB = resultOfDE(runDoubleElim(season, bracketB)); },
+      ]);
+      set({ bracket: { ...b2, ...nights, national: next }, version: get().version + 1 });
       void get().saveNow();
       return;
     }
@@ -7931,10 +8012,16 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
    * Called from wherever your own tournament is stepped, so the two stay in
    * lockstep — see the note in `openNationalStep`.
    */
-  stepSideShow: () => {
+  stepSideShow: (night) => {
     const { bracket, sideShow, version } = get();
     if (!sideShow) return;
-    if (!sideShow.state.done) stepDoubleElim(sideShow.state);
+    if (!sideShow.state.done) {
+      const season = sideShow.state.season;
+      const after = currentDay(season);
+      if (night !== undefined) season.postseasonDay = night;
+      stepDoubleElim(sideShow.state);
+      if (night !== undefined) season.postseasonDay = Math.max(after, currentDay(season));
+    }
     if (!sideShow.state.done) { set({ version: version + 1 }); return; }
 
     const nat = bracket?.national;
@@ -8201,7 +8288,12 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
 
     // The other half of the showdown keeps pace, night for night, so the two
     // brackets on screen are always at the same point in the tournament.
-    const both = (): void => { step(); get().stepSideShow(); };
+    // On the same night: the side show plays the night your half just did.
+    const both = (): void => {
+      const night = currentDay(season);
+      step();
+      get().stepSideShow(night);
+    };
 
     if (mode === 'game') {
       both();
@@ -8960,10 +9052,11 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       const mb = get().myBracket;
       if (mb) {
         mb.preplayed.set(pairKey(liveMeta.home, liveMeta.away), live.result);
+        const night = currentDay(season);
         if (mb.format === 'series') stepBracket(mb.state, mb.preplayed);
         else stepDoubleElim(mb.state, mb.preplayed);
-        // And the other half of the showdown plays its night too.
-        get().stepSideShow();
+        // And the other half of the showdown plays its night too: the same one.
+        get().stepSideShow(night);
       }
       set({ live: null, liveMeta: null, version: version + 1 });
       get().noteRoster('report');
@@ -9014,6 +9107,8 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
       conference: liveMeta.conference,
       day: liveMeta.day,
     });
+    // Now the order can be taken: with the managed game in it (M67).
+    freezeFinalOrder(season);
 
     set({ live: null, liveMeta: null, version: version + 1, screen: 'today' }); /* nav-write */
     get().noteRoster('report');
@@ -9238,7 +9333,9 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
     const { season, userTeam, version } = get();
     const team = season?.teams[userTeam]?.team;
     if (!team || !season || get().busy) return;
-    dealLikeAuto(team, season.dayIndex, battingForm(season));
+    // The injury clock: in June the schedule index has stopped, and a healed
+    // man read as still out (M58).
+    dealLikeAuto(team, injuryClock(season), battingForm(season));
     set({ version: version + 1 });
     void get().saveNow();
   },
