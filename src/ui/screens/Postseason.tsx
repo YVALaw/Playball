@@ -1589,16 +1589,13 @@ function NationalStage(
           ? <OneMap de={shownHalf.de} name={name} abbr={abbr} userTeam={userTeam} onOpen={onOpen} mine={iPlayHere} />
           : (
             /* Seeded and waiting: the field in seed order, not "being drawn" (M97). */
-            <>
-              <StatusBadge tone="neutral" icon={false}>Seeded · not started</StatusBadge>
-              {nationalHalfField(nat.field.seeds, half).map((t, i) => (
-                <BracketMatch
-                  key={t}
-                  label={`Seed ${i + 1}: ${name(t)}`}
-                  teams={[{ abbr: abbr(t), name: name(t), seed: i + 1, you: t === userTeam }]}
-                />
+            <BracketMatch
+              status="Seeded · not started"
+              label={`Bracket ${half}, in seed order`}
+              teams={nationalHalfField(nat.field.seeds, half).map((t, i) => (
+                { abbr: abbr(t), name: name(t), seed: i + 1, you: t === userTeam }
               ))}
-            </>
+            />
           )}
       </section>
     </>
