@@ -7,6 +7,7 @@
 // somebody testing the game as of somebody playing it. Deleting asks twice,
 // and says plainly when the save is the career you are playing.
 
+import { isNativeShell } from '../backNav.js';
 import { useEffect, useState } from 'react';
 import { AUTOSAVE_SLOT, useDynasty, useUserTeam } from '../../state/store.js';
 import type { SaveSummary } from '../../state/store.js';
@@ -136,10 +137,10 @@ export function Saves() {
         <Callout
           tone="negative"
           role="alert"
-          title="This browser will not let the game store anything"
+          title={isNativeShell() ? 'The game cannot reach its storage on this device' : 'This browser will not let the game store anything'}
           action={{ label: 'Try again', onClick: () => { void refreshSaves(); } }}
         >
-          Another tab may have Playball open. Nothing saves until this clears.
+          {isNativeShell() ? 'Nothing saves until this clears.' : 'Another tab may have Playball open. Nothing saves until this clears.'}
           {savesError && <span className="pb-errdetail">{savesError}</span>}
         </Callout>
       )}
@@ -165,7 +166,9 @@ export function Saves() {
             onClick: () => { void useDynasty.getState().loadBackup(backupFor.slot); },
           } } : {})}
         >
-          {backupFor ? 'An earlier copy of it is kept.' : 'Probably saved by a newer version.'} Nothing was deleted.
+          {/* The same reading of the error the start screen gives (audit 17, L36). */}
+          {backupFor ? 'An earlier copy of it is kept.'
+            : /newer version|schema/i.test(loadError) ? 'It was saved by a newer version.' : 'The file could not be read.'} Nothing was deleted.
           <span className="pb-errdetail">{loadError}</span>
         </Callout>
       )}

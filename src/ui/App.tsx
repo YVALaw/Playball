@@ -35,6 +35,7 @@ import {
 } from '../state/store.js';
 import { Back, isNativeShell } from './backNav.js';
 import { initBilling } from '../state/billing.js';
+import { TEST_SHORTCUTS } from '../state/testBuild.js';
 import { eraKey, frameOf } from '../state/era.js';
 import { readPrefs, writePrefs, applyPrefs } from '../state/devicePrefs.js';
 import { StepRail } from './StepRail.js';
@@ -102,6 +103,20 @@ const openTeamCard = (index: number): void => { useDynasty.getState().openTeamCa
 const DEV = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
 
 /** The app: the accent, the audio unlock, and the body with its frames. */
+
+/** Once per launch, however often the store reports its receipts. */
+let unownedCounted = false;
+
+/** Launches in a row on which Google Play said god mode is not owned. Read with no argument. */
+function notOwnedRuns(set?: number): number {
+  const KEY = 'playball.billing.unowned';
+  try {
+    if (set !== undefined) { window.localStorage.setItem(KEY, String(set)); return set; }
+    return Number(window.localStorage.getItem(KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
 export function App() {
   /*
     Your school's colours, worn by the whole app.
@@ -385,9 +400,28 @@ function AppBody() {
     if (!isNativeShell()) return;
     void initBilling({
       owned: () => {
+        notOwnedRuns(0);
         const prefs = readPrefs();
         if (prefs.godMode) return;
         const next = { ...prefs, godMode: true };
+        writePrefs(next);
+        applyPrefs(next);
+      },
+      /*
+        Refunded or revoked (audit 17, L3): the entitlement goes when Google
+        Play has said "not owned" on two launches running, so one bad read
+        never takes a paid feature away. Sandbox careers already made stay
+        sandboxes; only new ones need the unlock. A test build's free unlock
+        is not the store's to revoke.
+      */
+      notOwned: () => {
+        if (TEST_SHORTCUTS || unownedCounted) return;
+        unownedCounted = true;
+        const runs = notOwnedRuns() + 1;
+        notOwnedRuns(runs);
+        const prefs = readPrefs();
+        if (runs < 2 || !prefs.godMode) return;
+        const next = { ...prefs, godMode: false };
         writePrefs(next);
         applyPrefs(next);
       },
@@ -571,7 +605,9 @@ function AppBody() {
           <FrameMessage
             icon="archive"
             title="Your saves cannot be reached"
-            text="The browser will not open the game's storage: another tab may have Playball open, or site data is blocked here. You can play anyway, but nothing will be saved."
+            text={isNativeShell()
+              ? 'The game cannot reach its storage on this device. You can play, but nothing will be saved.'
+              : "The browser will not open the game's storage: another tab may have Playball open, or site data is blocked here. You can play anyway, but nothing will be saved."}
             action={{
               label: 'Play without saving',
               onClick: () => {

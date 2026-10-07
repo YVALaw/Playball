@@ -32,8 +32,10 @@ export interface BillingState {
   owned: boolean;
   /** A purchase or a restore is in flight. */
   busy: boolean;
-  /** The last thing that went wrong, in the store's words, or null. */
+  /** The last thing that went wrong, in plain words, or null. */
   error: string | null;
+  /** A purchase Google Play is still waiting to be paid (cash, slow methods). */
+  pending: boolean;
 }
 
 /*
@@ -55,11 +57,15 @@ interface CdvTransaction {
 interface CdvWhen {
   approved(cb: (t: CdvTransaction) => void): CdvWhen;
   productUpdated(cb: (p: CdvProduct) => void): CdvWhen;
+  pending?(cb: (t: CdvTransaction) => void): CdvWhen;
+  receiptsReady?(cb: () => void): CdvWhen;
 }
+/** What the plugin reports a failure with. */
+interface CdvError { code?: number; message?: string; isError?: boolean }
 interface CdvStore {
   register(products: { id: string; type: string; platform: string }[]): void;
   when(): CdvWhen;
-  error(cb: (e: { message?: string }) => void): void;
+  error(cb: (e: CdvError) => void): void;
   initialize(platforms: string[]): Promise<unknown>;
   get(id: string, platform?: string): CdvProduct | undefined;
   restorePurchases(): Promise<unknown>;
@@ -75,10 +81,39 @@ const plugin = (): CdvPurchaseGlobal | null => {
   return g.CdvPurchase?.store ? g.CdvPurchase : null;
 };
 
-let state: BillingState = { available: false, price: null, owned: false, busy: false, error: null };
+const FRESH: BillingState = { available: false, price: null, owned: false, busy: false, error: null, pending: false };
+let state: BillingState = { ...FRESH };
 const listeners = new Set<() => void>();
 let initialised = false;
 let onOwned: (() => void) | null = null;
+let onNotOwned: (() => void) | null = null;
+
+/** The plugin's cancel: `ErrorCode.PAYMENT_CANCELLED`, 6777000 + 6. */
+const PAYMENT_CANCELLED = 6777006;
+
+/**
+ * A failure in words a player can use, or null when there is nothing to say
+ * (audit 17, L2). The plugin's own text is Google's ("USER_CANCELED",
+ * "Failure to purchase since item is already owned") and a closed sheet came
+ * through as an error in red.
+ */
+function plainError(e: unknown): string | null {
+  const err = (e ?? {}) as CdvError;
+  const message = e instanceof Error ? e.message : String(err.message ?? '');
+  if (err.code === PAYMENT_CANCELLED || /cancel/i.test(message)) return null;
+  if (/already owned/i.test(message)) return null;
+  if (/unavailable|not available|disconnected|network|timeout|not connected/i.test(message)) {
+    return 'Google Play is not reachable right now. Check the connection and try again.';
+  }
+  return 'Google Play could not finish that. Try again in a moment.';
+}
+
+/** A failure, handled: an already-owned product is restored rather than refused. */
+function failed(e: unknown): void {
+  const message = e instanceof Error ? e.message : String((e as CdvError | null)?.message ?? '');
+  patch({ busy: false, error: plainError(e) });
+  if (/already owned/i.test(message)) void restorePurchases();
+}
 
 function patch(next: Partial<BillingState>): void {
   state = { ...state, ...next };
@@ -97,7 +132,7 @@ export function onBilling(listener: () => void): () => void {
 /** The store said the product is owned: remember it, and tell the app once. */
 function nowOwned(): void {
   if (state.owned) return;
-  patch({ owned: true, busy: false, error: null });
+  patch({ owned: true, busy: false, error: null, pending: false });
   onOwned?.();
 }
 
@@ -116,8 +151,9 @@ function readProduct(p: CdvProduct | undefined): void {
  * Safe to call anywhere: without the plugin it records `available: false`
  * and returns.
  */
-export async function initBilling(opts: { owned: () => void }): Promise<BillingState> {
+export async function initBilling(opts: { owned: () => void; notOwned?: () => void }): Promise<BillingState> {
   onOwned = opts.owned;
+  onNotOwned = opts.notOwned ?? null;
   if (initialised) return state;
   const cdv = plugin();
   if (!cdv) { patch({ available: false }); return state; }
@@ -129,8 +165,8 @@ export async function initBilling(opts: { owned: () => void }): Promise<BillingS
       type: cdv.ProductType.NON_CONSUMABLE,
       platform: cdv.Platform.GOOGLE_PLAY,
     }]);
-    store.error((e) => patch({ busy: false, error: e?.message ?? 'Google Play could not complete that.' }));
-    store.when()
+    store.error((e) => failed(e));
+    const when = store.when()
       // No server of our own to verify against: a non-consumable is finished
       // on approval, and the product's `owned` flag is the store's word.
       .approved((t) => {
@@ -138,11 +174,23 @@ export async function initBilling(opts: { owned: () => void }): Promise<BillingS
         if (t.products.some((p) => p.id === GOD_MODE_PRODUCT)) nowOwned();
       })
       .productUpdated((p) => readProduct(p));
+    when.pending?.((t) => {
+      if (t.products.some((p) => p.id === GOD_MODE_PRODUCT)) patch({ pending: true, busy: false });
+    });
+    /*
+      A refund takes it back (audit 17, L3). Once Google Play has reported
+      this account's purchases, a product it does not mark owned is not owned
+      — the app says so to its caller, which decides what that costs.
+    */
+    when.receiptsReady?.(() => {
+      const p = store.get(GOD_MODE_PRODUCT, cdv.Platform.GOOGLE_PLAY);
+      if (p && !p.owned && !state.owned) onNotOwned?.();
+    });
     await store.initialize([cdv.Platform.GOOGLE_PLAY]);
     patch({ available: true });
     readProduct(store.get(GOD_MODE_PRODUCT, cdv.Platform.GOOGLE_PLAY));
   } catch (e) {
-    patch({ available: false, error: e instanceof Error ? e.message : String(e) });
+    patch({ available: false, error: plainError(e) });
   }
   return state;
 }
@@ -160,12 +208,14 @@ export async function buyGodMode(): Promise<boolean> {
   if (!offer) { patch({ error: 'Google Play has no offer for the sandbox right now.' }); return false; }
   patch({ busy: true, error: null });
   try {
-    await offer.order();
+    // v13 resolves with an error object rather than throwing.
+    const result = await offer.order();
+    if (result && typeof result === 'object' && (result as CdvError).isError) { failed(result); return false; }
     // The sheet closed; if the store approved, `approved` already fired.
     patch({ busy: false });
     return true;
   } catch (e) {
-    patch({ busy: false, error: e instanceof Error ? e.message : String(e) });
+    failed(e);
     return false;
   }
 }
@@ -181,15 +231,16 @@ export async function restorePurchases(): Promise<boolean> {
     patch({ busy: false });
     return true;
   } catch (e) {
-    patch({ busy: false, error: e instanceof Error ? e.message : String(e) });
+    patch({ busy: false, error: plainError(e) });
     return false;
   }
 }
 
 /** Tests only: forget the plugin and the listeners between cases. */
 export function resetBillingForTests(): void {
-  state = { available: false, price: null, owned: false, busy: false, error: null };
+  state = { ...FRESH };
   listeners.clear();
   initialised = false;
   onOwned = null;
+  onNotOwned = null;
 }

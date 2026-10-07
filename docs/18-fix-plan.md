@@ -166,6 +166,43 @@ flipping it changes behaviour; then fix each row.
 
 ## Phase 5 — Android and Play Store (3–4 days, then device pass)
 
+> **Status: code done; the device pass is still owed.** Tests are in `tests/phase5-shell.test.ts`,
+> `tests/phase5-sound.test.ts` and `tests/billing.test.ts`. This container has no Android SDK, so nothing here has
+> run on a phone or an emulator. The manifest patch was checked against Capacitor's own Android template.
+> - **M5:** portrait was done in Phase 0. **M23:** under 560 px of height, Home scrolls and its action row sticks to
+>   the bottom, and the live park shrinks. In Chromium at 420 px, the three buttons were under the tab bar before
+>   the fix and are tappable after it.
+> - **M1:** the system bars follow the in-app theme (Capacitor SystemBars: Dark, Light, or Default for "system").
+> - **M24:** `apk.cjs` declares VIBRATE. A silent ringer still mutes WebView haptics; `@capacitor/haptics` would
+>   avoid that and was not added.
+> - **M2:** the three families ship in the bundle (`src/ui/fonts/`, Latin and Latin Extended, OFL). The Google
+>   Fonts links are gone, and a page load makes no external request.
+> - **M39/L61:** in the background the audio context suspends and the bench coach waits. The Sound switch stops
+>   and restarts the crowd mid-game.
+> - **M3:** no WebGL2 means the 2D diamond, and three.js is never fetched. A renderer that fails to start also
+>   falls back to 2D.
+> - **L59:** the WebView's text zoom is off. The phone's font size seeds the in-app Text size once, through a small
+>   `Device` plugin (`native/android`).
+> - **L4:** backup is kept on but scoped to the WebView's storage (`native/res/xml`). The privacy policy and the
+>   listing now say what backup does. **Review the new privacy wording before it is published.**
+> - **L2/L3/L37:**
+>   - A cancelled purchase says nothing.
+>   - "Already owned" restores the purchase.
+>   - Other failures read in plain words, and a pending payment shows a note.
+>   - A refund takes god mode back after Google Play reports "not owned" on two launches in a row. Test builds are
+>     exempt, and existing sandbox careers stay.
+>   - Settings says why god mode cannot be bought.
+> - **L36:** in the APK, storage errors no longer mention browsers and tabs. Saves reads load errors the way the
+>   start screen does.
+> - **M27:** Settings → Privacy and about shows the policy text offline, links the full policy, and shows the
+>   version and build.
+> - **M26:** the eight screenshots were regenerated from the app at 1080×1920 by `scripts/store-shots.cjs`, and
+>   the listing doc's checklist now includes regenerating them.
+> - **L6:** the docs name `npm run aab` as the store build. A `.debug` application-ID suffix was not added: it
+>   would make the next sideloaded test build a separate app without the tester's careers.
+> - **Seen while doing this, not fixed:** after the national final, an injury "Set the lineup" prompt appears
+>   over the big-moment card. It is queued as its own task.
+
 | Task | Findings |
 |---|---|
 | Portrait lock (Phase 0) **or** make Home/live game scroll in landscape/split-screen | M5, M23 |

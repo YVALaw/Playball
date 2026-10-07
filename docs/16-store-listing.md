@@ -62,16 +62,24 @@ Email: the developer's. Website: none required. Privacy policy URL: the
 | Feature graphic | `store/feature-1024x500.png` | 1024×500 PNG |
 | Phone screenshots | `store/shot-*.png` | 2–8, 16:9 to 9:16, 320–3840 px |
 
-Screenshots to take, in this order (the first two show on the listing card):
+Screenshots, in this order (the first two show on the listing card). They are
+taken from the real app by `scripts/store-shots.cjs` (see its header), so they
+are regenerated rather than redrawn whenever the UI changes:
 
-1. The dugout mid-game, runners on, the call buttons up.
-2. The desk on a game day — first pitch, probables, the recruiting card.
-3. The recruiting board with a prospect open.
-4. The postseason bracket in June.
-5. The Program dashboard with staff and a running project.
-6. A player card, ratings tab.
-7. God Mode control center.
-8. The awards night or a big-moment card (WALK-OFF / NATIONAL CHAMPIONS).
+1. `shot-01-dugout`: the dugout mid-game, runners on, the call buttons up.
+2. `shot-02-desk`: the desk on a game day, with the game card and the to-do list.
+3. `shot-03-recruiting`: the recruiting board with a prospect open.
+4. `shot-04-bracket`: June, the conference tournament and your next game.
+5. `shot-05-program`: the staff room with a coach hired.
+6. `shot-06-player`: a player card.
+7. `shot-07-god-mode`: god mode editing a program.
+8. `shot-08-big-moment`: the June big-moment card.
+
+None may show scouting while `SCOUTING` is off (`src/state/features.ts`).
+
+**Before every release:** regenerate the screenshots
+(`node scripts/store-shots.cjs store`) and look at each one. Check that
+Settings → Privacy and about opens and that its link resolves.
 
 ## App content (Policy → App content), answers
 

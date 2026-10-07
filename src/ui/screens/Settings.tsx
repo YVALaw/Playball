@@ -14,6 +14,12 @@ import { billingState, onBilling, buyGodMode, restorePurchases } from '../../sta
 import { useDynasty } from '../../state/store.js';
 import { SaveAndLeave } from '../components/SaveAndLeave.js';
 import { TEST_SHORTCUTS } from '../../state/testBuild.js';
+import { JOURNAL_BUILD } from '../../state/liveJournal.js';
+import { isNativeShell } from '../backNav.js';
+
+// The version half of the build id (vite.config.ts): "1.0.0+abc1234".
+const APP_VERSION = JOURNAL_BUILD.split('+')[0] ?? JOURNAL_BUILD;
+const PRIVACY_URL = 'https://yvalaw.github.io/Playball/privacy';
 import { SCOUTING } from '../../state/features.js';
 import {
   SYSTEMS, handles, presetSays, type DepthMode, type SystemKey,
@@ -151,6 +157,13 @@ export function Settings() {
           </List>
         </section>
 
+        <section>
+          <SectionHeader title="About" />
+          <List label="About">
+            <ListRow icon="info" title="Privacy and about" subtitle={`Privacy policy · version ${APP_VERSION}`} onClick={() => setPage('about')} />
+          </List>
+        </section>
+
         {/* The way back to the front door: "in settings we should have a
             button to go back to the main menu in case a player wants to start
             a new career." It saves first. */}
@@ -236,6 +249,38 @@ export function Settings() {
     );
   }
 
+  /*
+    The privacy policy, in the app (audit 17, M27): Google Play asks for a
+    link or the text inside every app, even one that collects nothing. The
+    text is here so it reads offline; the full policy is one tap away.
+  */
+  if (page === 'about') {
+    return (
+      <main className="pb-page">
+        <ScreenHeader eyebrow="About" title="Privacy" />
+        <Card eyebrow="The short version" title="Playball collects nothing">
+          <p className="pb-text-muted">
+            Your careers and settings are stored on this device and are never sent to the
+            developer or to anyone else. There is no account, no advertising, no analytics and no tracking, and the
+            game works fully offline.
+          </p>
+          <p className="pb-text-muted">
+            If Android backup is on, your careers and settings can be part of your own Google account backup, and
+            come back when you reinstall or move to a new phone. You can turn that off in Android Settings.
+          </p>
+          <p className="pb-text-muted">
+            God mode is bought through Google Play, which handles the payment; the game only remembers that it is
+            owned.
+          </p>
+          <a className="pb-link" href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">Read the full privacy policy</a>
+        </Card>
+        <Card eyebrow="This build" title={`Playball ${APP_VERSION}`}>
+          <p className="pb-text-muted">Build {JOURNAL_BUILD}. Questions: hanssmell2@gmail.com</p>
+        </Card>
+      </main>
+    );
+  }
+
   if (page === 'sound') {
     return (
       <main className="pb-page">
@@ -291,9 +336,17 @@ export function Settings() {
                 ? `One purchase on Google Play, ${billing.price}. Yours for good.`
                 : TEST_SHORTCUTS
                   ? 'Test builds unlock it for free.'
-                  : 'Arrives with the store listing.'}
+                  // Why it cannot be bought here, truthfully (audit 17, L37).
+                  : !isNativeShell()
+                    ? 'God mode is bought through Google Play, in the Android app.'
+                    : billing.available
+                      ? 'Google Play has not offered it on this device yet. Try again later.'
+                      : 'Google Play is not available right now. Try again later.'}
           </p>
-          {billing.error && canBuy && <Callout tone="negative">{billing.error}</Callout>}
+          {billing.pending && !prefs.godMode && (
+            <Callout tone="info">Google Play is waiting for the payment to go through. God mode unlocks as soon as it does.</Callout>
+          )}
+          {billing.error && <Callout tone="negative">{billing.error}</Callout>}
           {/*
             The purchase goes through Google Play (state/billing.ts) and is shown
             only when the store offers the product with a price. Before that a

@@ -651,7 +651,7 @@ export type Tab = 'home' | 'team' | 'office' | 'program';
 
 /** A screen laid over whatever frame the game is in. See `overlay` below. */
 /** The settings screen's four pages, plus the list that leads to them. */
-export type SettingsPage = 'index' | 'display' | 'sound' | 'play' | 'god';
+export type SettingsPage = 'index' | 'display' | 'sound' | 'play' | 'god' | 'about';
 
 /**
  * Everything that can be laid over a frame. The rooms (see `Room`) are

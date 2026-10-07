@@ -24,10 +24,14 @@ interface FakeProduct {
   getOffer: () => { order(): Promise<unknown> } | undefined;
 }
 
-function fakeStore(opts: { owned?: boolean; price?: string; noOffer?: boolean; failOrder?: boolean } = {}) {
+function fakeStore(opts: {
+  owned?: boolean; price?: string; noOffer?: boolean; failOrder?: boolean;
+  orderResult?: { isError: true; code: number; message: string };
+} = {}) {
   const calls: string[] = [];
   let approved: Approved = () => {};
   let updated: Updated = () => {};
+  const fire = { pending: (_t: { finish(): void; products: { id: string }[] }) => {}, receipts: () => {} };
   const product: FakeProduct = {
     id: GOD_MODE_PRODUCT,
     owned: opts.owned ?? false,
@@ -36,6 +40,7 @@ function fakeStore(opts: { owned?: boolean; price?: string; noOffer?: boolean; f
       order: async () => {
         calls.push('order');
         if (opts.failOrder) throw new Error('declined');
+        if (opts.orderResult) return opts.orderResult;
         // The store approves: the plugin calls back, the product is owned.
         product.owned = true;
         approved({ finish: () => calls.push('finish'), products: [{ id: GOD_MODE_PRODUCT }] });
@@ -45,6 +50,8 @@ function fakeStore(opts: { owned?: boolean; price?: string; noOffer?: boolean; f
   const when = {
     approved: (cb: Approved) => { approved = cb; return when; },
     productUpdated: (cb: Updated) => { updated = cb; return when; },
+    pending: (cb: (t: { finish(): void; products: { id: string }[] }) => void) => { fire.pending = cb; return when; },
+    receiptsReady: (cb: () => void) => { fire.receipts = cb; return when; },
   };
   const g: CdvPurchaseGlobal = {
     ProductType: { NON_CONSUMABLE: 'non consumable' },
@@ -58,7 +65,7 @@ function fakeStore(opts: { owned?: boolean; price?: string; noOffer?: boolean; f
       restorePurchases: async () => { calls.push('restore'); product.owned = true; updated(product); },
     },
   };
-  return { g, calls, product };
+  return { g, calls, product, fire };
 }
 
 const G = globalThis as { CdvPurchase?: CdvPurchaseGlobal };
@@ -124,7 +131,8 @@ describe('with the store', () => {
     G.CdvPurchase = g;
     await initBilling({ owned: () => {} });
     expect(await buyGodMode()).toBe(false);
-    expect(billingState().error).toBe('declined');
+    // In plain words, not the store's (audit 17, L2).
+    expect(billingState().error).toBe('Google Play could not finish that. Try again in a moment.');
     expect(billingState().busy).toBe(false);
     expect(billingState().owned).toBe(false);
   });
@@ -143,5 +151,45 @@ describe('with the store', () => {
     await initBilling({ owned: () => {} });
     await initBilling({ owned: () => {} });
     expect(calls.filter((c) => c === 'initialize')).toHaveLength(1);
+  });
+
+  it('says nothing when the player closes the sheet (L2)', async () => {
+    const { g } = fakeStore({ orderResult: { isError: true, code: 6777006, message: 'USER_CANCELED' } });
+    G.CdvPurchase = g;
+    await initBilling({ owned: () => {} });
+    expect(await buyGodMode()).toBe(false);
+    expect(billingState().error).toBeNull();
+    expect(billingState().busy).toBe(false);
+  });
+
+  it('restores instead of refusing when the account already owns it (L2)', async () => {
+    const { g, calls } = fakeStore({
+      orderResult: { isError: true, code: 6777003, message: 'Failure to purchase since item is already owned' },
+    });
+    G.CdvPurchase = g;
+    let owned = 0;
+    await initBilling({ owned: () => { owned++; } });
+    await buyGodMode();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(calls).toContain('restore');
+    expect(billingState().error).toBeNull();
+    expect(owned).toBe(1);
+  });
+
+  it('marks a purchase waiting on payment as pending (L2)', async () => {
+    const { g, fire } = fakeStore();
+    G.CdvPurchase = g;
+    await initBilling({ owned: () => {} });
+    fire.pending({ finish: () => {}, products: [{ id: GOD_MODE_PRODUCT }] });
+    expect(billingState().pending).toBe(true);
+  });
+
+  it('reports a product the store no longer marks owned, once receipts are in (L3)', async () => {
+    const { g, fire } = fakeStore();
+    G.CdvPurchase = g;
+    let gone = 0;
+    await initBilling({ owned: () => {}, notOwned: () => { gone++; } });
+    fire.receipts();
+    expect(gone).toBe(1);
   });
 });
