@@ -629,6 +629,10 @@ export async function saveDynasty(
   }
   await store.put(STORE, file);
   writtenAt.set(slot, file.savedAt);
+  if (!isBackupSlot(slot) && keysListed(store)) {
+    const row = summarize(file);
+    await editIndex(store, (summaries) => { summaries[slot] = row; });
+  }
 }
 
 /** The kept earlier copy of a slot, if there is one: its save time. */
@@ -786,50 +790,104 @@ export async function loadDynasty(slot: string): Promise<LoadedDynasty | null> {
   };
 }
 
-export async function listSaves(): Promise<SaveSummary[]> {
-  const files = await (await db()).getAll(STORE);
-  return files
-    // A kept earlier copy is part of its career, not a career of its own.
-    .filter((f) => !isBackupSlot(String((f as { slot?: unknown } | null)?.slot ?? '')))
-    .map((f): SaveSummary => {
-      try {
-        const team = f.season.teams[f.userTeam];
-        const coach = (f.coach ?? null) as {
-          retiredYear?: unknown; name?: unknown; careerWins?: unknown; careerLosses?: unknown;
-        } | null;
-        const retired = coach && typeof coach.retiredYear === 'number'
-          ? {
-            year: coach.retiredYear,
-            coach: String(coach.name ?? 'Coach'),
-            record: `${Number(coach.careerWins) || 0}-${Number(coach.careerLosses) || 0}`,
-          }
-          : undefined;
-        return {
-          slot: f.slot,
-          name: f.name,
-          savedAt: f.savedAt,
-          year: f.year,
-          record: team ? `${team.w}-${team.l}` : '—',
-          school: team ? team.def.school : '—',
-          ...(retired ? { retired } : {}),
-          ...(f.godMode ? { sandbox: true } : {}),
-        };
-      } catch {
-        // One file that cannot be read is one row that says so, not an empty
-        // list: a single malformed record used to throw the whole listing
-        // out, and every other career with it (05 §62.3).
-        const raw = f as Partial<SaveFile> | null | undefined;
-        return {
-          slot: String(raw?.slot ?? ''),
-          name: String(raw?.name ?? 'Unreadable save'),
-          savedAt: Number(raw?.savedAt) || 0,
-          year: Number(raw?.year) || 0,
-          record: '—',
-          school: 'This save cannot be read',
-        };
+/** The saves-menu row for one file. Never throws. */
+function summarize(f: SaveFile): SaveSummary {
+  try {
+    const team = f.season.teams[f.userTeam];
+    const coach = (f.coach ?? null) as {
+      retiredYear?: unknown; name?: unknown; careerWins?: unknown; careerLosses?: unknown;
+    } | null;
+    const retired = coach && typeof coach.retiredYear === 'number'
+      ? {
+        year: coach.retiredYear,
+        coach: String(coach.name ?? 'Coach'),
+        record: `${Number(coach.careerWins) || 0}-${Number(coach.careerLosses) || 0}`,
       }
-    })
-    .sort((a, b) => b.savedAt - a.savedAt);
+      : undefined;
+    return {
+      slot: f.slot,
+      name: f.name,
+      savedAt: f.savedAt,
+      year: f.year,
+      record: team ? `${team.w}-${team.l}` : '—',
+      school: team ? team.def.school : '—',
+      ...(retired ? { retired } : {}),
+      ...(f.godMode ? { sandbox: true } : {}),
+    };
+  } catch {
+    // One file that cannot be read is one row that says so, not an empty
+    // list: a single malformed record used to throw the whole listing
+    // out, and every other career with it (05 §62.3).
+    const raw = f as Partial<SaveFile> | null | undefined;
+    return {
+      slot: String(raw?.slot ?? ''),
+      name: String(raw?.name ?? 'Unreadable save'),
+      savedAt: Number(raw?.savedAt) || 0,
+      year: Number(raw?.year) || 0,
+      record: '—',
+      school: 'This save cannot be read',
+    };
+  }
+}
+
+/**
+ * The saves menu, from one small record instead of every career (audit 17,
+ * M51). Listing used to read and deserialise each 2–3 MB file just to show a
+ * name and a record. The index rides in the same store under its own key and
+ * heals itself: a file it does not know is read once and added, an entry
+ * whose file is gone is dropped. Only where the database can list its keys —
+ * everywhere real; a test double without them takes the old full read.
+ */
+const INDEX_KEY = '§saves-index';
+interface SaveIndex { slot: typeof INDEX_KEY; summaries: Record<string, SaveSummary> }
+const isSaveFileKey = (slot: string): boolean => slot !== INDEX_KEY && !isBackupSlot(slot);
+type Db = IDBPDatabase<PlayballDB>;
+const keysListed = (store: Db): boolean => typeof (store as Partial<Db>).getAllKeys === 'function';
+async function readIndex(store: Db): Promise<Record<string, SaveSummary>> {
+  const raw = (await store.get(STORE, INDEX_KEY)) as unknown as Partial<SaveIndex> | undefined;
+  return raw && typeof raw.summaries === 'object' && raw.summaries ? { ...raw.summaries } : {};
+}
+// Index writes queue behind each other so two saves never drop each other's row.
+let indexWrites: Promise<unknown> = Promise.resolve();
+function editIndex(store: Db, edit: (summaries: Record<string, SaveSummary>) => void): Promise<void> {
+  const next = indexWrites.then(async () => {
+    const summaries = await readIndex(store);
+    edit(summaries);
+    const record: SaveIndex = { slot: INDEX_KEY, summaries };
+    await store.put(STORE, record as unknown as SaveFile);
+  });
+  indexWrites = next.catch(() => {});
+  return next;
+}
+
+export async function listSaves(): Promise<SaveSummary[]> {
+  const store = await db();
+  let rows: SaveSummary[];
+  if (keysListed(store)) {
+    await indexWrites;
+    const keys = (await store.getAllKeys(STORE)).map(String).filter(isSaveFileKey);
+    const known = await readIndex(store);
+    const missing = keys.filter((k) => !known[k]);
+    const stale = Object.keys(known).some((k) => !keys.includes(k));
+    const found: SaveSummary[] = [];
+    for (const k of missing) {
+      const f = await store.get(STORE, k);
+      if (f) found.push(summarize(f));
+    }
+    if (found.length > 0 || stale) {
+      await editIndex(store, (summaries) => {
+        for (const row of found) summaries[row.slot] = row;
+        for (const k of Object.keys(summaries)) if (!keys.includes(k)) delete summaries[k];
+      });
+    }
+    rows = [...keys.filter((k) => known[k]).map((k) => known[k]!), ...found];
+  } else {
+    rows = (await store.getAll(STORE))
+      // A kept earlier copy is part of its career, not a career of its own.
+      .filter((f) => isSaveFileKey(String((f as { slot?: unknown } | null)?.slot ?? '')))
+      .map(summarize);
+  }
+  return rows.sort((a, b) => b.savedAt - a.savedAt);
 }
 
 export async function deleteSave(slot: string): Promise<void> {
@@ -837,4 +895,5 @@ export async function deleteSave(slot: string): Promise<void> {
   await store.delete(STORE, slot);
   if (!isBackupSlot(slot)) await store.delete(STORE, backupSlotOf(slot));
   writtenAt.delete(slot);
+  if (keysListed(store)) await editIndex(store, (summaries) => { delete summaries[slot]; });
 }

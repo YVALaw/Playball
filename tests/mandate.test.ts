@@ -70,7 +70,9 @@ describe('the board asks for one number', () => {
     // The guard on the guard: if no world's ask moved, every equality above
     // was satisfied by two copies of one number and proved nothing.
     expect(moved, 'no seed changed its ask, so this test proved nothing').toBeGreaterThan(0);
-  });
+    // Sixteen worlds and sixteen rolls: about half a minute, which the default
+    // timer never caught while the roll did not yield to it.
+  }, 120_000);
 
   it('gives a second career its own letter rather than the last one', async () => {
     // `acceptOffer` has cleared the opener since the two-number mandate was
