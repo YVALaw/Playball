@@ -97,6 +97,21 @@ flipping it changes behaviour; then fix each row.
 
 ## Phase 3 — Recruiting, June, game sim correctness (1 week)
 
+> **Status: done.** Tests are in `tests/phase3-fixes.test.ts`. Measured results:
+> - **H6:** unsigned prospects per year fell from 77–80 to 12–15. Programs ending with an open scholarship fell from
+>   42–51 to 21–24.
+> - **H5/M76:** June played through the store went from 109–110 nights to 29–31.
+> Notes:
+> - **H6 follow-up:** with full programs off the board, the bottom of the class became a real race. A delegated staff
+>   at two stars or under now also swaps a starred man it is clearly losing, but only for a race within a star of him.
+>   The weakest program's staff signs 7–8 against its peers' 6.3–6.9, and a 5★ staff's class holds at 3.5★.
+> - **M60:** the coach's career total now counts June, as his season rows do. The school's annals keep the regular
+>   season, and the load-time repair of the annals relies on that split.
+> - **M22:** changes the pinned calibration seed slightly (errors 0.954 → 0.976 a game). The golden values were
+>   re-recorded with a note.
+> - **M21:** rest is judged on the game's own date. Injury availability still reads the day index after it advances,
+>   which the audit did not flag. It may be worth a look.
+
 | Task | Findings |
 |---|---|
 | Full-class programs stop counting as the lead; last-scholarship "yes" commits; nag clears | H6, M88, M91 |
