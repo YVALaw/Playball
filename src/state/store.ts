@@ -3027,11 +3027,10 @@ function recordFor(state: DynastyStore): SeasonRecord | null {
 
   return {
     year,
-    // The regular season, as the career total, the school's annals and every
-    // rival coach's record count it; June is the finish beside it. The row
-    // used to count June and the header did not, so the Career page never
-    // added up (audit 17, M60).
-    w: regularRecord(me).w, l: regularRecord(me).l, cw: me.cw, cl: me.cl,
+    // The coach's overall record, June included; his career total counts the
+    // same way now (audit 17, M60). The school's own book keeps the regular
+    // season, which is what the load-time repair below relies on.
+    w: me.w, l: me.l, cw: me.cw, cl: me.cl,
     confPlace: table.findIndex((t) => t.index === me.index) + 1,
     rpi: rpi(season, me.index),
     wonConference: champions.includes(me.index),
@@ -6072,8 +6071,12 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
         badRun: review.badRun,
         contractYears: review.contractYears,
         contractLength: review.contractLength,
-        careerWins: coach.careerWins + outcome.wins,
-        careerLosses: coach.careerLosses + outcome.losses,
+        // His overall record, June included, as his season rows are: the
+        // total counted the regular season only, and the Career page's header
+        // never equalled its own rows (audit 17, M60). The board still grades
+        // the regular season, through \`outcome\`.
+        careerWins: coach.careerWins + me.w,
+        careerLosses: coach.careerLosses + me.l,
         titles: coach.titles + (outcome.wonTitle ? 1 : 0),
         conferenceTitles: coach.conferenceTitles + (outcome.wonConference ? 1 : 0),
         regionalTitles: coach.regionalTitles + (outcome.wonRegional ? 1 : 0),
