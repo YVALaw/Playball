@@ -1204,10 +1204,13 @@ button.pb-prospect__head { cursor: pointer; }
    the layout: the control draws at its own size and an invisible box of
    48px, centred on it, takes the tap. The rows that scroll sideways clip what
    sticks out of them, so they carry padding for it and give the same back as
-   a negative margin. The segmented control's track already has that room. */
+   a negative margin. The segmented control's track already has that room.
+   They scroll sideways only: a box a pixel taller than the padding made the
+   whole row drift up and down under the thumb too (2026-10-07). */
 :is(.pb-seg__opt, .pb-chip, .pb-rc-view, .pb-rc-fbtn, .pb-todo__btn, .pb-home__label, .pb-wheel__rail > button) { position: relative; }
 :is(.pb-seg__opt, .pb-chip, .pb-rc-view, .pb-rc-fbtn, .pb-todo__btn, .pb-home__label, .pb-wheel__rail > button, .pb-park__man)::after {
   content: ""; position: absolute; left: 50%; top: 50%;
   width: max(100%, 48px); height: max(100%, 48px); transform: translate(-50%, -50%);
 }
-.pb-chips, .pb-rc-views, .pb-rc-filters { padding-block: 6px; margin-block: -6px; }
+.pb-chips, .pb-rc-views, .pb-rc-filters { padding-block: 8px; margin-block: -8px; }
+.pb-chips:not(.pb-chips--wrap), .pb-rc-views, .pb-rc-filters { overflow-y: hidden; }

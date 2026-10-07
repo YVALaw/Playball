@@ -2,9 +2,9 @@
 import { useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useDialogFocus } from './dialogFocus.js';
-import { useScreenOwner } from './screenOwner.js';
+import { isOverlayOwner, useScreenOwner } from './screenOwner.js';
 import { readPrefs } from '../state/devicePrefs.js';
-import { seasonPlanShowing, useDynasty } from '../state/store.js';
+import { seasonPlanCovered, seasonPlanShowing, useDynasty, type DynastyStore } from '../state/store.js';
 import { TUTORIALS } from './tutorials.js';
 import { Icon } from './components/ui/index.js';
 
@@ -14,13 +14,19 @@ export function FirstVisit({ id }: { id: string }) {
   const titleId = useId();
   const bodyId = useId();
   const card = TUTORIALS[id];
-  // A tip never stacks on the Season plan; it waits for the sheet to close.
-  const planUp = useDynasty(seasonPlanShowing);
-  const show = !!card && !seen.includes(id) && readPrefs().tutorials && !planUp;
+  const owner = useScreenOwner();
+  // A tip never stacks on the Season plan, nor on a room or a coach's sheet
+  // the plan opened over itself: hiring from the plan is not a visit to the
+  // screen underneath (2026-10-07: the Today card came up mid-hire). It waits
+  // for the plan to close.
+  const planUp = useDynasty((s) => seasonPlanShowing(s) || seasonPlanCovered(s));
+  // Nor on anything that lies over its own screen: a table, a program, a
+  // player's card, a coach's sheet, god mode.
+  const under = useDynasty((s) => coveredFor(s, owner));
+  const show = !!card && !seen.includes(id) && readPrefs().tutorials && !planUp && !under;
   const frame = typeof document === 'undefined' ? null : document.querySelector('.app-frame');
   const primary = useRef<HTMLButtonElement | null>(null);
   const dialog = useRef<HTMLDivElement | null>(null);
-  const owner = useScreenOwner();
   const close = (): void => markSeen(id);
   // A back layer like any other card: back closes the tip, never the screen under it (M44).
   useDialogFocus(dialog, close, { initial: primary, active: show && frame !== null });
@@ -40,6 +46,11 @@ export function FirstVisit({ id }: { id: string }) {
         </header>
         <div id={bodyId} className="pb-tip__body">
           <p className="pb-text">{card.body}</p>
+          {card.points && card.points.length > 0 && (
+            <ul className="pb-tip__points">
+              {card.points.map((line) => <li key={line}>{line}</li>)}
+            </ul>
+          )}
           <p className="pb-tip__action"><Icon name="arrow-right" size={16} /><span>{card.action}</span></p>
         </div>
         <footer className="pb-tip__foot">
@@ -50,4 +61,14 @@ export function FirstVisit({ id }: { id: string }) {
       </section>
     </div>, frame,
   );
+}
+
+/**
+ * Something is over the screen that owns this tip. An overlay's own tip is
+ * the overlay on top (only the top slot's portals are drawn); a screen's tip
+ * waits for every overlay as well.
+ */
+export function coveredFor(s: Pick<DynastyStore, 'selectedPlayer' | 'teamCard' | 'coachSeat' | 'godStack' | 'overlay'>, owner: string): boolean {
+  const card = s.selectedPlayer !== null || s.teamCard !== null || s.coachSeat !== null || s.godStack.length > 0;
+  return card || (!isOverlayOwner(owner) && s.overlay !== null);
 }

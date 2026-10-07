@@ -39,6 +39,11 @@ export function ownerRule(live: string): string {
 */
 const SLOT = 'o:';
 
+/** Whether a portal belongs to an overlay slot rather than a screen or the frame. */
+export function isOverlayOwner(owner: string): boolean {
+  return owner.startsWith(SLOT);
+}
+
 /** The owner of overlay slot `i`, bottom first. */
 export function overlayOwner(i: number): string {
   return `${SLOT}${i}`;

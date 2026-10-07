@@ -446,8 +446,12 @@ function staffMarketKey(m: Assistant, year: number, seat: StaffSeat): number {
  * open seat, the candidates. Filled, it is a strip of rating, wage and
  * contract over two tabs, Work and Skills and contract; each tab pins its
  * own actions in the footer.
+ *
+ * The Season plan opens it on its own, straight over the plan: a row's "Hire
+ * one" is a hire, not a visit to the Staff room, and pulling the sheet down
+ * went back to a room the coach never asked for (2026-10-07).
  */
-function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSeat; onFacility: (b: Building) => void }) {
+export function CoachSeatSheet({ team, seat, onFacility }: { team: Owner; seat: StaffSeat; onFacility: (b: Building) => void }) {
   const economy = useDynasty((s) => s.economy);
   const coachSkills = useDynasty((s) => s.coach.skills);
   const year = useDynasty((s) => s.year);

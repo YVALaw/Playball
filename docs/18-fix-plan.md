@@ -262,6 +262,25 @@ flipping it changes behaviour; then fix each row.
 > - **M97:** before the regionals are played, Games to watch and the Bracket show every pairing as "Set", your region
 >   first. A national half not yet started lists its seeds. The "still filling" note is gone.
 
+>
+> **Playtest follow-ups, 2026-10-07** (tests in `tests/playtest-fixes.test.ts` and `tests/tips.test.ts`):
+> - **Hiring from the Season plan** opens the coach's sheet straight over the plan. It used to open the Staff room
+>   under it, so pulling the sheet down landed in a room the coach never asked for. A pull or back now returns to
+>   the plan.
+> - **Hiring into an open seat** asks for a second tap ("Tap again to hire"), the way replacing a coach did.
+> - **Screen cards wait** while the plan is up or only covered, and while anything lies over their screen. The
+>   Today card used to come up in the middle of a hire.
+> - **Screen cards rewritten** against a survey of every screen. Each card has a short opening, up to four full
+>   sentences on how the screen works, and the next step. They had been held to one line, which read as cut off.
+>   - Corrected: the Board (a missed Required goal costs security; it is not an automatic firing), Stats (top-five
+>     boards), Network (pipelines change fit and reach) and Staff (the coordinator works a state, not players).
+>   - The Lineup card now teaches the field at the top. The Pitching tab has its own card, right whether you or
+>     your pitching coach runs it.
+>   - A test holds every label a card names to one a screen shows. The card's header and Got it stay put while
+>     the words scroll, so a long card at Larger text opens at its title.
+> - **The recruiting view chips** and the other sideways rows scroll only sideways. The Phase 6 hit areas stood
+>   1 px taller than the row's padding, and the whole row drifted up and down under the thumb.
+
 | Task | Findings |
 |---|---|
 | ~~Tour layer above design-system sheets; the two lineup lessons completable~~ (tour removed) | H9, M79, M80 |

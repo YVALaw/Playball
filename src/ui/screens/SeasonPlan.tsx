@@ -30,7 +30,7 @@ import {
   Button, List, ListRow, Monogram, SegmentedControl, Sheet, SubHead, cx,
 } from '../components/ui/index.js';
 import { projectOutlook, recruitingWeeksLeft, useStaffWork } from '../StaffWorkPanel.js';
-import { openFacilityRoom, openStaffDesk } from './ProgramRooms.js';
+import { CoachSeatSheet, openFacilityRoom, openStaffDesk } from './ProgramRooms.js';
 import { StaffList } from './StaffList.js';
 import { StaffPicker } from './StaffPicker.js';
 import { FACILITY_NAME, lastName, plural, stateName } from '../words.js';
@@ -150,7 +150,21 @@ function PlanSheet({ covered }: { covered: boolean }) {
   const setStaffList = useDynasty((s) => s.setStaffList);
   const setDepthSystem = useDynasty((s) => s.setDepthSystem);
   const close = useDynasty((s) => s.closeSeasonPlan);
+  const coachSeat = useDynasty((s) => s.coachSeat);
+  const overlay = useDynasty((s) => s.overlay);
+  const openCoach = useDynasty((s) => s.openCoach);
+  const closeCoach = useDynasty((s) => s.closeCoach);
   const [seat, setSeat] = useState<StaffSeat | null>(null);
+  // The coach's sheet this plan opened over itself, if any.
+  const [desk, setDesk] = useState<StaffSeat | null>(null);
+  useEffect(() => { if (coachSeat === null) setDesk(null); }, [coachSeat]);
+  const openDesk = (s: StaffSeat): void => {
+    const now = useDynasty.getState();
+    // Standing in the Staff room, its own copy of the sheet is the one on show.
+    if (now.overlay === null && now.screen === 'staff') { openStaffDesk(s); return; }
+    setDesk(s);
+    openCoach(s);
+  };
   const [picking, setPicking] = useState(false);
   // Whether the staff list has been on this sheet (see its render below).
   const [listSeen, setListSeen] = useState(!worksBoard);
@@ -203,11 +217,13 @@ function PlanSheet({ covered }: { covered: boolean }) {
                   status={line.who || ' '}
                   value={line.each !== null ? `+${line.each}` : undefined}
                   unit={line.each !== null ? ' each' : undefined}
-                  // A room opens over the plan, which steps aside while it is
-                  // up and comes back when it closes (`seasonPlanShowing`).
+                  // A room or a coach's sheet opens over the plan, which steps
+                  // aside while it is up and comes back when it closes
+                  // (`seasonPlanShowing`). The coach's sheet opens on its own:
+                  // closing it, by a pull or back, is back on the plan.
                   onClick={line.tap === 'build' ? () => setSeat(s)
                     : line.tap === 'facility' ? () => openFacilityRoom(projectFacility(s), { layer: true })
-                      : () => openStaffDesk(s, { layer: true })}
+                      : () => openDesk(s)}
                 />
               );
             })}
@@ -256,6 +272,15 @@ function PlanSheet({ covered }: { covered: boolean }) {
       </Sheet>
       {seat !== null && (
         <SeatWorkSheet key={seat} team={team} seat={seat} covered={covered} onClose={() => setSeat(null)} />
+      )}
+      {desk !== null && coachSeat === desk && overlay === null && (
+        <CoachSeatSheet
+          key={`${desk}:${economy.staff[desk]?.id ?? 'open'}`}
+          team={team}
+          seat={desk}
+          // A building is a room over the plan, the way its own row opens one.
+          onFacility={(b) => { closeCoach(); openFacilityRoom(b, { layer: true }); }}
+        />
       )}
       {picking && (
         <StaffPicker

@@ -102,24 +102,36 @@ button.pb-appbar__id { cursor: pointer; }
   padding: calc(env(safe-area-inset-top) + var(--space-6)) var(--space-3) calc(env(safe-area-inset-bottom) + var(--space-3));
   background: var(--scrim); animation: pb-fade var(--duration-base) var(--ease-standard);
 }
+/* The head and Got it stay put; only the words scroll, from the top. The whole
+   card used to scroll, and focus on Got it opened a long card at Larger text
+   scrolled past its own title (2026-10-07). */
 .pb-tip {
-  display: flex; flex-direction: column; gap: var(--space-3); max-height: 100%; overflow: auto;
+  display: flex; flex-direction: column; gap: var(--space-3); max-height: 100%; overflow: hidden;
   padding: var(--space-4); border-radius: var(--radius-dialog); background: var(--surface-raised);
   box-shadow: var(--shadow-float); animation: pb-rise var(--duration-slow) var(--ease-standard);
 }
-.pb-tip__head { display: flex; align-items: flex-start; gap: var(--space-3); }
+.pb-tip__head { flex: none; display: flex; align-items: flex-start; gap: var(--space-3); }
 .pb-tip__mark { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--radius-pill); background: var(--info-soft); color: var(--info); }
 .pb-tip__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .pb-tip__title { margin: 0; font: 700 calc(20px * var(--pb-ts, 1))/calc(26px * var(--pb-ts, 1)) var(--font-sans); letter-spacing: -0.01em; color: var(--ink); }
 .pb-tip .pb-icon-btn { margin: -6px -8px 0 0; }
-.pb-tip__body { display: flex; flex-direction: column; gap: var(--space-3); }
+.pb-tip__body { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-3); }
+.pb-tip__points {
+  display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none;
+  font: 400 calc(15px * var(--pb-ts, 1))/calc(22px * var(--pb-ts, 1)) var(--font-sans); color: var(--ink);
+}
+.pb-tip__points li { position: relative; padding-left: var(--space-4); }
+.pb-tip__points li::before {
+  content: ""; position: absolute; left: 4px; top: calc(9px * var(--pb-ts, 1));
+  width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+}
 .pb-tip__action {
   display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; padding: var(--space-3);
   border-radius: var(--radius-control); background: var(--accent-soft); color: var(--ink);
   font: 600 calc(15px * var(--pb-ts, 1))/calc(22px * var(--pb-ts, 1)) var(--font-sans);
 }
 .pb-tip__action .pb-icon { margin-top: 3px; color: var(--accent); }
-.pb-tip__foot { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); }
+.pb-tip__foot { flex: none; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); }
 @media (prefers-reduced-motion: reduce) { .pb-tip-host, .pb-tip { animation: none; } }
 :root[data-motion='reduced'] :is(.pb-tip-host, .pb-tip) { animation: none; }
 

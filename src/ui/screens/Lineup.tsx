@@ -472,10 +472,12 @@ export function Lineup() {
     out: !available(starter, clock),
   } : null;
 
+  const onPitching = view === 'pitch';
   return (
     <>
       <main className="pb-page" ref={pageEl}>
-        <FirstVisit id={mine ? 'lineup' : 'lineup-staff'} />
+        {/* One card for each side of the card, each for whoever runs that side. */}
+        <FirstVisit id={onPitching ? (arms ? 'lineup-pitching' : 'lineup-pitching-staff') : (mine ? 'lineup' : 'lineup-staff')} />
         <Marquee
           eyebrow="Tonight's card"
           title="Lineup"

@@ -105,10 +105,17 @@ export function StaffCandidateDialog({
       />
     );
   } else {
+    // A hire is a wage for seasons to come, so it asks once, the way a
+    // replacement does (2026-10-07: "it simply does in the first try").
     footer = (
-      <Button variant="primary" block meta={`${dollars(candidate.wage)}/yr`} onClick={onHire}>
-        {verb} {candidate.name.split(' ')[0]}
-      </Button>
+      <ConfirmButton
+        block
+        idle={`${verb} ${candidate.name.split(' ')[0]}`}
+        meta={`${dollars(candidate.wage)}/yr`}
+        armed="Tap again to hire"
+        armedMeta={`${dollars(after)} left after`}
+        onConfirm={onHire}
+      />
     );
   }
 
