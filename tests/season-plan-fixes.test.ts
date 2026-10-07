@@ -133,9 +133,12 @@ describe('the athletic director hires on day one', () => {
 describe('the plan and the board answer every tap', () => {
   const src = (f: string): string => readFileSync(f, 'utf8');
 
-  it('opens a room for every seat row, laid over the plan', () => {
+  it('opens a room or a coach\'s sheet for every seat row, laid over the plan', () => {
     const plan = src('src/ui/screens/SeasonPlan.tsx');
-    expect(plan).toContain("openStaffDesk(s, { layer: true })");
+    // The coach's sheet itself, with no Staff room under it (2026-10-07):
+    // a pull or back goes straight back to the plan.
+    expect(plan).toContain(': () => openDesk(s)}');
+    expect(plan).toContain('<CoachSeatSheet');
     expect(plan).toContain("openFacilityRoom(projectFacility(s), { layer: true })");
     // The plan stays mounted under the room, so its history entry is kept.
     expect(plan).toContain('seasonPlanCovered');

@@ -261,7 +261,7 @@ export const TUTORIALS: Record<string, TutorialPage> = {
   // chooses who, the staff spends the points.
   'recruiting-staff': {
     title: 'Recruiting',
-    body: 'Your staff runs recruiting. Each week they spend the points on the recruits you star, up to 8.',
+    body: 'Your staff runs recruiting. Each week they work the recruits you star, up to 8.',
     points: [
       'They work the list in order, so the recruit at the top gets the most effort.',
       'Staff list shows your list. Use these fills it with your staff’s suggestions.',
