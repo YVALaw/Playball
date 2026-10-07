@@ -11,14 +11,17 @@
 // seat the whole time. A rejection reached the fence and the 2D diamond; a
 // wait reached nobody.
 //
-// Two changes. The chunk is asked for at boot, after the first paint
-// (`main.tsx`), so it is in memory before the first pitch and a server that
-// dies later does not matter to it. And the wait has a patience: the dots
+// Two changes. The chunk is asked for the moment a game is asked for — the
+// press on Play ball, Play this game or Pick it up (`warmPark`) — so it is on
+// its way before the dugout mounts. It used to be fetched three seconds after
+// boot, which evaluated six hundred kilobytes on every launch whether a game
+// was played or not (audit 17, perf LOW). And the wait has a patience: the dots
 // hold the seat for six seconds, then the 2D diamond takes it, and the park
 // takes over from the diamond whenever the chunk does arrive. A failed fetch
 // is forgotten, so the next game asks again. Nothing is ever stuck.
 
 import { useEffect, useState } from 'react';
+import { readPrefs } from '../state/devicePrefs.js';
 
 type ParkModule = typeof import('./Diamond3D.js');
 
@@ -33,6 +36,12 @@ export function loadPark(): Promise<ParkModule> {
     (e: unknown) => { arriving = null; throw e; },
   );
   return arriving;
+}
+
+/** A game is on its way: start the fetch now, unless the field is the 2D diamond. */
+export function warmPark(): void {
+  if (readPrefs().field === '2d') return;
+  loadPark().catch(() => undefined);
 }
 
 /** How long the dots hold the seat before the 2D diamond takes it. */

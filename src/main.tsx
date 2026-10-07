@@ -93,17 +93,6 @@ if (splash) {
 }
 
 /*
-  The park, fetched while nobody is waiting for it.
-
-  Three.js is the one chunk the app loads late, and the first pitch was the
-  first time anybody asked for it -- over a phone's wifi to a dev server that
-  may have stopped answering by then (see `ui/park.ts`). Asked for a few
-  seconds after the first paint instead, so it is in memory before the first
-  game; unless the field is the 2D diamond by choice, in which case it is
-  never fetched at all (05 §62.6).
+  The park (three.js) is not fetched here. It used to be, three seconds after
+  the first paint; it is fetched now when a game is asked for (`ui/park.ts`).
 */
-if (readPrefs().field !== '2d') {
-  setTimeout(() => {
-    void import('./ui/park.js').then((m) => m.loadPark()).catch(() => undefined);
-  }, 3000);
-}

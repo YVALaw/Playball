@@ -5,6 +5,7 @@
 // its fix), and three buttons: sim a game, play it, sim the week.
 
 import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { warmPark } from '../park.js';
 import { FINISH_LABEL, conferenceField } from '../../engine/postseason.js';
 import { RECRUITING_WEEKS, totalWeekSpend } from '../../engine/recruiting.js';
 import { boardBudget, useConferenceTable, useDynasty, useUserTeam } from '../../state/store.js';
@@ -429,7 +430,7 @@ export function Today() {
         onClick: () => think('game', advanceDay),
       };
     midBtn = pendingGame
-      ? { label: 'Pick it up', sub: 'Game in progress', icon: 'play', onClick: () => void resumeGame(true) }
+      ? { label: 'Pick it up', sub: 'Game in progress', icon: 'play', onClick: () => { warmPark(); void resumeGame(true); } }
       : {
         label: live ? 'Back to game' : 'Play ball',
         sub: live ? 'In progress' : !todayGame ? 'No game today' : held ? 'Settle the list' : 'Coach it live',
@@ -438,7 +439,10 @@ export function Today() {
         disabled: live ? false : busyNow || thinking !== null || held || !todayGame,
         // Looking at another game: roll to tonight's first, then go, holding
         // the same lock the sims hold so neither can fire in the gap (M84).
-        onClick: () => { if (focus !== nextIdx && !live) think('play', startManagedGame, 650); else void startManagedGame(); },
+        onClick: () => {
+          warmPark();
+          if (focus !== nextIdx && !live) think('play', startManagedGame, 650); else void startManagedGame();
+        },
       };
     rightBtn = {
       label: thinking === 'week' ? spinner : 'Sim week',

@@ -125,6 +125,37 @@ flipping it changes behaviour; then fix each row.
 
 ## Phase 4 — Performance (1 week)
 
+> **Status: done.** Tests are in `tests/phase4-fixes.test.ts`, `tests/save-index.test.ts` and
+> `tests/sim-client.test.ts`.
+> - **H4/M46/M83/M84:** chunked per frame rather than moved to the worker. A per-week worker call would clone the
+>   2.6 MB season both ways and replace every object the screens hold. SIM WEEK plays a day per frame under `busy`.
+>   June's round, mine and rest buttons play a night per frame (`simBracket(mode, true)`). The year roll yields
+>   before its two heavy builds. The longest block under a tap is now one day (180–300 ms on desktop), down from a
+>   whole week (500–720 ms) or a whole June. SIM GAME, a second SIM WEEK and June's buttons are refused while one
+>   runs. Today and June hold their press lock until the run finishes, and hiding the screen no longer cancels it.
+> - **M43:** autosaves coalesce into one write a second after the last change. The write is built in the timer,
+>   not under the tap. It is flushed when the app hides, a career starts or another loads. The chip reads
+>   "saving" while a write is owed. Awaited saves still write at once.
+> - **M51:** the saves menu reads one index record. The index heals around files it never saw and drops rows whose
+>   file is gone.
+> - **M48–M50:** the RPI table is cached per state of the records and shared by the screens and the engine. The
+>   board computes each prospect's fit key once. `Screen` is memoised; Rooms, Saves and Inbox subscribe for
+>   themselves.
+> - **M47:** each worker call has its own failure hook, removed when it settles. The worker releases the progress
+>   proxy.
+> - **M42:** the name pool is rebuilt from the season before next year's class is drawn. Rolling the year in a
+>   running app and after a reload now draws the same class and the same RNG position. The test fails without the
+>   fix.
+> - **Bundle:** three.js is fetched when a game is asked for (Play ball, Play this game, Pick it up), not 3 s after
+>   launch, and never on the 2D field. 3,067 dead rules went from the legacy stylesheets, and the built CSS fell
+>   from 678 kB to 362 kB (54 kB gzipped). A rule counted as dead only when every selector named a class that no
+>   source file can produce. Computed styles of every element were compared before and after in Chromium: 18 tab
+>   screens, 9 overlays, the new-career flow and a live game, light and dark. There were no differences.
+>   `prototype.css` is generated and was left alone; its 946 dead rules need a filter in
+>   `scripts/adapt-prototype-css.mjs`.
+> - **Not done:** the `store.ts` split, and the unreferenced-file and token-layer clean-up (L48), are code health
+>   rather than performance. They are left for later.
+
 | Task | Findings |
 |---|---|
 | SIM WEEK / SIM GAME / June stages / year roll through the existing worker (or chunked per frame), with a busy state that blocks re-entry | H4, M46, M83, M84 |

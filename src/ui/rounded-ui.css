@@ -123,28 +123,12 @@ button, [role='button'], input:not([type='range']):not([type='checkbox']):not([t
 
 /* Shared stat strips are a single surface, with square internal cells. These
    compact strips have no floating menus; contain their edge backgrounds. */
-.pulse-grid, .season-line, .metric-strip, .club-capacity, .program-score,
-.player-quick-facts, .fielding-strip, .player-records, .split-grid,
-.prospect-stats, .count-board, .acquisition-needs, .portal-needs-strip,
-.player-status-grid, .board-review-deltas, .probable-arms, .record-book-summary,
-.hall-summary {
-  border-radius: var(--radius-card);
-  overflow: hidden;
-}
 :is(.pulse-grid, .season-line, .metric-strip, .club-capacity, .program-score,
   .player-quick-facts, .fielding-strip, .player-records, .split-grid,
   .prospect-stats, .count-board, .acquisition-needs, .portal-needs-strip,
   .player-status-grid, .board-review-deltas, .probable-arms, .record-book-summary,
   .hall-summary) > * {
   border-radius: 0;
-}
-.pulse-grid > button:focus-visible { outline: 2px solid var(--clay); outline-offset: -3px; }
-
-/* Settings contains spaced cards, not a joined list. The empty wrapper must
-   not clip their edges or paint an extra shadow behind the entire group. */
-.settings-workspace .settings-list { border-radius: 0; overflow: visible; box-shadow: none; }
-.settings-workspace .settings-list > :is(.setting-toggle-card, .setting-choice-card, .settings-reset-card) {
-  border-radius: var(--radius-card);
 }
 
 /* Inset segmented controls: 10px outer corner minus 4px padding gives 6px
@@ -170,20 +154,8 @@ button, [role='button'], input:not([type='range']):not([type='checkbox']):not([t
   bottom: 4px; height: 2px; border-radius: 2px;
 }
 :root .segmented.wrap > button { margin: 0; border-top: 0; }
-:root .alumnus-profile > .segmented > button { flex: 1 1 0; min-width: 0; }
 :root .segmented.wrap[data-slide]::before { top: calc(var(--slide-y, 0px) + var(--slide-h, 100%) - 2px); bottom: auto; }
 :root .segmented > button:focus-visible { outline: 2px solid var(--clay); outline-offset: -2px; }
-
-/* Navigation buttons get breathing room and a selected surface. Vertical
-   dividers no longer curl around each button's corners. */
-.primary-nav { gap: 4px; padding: 4px 8px calc(4px + env(safe-area-inset-bottom)); }
-.primary-nav > button { min-height: 58px; border: 0; border-radius: var(--radius-control); }
-.primary-nav > button.active { background: var(--soft); }
-.primary-nav[data-slide]::before {
-  top: 4px; height: 2px; border-radius: 2px;
-  width: max(0px,calc(var(--slide-w) - 16px));
-  transform: translateX(calc(var(--slide-x) + 8px));
-}
 /* Reported "a bit big" at 52 on the 15th, against the 42 it was before this
    file. 46 splits the difference: a cell still taller than its label by a
    margin a thumb can use, and a strip that no longer reads as a second
@@ -205,20 +177,6 @@ button, [role='button'], input:not([type='range']):not([type='checkbox']):not([t
   .staff-facility-door, .staff-player-select, .staff-cancel-project,
   .search-row, .network-state) {
   border-radius: var(--radius-control);
-}
-:root .god-bolt, :root .god-field input[type='text'], :root .god-field select,
-:root .god-selects select, :root .staff-player-picker input, :root .staff-state-select select,
-:root .career-field select, :root .network-assignment select, :root .network-state-filter select,
-:root .staff-candidate-dialog > header > button, :root .postseason-map-tools button, :root .mailbox-mark-all {
-  border-radius: var(--radius-control);
-}
-
-/* Floating dialogs own their outline. Full-screen overlays and scrims do not. */
-.modal-card, .tutorial-card, .retention-sheet, .offer-modal, .offer-decision-modal,
-.profile-command-sheet, .game-picker-sheet, .portal-sign-sheet,
-.staff-candidate-dialog, .playbook-library-sheet,
-.player-actions-popover, .college-actions-popover, .game-manager-popover {
-  border-radius: var(--radius-dialog);
 }
 /* Two of the scrims are buttons — a full-screen tap target that closes what
    it sits behind — so the control rule above reached them and put an 8px
@@ -242,14 +200,6 @@ button, [role='button'], input:not([type='range']):not([type='checkbox']):not([t
 :root :is(.program-trend, .network-scouting, .network-lead, .alumnus-next) {
   border-radius: var(--radius-card);
 }
-
-/* The shelf is a joined list: full-bleed rows meeting at continuous rules,
-   with the best season sitting among them. It clips rather than rounding its
-   children, because nothing inside it floats or takes a focus ring. */
-:root .program-shelf { border-radius: var(--radius-card); overflow: hidden; }
-
-/* The grid is spacing. The two tiles in it are the surfaces. */
-:root .staff-impact-grid > span { border-radius: var(--radius-card); }
 
 /* Meters and tracks: the bar is the rounded thing, so it takes the cap rather
    than a card's corner. The fill rounds with its track; the 60-gate marker on

@@ -19,6 +19,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useDynasty, useUserTeam, type NationalProgress } from '../../state/store.js';
 import { useBackLayer } from '../useBackLayer.js';
+import { warmPark } from '../park.js';
 import { Modal } from '../Modal.js';
 import { Lineup } from './Lineup.js';
 import { Crest } from '../Crest.js';
@@ -536,7 +537,7 @@ export function Postseason() {
         }
       : {
           label: 'Play this game',
-          run: manage,
+          run: () => { warmPark(); manage(); },
           instant: true,
           secondary: { label: 'Sim this game', onClick: () => sim('game') },
         })
@@ -744,7 +745,7 @@ export function Postseason() {
                 footer={(
                   <div className="pb-buttons-2">
                     <Button variant="secondary" onClick={() => void resumeGame(false)}>Let them finish</Button>
-                    <Button variant="primary" icon="play" onClick={() => void resumeGame(true)}>Pick it up</Button>
+                    <Button variant="primary" icon="play" onClick={() => { warmPark(); void resumeGame(true); }}>Pick it up</Button>
                   </div>
                 )}
               >
