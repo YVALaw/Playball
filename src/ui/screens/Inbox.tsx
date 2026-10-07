@@ -82,6 +82,8 @@ function senderFor(item: InboxItem, assistant: string): string {
 }
 
 export function Inbox() {
+  // The engine mutates in place; with Screen memoised this is what redraws it (M50).
+  useDynasty((s) => s.version);
   const inbox = useDynasty((s) => s.inbox);
   const markInboxRead = useDynasty((s) => s.markInboxRead);
   const readInbox = useDynasty((s) => s.readInbox);

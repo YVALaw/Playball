@@ -10,6 +10,8 @@ import { BoardRoom, CoachProfile, HallRoom, WatchlistRoom } from './Program.js';
 import { BudgetRoom, FacilitiesRoom, NetworkRoom, StaffRoom } from './ProgramRooms.js';
 
 export function RoomScreen({ room }: { room: Room }) {
+  // The engine mutates in place; with Screen memoised this is what redraws it (M50).
+  useDynasty((s) => s.version);
   const season = useDynasty((s) => s.season);
   const team = useUserTeam();
   if (!season || !team) return null;

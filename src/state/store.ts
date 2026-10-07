@@ -16,7 +16,7 @@ import { create } from 'zustand';
 import {
   appliedStrategy,
   injuryClock, currentDay, startableSlot, shortRest, dayInTheLegs, seasonInTheArm, fitBench,
-  createSeason, simNextDay, freezeFinalOrder, simSeason, seasonComplete, standings, nextSeason, rpi, rpiOrder,
+  createSeason, simNextDay, freezeFinalOrder, simSeason, seasonComplete, standings, nextSeason, rebuildNameIndex, rpi, rpiOrder,
   seasonLength, regularRecord, archiveSeason, recordSeasonMarks, nationalRank, onBase, slugging,
   recordCareerMarks, recordResult, restedFirst, closerFrom, seedTeams,
   rulesOf, configForRules, DEFAULT_RULES,
@@ -6418,6 +6418,15 @@ export const useDynasty = create<DynastyStore>(withNav((set, get) => ({
         }
       }
 
+      /*
+        The name pool from the save, not from the session (audit 17, M42). A
+        name already taken costs another draw, so the pool steers the season
+        RNG through the 720-man class drawn here. A running app still held
+        every graduated rival's name; a reload of the same save did not, and
+        the two drew different worlds. Rebuilt here, both paths draw from the
+        pool a load would build.
+      */
+      rebuildNameIndex(next);
       const rolled = nextSeason(next);
       {
         // The coached programme is never seeded: a staff works only the

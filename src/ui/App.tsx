@@ -13,7 +13,7 @@
 import { regularRecord } from '../engine/season.js';
 import { useShallow } from 'zustand/react/shallow';
 import {
-  Activity, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore,
+  Activity, memo, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import { keptAlive, leftScroll, rememberScroll, scrollId, type Alive } from './keptAlive.js';
@@ -1349,7 +1349,10 @@ function ScreenSurface({ fill, children }: { fill: boolean; children: ReactNode 
   );
 }
 
-function Screen({ id }: { id: string }) {
+// Memoised: AppBody re-renders on every version bump, and without this every
+// kept-alive screen behind the visible one re-rendered with it. Each screen
+// subscribes to what it reads itself (audit 17, M50).
+const Screen = memo(function Screen({ id }: { id: string }) {
   switch (id) {
     case 'today': return <Today />;
     case 'roster': return <Roster />;
@@ -1377,4 +1380,4 @@ function Screen({ id }: { id: string }) {
     case 'saves': return <Saves />;
     default: return <Placeholder id={id} />;
   }
-}
+});

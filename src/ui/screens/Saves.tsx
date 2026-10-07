@@ -77,6 +77,8 @@ function midnightsBetween(then: number, now: number): number {
 type Ask = { kind: 'delete'; save: SaveSummary };
 
 export function Saves() {
+  // The engine mutates in place; with Screen memoised this is what redraws it (M50).
+  useDynasty((s) => s.version);
   const saves = useDynasty((s) => s.saves);
   const savesState = useDynasty((s) => s.savesState);
   const savesError = useDynasty((s) => s.savesError);

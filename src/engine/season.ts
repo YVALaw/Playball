@@ -3010,11 +3010,33 @@ function average(xs: readonly number[]): number {
  * file's own order and called it a ranking.
  */
 export function rpiOrder(season: SeasonState): Array<{ team: TeamRecord; rpi: number }> {
+  /*
+    Computed once per state of the records and shared (audit 17, M48). Every
+    rpi() walks opponents' opponents, and Today, Standings, Rankings, the team
+    card and the wire each asked for the whole table on every render. The
+    stamp is everything the table reads: the games, and every record. The
+    rows come back as a fresh array, so no caller can disturb the cache.
+  */
+  const stamp = rpiStamp(season);
+  const hit = rpiCache.get(season);
+  if (hit && hit.stamp === stamp) return hit.rows.slice();
   const value = new Map<number, number>(
     season.teams.map((t) => [t.index, rpi(season, t.index)]),
   );
-  return seedTeams(season, season.teams, (t) => value.get(t.index) ?? 0)
+  const rows = seedTeams(season, season.teams, (t) => value.get(t.index) ?? 0)
     .map((team) => ({ team, rpi: value.get(team.index) ?? 0 }));
+  rpiCache.set(season, { stamp, rows });
+  return rows.slice();
+}
+
+const rpiCache = new WeakMap<SeasonState, { stamp: string; rows: Array<{ team: TeamRecord; rpi: number }> }>();
+function rpiStamp(season: SeasonState): string {
+  let w = 0; let l = 0; let rw = 0; let rl = 0; let opp = 0;
+  for (const t of season.teams) {
+    w += t.w; l += t.l; rw += t.rw ?? -1; rl += t.rl ?? -1; opp += t.opponents.length;
+  }
+  const last = season.results[season.results.length - 1];
+  return `${season.teams.length}|${season.schedule.length}|${season.results.length}|${last ? `${last.day}:${last.home}:${last.away}` : ''}|${w}|${l}|${rw}|${rl}|${opp}`;
 }
 
 /**

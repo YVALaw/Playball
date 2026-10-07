@@ -15,7 +15,7 @@ vi.mock('idb', () => ({
   }),
 }));
 process.on('unhandledRejection', () => {});
-import { S, startCareer, simRegular, resolveHolds, flush } from './support/drive.js';
+import { S, startCareer, simRegular, resolveHolds, flush, fullYear, playJune } from './support/drive.js';
 
 describe('SIM WEEK runs off the tap path under one lock (H4, M84)', () => {
   it('holds busy while the week plays and refuses a second press', async () => {
@@ -64,4 +64,32 @@ describe('June can be played a night per frame (H4, M46)', () => {
     expect(sync).not.toBe('null');
     expect(paced).toBe(sync);
   }, 120_000);
+});
+
+describe('a reload does not change the future (M42)', () => {
+  it('rolling the year in a running app and after a reload draw the same class', async () => {
+    startCareer(4242, 5);
+    await fullYear();
+    await simRegular();
+    await playJune();
+    for (let i = 0; i < 20 && S().phase !== 'signing'; i++) {
+      const phase = S().phase!;
+      await S().nextPhase(phase);
+      await flush();
+    }
+    expect(S().phase).toBe('signing');
+    expect(await S().saveNow('m42', 'M42')).toBe(true);
+
+    const roll = async (): Promise<string> => {
+      await S().nextPhase('signing');
+      await flush();
+      const season = S().season!;
+      return `${season.rng.state?.()}|${season.recruiting.prospects.map((p) => `${p.id}:${p.player.name}`).join(',')}`;
+    };
+    const inMemory = await roll();
+    expect(await S().loadSlot('m42')).toBe(true);
+    await flush();
+    const reloaded = await roll();
+    expect(reloaded).toBe(inMemory);
+  }, 180_000);
 });

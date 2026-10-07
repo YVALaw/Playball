@@ -12,13 +12,17 @@ let worker: Worker | null = null;
 let api: Comlink.Remote<SimApi> | null = null;
 
 /**
- * Rejects when the current worker dies. A Comlink call whose worker has
- * crashed never settles — the message port simply goes quiet — so without
- * this, `playSeason`'s await hung forever, `busy` stayed true, and the season
- * could never be simulated or rolled again. One deferred per worker, raced
- * against every call.
+ * The calls waiting on the current worker, each with the way to fail it. A
+ * Comlink call whose worker has crashed never settles — the message port
+ * simply goes quiet — so without this, `playSeason`'s await hung forever,
+ * `busy` stayed true, and the season could never be simulated or rolled again.
+ *
+ * Per call, and removed when the call settles. It used to be one promise per
+ * worker raced against every call, and each race left a reaction on it that
+ * held the season the worker sent back — about 7 MB a season, for the life of
+ * the worker (audit 17, M47).
  */
-let workerFailed: Promise<never> | null = null;
+const pending = new Set<(e: Error) => void>();
 
 function remote(): Comlink.Remote<SimApi> {
   if (!api) {
@@ -32,20 +36,17 @@ function remote(): Comlink.Remote<SimApi> {
     worker = new Worker(new URL('./simWorker.ts', import.meta.url), { type: 'module' });
     api = Comlink.wrap<SimApi>(worker);
     const w = worker;
-    workerFailed = new Promise<never>((_, reject) => {
-      const fail = (why: string) => (): void => {
-        // A crashed worker stays crashed; cached, every later call would hang
-        // against the same dead port. Tear it down so the next call builds a
-        // fresh one.
-        if (worker === w) disposeWorker();
-        reject(new Error(why));
-      };
-      w.addEventListener('error', fail('the simulation worker crashed'));
-      w.addEventListener('messageerror', fail('the simulation worker sent an unreadable message'));
-    });
-    // A worker that never fails would otherwise leave this rejection unhandled
-    // at teardown. It is only ever consumed through the race below.
-    workerFailed.catch(() => undefined);
+    const fail = (why: string) => (): void => {
+      // A crashed worker stays crashed; cached, every later call would hang
+      // against the same dead port. Tear it down so the next call builds a
+      // fresh one.
+      if (worker === w) disposeWorker();
+      const waiting = [...pending];
+      pending.clear();
+      for (const reject of waiting) reject(new Error(why));
+    };
+    w.addEventListener('error', fail('the simulation worker crashed'));
+    w.addEventListener('messageerror', fail('the simulation worker sent an unreadable message'));
   }
   return api;
 }
@@ -58,13 +59,13 @@ export function simSeasonInWorker(
   onProgress?: (p: SimProgress) => void,
 ): Promise<Portable> {
   // Callbacks have to be proxied explicitly: Comlink cannot clone a function.
-  // Each proxy holds a message listener until the worker goes away — a small,
-  // bounded cost per season sim, reclaimed when `disposeWorker` runs (a new
-  // dynasty, or a crash). Accepted rather than plumbing releaseProxy through:
-  // a dynasty sims a few dozen seasons, not thousands.
+  // The worker releases the proxy when the season is done.
   const call = remote().simSeason(portable, onProgress ? Comlink.proxy(onProgress) : undefined);
-  // Raced against the worker dying, so the caller's await settles either way.
-  return workerFailed ? Promise.race([call, workerFailed]) : call;
+  // Failed by the worker dying too, so the caller's await settles either way.
+  return new Promise<Portable>((resolve, reject) => {
+    pending.add(reject);
+    call.then(resolve, reject).finally(() => pending.delete(reject));
+  });
 }
 
 /** Release the worker. Called when a dynasty is closed, not between seasons. */
@@ -72,5 +73,4 @@ export function disposeWorker(): void {
   worker?.terminate();
   worker = null;
   api = null;
-  workerFailed = null;
 }

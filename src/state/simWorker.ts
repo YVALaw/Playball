@@ -39,12 +39,19 @@ const api = {
     // never completes must come back as an error, not hang this thread and the
     // promise on the other side of it forever.
     let guard = 0;
-    while (!seasonComplete(season)) {
-      if (guard++ > total + 30) {
-        throw new Error('the season never completed — a schedule that cannot finish');
+    try {
+      while (!seasonComplete(season)) {
+        if (guard++ > total + 30) {
+          throw new Error('the season never completed — a schedule that cannot finish');
+        }
+        simNextDay(season);
+        if (onProgress) await onProgress({ day: season.dayIndex, totalDays: total });
       }
-      simNextDay(season);
-      if (onProgress) await onProgress({ day: season.dayIndex, totalDays: total });
+    } finally {
+      // The progress proxy holds a port and a listener on both sides until it
+      // is released; one per season, kept for the life of the worker (M47).
+      const release = (onProgress as Partial<Comlink.Remote<ProgressFn>> | undefined)?.[Comlink.releaseProxy];
+      if (typeof release === 'function') release();
     }
 
     return toPortable(season);

@@ -322,8 +322,13 @@ export function Board() {
     const shown = open.filter((p) => matchesFilters(p, filters, homeState, myStars, networkFor));
     const reachable = shown.filter(reaches);
     // Talent weighted by how well he fits what this program can sell.
+    // Each man's key once, then sorted on it: fit() walks the program's depth,
+    // and the comparator used to call it twice per comparison (audit 17, M49).
     const ranked = pitch
-      ? [...reachable].sort((a, b) => (b.stars * fit(b, pitch)) - (a.stars * fit(a, pitch)))
+      ? reachable
+        .map((p) => ({ p, key: p.stars * fit(p, pitch) }))
+        .sort((a, b) => b.key - a.key)
+        .map(({ p }) => p)
       : reachable;
 
     // Who will still be here when the class arrives: see `classSurvivors`,
